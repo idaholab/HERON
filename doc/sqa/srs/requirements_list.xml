@@ -1,0 +1,80 @@
+<?xml version="1.0" ?>
+<requirements_specification application="HERON">
+
+
+    <requirement_group id="Minimum Requirements">
+
+      <requirement_set caption="Minimum Requirements">
+          <requirement id_code="H-M-1">
+              <description>Computer: Any POSIX (and POSIX-like) system</description>
+              <source>``RAVEN User Manual'', INL/EXT-15-34123; Continous Integration System</source>
+          </requirement>
+          <requirement id_code="H-M-2">
+              <description>RAM: 2 GB per core execution (depending on the type of analysis and data genarated)</description>
+              <source>``RAVEN User Manual'', INL/EXT-15-34123; Continous Integration System</source>
+          </requirement>
+          <requirement id_code="H-M-3">
+              <description>Language: Python 3.x</description>
+              <source>``RAVEN User Manual'', INL/EXT-15-34123; Continous Integration System</source>
+          </requirement>
+        </requirement_set>
+
+    </requirement_group>
+
+
+    <requirement_group id="Functional Requirements">
+
+      <requirement_set caption="Framework, I/O, Execution Control">
+          <requirement id_code="H-F-1">
+              <description>The HERON plug-in shall allow support for user-defined instructions for controlling the execution stages of the economical analysis.</description>
+          </requirement>
+          <requirement id_code="H-F-2">
+              <description>The HERON plug-in shall allow for user-defined output types for simulation data.</description>
+          </requirement>
+      </requirement_set>
+
+    </requirement_group>
+
+
+    <requirement_group id="Usability Requirements">
+
+      <requirement_set caption="Economical Analysis">
+          <requirement id_code="H-EA-1">
+              <description>The HERON plug-in shall support the automated RAVEN workflow generation for grid energy system technoeconomic analysis </description>
+          </requirement>
+          <requirement id_code="H-EA-2">
+              <description>The HERON plug-in shall support the grid system dispatch optimization on stochastic signals </description>
+          </requirement>
+          <requirement id_code="H-EA-3">
+              <description>The HERON plug-in shall support the regulated and deregulated market analysis </description>
+          </requirement>
+          <!--<requirement id_code="H-EA-4">
+              <description>The HERON plug-in shall support the component sizing optimization </description>
+          </requirement>-->
+      </requirement_set>
+
+    </requirement_group>
+
+
+   <!-- <requirement_group id="Performance Requirements">
+      <requirement_set caption="Infrastructure Support">
+        <requirement id_code="H-IS-1">
+              <description>The HERON plug-in shall be able to be executed in parallel via RAVEN</description>
+          </requirement>
+      </requirement_set>
+
+    </requirement_group>-->
+
+
+    <requirement_group id="System Interfaces">
+      <requirement_set caption="Interface with external applications">
+          <requirement id_code="H-SI-1">
+              <description>The HERON plug-in shall be able to be initialized via input files.</description>
+          </requirement>
+      </requirement_set>
+
+    </requirement_group>
+
+</requirements_specification>
+
+

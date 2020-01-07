@@ -1,0 +1,9 @@
+
+<Economics verbosity="0">
+ <Global>
+  <DiscountRate>0.00</DiscountRate>
+ <tax>0.000</tax>
+ <inflation>0.00</inflation>
+ <Indicator name="NPV_search" target="0"> CONP|CA   </Indicator>
+ </Global>
+</Economics>

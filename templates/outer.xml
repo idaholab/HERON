@@ -1,0 +1,79 @@
+<Simulation verbosity='debug'>
+  <RunInfo>
+    <JobName>EX19_Outer</JobName>
+    <WorkingDir>.</WorkingDir>
+    <Sequence>sweep</Sequence>
+    <!--<batchSize>20</batchSize>
+    <mode>mpi<runqsub/></mode>
+    <internalParallel>False</internalParallel>
+    <expectedTime>72:0:0</expectedTime>
+    <clusterParameters>-P nst -j oe</clusterParameters>-->
+  </RunInfo>
+
+  <Steps>
+    <MultiRun name='sweep'>
+      <Input          class='Files'       type='raven'   >inner_workflow</Input>
+      <Input          class='Files'       type=''        >egret_lib</Input>
+      <Input          class='Files'       type=''        >transfers</Input>
+      <!-- TODO model files for inner -->
+      <Model          class='Models'      type='Code'    >raven</Model>
+      <Sampler        class='Samplers'    type='Grid'    >grid</Sampler>
+      <Output         class='DataObjects' type='PointSet'>grid</Output>
+      <Output class='OutStreams'  type='Print'   >sweep</Output>
+    </MultiRun>
+  </Steps>
+
+  <VariableGroups>
+    <Group name='GRO_capacities'></Group>
+    <!-- less metrics -->
+    <Group name='GRO_outer_results'>
+      mean_NPV, std_NPV, med_NPV, max_NPV, min_NPV,
+      perc_5_NPV, perc_95_NPV, samp_NPV, var_NPV
+    </Group>
+    <!-- more metrics -->
+    <!-- <Group name='GRO_outer_results'>
+      mean_NPV, std_NPV, skew_NPV, kurt_NPV, vc_NPV, med_NPV, max_NPV, min_NPV,
+      perc_5_NPV, perc_95_NPV, samp_NPV, var_NPV
+    </Group> -->
+  </VariableGroups>
+
+  <DataObjects>
+    <PointSet name='grid'>
+      <Input>GRO_capacities</Input>
+      <Output>GRO_outer_results</Output>
+    </PointSet>
+  </DataObjects>
+
+  <Models>
+    <Code name='raven' subType='RAVEN'>
+      <executable>~/projects/raven/raven_framework</executable>
+      <outputExportOutStreams>disp_results</outputExportOutStreams>
+      <conversion>
+        <input source='write_inner.py'/>
+      </conversion>
+      <alias variable='denoises' type='input'>Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:denoises</alias>
+    </Code>
+  </Models>
+
+  <Distributions>
+  </Distributions>
+
+  <Samplers>
+    <Grid name='grid'>
+      <constant name='denoises'>1</constant>
+    </Grid>
+  </Samplers>
+
+  <Files>
+    <Input name="inner_workflow" type='raven'>inner.xml</Input>
+    <Input name="egret_lib">../egret.lib</Input>
+    <!-- TODO other model/function files -->
+  </Files>
+
+  <OutStreams>
+    <Print name='sweep'>
+      <type>csv</type>
+      <source>grid</source>
+    </Print>
+  </OutStreams>
+</Simulation>

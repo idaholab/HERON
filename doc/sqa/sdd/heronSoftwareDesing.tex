@@ -1,0 +1,101 @@
+\section{Software Design}
+\subsection{Introduction}
+The \textit{\textbf{HERON}} (Hollistic Energy Resource Optimization Network) is a project to construct workflows solving
+complex optimization of component sizing and stochastic resource allocation to meet target economic goals.
+The \textit{\textbf{HERON}} plug-in has been coded using the language \emph{Python}. The \emph{Python}
+ code provides ``external model'' in RAVEN (for installation and usage instructions, see~\cite{RAVENuserManual}) as well as
+RAVEN  workflow generation tool.
+The input of  \textit{\textbf{HERON}} is an XML file, which can be read and executed by the plug-in and RAVEN.
+
+
+\subsection{System Structure (Code)}
+The  \textit{\textbf{HERON}} plug-in is based on the RAVEN plug-in system. This system is aimed to ease the creation
+of RAVEN entities, workflows and modules by external developers without the need to deeply know the internal structure
+of the RAVEN software. This system is a transparent API for RAVEN.
+\\The addition of a plugin does not require modifying RAVEN itself. 
+Instead, the developer creates a new Python module that is going to be embedded
+ in RAVEN at run-time (no need to introduce  hard-coded statements).
+
+
+In order to install the HERON plugin (if not downloaded by RAVEN submodule system),
+ the user can run the script contained in the RAVEN script folder:
+\begin{lstlisting}[language=bash]
+ python path/to/raven/scripts/install_plugins.py  -s **directory**/Heron
+\end{lstlisting}
+where  $**directory**$/Heron should be replaced with the absolute path to the Heron plugin directory.
+(e.g. ``path/to/my/plugins/Heron''). 
+
+\subsection{HERON Structure}
+The  \textit{\textbf{HERON}} plug-in contains the following methods (API from RAVEN):
+
+\begin{lstlisting}[language=python]
+from InputTemplates.TemplateBaseClass import Template as TemplateBase
+
+class Template(TemplateBase):
+  def run (self, container, Inputs)
+\end{lstlisting}
+In the following sub-sections all the methods are explained.
+\subsubsection{Method: \texttt{run}}
+\label{subsubsec:runExternalModelPlugin}
+\begin{lstlisting}[language=python]
+def run (self, container, Inputs)
+\end{lstlisting}
+
+In this function, the HERON analysis is coded.
+%
+The only two attributes this method is going to receive are a Python list of inputs
+(the inputs coming from the \texttt{createNewInput} method (see \cite{RAVENuserManual}) and a ``self-like'' object
+named ``container''.
+%
+All the outcomes of the HERON module will be stored in the above mentioned ``container'' in order to 
+allow RAVEN to collect them.
+
+Example XML:
+\begin{lstlisting}[style=XML,morekeywords={subType,ModuleToLoad}]
+  <Components>
+    <Component name='PowerPlant1'>
+      <produces resource='electricity' dispatchable='True'>
+        <capacity>
+          <sweep_values>80, 90, 100</sweep_values>
+          <opt_bounds>80, 100</opt_bounds>
+        </capacity>
+        <transfer>
+          <fixed_value>10</fixed_value>
+        </transfer>
+      </produces>
+      <economics>
+        <CashFlow name='capex' type='one-time' taxable='False' inflation='none' mult_target='False'>
+          <driver>capacity</driver>
+          <reference_price>
+            <ARMA variable="e_price">price_data</ARMA>
+          </reference_price>
+          <reference_driver>1e3</reference_driver>
+          <scaling_factor_x>1.0</scaling_factor_x>
+        </CashFlow>
+      </economics>
+    </Component>
+  </Components>
+\end{lstlisting}
+
+  \begin{itemize}
+    \item \texttt{Components} -- Represents a unit in the grid analysis. Each component has a single "interaction" that
+    describes what it can do (produce, store, demand)
+    \item \texttt{produces} -- Explains a particular interaction, where a resource is consumed to produce another resource.
+    \item \texttt{stores} -- Explains a particular interaction, where a resource is stored and released later.
+    \item \texttt{demands} -- Explains a particular interaction, where a resource is consumed.
+    \item \texttt{capacity} -- capacity of the interaction of this component.
+    \item \texttt{transfers} -- implements transfer logic for component operation.
+    \item \texttt{economics} -- Defines the Economics Capability of the component.
+    \item \texttt{CashFlow} -- is a CashFlow entity from RAVEN plug-in CashFlow.
+    \begin{itemize}
+    \item \texttt{name} -- Identifier of CashFlow.
+    \item \texttt{type} -- Describe cyclic of the CashFlow Economics.
+    \item \texttt{taxable} -- Whether to apply Tax or not.
+    \item \texttt{inflation} -- Whether to apply Inflation or not.
+    \end{itemize}  
+    \item \texttt{driver} -- quantity produced
+  \end{itemize}
+
+
+
+

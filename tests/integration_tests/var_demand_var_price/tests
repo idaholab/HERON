@@ -1,0 +1,11 @@
+[Tests]
+ [./VarDemandVarPrice]
+  type = HeronIntegration
+  input = heron_input.xml
+  [./csv]
+    type = UnorderedCSV
+    output = 'Sweep_Runs_o/sweep.csv'
+  [../]
+ [../]
+
+[]

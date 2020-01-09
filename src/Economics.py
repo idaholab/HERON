@@ -8,13 +8,12 @@ import sys
 from collections import defaultdict
 
 import numpy as np
-import time
 
 from ValuedParams import ValuedParam
 
 raven_path = '~/projects/raven/framework' # TODO fix with plugin relative path
 sys.path.append(os.path.expanduser(raven_path))
-from utils import InputData, xmlUtils
+from utils import InputData, InputTypes
 
 
 class CashFlowUser:
@@ -103,7 +102,7 @@ class CashFlowGroup:
       @ Out, input_specs, InputData, specs
     """
     specs = InputData.parameterInputFactory('economics', ordered=False, baseNode=None)
-    specs.addSub(InputData.parameterInputFactory('lifetime', contentType=InputData.IntegerType))
+    specs.addSub(InputData.parameterInputFactory('lifetime', contentType=InputTypes.IntegerType))
     cf = CashFlow.get_input_specs()
     specs.addSub(cf)
     return specs
@@ -244,19 +243,19 @@ class CashFlow:
     """
     cf = InputData.parameterInputFactory('CashFlow')
 
-    cf.addParam('name', param_type=InputData.StringType, required=True)
-    cf.addParam('type', param_type=InputData.StringType, required=True)
-    cf.addParam('taxable', param_type=InputData.BoolType, required=True)
-    cf.addParam('inflation', param_type=InputData.StringType, required=True)
-    cf.addParam('mult_target', param_type=InputData.BoolType, required=True)
-    period_enum = InputData.makeEnumType('period_opts', 'period_opts', ['hour', 'year'])
+    cf.addParam('name', param_type=InputTypes.StringType, required=True)
+    cf.addParam('type', param_type=InputTypes.StringType, required=True)
+    cf.addParam('taxable', param_type=InputTypes.BoolType, required=True)
+    cf.addParam('inflation', param_type=InputTypes.StringType, required=True)
+    cf.addParam('mult_target', param_type=InputTypes.BoolType, required=True)
+    period_enum = InputTypes.makeEnumType('period_opts', 'period_opts', ['hour', 'year'])
     cf.addParam('period', param_type=period_enum, required=False)
 
     cf.addSub(ValuedParam.get_input_specs('driver'))
     cf.addSub(ValuedParam.get_input_specs('reference_price'))
     cf.addSub(ValuedParam.get_input_specs('reference_driver'))
     cf.addSub(ValuedParam.get_input_specs('scaling_factor_x'))
-    cf.addSub(InputData.parameterInputFactory('depreciate', contentType=InputData.IntegerType))
+    cf.addSub(InputData.parameterInputFactory('depreciate', contentType=InputTypes.IntegerType))
     return cf
 
   def __init__(self, component):

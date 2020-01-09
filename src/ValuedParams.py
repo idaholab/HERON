@@ -7,7 +7,7 @@ import sys
 
 raven_path = '~/projects/raven/framework' # TODO plugin RAVEN path
 sys.path.append(os.path.expanduser(raven_path))
-from utils import InputData
+from utils import InputData, InputTypes
 
 # class for potentially dynamically-evaluated quantities
 class ValuedParam:
@@ -28,25 +28,25 @@ class ValuedParam:
     """
     spec = InputData.parameterInputFactory(name)
     # for when the value is fixed (takes precedence over "sweep" and "opt") ...
-    spec.addSub(InputData.parameterInputFactory('fixed_value', contentType=InputData.FloatType))
+    spec.addSub(InputData.parameterInputFactory('fixed_value', contentType=InputTypes.FloatType))
     # for when the value is parametric (only in "sweep" mode)
-    spec.addSub(InputData.parameterInputFactory('sweep_values', contentType=InputData.FloatListType))
+    spec.addSub(InputData.parameterInputFactory('sweep_values', contentType=InputTypes.FloatListType))
     # for when the value is optimized (only in "min" or "max" mode)
-    spec.addSub(InputData.parameterInputFactory('opt_bounds', contentType=InputData.FloatListType))
+    spec.addSub(InputData.parameterInputFactory('opt_bounds', contentType=InputTypes.FloatListType))
     # for when the value is time-dependent and given by an ARMA
-    arma = InputData.parameterInputFactory('ARMA', contentType=InputData.StringType)
-    arma.addParam('variable', param_type=InputData.StringType)
+    arma = InputData.parameterInputFactory('ARMA', contentType=InputTypes.StringType)
+    arma.addParam('variable', param_type=InputTypes.StringType)
     spec.addSub(arma)
     # for when the value comes from evaluating a function
-    func = InputData.parameterInputFactory('Function', contentType=InputData.StringType)
-    func.addParam('method', param_type=InputData.StringType)
+    func = InputData.parameterInputFactory('Function', contentType=InputTypes.StringType)
+    func.addParam('method', param_type=InputTypes.StringType)
     spec.addSub(func)
     # for when the value comes from another variable
-    var = InputData.parameterInputFactory('variable', contentType=InputData.StringType)
+    var = InputData.parameterInputFactory('variable', contentType=InputTypes.StringType)
     spec.addSub(var)
     # for when the result obtained needs to grow from year to year
-    growth = InputData.parameterInputFactory('growth', contentType=InputData.FloatType)
-    growth_mode = InputData.makeEnumType('growthType', 'growthType', ['linear', 'exponential'])
+    growth = InputData.parameterInputFactory('growth', contentType=InputTypes.FloatType)
+    growth_mode = InputTypes.makeEnumType('growthType', 'growthType', ['linear', 'exponential'])
     growth.addParam('mode', param_type=growth_mode)
     spec.addSub(growth)
     return spec

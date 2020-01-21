@@ -33,7 +33,7 @@ class HeronIntegration(RavenTester):
       @ Out, None
     """
     RavenTester.__init__(self, name, param)
-    self.heron_driver = os.path.join(HERON_LOC, 'Heron.py') # TODO main.py?
+    self.heron_driver = os.path.join(HERON_LOC, 'main.py')
     # NOTE: self.driver is RAVEN driver (e.g. /path/to/Driver.py)
 
   def get_command(self):
@@ -46,7 +46,7 @@ class HeronIntegration(RavenTester):
     python = self._get_python_command()
     test_loc = os.path.abspath(self.specs['test_dir'])
     # HERON expects to be run in the dir of the input file currently, TODO fix this
-    cmd += ' cd {loc}'.format(test_loc)
+    cmd += ' cd {loc}'.format(loc=test_loc)
     cmd += ' && '
     # run HERON first
     heron_inp = os.path.join(test_loc, self.specs['input'])

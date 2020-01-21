@@ -20,7 +20,7 @@ from ValuedParams import ValuedParam
 # raven imports
 raven_path = '~/projects/raven/framework'
 sys.path.append(os.path.expanduser(raven_path))
-from utils import InputData, xmlUtils
+from utils import InputData, xmlUtils,InputTypes
 import MessageHandler
 
 mh = MessageHandler.MessageHandler()
@@ -54,7 +54,7 @@ class Component(Base, CashFlowUser):
       @ Out, input_specs, InputData, specs
     """
     input_specs = InputData.parameterInputFactory('Component', ordered=False, baseNode=None)#,descr="ABCDEFGH")
-    input_specs.addParam('name', param_type=InputData.StringType, required=True)
+    input_specs.addParam('name', param_type=InputTypes.StringType, required=True)
     # production
     ## this unit may be able to make stuff, possibly from other stuff
     input_specs.addSub(Producer.get_input_specs())
@@ -284,19 +284,19 @@ class Interaction(Base):
       @ Out, input_specs, InputData, specs
     """
     specs = InputData.parameterInputFactory(cls.tag, ordered=False)
-    specs.addParam('resource', param_type=InputData.StringListType, required=True)
-    dispatch_opts = InputData.makeEnumType('dispatch_opts', 'dispatch_opts', ['independent', 'dependent', 'fixed'])
+    specs.addParam('resource', param_type=InputTypes.StringListType, required=True)
+    dispatch_opts = InputTypes.makeEnumType('dispatch_opts', 'dispatch_opts', ['independent', 'dependent', 'fixed'])
     specs.addParam('dispatch', param_type=dispatch_opts)
 
     cap = ValuedParam.get_input_specs('capacity')
     #cap.removeSub('ARMA')
     #cap.removeSub('Function')
     #cap.removeSub('variable')
-    cap.addParam('resource', param_type=InputData.StringType)
+    cap.addParam('resource', param_type=InputTypes.StringType)
     specs.addSub(cap)
 
     minn = ValuedParam.get_input_specs('minimum')
-    minn.addParam('resource', param_type=InputData.StringType)
+    minn.addParam('resource', param_type=InputTypes.StringType)
     specs.addSub(minn)
     return specs
 
@@ -460,7 +460,7 @@ class Producer(Interaction):
       @ Out, input_specs, InputData, specs
     """
     specs = super(Producer, cls).get_input_specs()
-    specs.addSub(InputData.parameterInputFactory('consumes', contentType=InputData.StringListType))
+    specs.addSub(InputData.parameterInputFactory('consumes', contentType=InputTypes.StringListType))
     specs.addSub(ValuedParam.get_input_specs('transfer'))
     return specs
 

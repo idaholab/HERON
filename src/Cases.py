@@ -12,7 +12,7 @@ import Components
 import Placeholders
 raven_path = '~/projects/raven/raven_framework'
 sys.path.append(os.path.expanduser(raven_path))
-from utils import InputData, xmlUtils
+from utils import InputData, xmlUtils, InputTypes
 
 
 
@@ -33,30 +33,30 @@ class Case(Base):
       @ Out, input_specs, InputData, specs
     """
     input_specs = InputData.parameterInputFactory('Case', ordered=False, baseNode=None)
-    input_specs.addParam('name', param_type=InputData.StringType, required=True)
+    input_specs.addParam('name', param_type=InputTypes.StringType, required=True)
 
-    mode_options = InputData.makeEnumType('ModeOptions', 'ModeOptionsType', ['min', 'max', 'sweep'])
-    econ_metrics = InputData.makeEnumType('EconMetrics', 'EconMetricsTypes', ['NPV', 'lcoe'])
+    mode_options = InputTypes.makeEnumType('ModeOptions', 'ModeOptionsType', ['min', 'max', 'sweep'])
+    econ_metrics = InputTypes.makeEnumType('EconMetrics', 'EconMetricsTypes', ['NPV', 'lcoe'])
 
     input_specs.addSub(InputData.parameterInputFactory('mode', contentType=mode_options))
     input_specs.addSub(InputData.parameterInputFactory('metric', contentType=econ_metrics))
-    input_specs.addSub(InputData.parameterInputFactory('differential', contentType=InputData.BoolType))
-    input_specs.addSub(InputData.parameterInputFactory('num_arma_samples', contentType=InputData.IntegerType))
-    input_specs.addSub(InputData.parameterInputFactory('timestep_interval', contentType=InputData.IntegerType))
-    input_specs.addSub(InputData.parameterInputFactory('history_length', contentType=InputData.IntegerType))
+    input_specs.addSub(InputData.parameterInputFactory('differential', contentType=InputTypes.BoolType))
+    input_specs.addSub(InputData.parameterInputFactory('num_arma_samples', contentType=InputTypes.IntegerType))
+    input_specs.addSub(InputData.parameterInputFactory('timestep_interval', contentType=InputTypes.IntegerType))
+    input_specs.addSub(InputData.parameterInputFactory('history_length', contentType=InputTypes.IntegerType))
 
     # economics global settings
     econ = InputData.parameterInputFactory('economics', ordered=False)
-    econ.addSub(InputData.parameterInputFactory('ProjectTime', contentType=InputData.FloatType))
-    econ.addSub(InputData.parameterInputFactory('DiscountRate', contentType=InputData.FloatType))
-    econ.addSub(InputData.parameterInputFactory('tax', contentType=InputData.FloatType))
-    econ.addSub(InputData.parameterInputFactory('inflation', contentType=InputData.FloatType))
-    econ.addSub(InputData.parameterInputFactory('verbosity', contentType=InputData.IntegerType))
+    econ.addSub(InputData.parameterInputFactory('ProjectTime', contentType=InputTypes.FloatType))
+    econ.addSub(InputData.parameterInputFactory('DiscountRate', contentType=InputTypes.FloatType))
+    econ.addSub(InputData.parameterInputFactory('tax', contentType=InputTypes.FloatType))
+    econ.addSub(InputData.parameterInputFactory('inflation', contentType=InputTypes.FloatType))
+    econ.addSub(InputData.parameterInputFactory('verbosity', contentType=InputTypes.IntegerType))
     input_specs.addSub(econ)
 
     # increments for resources
-    incr = InputData.parameterInputFactory('dispatch_increment', contentType=InputData.FloatType)
-    incr.addParam('resource', param_type=InputData.StringType, required=True)
+    incr = InputData.parameterInputFactory('dispatch_increment', contentType=InputTypes.FloatType)
+    incr.addParam('resource', param_type=InputTypes.StringType, required=True)
     input_specs.addSub(incr)
 
     return input_specs

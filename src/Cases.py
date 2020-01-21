@@ -1,5 +1,5 @@
 """
-  Defines the Cases entity.
+  Defines the Cases entity. Fixed InputTypes
 """
 from __future__ import unicode_literals, print_function
 import os

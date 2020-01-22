@@ -10,6 +10,7 @@ from base import Base
 raven_path = '~/projects/raven/framework'
 sys.path.append(os.path.expanduser(raven_path))
 from utils import InputData, utils, InputTypes
+import time
 
 
 
@@ -50,6 +51,8 @@ class Placeholder(Base):
       @ Out, None
     """
     specs = self.get_input_specs()()
+    print("These are the specs", xml)
+    #time.sleep(2000)
     specs.parseNode(xml)
     self.name = specs.parameterValues['name']
     self._source = specs.value
@@ -99,11 +102,15 @@ class ARMA(Placeholder):
       @ In, None
       @ Out, None
     """
+    print("This is the usal work flow")
     Placeholder.__init__(self, **kwargs)
     self._type = 'ARMA'
+    #self._type = 'Resampling_time'
 
   def read_input(self, xml):
+    print("I AM CALLING YOU")
     specs = Placeholder.read_input(self, xml)
+    
     self._var_names = specs.parameterValues['variable']
 
 
@@ -172,3 +179,45 @@ class Function(Placeholder):
                          'to return with form (results_dict, meta_dict) with both as dictionaries, but received:\n' +\
                          '    {}'.format(result))
     return result
+
+
+
+
+
+class Resampling_time(Placeholder):
+  """
+    Placeholder for signals coming from the ARMA
+  """
+  @classmethod
+  def get_input_specs(cls):
+    """
+      Collects input specifications for this class.
+      @ In, None
+      @ Out, specs, InputData, specs
+    """
+    specs = InputData.parameterInputFactory('Resampling_time', contentType=InputTypes.StringType, ordered=False, baseNode=None)
+    #specs.addParam('name', param_type=InputTypes.StringType, required=True)
+    #specs.addParam('variable', param_type=InputTypes.StringListType, required=True)
+    return specs
+
+  def __init__(self, **kwargs):
+    """
+      Constructor.
+      @ In, None
+      @ Out, None
+    """
+    print("This is the usal work flow")
+    Placeholder.__init__(self, **kwargs)
+    self._type = 'Resampling_time'
+    #self._type = 'Resampling_time'
+
+  def read_input(self, xml):
+    print("I AM CALLING YOU")
+    specs = Placeholder.read_input(self, xml)
+    
+    self._var_names = specs.parameterValues['variable']
+
+
+
+
+

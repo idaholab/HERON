@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019) (preloaded format=pdflatex 2019.5.8)  21 JAN 2020 15:05
+This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019) (preloaded format=pdflatex 2019.5.8)  21 JAN 2020 15:08
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -852,7 +852,7 @@ Underfull \hbox (badness 10000) in paragraph at lines 290--290
 
  []
 
-<pics/inl-left_black.pdf, id=32, 280.04625pt x 55.20625pt>
+<pics/inl-left_black.pdf, id=24, 280.04625pt x 55.20625pt>
 File: pics/inl-left_black.pdf Graphic file (type pdf)
 <use pics/inl-left_black.pdf>
 Package pdftex.def Info: pics/inl-left_black.pdf  used on input line 290.
@@ -867,7 +867,7 @@ LaTeX Font Info:    Try loading font information for OT1+pnc on input line 290.
 (/usr/local/texlive/2019/texmf-dist/tex/latex/psnfss/ot1pnc.fd
 File: ot1pnc.fd 2001/06/04 font definitions for OT1/pnc.
 )
-<pics/DOEbwlogo.pdf, id=43, 286.06876pt x 286.06876pt>
+<pics/DOEbwlogo.pdf, id=35, 286.06876pt x 286.06876pt>
 File: pics/DOEbwlogo.pdf Graphic file (type pdf)
 <use pics/DOEbwlogo.pdf>
 Package pdftex.def Info: pics/DOEbwlogo.pdf  used on input line 290.
@@ -1065,43 +1065,31 @@ Package atveryend Info: Empty hook `AfterLastShipout' on input line 300.
  (./HERON_user_manual.aux)
 Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 300.
 Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 300.
-
-
-Package rerunfilecheck Warning: File `HERON_user_manual.out' has changed.
-(rerunfilecheck)                Rerun to get outlines right
-(rerunfilecheck)                or use package `bookmark'.
-
-Package rerunfilecheck Info: Checksums for `HERON_user_manual.out':
-(rerunfilecheck)             Before: E9BD3FC0CB08D573E09D0FD699633228;382
-(rerunfilecheck)             After:  8C682439E9BB43F658446F38983629D9;268.
+Package rerunfilecheck Info: File `HERON_user_manual.out' has not changed.
+(rerunfilecheck)             Checksum: 8C682439E9BB43F658446F38983629D9;268.
 Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 300.
  ) 
 Here is how much of TeX's memory you used:
- 11499 strings out of 492616
- 167521 string characters out of 6129482
+ 11495 strings out of 492616
+ 167471 string characters out of 6129482
  367595 words of memory out of 5000000
- 15145 multiletter control sequences out of 15000+600000
+ 15143 multiletter control sequences out of 15000+600000
  44903 words of font info for 106 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  36i,6n,45p,233b,579s stack positions out of 5000i,500n,10000p,200000b,80000s
-pdfTeX warning (dest): name{subsection.3.1} has been referenced but does not 
-exist, replaced by a fixed one
-
-pdfTeX warning (dest): name{section.3} has been referenced but does not exist, 
-replaced by a fixed one
-
-{/usr/local/texlive/2019/texmf-dist/fonts/enc/dvips/base/8r.enc}</usr/local/tex
-live/2019/texmf-dist/fonts/type1/urw/courier/ucrb8a.pfb></usr/local/texlive/201
-9/texmf-dist/fonts/type1/urw/helvetic/uhvb8a.pfb></usr/local/texlive/2019/texmf
--dist/fonts/type1/urw/helvetic/uhvr8a.pfb></usr/local/texlive/2019/texmf-dist/f
-onts/type1/urw/ncntrsbk/uncb8a.pfb></usr/local/texlive/2019/texmf-dist/fonts/ty
-pe1/urw/ncntrsbk/uncr8a.pfb></usr/local/texlive/2019/texmf-dist/fonts/type1/urw
-/times/utmb8a.pfb></usr/local/texlive/2019/texmf-dist/fonts/type1/urw/times/utm
-bi8a.pfb></usr/local/texlive/2019/texmf-dist/fonts/type1/urw/times/utmr8a.pfb>
-Output written on HERON_user_manual.pdf (16 pages, 180805 bytes).
+{/usr/local/texlive/2019/texmf-dist/fonts/enc/dvips/base/8r.enc}</usr/local/t
+exlive/2019/texmf-dist/fonts/type1/urw/courier/ucrb8a.pfb></usr/local/texlive/2
+019/texmf-dist/fonts/type1/urw/helvetic/uhvb8a.pfb></usr/local/texlive/2019/tex
+mf-dist/fonts/type1/urw/helvetic/uhvr8a.pfb></usr/local/texlive/2019/texmf-dist
+/fonts/type1/urw/ncntrsbk/uncb8a.pfb></usr/local/texlive/2019/texmf-dist/fonts/
+type1/urw/ncntrsbk/uncr8a.pfb></usr/local/texlive/2019/texmf-dist/fonts/type1/u
+rw/times/utmb8a.pfb></usr/local/texlive/2019/texmf-dist/fonts/type1/urw/times/u
+tmbi8a.pfb></usr/local/texlive/2019/texmf-dist/fonts/type1/urw/times/utmr8a.pfb
+>
+Output written on HERON_user_manual.pdf (16 pages, 180602 bytes).
 PDF statistics:
- 153 PDF objects out of 1000 (max. 8388607)
- 121 compressed objects within 2 object streams
- 24 named destinations out of 1000 (max. 500000)
- 67 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 145 PDF objects out of 1000 (max. 8388607)
+ 113 compressed objects within 2 object streams
+ 22 named destinations out of 1000 (max. 500000)
+ 51 words of extra memory for PDF output out of 10000 (max. 10000000)
 

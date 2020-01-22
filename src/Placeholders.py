@@ -9,7 +9,7 @@ import abc
 from base import Base
 raven_path = '~/projects/raven/framework'
 sys.path.append(os.path.expanduser(raven_path))
-from utils import InputData, utils
+from utils import InputData, utils, InputTypes
 
 
 
@@ -88,9 +88,9 @@ class ARMA(Placeholder):
       @ In, None
       @ Out, specs, InputData, specs
     """
-    specs = InputData.parameterInputFactory('ARMA', contentType=InputData.StringType, ordered=False, baseNode=None)
-    specs.addParam('name', param_type=InputData.StringType, required=True)
-    specs.addParam('variable', param_type=InputData.StringListType, required=True)
+    specs = InputData.parameterInputFactory('ARMA', contentType=InputTypes.StringType, ordered=False, baseNode=None)
+    specs.addParam('name', param_type=InputTypes.StringType, required=True)
+    specs.addParam('variable', param_type=InputTypes.StringListType, required=True)
     return specs
 
   def __init__(self, **kwargs):
@@ -122,8 +122,8 @@ class Function(Placeholder):
       @ In, None
       @ Out, specs, InputData, specs
     """
-    specs = InputData.parameterInputFactory('Function', contentType=InputData.StringType, ordered=False, baseNode=None)
-    specs.addParam('name', param_type=InputData.StringType, required=True)
+    specs = InputData.parameterInputFactory('Function', contentType=InputTypes.StringType, ordered=False, baseNode=None)
+    specs.addParam('name', param_type=InputTypes.StringType, required=True)
     return specs
 
   def __init__(self, **kwargs):

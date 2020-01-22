@@ -13,7 +13,7 @@ import xml.etree.ElementTree as ET
 import _utils as hutils
 raven_path = hutils.get_raven_loc() #'~/projects/raven/framework'
 print("This is raven_path", raven_path)
-ttttttt
+#time.sleep(2000)
 sys.path.append(raven_path)
 from utils import xmlUtils
 sys.path.pop()

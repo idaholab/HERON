@@ -14,8 +14,9 @@
     <mode>sweep</mode>
     <metric>NPV</metric>
     <num_arma_samples>2</num_arma_samples>
-    <timestep_interval>3600</timestep_interval>
-    <history_length>31536000</history_length>
+    <timestep_interval>500</timestep_interval>
+    <Resample_T>60</Resample_T><!--New History length-->
+    <history_length>20</history_length>
     <economics>
       <ProjectTime>2</ProjectTime>
       <DiscountRate>0.08</DiscountRate>

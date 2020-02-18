@@ -14,6 +14,8 @@ raven_path = '~/projects/raven/raven_framework'
 sys.path.append(os.path.expanduser(raven_path))
 from utils import InputData, InputTypes, xmlUtils
 
+print("THIS IS CASE BEGIN")
+
 
 
 
@@ -42,6 +44,7 @@ class Case(Base):
     input_specs.addSub(InputData.parameterInputFactory('metric', contentType=econ_metrics))
     input_specs.addSub(InputData.parameterInputFactory('differential', contentType=InputTypes.BoolType))
     input_specs.addSub(InputData.parameterInputFactory('num_arma_samples', contentType=InputTypes.IntegerType))
+    input_specs.addSub(InputData.parameterInputFactory('Resample_T', contentType=InputTypes.IntegerType))
     input_specs.addSub(InputData.parameterInputFactory('timestep_interval', contentType=InputTypes.IntegerType))
     input_specs.addSub(InputData.parameterInputFactory('history_length', contentType=InputTypes.IntegerType))
 
@@ -77,7 +80,8 @@ class Case(Base):
     self._hist_len = None      # total history length, in same units as _hist_interval
     self._num_hist = None      # number of history steps, hist_len / hist_interval
     self._global_econ = {}     # global economics settings, as a pass-through
-    self._increments = {}         # user-set increments for resources
+    self._increments = {} 
+    self._Resample_T = None        # user-set increments for resources
 
   def read_input(self, xml):
     """
@@ -87,9 +91,11 @@ class Case(Base):
     """
     # get specs for allowable inputs
     specs = self.get_input_specs()()
+    #print("This is",xml)
     specs.parseNode(xml)
     self.name = specs.parameterValues['name']
     for item in specs.subparts:
+      print("This is the item",item.value)
       if item.getName() == 'mode':
         self._mode = item.value
       elif item.getName() == 'metric':
@@ -98,8 +104,11 @@ class Case(Base):
         self._diff_study = item.value
       elif item.getName() == 'num_arma_samples':
         self._num_samples = item.value
+      elif item.getName() == 'Resample_T':
+        print("This is item", item.value)
+        self._Resample_T = item.value
       elif item.getName() == 'timestep_interval':
-        self._hist_interval = item.value
+        self._hist_interval = float(item.value)
       elif item.getName() == 'history_length':
         self._hist_len = item.value
       elif item.getName() == 'economics':
@@ -108,7 +117,10 @@ class Case(Base):
       elif item.getName() == 'dispatch_increment':
         self._increments[item.parameterValues['resource']] = item.value
 
+    print(self._hist_len, self._hist_interval)
+
     self._num_hist = self._hist_len // self._hist_interval # TODO what if it isn't even?
+    print("This is num",self._num_hist)
     self.raiseADebug('Successfully initialized Case {}.'.format(self.name))
 
   def __repr__(self):
@@ -163,6 +175,14 @@ class Case(Base):
 
   def get_num_timesteps(self):
     return self._num_hist
+#### ADDED ONE MORE ACCESSOR####
+  def get_Resample_T(self):
+    return self._Resample_T
+  def get_hist_interval(self):
+    return self._hist_interval
+  
+  def get_hist_length(self):
+    return self._hist_len
 
   #### API ####
 
@@ -320,7 +340,9 @@ class Case(Base):
     ## TODO someday, only load what's needed
     for source in sources:
       name = source.name
+      print("SOURCES")
       if isinstance(source, Placeholders.ARMA):
+        print("THIS IS BEING CALLED FROM CASES")
         # add a model block
         models.append(xmlUtils.newNode('ROM', attrib={'name':name, 'subType':'pickledROM'}))
         # add a read step

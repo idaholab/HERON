@@ -1,0 +1,708 @@
+\section{Components Introduction}Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+
+
+
+\subsection{Component}
+  -- no description yet --
+
+  The \xmlNode{Component} node recognizes the following parameters:
+    \begin{itemize}
+      \item \xmlAttr{name}: \xmlDesc{string, required}, 
+        -- no description yet --
+  \end{itemize}
+
+  The \xmlNode{Component} node recognizes the following subnodes:
+  \begin{itemize}
+    \item \xmlNode{produces}:
+      -- no description yet --
+      The \xmlNode{produces} node recognizes the following parameters:
+        \begin{itemize}
+          \item \xmlAttr{resource}: \xmlDesc{string\_list, required}, 
+            -- no description yet --
+          \item \xmlAttr{dispatch}: \xmlDesc{dispatch\_opts, optional}, 
+            -- no description yet --
+      \end{itemize}
+
+      The \xmlNode{produces} node recognizes the following subnodes:
+      \begin{itemize}
+        \item \xmlNode{capacity}:
+          -- no description yet --
+          The \xmlNode{capacity} node recognizes the following parameters:
+            \begin{itemize}
+              \item \xmlAttr{resource}: \xmlDesc{string, optional}, 
+                -- no description yet --
+          \end{itemize}
+
+          The \xmlNode{capacity} node recognizes the following subnodes:
+          \begin{itemize}
+            \item \xmlNode{fixed\_value}:\xmlDesc{float}, 
+              -- no description yet --
+
+            \item \xmlNode{sweep\_values}:\xmlDesc{float\_list}, 
+              -- no description yet --
+
+            \item \xmlNode{opt\_bounds}:\xmlDesc{float\_list}, 
+              -- no description yet --
+
+            \item \xmlNode{ARMA}:\xmlDesc{string}, 
+              -- no description yet --
+              The \xmlNode{ARMA} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{variable}: \xmlDesc{string, optional}, 
+                    -- no description yet --
+              \end{itemize}
+
+            \item \xmlNode{Function}:\xmlDesc{string}, 
+              -- no description yet --
+              The \xmlNode{Function} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{method}: \xmlDesc{string, optional}, 
+                    -- no description yet --
+              \end{itemize}
+
+            \item \xmlNode{variable}:\xmlDesc{string}, 
+              -- no description yet --
+
+            \item \xmlNode{growth}:\xmlDesc{float}, 
+              -- no description yet --
+              The \xmlNode{growth} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{mode}: \xmlDesc{growthType, optional}, 
+                    -- no description yet --
+              \end{itemize}
+          \end{itemize}
+
+        \item \xmlNode{minimum}:
+          -- no description yet --
+          The \xmlNode{minimum} node recognizes the following parameters:
+            \begin{itemize}
+              \item \xmlAttr{resource}: \xmlDesc{string, optional}, 
+                -- no description yet --
+          \end{itemize}
+
+          The \xmlNode{minimum} node recognizes the following subnodes:
+          \begin{itemize}
+            \item \xmlNode{fixed\_value}:\xmlDesc{float}, 
+              -- no description yet --
+
+            \item \xmlNode{sweep\_values}:\xmlDesc{float\_list}, 
+              -- no description yet --
+
+            \item \xmlNode{opt\_bounds}:\xmlDesc{float\_list}, 
+              -- no description yet --
+
+            \item \xmlNode{ARMA}:\xmlDesc{string}, 
+              -- no description yet --
+              The \xmlNode{ARMA} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{variable}: \xmlDesc{string, optional}, 
+                    -- no description yet --
+              \end{itemize}
+
+            \item \xmlNode{Function}:\xmlDesc{string}, 
+              -- no description yet --
+              The \xmlNode{Function} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{method}: \xmlDesc{string, optional}, 
+                    -- no description yet --
+              \end{itemize}
+
+            \item \xmlNode{variable}:\xmlDesc{string}, 
+              -- no description yet --
+
+            \item \xmlNode{growth}:\xmlDesc{float}, 
+              -- no description yet --
+              The \xmlNode{growth} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{mode}: \xmlDesc{growthType, optional}, 
+                    -- no description yet --
+              \end{itemize}
+          \end{itemize}
+
+        \item \xmlNode{consumes}:\xmlDesc{string\_list}, 
+          -- no description yet --
+
+        \item \xmlNode{transfer}:
+          -- no description yet --
+
+          The \xmlNode{transfer} node recognizes the following subnodes:
+          \begin{itemize}
+            \item \xmlNode{fixed\_value}:\xmlDesc{float}, 
+              -- no description yet --
+
+            \item \xmlNode{sweep\_values}:\xmlDesc{float\_list}, 
+              -- no description yet --
+
+            \item \xmlNode{opt\_bounds}:\xmlDesc{float\_list}, 
+              -- no description yet --
+
+            \item \xmlNode{ARMA}:\xmlDesc{string}, 
+              -- no description yet --
+              The \xmlNode{ARMA} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{variable}: \xmlDesc{string, optional}, 
+                    -- no description yet --
+              \end{itemize}
+
+            \item \xmlNode{Function}:\xmlDesc{string}, 
+              -- no description yet --
+              The \xmlNode{Function} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{method}: \xmlDesc{string, optional}, 
+                    -- no description yet --
+              \end{itemize}
+
+            \item \xmlNode{variable}:\xmlDesc{string}, 
+              -- no description yet --
+
+            \item \xmlNode{growth}:\xmlDesc{float}, 
+              -- no description yet --
+              The \xmlNode{growth} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{mode}: \xmlDesc{growthType, optional}, 
+                    -- no description yet --
+              \end{itemize}
+          \end{itemize}
+      \end{itemize}
+
+    \item \xmlNode{stores}:
+      -- no description yet --
+      The \xmlNode{stores} node recognizes the following parameters:
+        \begin{itemize}
+          \item \xmlAttr{resource}: \xmlDesc{string\_list, required}, 
+            -- no description yet --
+          \item \xmlAttr{dispatch}: \xmlDesc{dispatch\_opts, optional}, 
+            -- no description yet --
+      \end{itemize}
+
+      The \xmlNode{stores} node recognizes the following subnodes:
+      \begin{itemize}
+        \item \xmlNode{capacity}:
+          -- no description yet --
+          The \xmlNode{capacity} node recognizes the following parameters:
+            \begin{itemize}
+              \item \xmlAttr{resource}: \xmlDesc{string, optional}, 
+                -- no description yet --
+          \end{itemize}
+
+          The \xmlNode{capacity} node recognizes the following subnodes:
+          \begin{itemize}
+            \item \xmlNode{fixed\_value}:\xmlDesc{float}, 
+              -- no description yet --
+
+            \item \xmlNode{sweep\_values}:\xmlDesc{float\_list}, 
+              -- no description yet --
+
+            \item \xmlNode{opt\_bounds}:\xmlDesc{float\_list}, 
+              -- no description yet --
+
+            \item \xmlNode{ARMA}:\xmlDesc{string}, 
+              -- no description yet --
+              The \xmlNode{ARMA} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{variable}: \xmlDesc{string, optional}, 
+                    -- no description yet --
+              \end{itemize}
+
+            \item \xmlNode{Function}:\xmlDesc{string}, 
+              -- no description yet --
+              The \xmlNode{Function} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{method}: \xmlDesc{string, optional}, 
+                    -- no description yet --
+              \end{itemize}
+
+            \item \xmlNode{variable}:\xmlDesc{string}, 
+              -- no description yet --
+
+            \item \xmlNode{growth}:\xmlDesc{float}, 
+              -- no description yet --
+              The \xmlNode{growth} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{mode}: \xmlDesc{growthType, optional}, 
+                    -- no description yet --
+              \end{itemize}
+          \end{itemize}
+
+        \item \xmlNode{minimum}:
+          -- no description yet --
+          The \xmlNode{minimum} node recognizes the following parameters:
+            \begin{itemize}
+              \item \xmlAttr{resource}: \xmlDesc{string, optional}, 
+                -- no description yet --
+          \end{itemize}
+
+          The \xmlNode{minimum} node recognizes the following subnodes:
+          \begin{itemize}
+            \item \xmlNode{fixed\_value}:\xmlDesc{float}, 
+              -- no description yet --
+
+            \item \xmlNode{sweep\_values}:\xmlDesc{float\_list}, 
+              -- no description yet --
+
+            \item \xmlNode{opt\_bounds}:\xmlDesc{float\_list}, 
+              -- no description yet --
+
+            \item \xmlNode{ARMA}:\xmlDesc{string}, 
+              -- no description yet --
+              The \xmlNode{ARMA} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{variable}: \xmlDesc{string, optional}, 
+                    -- no description yet --
+              \end{itemize}
+
+            \item \xmlNode{Function}:\xmlDesc{string}, 
+              -- no description yet --
+              The \xmlNode{Function} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{method}: \xmlDesc{string, optional}, 
+                    -- no description yet --
+              \end{itemize}
+
+            \item \xmlNode{variable}:\xmlDesc{string}, 
+              -- no description yet --
+
+            \item \xmlNode{growth}:\xmlDesc{float}, 
+              -- no description yet --
+              The \xmlNode{growth} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{mode}: \xmlDesc{growthType, optional}, 
+                    -- no description yet --
+              \end{itemize}
+          \end{itemize}
+
+        \item \xmlNode{rate}:
+          -- no description yet --
+
+          The \xmlNode{rate} node recognizes the following subnodes:
+          \begin{itemize}
+            \item \xmlNode{fixed\_value}:\xmlDesc{float}, 
+              -- no description yet --
+
+            \item \xmlNode{sweep\_values}:\xmlDesc{float\_list}, 
+              -- no description yet --
+
+            \item \xmlNode{opt\_bounds}:\xmlDesc{float\_list}, 
+              -- no description yet --
+
+            \item \xmlNode{ARMA}:\xmlDesc{string}, 
+              -- no description yet --
+              The \xmlNode{ARMA} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{variable}: \xmlDesc{string, optional}, 
+                    -- no description yet --
+              \end{itemize}
+
+            \item \xmlNode{Function}:\xmlDesc{string}, 
+              -- no description yet --
+              The \xmlNode{Function} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{method}: \xmlDesc{string, optional}, 
+                    -- no description yet --
+              \end{itemize}
+
+            \item \xmlNode{variable}:\xmlDesc{string}, 
+              -- no description yet --
+
+            \item \xmlNode{growth}:\xmlDesc{float}, 
+              -- no description yet --
+              The \xmlNode{growth} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{mode}: \xmlDesc{growthType, optional}, 
+                    -- no description yet --
+              \end{itemize}
+          \end{itemize}
+
+        \item \xmlNode{initial\_stored}:
+          -- no description yet --
+
+          The \xmlNode{initial\_stored} node recognizes the following subnodes:
+          \begin{itemize}
+            \item \xmlNode{fixed\_value}:\xmlDesc{float}, 
+              -- no description yet --
+
+            \item \xmlNode{sweep\_values}:\xmlDesc{float\_list}, 
+              -- no description yet --
+
+            \item \xmlNode{opt\_bounds}:\xmlDesc{float\_list}, 
+              -- no description yet --
+
+            \item \xmlNode{ARMA}:\xmlDesc{string}, 
+              -- no description yet --
+              The \xmlNode{ARMA} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{variable}: \xmlDesc{string, optional}, 
+                    -- no description yet --
+              \end{itemize}
+
+            \item \xmlNode{Function}:\xmlDesc{string}, 
+              -- no description yet --
+              The \xmlNode{Function} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{method}: \xmlDesc{string, optional}, 
+                    -- no description yet --
+              \end{itemize}
+
+            \item \xmlNode{variable}:\xmlDesc{string}, 
+              -- no description yet --
+
+            \item \xmlNode{growth}:\xmlDesc{float}, 
+              -- no description yet --
+              The \xmlNode{growth} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{mode}: \xmlDesc{growthType, optional}, 
+                    -- no description yet --
+              \end{itemize}
+          \end{itemize}
+      \end{itemize}
+
+    \item \xmlNode{demands}:
+      -- no description yet --
+      The \xmlNode{demands} node recognizes the following parameters:
+        \begin{itemize}
+          \item \xmlAttr{resource}: \xmlDesc{string\_list, required}, 
+            -- no description yet --
+          \item \xmlAttr{dispatch}: \xmlDesc{dispatch\_opts, optional}, 
+            -- no description yet --
+      \end{itemize}
+
+      The \xmlNode{demands} node recognizes the following subnodes:
+      \begin{itemize}
+        \item \xmlNode{capacity}:
+          -- no description yet --
+          The \xmlNode{capacity} node recognizes the following parameters:
+            \begin{itemize}
+              \item \xmlAttr{resource}: \xmlDesc{string, optional}, 
+                -- no description yet --
+          \end{itemize}
+
+          The \xmlNode{capacity} node recognizes the following subnodes:
+          \begin{itemize}
+            \item \xmlNode{fixed\_value}:\xmlDesc{float}, 
+              -- no description yet --
+
+            \item \xmlNode{sweep\_values}:\xmlDesc{float\_list}, 
+              -- no description yet --
+
+            \item \xmlNode{opt\_bounds}:\xmlDesc{float\_list}, 
+              -- no description yet --
+
+            \item \xmlNode{ARMA}:\xmlDesc{string}, 
+              -- no description yet --
+              The \xmlNode{ARMA} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{variable}: \xmlDesc{string, optional}, 
+                    -- no description yet --
+              \end{itemize}
+
+            \item \xmlNode{Function}:\xmlDesc{string}, 
+              -- no description yet --
+              The \xmlNode{Function} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{method}: \xmlDesc{string, optional}, 
+                    -- no description yet --
+              \end{itemize}
+
+            \item \xmlNode{variable}:\xmlDesc{string}, 
+              -- no description yet --
+
+            \item \xmlNode{growth}:\xmlDesc{float}, 
+              -- no description yet --
+              The \xmlNode{growth} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{mode}: \xmlDesc{growthType, optional}, 
+                    -- no description yet --
+              \end{itemize}
+          \end{itemize}
+
+        \item \xmlNode{minimum}:
+          -- no description yet --
+          The \xmlNode{minimum} node recognizes the following parameters:
+            \begin{itemize}
+              \item \xmlAttr{resource}: \xmlDesc{string, optional}, 
+                -- no description yet --
+          \end{itemize}
+
+          The \xmlNode{minimum} node recognizes the following subnodes:
+          \begin{itemize}
+            \item \xmlNode{fixed\_value}:\xmlDesc{float}, 
+              -- no description yet --
+
+            \item \xmlNode{sweep\_values}:\xmlDesc{float\_list}, 
+              -- no description yet --
+
+            \item \xmlNode{opt\_bounds}:\xmlDesc{float\_list}, 
+              -- no description yet --
+
+            \item \xmlNode{ARMA}:\xmlDesc{string}, 
+              -- no description yet --
+              The \xmlNode{ARMA} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{variable}: \xmlDesc{string, optional}, 
+                    -- no description yet --
+              \end{itemize}
+
+            \item \xmlNode{Function}:\xmlDesc{string}, 
+              -- no description yet --
+              The \xmlNode{Function} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{method}: \xmlDesc{string, optional}, 
+                    -- no description yet --
+              \end{itemize}
+
+            \item \xmlNode{variable}:\xmlDesc{string}, 
+              -- no description yet --
+
+            \item \xmlNode{growth}:\xmlDesc{float}, 
+              -- no description yet --
+              The \xmlNode{growth} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{mode}: \xmlDesc{growthType, optional}, 
+                    -- no description yet --
+              \end{itemize}
+          \end{itemize}
+
+        \item \xmlNode{penalty}:
+          -- no description yet --
+
+          The \xmlNode{penalty} node recognizes the following subnodes:
+          \begin{itemize}
+            \item \xmlNode{fixed\_value}:\xmlDesc{float}, 
+              -- no description yet --
+
+            \item \xmlNode{sweep\_values}:\xmlDesc{float\_list}, 
+              -- no description yet --
+
+            \item \xmlNode{opt\_bounds}:\xmlDesc{float\_list}, 
+              -- no description yet --
+
+            \item \xmlNode{ARMA}:\xmlDesc{string}, 
+              -- no description yet --
+              The \xmlNode{ARMA} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{variable}: \xmlDesc{string, optional}, 
+                    -- no description yet --
+              \end{itemize}
+
+            \item \xmlNode{Function}:\xmlDesc{string}, 
+              -- no description yet --
+              The \xmlNode{Function} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{method}: \xmlDesc{string, optional}, 
+                    -- no description yet --
+              \end{itemize}
+
+            \item \xmlNode{variable}:\xmlDesc{string}, 
+              -- no description yet --
+
+            \item \xmlNode{growth}:\xmlDesc{float}, 
+              -- no description yet --
+              The \xmlNode{growth} node recognizes the following parameters:
+                \begin{itemize}
+                  \item \xmlAttr{mode}: \xmlDesc{growthType, optional}, 
+                    -- no description yet --
+              \end{itemize}
+          \end{itemize}
+      \end{itemize}
+
+    \item \xmlNode{economics}:
+      -- no description yet --
+
+      The \xmlNode{economics} node recognizes the following subnodes:
+      \begin{itemize}
+        \item \xmlNode{lifetime}:\xmlDesc{integer}, 
+          -- no description yet --
+
+        \item \xmlNode{CashFlow}:
+          -- no description yet --
+          The \xmlNode{CashFlow} node recognizes the following parameters:
+            \begin{itemize}
+              \item \xmlAttr{name}: \xmlDesc{string, required}, 
+                -- no description yet --
+              \item \xmlAttr{type}: \xmlDesc{string, required}, 
+                -- no description yet --
+              \item \xmlAttr{taxable}: \xmlDesc{bool, required}, 
+                -- no description yet --
+              \item \xmlAttr{inflation}: \xmlDesc{string, required}, 
+                -- no description yet --
+              \item \xmlAttr{mult\_target}: \xmlDesc{bool, required}, 
+                -- no description yet --
+              \item \xmlAttr{period}: \xmlDesc{period\_opts, optional}, 
+                -- no description yet --
+          \end{itemize}
+
+          The \xmlNode{CashFlow} node recognizes the following subnodes:
+          \begin{itemize}
+            \item \xmlNode{driver}:
+              -- no description yet --
+
+              The \xmlNode{driver} node recognizes the following subnodes:
+              \begin{itemize}
+                \item \xmlNode{fixed\_value}:\xmlDesc{float}, 
+                  -- no description yet --
+
+                \item \xmlNode{sweep\_values}:\xmlDesc{float\_list}, 
+                  -- no description yet --
+
+                \item \xmlNode{opt\_bounds}:\xmlDesc{float\_list}, 
+                  -- no description yet --
+
+                \item \xmlNode{ARMA}:\xmlDesc{string}, 
+                  -- no description yet --
+                  The \xmlNode{ARMA} node recognizes the following parameters:
+                    \begin{itemize}
+                      \item \xmlAttr{variable}: \xmlDesc{string, optional}, 
+                        -- no description yet --
+                  \end{itemize}
+
+                \item \xmlNode{Function}:\xmlDesc{string}, 
+                  -- no description yet --
+                  The \xmlNode{Function} node recognizes the following parameters:
+                    \begin{itemize}
+                      \item \xmlAttr{method}: \xmlDesc{string, optional}, 
+                        -- no description yet --
+                  \end{itemize}
+
+                \item \xmlNode{variable}:\xmlDesc{string}, 
+                  -- no description yet --
+
+                \item \xmlNode{growth}:\xmlDesc{float}, 
+                  -- no description yet --
+                  The \xmlNode{growth} node recognizes the following parameters:
+                    \begin{itemize}
+                      \item \xmlAttr{mode}: \xmlDesc{growthType, optional}, 
+                        -- no description yet --
+                  \end{itemize}
+              \end{itemize}
+
+            \item \xmlNode{reference\_price}:
+              -- no description yet --
+
+              The \xmlNode{reference\_price} node recognizes the following subnodes:
+              \begin{itemize}
+                \item \xmlNode{fixed\_value}:\xmlDesc{float}, 
+                  -- no description yet --
+
+                \item \xmlNode{sweep\_values}:\xmlDesc{float\_list}, 
+                  -- no description yet --
+
+                \item \xmlNode{opt\_bounds}:\xmlDesc{float\_list}, 
+                  -- no description yet --
+
+                \item \xmlNode{ARMA}:\xmlDesc{string}, 
+                  -- no description yet --
+                  The \xmlNode{ARMA} node recognizes the following parameters:
+                    \begin{itemize}
+                      \item \xmlAttr{variable}: \xmlDesc{string, optional}, 
+                        -- no description yet --
+                  \end{itemize}
+
+                \item \xmlNode{Function}:\xmlDesc{string}, 
+                  -- no description yet --
+                  The \xmlNode{Function} node recognizes the following parameters:
+                    \begin{itemize}
+                      \item \xmlAttr{method}: \xmlDesc{string, optional}, 
+                        -- no description yet --
+                  \end{itemize}
+
+                \item \xmlNode{variable}:\xmlDesc{string}, 
+                  -- no description yet --
+
+                \item \xmlNode{growth}:\xmlDesc{float}, 
+                  -- no description yet --
+                  The \xmlNode{growth} node recognizes the following parameters:
+                    \begin{itemize}
+                      \item \xmlAttr{mode}: \xmlDesc{growthType, optional}, 
+                        -- no description yet --
+                  \end{itemize}
+              \end{itemize}
+
+            \item \xmlNode{reference\_driver}:
+              -- no description yet --
+
+              The \xmlNode{reference\_driver} node recognizes the following subnodes:
+              \begin{itemize}
+                \item \xmlNode{fixed\_value}:\xmlDesc{float}, 
+                  -- no description yet --
+
+                \item \xmlNode{sweep\_values}:\xmlDesc{float\_list}, 
+                  -- no description yet --
+
+                \item \xmlNode{opt\_bounds}:\xmlDesc{float\_list}, 
+                  -- no description yet --
+
+                \item \xmlNode{ARMA}:\xmlDesc{string}, 
+                  -- no description yet --
+                  The \xmlNode{ARMA} node recognizes the following parameters:
+                    \begin{itemize}
+                      \item \xmlAttr{variable}: \xmlDesc{string, optional}, 
+                        -- no description yet --
+                  \end{itemize}
+
+                \item \xmlNode{Function}:\xmlDesc{string}, 
+                  -- no description yet --
+                  The \xmlNode{Function} node recognizes the following parameters:
+                    \begin{itemize}
+                      \item \xmlAttr{method}: \xmlDesc{string, optional}, 
+                        -- no description yet --
+                  \end{itemize}
+
+                \item \xmlNode{variable}:\xmlDesc{string}, 
+                  -- no description yet --
+
+                \item \xmlNode{growth}:\xmlDesc{float}, 
+                  -- no description yet --
+                  The \xmlNode{growth} node recognizes the following parameters:
+                    \begin{itemize}
+                      \item \xmlAttr{mode}: \xmlDesc{growthType, optional}, 
+                        -- no description yet --
+                  \end{itemize}
+              \end{itemize}
+
+            \item \xmlNode{scaling\_factor\_x}:
+              -- no description yet --
+
+              The \xmlNode{scaling\_factor\_x} node recognizes the following subnodes:
+              \begin{itemize}
+                \item \xmlNode{fixed\_value}:\xmlDesc{float}, 
+                  -- no description yet --
+
+                \item \xmlNode{sweep\_values}:\xmlDesc{float\_list}, 
+                  -- no description yet --
+
+                \item \xmlNode{opt\_bounds}:\xmlDesc{float\_list}, 
+                  -- no description yet --
+
+                \item \xmlNode{ARMA}:\xmlDesc{string}, 
+                  -- no description yet --
+                  The \xmlNode{ARMA} node recognizes the following parameters:
+                    \begin{itemize}
+                      \item \xmlAttr{variable}: \xmlDesc{string, optional}, 
+                        -- no description yet --
+                  \end{itemize}
+
+                \item \xmlNode{Function}:\xmlDesc{string}, 
+                  -- no description yet --
+                  The \xmlNode{Function} node recognizes the following parameters:
+                    \begin{itemize}
+                      \item \xmlAttr{method}: \xmlDesc{string, optional}, 
+                        -- no description yet --
+                  \end{itemize}
+
+                \item \xmlNode{variable}:\xmlDesc{string}, 
+                  -- no description yet --
+
+                \item \xmlNode{growth}:\xmlDesc{float}, 
+                  -- no description yet --
+                  The \xmlNode{growth} node recognizes the following parameters:
+                    \begin{itemize}
+                      \item \xmlAttr{mode}: \xmlDesc{growthType, optional}, 
+                        -- no description yet --
+                  \end{itemize}
+              \end{itemize}
+
+            \item \xmlNode{depreciate}:\xmlDesc{integer}, 
+              -- no description yet --
+          \end{itemize}
+      \end{itemize}
+  \end{itemize}

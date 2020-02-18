@@ -16,6 +16,7 @@
 % Rolf Riesen, Org. 9223, MS 1110, rolf@cs.sandia.gov
 %
 \documentclass[pdf,12pt]{INLreport}
+%\documentclass[12pt]{article}
 % pslatex is really old (1994).  It attempts to merge the times and mathptm packages.
 % My opinion is that it produces a really bad looking math font.  So why are we using it?
 % If you just want to change the text font, you should just \usepackage{times}.
@@ -143,11 +144,11 @@ showstringspaces=false            %
 \fi
 \newcommand{\alfoa}[1] {\nameLabeler{Andrea}{AAcolor}{#1}}
 \newcommand{\cristr}[1] {\nameLabeler{Cristian}{CRcolor}{#1}}
-\newcommand{\mandd}[1] {\nameLabeler{Diego}{DMcolor}{#1}}
-\newcommand{\maljdan}[1] {\nameLabeler{Dan}{DPMcolor}{#1}}
-\newcommand{\cogljj}[1] {\nameLabeler{Josh}{JCcolor}{#1}}
-\newcommand{\bobk}[1] {\nameLabeler{Bob}{RKcolor}{#1}}
-\newcommand{\senrs}[1] {\nameLabeler{Sonat}{RScolor}{#1}}
+%\newcommand{\mandd}[1] {\nameLabeler{Diego}{DMcolor}{#1}}
+%\newcommand{\maljdan}[1] {\nameLabeler{Dan}{DPMcolor}{#1}}
+%\newcommand{\cogljj}[1] {\nameLabeler{Josh}{JCcolor}{#1}}
+%\newcommand{\bobk}[1] {\nameLabeler{Bob}{RKcolor}{#1}}
+%\newcommand{\senrs}[1] {\nameLabeler{Sonat}{RScolor}{#1}}
 \newcommand{\talbpaul}[1] {\nameLabeler{Paul}{PTcolor}{#1}}
 % Commands for making the LaTeX a bit more uniform and cleaner
 \newcommand{\TODO}[1]    {\textcolor{red}{\textit{(#1)}}}
@@ -164,37 +165,22 @@ showstringspaces=false            %
 \newcommand{\default}[1]{~\\*\textit{Default: #1}}
 \newcommand{\nb} {\textcolor{deepgreen}{\textbf{~Note:}}~}
 
-%%%%%%%% End comands definition to input python code into document
-
-%\usepackage[dvips,light,first,bottomafter]{draftcopy}
-%\draftcopyName{Sample, contains no OUO}{70}
-%\draftcopyName{Draft}{300}
-
-% The bm package provides \bm for bold math fonts.  Apparently
-% \boldsymbol, which I used to always use, is now considered
-% obsolete.  Also, \boldsymbol doesn't even seem to work with
-% the fonts used in this particular document...
 \usepackage{bm}
 
-% Define tensors to be in bold math font.
 \newcommand{\tensor}[1]{{\bm{#1}}}
 
-% Override the formatting used by \vec.  Instead of a little arrow
-% over the letter, this creates a bold character.
 \renewcommand{\vec}{\bm}
 
-% Define unit vector notation.  If you don't override the
-% behavior of \vec, you probably want to use the second one.
-\newcommand{\unit}[1]{\hat{\bm{#1}}}
-% \newcommand{\unit}[1]{\hat{#1}}
 
-% Use this to refer to a single component of a unit vector.
+\newcommand{\unit}[1]{\hat{\bm{#1}}}
+
+
+
 \newcommand{\scalarunit}[1]{\hat{#1}}
 
-% \toprule, \midrule, \bottomrule for tables
+
 \usepackage{booktabs}
 
-% \llbracket, \rrbracket
 \usepackage{stmaryrd}
 
 \usepackage{hyperref}
@@ -208,66 +194,52 @@ showstringspaces=false            %
 
 \newcommand{\wiki}{\href{https://github.com/idaholab/raven/wiki}{RAVEN wiki}}
 
-% Compress lists of citations like [33,34,35,36,37] to [33-37]
 \usepackage{cite}
 
-% If you want to relax some of the SAND98-0730 requirements, use the "relax"
-% option. It adds spaces and boldface in the table of contents, and does not
-% force the page layout sizes.
-% e.g. \documentclass[relax,12pt]{SANDreport}
-%
-% You can also use the "strict" option, which applies even more of the
-% SAND98-0730 guidelines. It gets rid of section numbers which are often
-% useful; e.g. \documentclass[strict]{SANDreport}
 
-% The INLreport class uses \flushbottom formatting by default (since
-% it's intended to be two-sided document).  \flushbottom causes
-% additional space to be inserted both before and after paragraphs so
-% that no matter how much text is actually available, it fills up the
-% page from top to bottom.  My feeling is that \raggedbottom looks much
-% better, primarily because most people will view the report
-% electronically and not in a two-sided printed format where some argue
-% \raggedbottom looks worse.  If we really want to have the original
-% behavior, we can comment out this line...
 \raggedbottom
 \setcounter{secnumdepth}{5} % show 5 levels of subsection
 \setcounter{tocdepth}{5} % include 5 levels of subsection in table of contents
 
-% ---------------------------------------------------------------------------- %
-%
-% Set the title, author, and date
-%
-\title{HERON Software Design Description}
-%\author{%
-%\begin{tabular}{c} Author 1 \\ University1 \\ Mail1 \\ \\
-%Author 3 \\ University3 \\ Mail3 \end{tabular} \and
-%\begin{tabular}{c} Author 2 \\ University2 \\ Mail2 \\ \\
-%Author 4 \\ University4 \\ Mail4\\
-%\end{tabular} }
+
+\title{HERON User Manual}
 
 
-\author{Paul Talbot, Abhinav Gairola, Konor Frick, Prerna Prateek, Andrea Alfonsi, Cristian Rabiti}
+\author{
+\textbf{\textit{Project Manager:}}
+ \\Cristian Rabiti\\
+ \textbf{\textit{Principal Investigator and Technical Leader:}}
+\\Paul W. Talbot\\
+\textbf{\textit{Main Developers:}}
+\\Paul W. Talbot
+\\Andrea Alfonsi
+%\\Diego Mandelli
+%\\Joshua Cogliati
+%\\Congjian Wang
+%\\Daniel P. Maljovec
+%\\Robert Kinoshita\\
+%\textbf{\textit{Former Developers:}} \\Sonat Sen
+%\\Jun Chen\\
+%\textbf{\textit{Contributors:}}
+%\\Alessandro Bandini (Post-Processor)
+%\\Ivan Rinaldi (documentation)
+%\\Claudia Picoco (new external code interface)
+%\\James B. Tompkins (new external code interface)
+%\\Matteo Donorio (new external code interface)
+%\\Fabio Giannetti (new external code interface)
+%\\Jia Zhou (conjugate gradient optimizer)
+}
 
-
-% There is a "Printed" date on the title page of a SAND report, so
-% the generic \date should [WorkingDir:]generally be empty.
 \date{}
 
 
-% ---------------------------------------------------------------------------- %
-% Set some things we need for SAND reports. These are mandatory
-%
-\SANDnum{SDD-XXX}
-\SANDprintDate{\today}
-\SANDauthor{Paul Talbot, Abhinav Gairola, Konor Frick, Prerna Prateek, Andrea Alfonsi, Cristian Rabiti}
-\SANDreleaseType{Revision DRAFT}
 
-% ---------------------------------------------------------------------------- %
-% Include the markings required for your SAND report. The default is "Unlimited
-% Release". You may have to edit the file included here, or create your own
-% (see the examples provided).
-%
-% \include{MarkOUO} % Not needed for unlimted release reports
+\SANDnum{INL/EXT-15-34123}
+\SANDprintDate{\today}
+\SANDauthor{Cristian Rabiti, Paul W. Talbot, Andrea Alfonsi}
+\SANDreleaseType{Revision 1}
+
+
 
 \def\component#1{\texttt{#1}}
 
@@ -282,114 +254,34 @@ showstringspaces=false            %
 \newcolumntype{C}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
 \newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
 
-% end added by Sonat
-% ---------------------------------------------------------------------------- %
-%
-% Start the document
-%
-
-\begin{document}
-    \maketitle
-
-    % ------------------------------------------------------------------------ %
-    % An Abstract is required for SAND reports
-    %
-%    \begin{abstract}
-%    \input abstract
-%    \end{abstract}
 
 
-    % ------------------------------------------------------------------------ %
-    % An Acknowledgement section is optional but important, if someone made
-    % contributions or helped beyond the normal part of a work assignment.
-    % Use \section* since we don't want it in the table of context
-    %
+%\begin{document}
+ %   \maketitle
+
+
+%    \SANDmain		
+
+%\input{introduction.tex}
+%\input{nomenclature.tex}
+%\input{Installation/main.tex}
+%\input{HowToRun.tex}
+%\input{HERONStructure.tex}
+%\input{runInfo.tex}
+%\input{files.tex}
+%\input{examplesPrimer.tex}
+%\section*{Document Version Information}
+%\input{../version.tex}
+
+
+
 %    \clearpage
-%    \section*{Acknowledgment}
+
+%    \providecommand*{\phantomsection}{}
+%    \phantomsection
+%    \addcontentsline{toc}{section}{References}
+%    \bibliographystyle{ieeetr}
+%    \bibliography{raven_user_manual}
 
 
-
-%	The format of this report is based on information found
-%	in~\cite{Sand98-0730}.
-
-
-    % ------------------------------------------------------------------------ %
-    % The table of contents and list of figures and tables
-    % Comment out \listoffigures and \listoftables if there are no
-    % figures or tables. Make sure this starts on an odd numbered page
-    %
-    \cleardoublepage		% TOC needs to start on an odd page
-    \tableofcontents
-    %\listoffigures
-    %\listoftables
-
-
-    % ---------------------------------------------------------------------- %
-    % An optional preface or Foreword
-%    \clearpage
-%    \section*{Preface}
-%    \addcontentsline{toc}{section}{Preface}
-%	Although muggles usually have only limited experience with
-%	magic, and many even dispute its existence, it is worthwhile
-%	to be open minded and explore the possibilities.
-
-
-    % ---------------------------------------------------------------------- %
-    % An optional executive summary
-    %\clearpage
-    %\section*{Summary}
-    %\addcontentsline{toc}{section}{Summary}
-    %\input{Summary.tex}
-%	Once a certain level of mistrust and skepticism has
-%	been overcome, magic finds many uses in todays science
-
-
-
-%	and engineering. In this report we explain some of the
-%	fundamental spells and instruments of magic and wizardry. We
-%	then conclude with a few examples on how they can be used
-%	in daily activities at national Laboratories.
-
-
-    % ---------------------------------------------------------------------- %
-    % An optional glossary. We don't want it to be numbered
-%    \clearpage
-%    \section*{Nomenclature}
-%    \addcontentsline{toc}{section}{Nomenclature}
-%    \begin{description}
-%          \item[alohomoral]
-%           spell to open locked doors and containers
-%          \item[leviosa]
-%           spell to levitate objects
-%    \item[remembrall]
-%           device to alert you that you have forgotten something
-%    \item[wand]
-%           device to execute spells
-%    \end{description}
-
-
-    % ---------------------------------------------------------------------- %
-    % This is where the body of the report begins; usually with an Introduction
-    %
-    \SANDmain		% Start the main part of the report
-
-\input{heronIntro.tex}
-\input{otherDesignDocs.tex}
-\input{heronDepAndLimitations.tex}
-\input{heronDesignStakeHoldersAndConcerns.tex}
-\input{heronSoftwareDesing.tex}
-\input{dataInterfaceSystemControl.tex}
-
-    % ---------------------------------------------------------------------- %
-    % References
-    %
-
-\addcontentsline{toc}{section}{References}
-\bibliographystyle{ieeetr}
-\bibliography{heron_software_design_description}
-
-\section*{Document Version Information}
-
-\input{../../version.tex}
-
-\end{document}
+%\end{document}

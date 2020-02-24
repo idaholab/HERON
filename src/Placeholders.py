@@ -107,7 +107,7 @@ class ARMA(Placeholder):
   def read_input(self, xml):
     specs = Placeholder.read_input(self, xml)
     self._var_names = specs.parameterValues['variable']
-    print("I AM HERE")
+    #print("I AM HERE")
 
   def interpolation(self, x, y):
     
@@ -186,7 +186,7 @@ class Function(Placeholder):
     #print("THIS IS THE RESULT",method,self._module_methods)
     result = self._module_methods[method](request, data_dict)
 
-    print("THIS IS THE", result)
+    #print("THIS IS THE", result)
     #
     ####Resampling line adding here#######
     #if 'Resample_T' in data_dict['meta']['EGRET'].keys() and 'Signal' in data_dict['raven_vars'].keys():

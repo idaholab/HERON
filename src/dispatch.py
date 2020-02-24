@@ -11,7 +11,7 @@ import xml.etree.ElementTree as ET
 #import time as time_mod
 import matplotlib.pyplot as mp
 import pandas as pd
-import time
+#import time
 
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
@@ -179,14 +179,14 @@ def run(raven, inputs):
   for var, indices in getattr(raven, '_indexMap', [{}])[0].items():
     if pivot_id in indices:
       #setattr(raven,var,0)
-      print("This is the ARMA DATA",getattr(raven, var),pivot_id,indices,inputs[indices[0]],type(egret_sources[0]))
+      #print("This is the ARMA DATA",getattr(raven, var),pivot_id,indices,inputs[indices[0]],type(egret_sources[0]))
       #tttt
       
-      print(getattr(raven,var))
+      #print(getattr(raven,var))
       Res=egret_case.get_Resample_T()
       Res2=egret_case.get_hist_length()
       resample=int(Res/Res2)
-      print("This is Res",Res)
+      #print("This is Res",Res)
       
       #old_dt=egret_case.get_hist_interval()
       
@@ -217,17 +217,17 @@ def run(raven, inputs):
             Temp.append(list(interpolated_signal[0:resample]))
           
             #print("This is time",new_time_array)
-            print("This is the interpolated signal",interpolated_signal)
+            #print("This is the interpolated signal",interpolated_signal)
           Temp=np.hstack(Temp)
           #Temp=Temp[0::3]
-          print("This is temp",len(Temp))
+          #print("This is temp",len(Temp))
           Array[:,i]=np.array(Temp)
-          print("This is the array",Array)
+          #print("This is the array",Array)
       setattr(raven,var,Array)
-      print("This is the reset",getattr(raven,var))
+      #print("This is the reset",getattr(raven,var))
       new, dims = reshape_variable_as_clustered(var, getattr(raven, var), raven._indexMap[0], cluster_info, pivot_id)
       new_name = var + '_cluster_shaped'
-      print("This is the new_name in dispatch",new, new_name,dims)
+      #print("This is the new_name in dispatch",new, new_name,dims)
       ##tttt
       #(2000)
       set_raven_var(raven, new_name, new)
@@ -237,10 +237,10 @@ def run(raven, inputs):
 
 
   # get years we're running
-  print("This is raven_vars",np.shape(getattr(raven,var))[1])
+  #print("This is raven_vars",np.shape(getattr(raven,var))[1])
   years = range(cluster_info['macro_first'], cluster_info['macro_last']+1)
   temporary_var=(meta['EGRET'].keys())
-  print("These are the keys", temporary_var,meta.keys())
+  #print("These are the keys", temporary_var,meta.keys())
   ###### Added lines#####
   #for i in range(0,len(years)):
     #for j in range(0,len(inputs[indices[0]])):

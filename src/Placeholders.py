@@ -107,11 +107,7 @@ class ARMA(Placeholder):
   def read_input(self, xml):
     specs = Placeholder.read_input(self, xml)
     self._var_names = specs.parameterValues['variable']
-<<<<<<< HEAD
     
-=======
-    #print("I AM HERE")
->>>>>>> d3ca8ee964f87702abd1bab2af9a026fc38de459
 
   def interpolation(self, x, y):
     
@@ -174,7 +170,7 @@ class Function(Placeholder):
       # var_names = args[2:]
 
       self._module_methods[name] = member
-      #print("THIS IS THE MEMBER",member)
+      
     return # TODO needed? var_names
 
     ######Interpolate method#####
@@ -188,21 +184,6 @@ class Function(Placeholder):
    
     result = self._module_methods[method](request, data_dict)
 
-<<<<<<< HEAD
-
-=======
-    #print("THIS IS THE", result)
-    #
-    ####Resampling line adding here#######
-    #if 'Resample_T' in data_dict['meta']['EGRET'].keys() and 'Signal' in data_dict['raven_vars'].keys():
-      #new_time_sample=np.arange(0,data_dict['meta']['EGRET']['time'],data_dict['meta']['EGRET']['Resample_T'])
-
-      #temperorary_var = data_dict['raven_vars']['Signal']
-      #print("This is the type",data_dict['meta']['EGRET']['time'],data_dict['meta']['EGRET']['sim_year_index'])
-      
-    #####################################
-    #time.sleep(20000)
->>>>>>> d3ca8ee964f87702abd1bab2af9a026fc38de459
     # result = balance_dict, meta_dict -> check that's true
     if not (hasattr(result, '__len__') and len(result) == 2 and all(isinstance(r, dict) for r in result)):
       raise RuntimeError('From Function "{f}" method "{m}" expected {s}.{m} '.format(f=self.name, m=method, s=self._source) +\

@@ -174,7 +174,6 @@ def run(raven, inputs):
   new_indices = {}
   for var, indices in getattr(raven, '_indexMap', [{}])[0].items():
     if pivot_id in indices:
-<<<<<<< HEAD
      
       
       ###############################INTERPOLATION#############################
@@ -183,17 +182,6 @@ def run(raven, inputs):
       resample=int(Res/Res2)
     
       
-=======
-      #setattr(raven,var,0)
-      #print("This is the ARMA DATA",getattr(raven, var),pivot_id,indices,inputs[indices[0]],type(egret_sources[0]))
-      #tttt
-      
-      #print(getattr(raven,var))
-      Res=egret_case.get_Resample_T()
-      Res2=egret_case.get_hist_length()
-      resample=int(Res/Res2)
-      #print("This is Res",Res)
->>>>>>> d3ca8ee964f87702abd1bab2af9a026fc38de459
       
       
       idx=inputs[indices[0]]
@@ -215,7 +203,6 @@ def run(raven, inputs):
             interpolated_signal = temporary_arma(new_time_array)
             Temp.append(list(interpolated_signal[0:resample]))
           
-<<<<<<< HEAD
            
             
           Temp=np.hstack(Temp)
@@ -228,22 +215,6 @@ def run(raven, inputs):
       new, dims = reshape_variable_as_clustered(var, getattr(raven, var), raven._indexMap[0], cluster_info, pivot_id)
       new_name = var + '_cluster_shaped'
 
-=======
-            #print("This is time",new_time_array)
-            #print("This is the interpolated signal",interpolated_signal)
-          Temp=np.hstack(Temp)
-          #Temp=Temp[0::3]
-          #print("This is temp",len(Temp))
-          Array[:,i]=np.array(Temp)
-          #print("This is the array",Array)
-      setattr(raven,var,Array)
-      #print("This is the reset",getattr(raven,var))
-      new, dims = reshape_variable_as_clustered(var, getattr(raven, var), raven._indexMap[0], cluster_info, pivot_id)
-      new_name = var + '_cluster_shaped'
-      #print("This is the new_name in dispatch",new, new_name,dims)
-      ##tttt
-      #(2000)
->>>>>>> d3ca8ee964f87702abd1bab2af9a026fc38de459
       set_raven_var(raven, new_name, new)
       new_indices[new_name] = dims
   if new_indices:
@@ -251,21 +222,10 @@ def run(raven, inputs):
 
 
   # get years we're running
-<<<<<<< HEAD
 
   years = range(cluster_info['macro_first'], cluster_info['macro_last']+1)
   temporary_var=(meta['EGRET'].keys())
  
-=======
-  #print("This is raven_vars",np.shape(getattr(raven,var))[1])
-  years = range(cluster_info['macro_first'], cluster_info['macro_last']+1)
-  temporary_var=(meta['EGRET'].keys())
-  #print("These are the keys", temporary_var,meta.keys())
-  ###### Added lines#####
-  #for i in range(0,len(years)):
-    #for j in range(0,len(inputs[indices[0]])):
-      #print("This is j", j)
->>>>>>> d3ca8ee964f87702abd1bab2af9a026fc38de459
   
 
  

@@ -1,6 +1,8 @@
 #!/usr/bin/python
 import sys,os
 import time
+###Added Raven Path#####
+"Will automate path later"
 frameworkPath = "/Users/gaira/Desktop/myHeron/egret/raven/framework"#os.path.join(os.path.dirname(__file__), *(['..']*4), 'framework')
 sys.path.append(frameworkPath)
 

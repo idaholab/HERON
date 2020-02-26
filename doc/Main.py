@@ -8,11 +8,8 @@ from distutils.dir_util import copy_tree
 import re
 path=os.path.dirname(os.path.abspath(__file__))#'/Users/gaira/Desktop/Heron/HERON_user_Manual2'#os.path.dirname(__file__)
 path=path+'/../'
-#print(path)
-#time.sleep(2000)
+
 pathtosrc=path+'/src'
-#print(pathtosrc)
-#time.sleep(2000)
 
 
 
@@ -50,7 +47,7 @@ if not os.path.exists('pdf'):
 os.chdir('pdf')
 
 print(os.getcwd())
-#time.sleep(200)
+
 
 ####Copy###
 
@@ -63,19 +60,16 @@ for i in range(0,len(filenames)):
     
 
     for line in fd:
-        #print(re.search(r'_',line))
-        #time.sleep(1)
+
         if re.search(r'_',line) == None:
             fd2.write(line)
         if re.search(r'_',line):
-            #time.sleep(1)
+
             line2=line.replace("_",'\\'+'_')#(line.replace("_",'$'+'\\'+'_'+'$'))
             
 
-            #print(re.search(r'{}',line))
-            #print (line2)
             fd2.write(line2)
-            #time.sleep(1)
+
 
 
 ##create a string to be appended###

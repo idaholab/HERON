@@ -9,8 +9,7 @@ sys.path.append(frameworkPath)
 from utils import InputData
 path=os.path.dirname(__file__)
 path2=path+'/../src'
-#print(path)
-#time.sleep(2000)
+
 sys.path.append(path2)
 import Components, Cases, Economics
 
@@ -31,14 +30,11 @@ def create(x,x2,x3):
         tex = stepSpec.generateLatex()
         fName = str(x3)+'.tex'
         tex='\\section'+'{'+str(x3)+' '+'Introduction'+'}'+fillertext+'\n'*4+tex
-        #print(tex)
+     
     
         with open(fName, 'w') as f:
             f.writelines(tex)
-        #f=open(fName,'r+')
-        #f.seek(0,0) 
-        #f.write('\\section'+'{'+str(x3)+'Introduction'+'}'+'\n')
-        #f.close()
+ 
   
 
 for i in range(0,len(List_of_files)):
@@ -47,7 +43,7 @@ for i in range(0,len(List_of_files)):
     temp2=temp[:-1]+''
     temp=temp.replace(" ' ", "")
     temp2=temp2.replace(" ' ", "")
-    #print(temp,temp2)
+  
 
     if temp=='Components':
         create(Components,temp2,List_of_files[i])
@@ -55,7 +51,3 @@ for i in range(0,len(List_of_files)):
         create(Cases,temp2,List_of_files[i])
     elif temp=='Economics':
         create(Economics,'CashFlow',List_of_files[i])
-        #create(Economics,'CashFlowUser',List_of_files[i])
-
-
-#  f.writelines(tex)

@@ -84,8 +84,7 @@ for txt in filenames:
 
 #####Added introduction too####
 if not os.path.exists('pdfIntroduction.tex'):
-    #print('Not here')
-    #time.sleep(2000)
+   
     intro=open('pdfIntroduction.tex','w')
     intro.write('\\section'+'{'+'Introduction'+'}')
     string='\\'+'input'+'{'+'pdfIntroduction'+'}'+'\n'+string
@@ -100,15 +99,13 @@ sh.copy('../raven_user_manual.toc','raven_user_manual.toc')
 Docu=open('HERON_user_manual.tex','a')
 idx=(text.find('\clearpage'))
 text=(text[:idx])+string+text[idx:]
-#print(text)
+
 Docu.write(text)
 Docu.close()
 
 if not os.path.exists('pics'):
     os.makedirs('pics')
-#path=os.path.dirname(__file__)
-#print(path)
-#time.sleep(2000)
+
 copy_tree(path+'/pics',path+'/pdf/pics')
 os.system('pdflatex HERON_user_manual.tex')
 

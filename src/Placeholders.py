@@ -107,15 +107,13 @@ class ARMA(Placeholder):
   def read_input(self, xml):
     specs = Placeholder.read_input(self, xml)
     self._var_names = specs.parameterValues['variable']
-    print("I AM HERE")
+    
 
   def interpolation(self, x, y):
     
     return interpolate.interp1d(x, y)
 
-  #def evaluate_arma(self, local_t,data_dict):
 
-  #  print(data_dict)
 
 
 
@@ -183,20 +181,10 @@ class Function(Placeholder):
 
 
   def evaluate(self, method, request, data_dict):
-    #print("THIS IS THE RESULT",method,self._module_methods)
+   
     result = self._module_methods[method](request, data_dict)
 
-    print("THIS IS THE", result)
-    #
-    ####Resampling line adding here#######
-    #if 'Resample_T' in data_dict['meta']['EGRET'].keys() and 'Signal' in data_dict['raven_vars'].keys():
-      #new_time_sample=np.arange(0,data_dict['meta']['EGRET']['time'],data_dict['meta']['EGRET']['Resample_T'])
 
-      #temperorary_var = data_dict['raven_vars']['Signal']
-      #print("This is the type",data_dict['meta']['EGRET']['time'],data_dict['meta']['EGRET']['sim_year_index'])
-      
-    #####################################
-    #time.sleep(20000)
     # result = balance_dict, meta_dict -> check that's true
     if not (hasattr(result, '__len__') and len(result) == 2 and all(isinstance(r, dict) for r in result)):
       raise RuntimeError('From Function "{f}" method "{m}" expected {s}.{m} '.format(f=self.name, m=method, s=self._source) +\

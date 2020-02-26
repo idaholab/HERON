@@ -105,7 +105,6 @@ class Case(Base):
       elif item.getName() == 'num_arma_samples':
         self._num_samples = item.value
       elif item.getName() == 'Resample_T':
-        print("This is item", item.value)
         self._Resample_T = item.value
       elif item.getName() == 'timestep_interval':
         self._hist_interval = float(item.value)
@@ -117,10 +116,10 @@ class Case(Base):
       elif item.getName() == 'dispatch_increment':
         self._increments[item.parameterValues['resource']] = item.value
 
-    print(self._hist_len, self._hist_interval)
+    
 
     self._num_hist = self._hist_len // self._hist_interval # TODO what if it isn't even?
-    print("This is num",self._num_hist)
+    
     self.raiseADebug('Successfully initialized Case {}.'.format(self.name))
 
   def __repr__(self):
@@ -340,9 +339,9 @@ class Case(Base):
     ## TODO someday, only load what's needed
     for source in sources:
       name = source.name
-      print("SOURCES")
+      
       if isinstance(source, Placeholders.ARMA):
-        print("THIS IS BEING CALLED FROM CASES")
+        
         # add a model block
         models.append(xmlUtils.newNode('ROM', attrib={'name':name, 'subType':'pickledROM'}))
         # add a read step

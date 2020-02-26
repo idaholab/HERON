@@ -15,7 +15,7 @@
     <metric>NPV</metric>
     <num_arma_samples>2</num_arma_samples>
     <timestep_interval>500</timestep_interval>
-    <!--<Resample_T>60</Resample_T><!--New History length-->-->
+    <Resample_T>60</Resample_T><!--New History length-->
     <history_length>20</history_length>
     <economics>
       <ProjectTime>2</ProjectTime>

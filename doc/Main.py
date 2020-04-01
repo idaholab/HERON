@@ -84,7 +84,7 @@ Docu.close()
 if not os.path.exists('pics'):
     os.makedirs('pics')
 copy_tree(path+'/pics',path+'/pdf/pics')
-os.system('pdflatex -interaction=batchmode HERON_user_manual.tex ') #>/dev/null')
+os.system('pdflatex -interaction=batchmode HERON_user_manual.tex ') 
 
 
 ###Remove the unwanted files####

@@ -1,7 +1,6 @@
 from string import punctuation
 import glob
 import os,sys
-import time
 import Enquire
 import shutil as sh
 from distutils.dir_util import copy_tree

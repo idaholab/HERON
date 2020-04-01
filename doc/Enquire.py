@@ -1,6 +1,5 @@
 #!/usr/bin/python
 import sys,os
-import time
 ### path to your raven folder ####
 frameworkPath = "/Users/gaira/Optimizer/OpT/raven/framework"
 sys.path.append(frameworkPath)

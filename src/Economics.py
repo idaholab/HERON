@@ -102,7 +102,8 @@ class CashFlowGroup:
       @ In, None
       @ Out, input_specs, InputData, specs
     """
-    specs = InputData.parameterInputFactory('economics', ordered=False, baseNode=None)
+    specs = InputData.parameterInputFactory('economics', ordered=False, baseNode=None, descr=r""" The \xmlNode{Economics} contains
+    the attributes required to compute the key economic metrics""")
     specs.addSub(InputData.parameterInputFactory('lifetime', contentType=InputTypes.IntegerType))
     cf = CashFlow.get_input_specs()
     specs.addSub(cf)

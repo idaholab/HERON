@@ -18,7 +18,7 @@ from Economics import CashFlowUser
 from ValuedParams import ValuedParam
 
 # raven imports
-raven_path = '~/projects/raven/framework'
+raven_path = '/Users/gaira/Optimizer/OpT/raven/framework'#/Users/gaira/egret/raven/framework'
 sys.path.append(os.path.expanduser(raven_path))
 from utils import InputData, xmlUtils,InputTypes
 import MessageHandler
@@ -53,8 +53,8 @@ class Component(Base, CashFlowUser):
       @ In, None
       @ Out, input_specs, InputData, specs
     """
-    input_specs = InputData.parameterInputFactory('Component', ordered=False, baseNode=None)#,descr="ABCDEFGH")
-    input_specs.addParam('name', param_type=InputTypes.StringType, required=True)
+    input_specs = InputData.parameterInputFactory('Component', ordered=False, baseNode=None, descr=r""" The \xmlNode{component} represents the component which is a part or element of a larger whole, use to produce, consume one source of energy and produce another. """)
+    input_specs.addParam('name', param_type=InputTypes.StringType, required=True, descr=r""" Name of the component""")
     # production
     ## this unit may be able to make stuff, possibly from other stuff
     input_specs.addSub(Producer.get_input_specs())
@@ -96,7 +96,6 @@ class Component(Base, CashFlowUser):
       @ In, mode, string, case mode to operate in (e.g. 'sweep' or 'opt')
       @ Out, None
     """
-    #aaaaaaaa
     # get specs for allowable inputs
     specs = self.get_input_specs()()
     specs.parseNode(xml)
@@ -283,16 +282,22 @@ class Interaction(Base):
       @ In, None
       @ Out, input_specs, InputData, specs
     """
-    specs = InputData.parameterInputFactory(cls.tag, ordered=False)
-    specs.addParam('resource', param_type=InputTypes.StringListType, required=True)
+    if cls.tag == 'produces':
+      desc = r""" Produces a resource by consuming any generic fuel."""
+    elif cls.tag == 'stores':
+      desc = r""" Stores the energy in a battery."""
+    elif cls.tag == "demands":
+      desc = r"""Demands a resource which it consumes."""
+    specs = InputData.parameterInputFactory(cls.tag, ordered=False, descr=desc)
+    specs.addParam('resource', param_type=InputTypes.StringListType, required=True, descr=r"""Resource to be consumed or produced.""")
     dispatch_opts = InputTypes.makeEnumType('dispatch_opts', 'dispatch_opts', ['independent', 'dependent', 'fixed'])
-    specs.addParam('dispatch', param_type=dispatch_opts)
+    specs.addParam('dispatch', param_type=dispatch_opts, descr=r"""Amount to be dispatched.""")
 
     cap = ValuedParam.get_input_specs('capacity')
     #cap.removeSub('ARMA')
     #cap.removeSub('Function')
     #cap.removeSub('variable')
-    cap.addParam('resource', param_type=InputTypes.StringType)
+    cap.addParam('resource', param_type=InputTypes.StringType, descr=r"""Resources to be consumed or produced.""")
     specs.addSub(cap)
 
     minn = ValuedParam.get_input_specs('minimum')
@@ -460,7 +465,7 @@ class Producer(Interaction):
       @ Out, input_specs, InputData, specs
     """
     specs = super(Producer, cls).get_input_specs()
-    specs.addSub(InputData.parameterInputFactory('consumes', contentType=InputTypes.StringListType))
+    specs.addSub(InputData.parameterInputFactory('consumes', contentType=InputTypes.StringListType, descr=r"""The producer can either produce or consume a resource. If the producer is a consumer it must be accompnied with a transfer function to convert one source of energy to another. """))
     specs.addSub(ValuedParam.get_input_specs('transfer'))
     return specs
 

@@ -1,5 +1,5 @@
 """
-  Defines the Cases entity. Fixed InputTypes
+  Defines the Cases entity.
 """
 from __future__ import unicode_literals, print_function
 import os
@@ -12,7 +12,7 @@ import Components
 import Placeholders
 raven_path = '~/projects/raven/raven_framework'
 sys.path.append(os.path.expanduser(raven_path))
-from utils import InputData, xmlUtils, InputTypes
+from utils import InputData, xmlUtils,InputTypes
 
 
 
@@ -32,32 +32,63 @@ class Case(Base):
       @ In, None
       @ Out, input_specs, InputData, specs
     """
-    input_specs = InputData.parameterInputFactory('Case', ordered=False, baseNode=None)
-    input_specs.addParam('name', param_type=InputTypes.StringType, required=True)
+    #####
+    """
+    InputData Specification for the class Case.
+    @ ModeOptions, minimize, maximize or sweep over multiple values of capacities
+    @ EconMetrics, can be NPV (Net Present Value) and lcoe (levelized cost of energy)
+    @ num_arma_samples, copies of the trained signals
+    @ history_length, total length of the input ARMA signal
+    @ ProjectTime, total length of the project
+    @ DiscountRate, interest rate required to compute the econometrics
+    @ tax, taxation rate
+    @ inflation, inflation rate
+    @ verbosity, length of the output argument
+    @ resources, resource to be produced or consumed
+    @ dispatch_increments, amount to be dispatched in a fixed time interval
+    """
+
+  
+
+    #####
+    input_specs = InputData.parameterInputFactory('Case', ordered=False, baseNode=None, descr= r""" The \xmlNode{Case} contains
+    the basic parameters needed for a HERON case. """)
+    input_specs.addParam('name', param_type=InputTypes.StringType, required=True, descr=r"""An appropriate user defined name of the case.""")
 
     mode_options = InputTypes.makeEnumType('ModeOptions', 'ModeOptionsType', ['min', 'max', 'sweep'])
+    desc_mode_options = r""" Minimize, maximize or sweep over multiple values of capacities."""
     econ_metrics = InputTypes.makeEnumType('EconMetrics', 'EconMetricsTypes', ['NPV', 'lcoe'])
+    desc_econ_metrics = r""" This metric can be NPV (Net Present Value) and lcoe (levelized cost of energy) used for techno-economic analysis of the power plants.""" 
 
-    input_specs.addSub(InputData.parameterInputFactory('mode', contentType=mode_options))
-    input_specs.addSub(InputData.parameterInputFactory('metric', contentType=econ_metrics))
-    input_specs.addSub(InputData.parameterInputFactory('differential', contentType=InputTypes.BoolType))
-    input_specs.addSub(InputData.parameterInputFactory('num_arma_samples', contentType=InputTypes.IntegerType))
-    input_specs.addSub(InputData.parameterInputFactory('timestep_interval', contentType=InputTypes.IntegerType))
-    input_specs.addSub(InputData.parameterInputFactory('history_length', contentType=InputTypes.IntegerType))
+
+
+
+    input_specs.addSub(InputData.parameterInputFactory('mode', contentType=mode_options,strictMode=True,
+         descr=desc_mode_options))
+    input_specs.addSub(InputData.parameterInputFactory('metric', contentType=econ_metrics, descr=desc_econ_metrics))
+    input_specs.addSub(InputData.parameterInputFactory('differential', contentType=InputTypes.BoolType,strictMode=True,
+         descr=r"""Differential represents the additional cashflow generated when building additional capacities.
+        This value can be either \xmlString{True} or \xmlString{False}."""))
+    input_specs.addSub(InputData.parameterInputFactory('num_arma_samples', contentType=InputTypes.IntegerType, descr=r"""Number of copies of the trained signals."""))
+    input_specs.addSub(InputData.parameterInputFactory('timestep_interval', contentType=InputTypes.IntegerType, descr=r"""Time step interval between two values of signal."""))
+    input_specs.addSub(InputData.parameterInputFactory('history_length', contentType=InputTypes.IntegerType, descr= r"""Total length of one realization of the ARMA signal."""))
 
     # economics global settings
-    econ = InputData.parameterInputFactory('economics', ordered=False)
-    econ.addSub(InputData.parameterInputFactory('ProjectTime', contentType=InputTypes.FloatType))
-    econ.addSub(InputData.parameterInputFactory('DiscountRate', contentType=InputTypes.FloatType))
-    econ.addSub(InputData.parameterInputFactory('tax', contentType=InputTypes.FloatType))
-    econ.addSub(InputData.parameterInputFactory('inflation', contentType=InputTypes.FloatType))
-    econ.addSub(InputData.parameterInputFactory('verbosity', contentType=InputTypes.IntegerType))
+    econ = InputData.parameterInputFactory('economics', ordered=False, descr= r"""\xmlNode{economics} contains the details of the econometrics
+    computations to be performed by the code.""")
+    econ.addSub(InputData.parameterInputFactory('ProjectTime', contentType=InputTypes.FloatType, descr=r"""Total length of the project."""))
+    econ.addSub(InputData.parameterInputFactory('DiscountRate', contentType=InputTypes.FloatType, descr=r"""Interest rate required to compute the discounted cashflow (DCF)"""))
+    econ.addSub(InputData.parameterInputFactory('tax', contentType=InputTypes.FloatType, descr= r"""Taxation rate is a metric which represents the 
+    rate at which an individual or corporation is taxed."""))
+    econ.addSub(InputData.parameterInputFactory('inflation', contentType=InputTypes.FloatType, descr=r"""Inflation rate is a metric which represents the
+    the rate at which the average price level of a basket of selected goods and services in an economy increases over some period of time."""))
+    econ.addSub(InputData.parameterInputFactory('verbosity', contentType=InputTypes.IntegerType, descr=r"""Length of the output argument."""))
     input_specs.addSub(econ)
 
     # increments for resources
-    incr = InputData.parameterInputFactory('dispatch_increment', contentType=InputTypes.FloatType)
-    incr.addParam('resource', param_type=InputTypes.StringType, required=True)
-    input_specs.addSub(incr)
+    incr = InputData.parameterInputFactory('dispatch_increment', contentType=InputTypes.FloatType, descr=r"""This is the amount of resource to be dispatched in a fixed time interval.""")
+    incr.addParam('resource', param_type=InputTypes.StringType, required=True, descr=r"""Resource to be consumed or produced.""")
+    input_specs.addSub(incr)#, descr=r"""Resource to be produced or consumed""")
 
     return input_specs
 

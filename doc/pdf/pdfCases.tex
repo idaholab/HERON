@@ -1,62 +1,71 @@
-\section{Cases Introduction}Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+\section{Cases Introduction}HERON typically relies on a test node which informs the algorithm as to how the case has to be processed by using the predefined metrics described in the following sections.
+
+
+
 
 
 
 \subsection{Case}
-  -- no description yet --
+  The \xmlNode{Case} contains    the basic parameters needed for a HERON case.
 
   The \xmlNode{Case} node recognizes the following parameters:
     \begin{itemize}
       \item \xmlAttr{name}: \xmlDesc{string, required}, 
-        -- no description yet --
+        An appropriate user defined name of the case.
   \end{itemize}
 
   The \xmlNode{Case} node recognizes the following subnodes:
   \begin{itemize}
-    \item \xmlNode{mode}:\xmlDesc{ModeOptions}, 
-      -- no description yet --
+    \item \xmlNode{mode}: \xmlDesc{[min, max, sweep]}, 
+      Minimize, maximize or sweep over multiple values of capacities.
 
-    \item \xmlNode{metric}:\xmlDesc{EconMetrics}, 
-      -- no description yet --
+    \item \xmlNode{metric}: \xmlDesc{[NPV, lcoe]}, 
+      This metric can be NPV (Net Present Value) and lcoe (levelized cost of energy) used for
+      techno-economic analysis of the power plants.
 
-    \item \xmlNode{differential}:\xmlDesc{bool}, 
-      -- no description yet --
+    \item \xmlNode{differential}: \xmlDesc{[yes, y, true, t, si, vero, dajie, oui, ja, yao, verum, evet, dogru, 1, on, no, n, false, f, nono, falso, nahh, non, nicht, bu, falsus, hayir, yanlis, 0, off, Yes, Y, True, T, Si, Vero, Dajie, Oui, Ja, Yao, Verum, Evet, Dogru, 1, On, No, N, False, F, Nono, Falso, Nahh, Non, Nicht, Bu, Falsus, Hayir, Yanlis, 0, Off]}, 
+      Differential represents the additional cashflow generated when building additional capacities.
+      This value can be either \xmlString{True} or \xmlString{False}.
 
-    \item \xmlNode{num\_arma\_samples}:\xmlDesc{integer}, 
-      -- no description yet --
+    \item \xmlNode{num\_arma\_samples}: \xmlDesc{integer}, 
+      Number of copies of the trained signals.
 
-    \item \xmlNode{timestep\_interval}:\xmlDesc{integer}, 
-      -- no description yet --
+    \item \xmlNode{timestep\_interval}: \xmlDesc{integer}, 
+      Time step interval between two values of signal.
 
-    \item \xmlNode{history\_length}:\xmlDesc{integer}, 
-      -- no description yet --
+    \item \xmlNode{history\_length}: \xmlDesc{integer}, 
+      Total length of one realization of the ARMA signal.
 
     \item \xmlNode{economics}:
-      -- no description yet --
+      \xmlNode{economics} contains the details of the econometrics     computations to be performed
+      by the code.
 
       The \xmlNode{economics} node recognizes the following subnodes:
       \begin{itemize}
-        \item \xmlNode{ProjectTime}:\xmlDesc{float}, 
-          -- no description yet --
+        \item \xmlNode{ProjectTime}: \xmlDesc{float}, 
+          Total length of the project.
 
-        \item \xmlNode{DiscountRate}:\xmlDesc{float}, 
-          -- no description yet --
+        \item \xmlNode{DiscountRate}: \xmlDesc{float}, 
+          Interest rate required to compute the discounted cashflow (DCF)
 
-        \item \xmlNode{tax}:\xmlDesc{float}, 
-          -- no description yet --
+        \item \xmlNode{tax}: \xmlDesc{float}, 
+          Taxation rate is a metric which represents the      rate at which an individual or
+          corporation is taxed.
 
-        \item \xmlNode{inflation}:\xmlDesc{float}, 
-          -- no description yet --
+        \item \xmlNode{inflation}: \xmlDesc{float}, 
+          Inflation rate is a metric which represents the     the rate at which the average price
+          level of a basket of selected goods and services in an economy increases over some period
+          of time.
 
-        \item \xmlNode{verbosity}:\xmlDesc{integer}, 
-          -- no description yet --
+        \item \xmlNode{verbosity}: \xmlDesc{integer}, 
+          Length of the output argument.
       \end{itemize}
 
-    \item \xmlNode{dispatch\_increment}:\xmlDesc{float}, 
-      -- no description yet --
+    \item \xmlNode{dispatch\_increment}: \xmlDesc{float}, 
+      This is the amount of resource to be dispatched in a fixed time interval.
       The \xmlNode{dispatch\_increment} node recognizes the following parameters:
         \begin{itemize}
           \item \xmlAttr{resource}: \xmlDesc{string, required}, 
-            -- no description yet --
+            Resource to be consumed or produced.
       \end{itemize}
   \end{itemize}

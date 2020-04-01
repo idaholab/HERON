@@ -1,0 +1,18 @@
+\section{ Installation and how to run}
+\subsection{Installation}
+As a plugin of RAVEN, HERON is installed as a submodule. RAVEN maintains up-to-date
+instructions for plugin installation in its manuals and other documentation. As of this writing, plugins
+are installed from the command line from within the top level of the RAVEN repository as
+\begin{verbatim}
+scripts/install_plugins.py ‐s heron
+\end{verbatim}
+Note that RAVEN must be installed completely to use HERON and its components. At this writing
+HERON introduces one additional Python library to the standard set of RAVEN \texttt{Python} dependencies:
+\texttt{dill}. The serialization package \texttt{dill} enables information transfer between the HERON templating
+algorithm and dispatching algorithm not possible with the standard library set. This library, along with
+any future additional libraries required, should be installed correctly via RAVEN’s documented
+installation procedure for including plugins.
+HERON also requires use of the RAVEN plugin\textt{tCashFlow} , a utility for economic analysis.
+As of this writing, \texttt{CashFlow} is an officially supported plugin for RAVEN and is installed standard when plugins are included in RAVEN installation. 
+\subsection{How to run}
+The code can be run easily on a \texttt{linux/mac} system by defining an alias to the \texttt{Python} script `\texttt{main.py}' in the \texttt{src} folder of  HERON.

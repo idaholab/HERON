@@ -8,7 +8,6 @@ import sys
 from collections import defaultdict
 
 import numpy as np
-import time
 
 from ValuedParams import ValuedParam
 

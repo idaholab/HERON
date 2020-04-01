@@ -70,6 +70,7 @@ def parse(xml, loc, messageHandler):
           new = Placeholders.CSV(messageHandler=messageHandler)
         elif typ == 'ARMA':
           new = Placeholders.ARMA(loc=loc, messageHandler=messageHandler)
+          #print("THIS IS INPUT LOADER")
         elif typ == 'Function':
           new = Placeholders.Function(loc=loc, messageHandler=messageHandler)
         else:

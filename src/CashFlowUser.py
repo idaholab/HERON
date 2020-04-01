@@ -7,7 +7,6 @@ from CashFlows import CashFlowGroup
 
 raven_path = '~/projects/raven/framework' # TODO plugin path
 sys.path.append(os.path.expanduser(raven_path))
-from utils import InputData
 
 class CashFlowUser:
   """

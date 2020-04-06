@@ -1,59 +1,64 @@
 #!/usr/bin/python
 import sys,os
-import time
-frameworkPath = "/Users/gaira/Desktop/myHeron/egret/raven/framework"#os.path.join(os.path.dirname(__file__), *(['..']*4), 'framework')
-sys.path.append(frameworkPath)
-
-from utils import InputData
+import shutil as sh
 path=os.path.dirname(__file__)
-path2=path+'/../src'
-#print(path)
-#time.sleep(2000)
+path2=os.path.join(path,'../src')
 sys.path.append(path2)
 import Components, Cases, Economics
+import _utils as hutils
+framework_path = hutils.get_raven_loc()
+sys.path.append(framework_path)
+from utils import InputData
 
-List_of_files=['Components', 'Cases', 'Economics']
+list_of_files = ['Components', 'Cases', 'Economics']
+
+# Introductory sections from the .tex file #####
+
+def read(texname):
+  """ 
+  A function to read the .tex file 
+  """
+
+  with open(path+texname,'r') as fd:
+    filler_text=fd.read()
+  return filler_text
+
+def create(module,cls,filename):
+  """ A function to create the .tex file by 
+  enquiring the methods in raven 
+  """
+  attribute = getattr(module,cls)
+  stepSpec = attribute.get_input_specs()()
+  tex = stepSpec.generateLatex()
+  fname = str(filename) +'.tex'
+  if fname == 'Cases.tex':
+    filler_text_case = read('/CaseIn.tex')
+    tex='\\section' + '{'+str(filename) +' ' + 'Introduction' +'}' +filler_text_case +'\n'*2 +tex
+  if fname == 'Economics.tex':
+    filler_text_economics = read('/EconIn.tex')
+    tex='\\section' +'{' +str(filename) +' ' +'Introduction' +'}' +filler_text_economics +'\n'*2 +tex
+  with open(fname, 'w') as f:
+    f.writelines(tex)
+  return
+###create the tex files using the members in the list_of_files
+for i, file_name in enumerate(list_of_files):
+  text_one = list_of_files[i]
+  text_two = text_one[:-1]+''
+  text_one = text_one.replace(" ' ", "")
+  text_two = text_two.replace(" ' ", "")
+  if text_one == 'Components':
+    create(Components,text_two,list_of_files[i])
+  elif text_one == 'Cases':
+    create(Cases,text_two,list_of_files[i])
+  elif text_one == 'Economics':
+    create(Economics,'CashFlow',list_of_files[i])
+
+### move files to src####
+for i, file_name in enumerate(list_of_files):
+  if not os.path.exists('src'):
+    os.makedirs('src') 
+  if os.path.exists('src'):
+    sh.move(os.path.join(path,str(list_of_files[i])+'.tex'),os.path.join(path,'src'))
 
 
-os.chdir(path+'/../doc')
-if not os.path.exists('src'):
-    os.makedirs('src')
-os.chdir(path+'/../doc/src')
 
-fillertext='Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'
-
-def create(x,x2,x3):
-        
-        temp_3 = getattr(x,x2)#temp.temp2.get_input_specs()()
-        stepSpec = temp_3.get_input_specs()()
-        tex = stepSpec.generateLatex()
-        fName = str(x3)+'.tex'
-        tex='\\section'+'{'+str(x3)+' '+'Introduction'+'}'+fillertext+'\n'*4+tex
-        #print(tex)
-    
-        with open(fName, 'w') as f:
-            f.writelines(tex)
-        #f=open(fName,'r+')
-        #f.seek(0,0) 
-        #f.write('\\section'+'{'+str(x3)+'Introduction'+'}'+'\n')
-        #f.close()
-  
-
-for i in range(0,len(List_of_files)):
-
-    temp=List_of_files[i]
-    temp2=temp[:-1]+''
-    temp=temp.replace(" ' ", "")
-    temp2=temp2.replace(" ' ", "")
-    #print(temp,temp2)
-
-    if temp=='Components':
-        create(Components,temp2,List_of_files[i])
-    elif temp=='Cases':
-        create(Cases,temp2,List_of_files[i])
-    elif temp=='Economics':
-        create(Economics,'CashFlow',List_of_files[i])
-        #create(Economics,'CashFlowUser',List_of_files[i])
-
-
-#  f.writelines(tex)

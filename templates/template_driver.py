@@ -137,6 +137,7 @@ class Template(TemplateBase):
     data = (self.__case, self.__components, self.__sources)
     lib_file = os.path.abspath(os.path.join(destination, self.namingTemplates['EGRET lib']))
     with open(lib_file, 'wb') as lib:
+      print("This is the data I am dumping in lib file", data,type(data[2][0]))
       pk.dump(data, lib)
     print(msg_format.format(*os.path.split(lib_file)))
     # copy "write_inner.py", which has the denoising and capacity fixing algorithms

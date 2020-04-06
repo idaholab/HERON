@@ -8,18 +8,14 @@ import pandas as pd
 import dill as pk
 from collections import defaultdict
 import xml.etree.ElementTree as ET
-#import time as time_mod
 import matplotlib.pyplot as mp
 import pandas as pd
-import time
-
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
 
 # load EGRET environment, so we can unpickle objects (why do I have to do this even with dill?)
 ## TODO how to know where it is?
-#sys.path.append(os.path.expanduser('/Users/talbpw/projects/heron/src'))
 sys.path.append(os.path.expanduser('/Users/gaira/heron/src'))
 from DispatchScenario import Scenario, DispatchRecord
 # from Economics import CashFlowInputWriter
@@ -117,10 +113,7 @@ def run(raven, inputs):
     counter = 0
     try:
       with open('../egret.lib', 'rb') as lib:
-        #time_mod.sleep(2000)
         egret_case, egret_components, egret_sources = pk.load(lib)
-        print("This is the case",egret_case,egret_sources)
-        #print("I am loading...")
       found = True
     except FileNotFoundError:
       print('WARNING: "egret.lib" not yet found; waiting to see if it shows up ...')
@@ -132,19 +125,16 @@ def run(raven, inputs):
 
 
   meta['EGRET']['increments'] = egret_case.get_increments()
-  #print("THESE ARE THE SOURCES",egret_sources)
 
   ###ADDED ONE MORE LINE########
   if egret_case.get_Resample_T() == None:
     pass
   else:
-    #print("I am going to add this")
+
     print("Sources",egret_sources,dir(egret_sources[0]))
     #tt
     meta['EGRET']['Resample_T']=egret_case.get_Resample_T()
     print("HITTING")
-    #time.sleep(2000)
-    #print("This is meta in dispatch",meta)
   ##############################
 
   for comp in egret_components:
@@ -186,50 +176,25 @@ def run(raven, inputs):
       Res=egret_case.get_Resample_T()
       Res2=egret_case.get_hist_length()
       resample=int(Res/Res2)
-      print("This is Res",Res)
-      
-      #old_dt=egret_case.get_hist_interval()
       
       idx=inputs[indices[0]]
       old_dt=idx[-1]-idx[-2]
       new_dt=idx[-1]/float(Res)
-      print("This is old_dt",old_dt,new_dt,idx[-1],len(idx),idx)
-      #print("These are the indices",inputs)
       if Res!= None:
         temp = getattr(raven, var)
         Array=np.empty((Res,np.shape(getattr(raven,var))[1]))
-        #print("This is the shape",np.shape(Array))
         for i in range(0,np.shape(getattr(raven,var))[1]):
           Temp=[]
           for j in range(1,len(inputs[indices[0]])):
-            #print("This is i,j",i,j)
-            #print("I reached",egret_sources[0].interpolation(np.arange(0,1,0.01),np.arange(0,1,0.01)),idx)
-            #print("This is what I need",(temp[j-1:j+1,i]).squeeze(),np.array([idx[j-1],idx[j]]))
-
-            #print("These are the shapes",(temp[j-1:j+1,i]).squeeze(),np.shape(np.array([idx[j-1],idx[j]])))
-            #print("This is it",temp[j-1:j+1,i],np.arange(idx[j-1],idx[j],(1.0/(idx[j]-idx[j-1]))),idx[j-1],idx[j],(1.0/(idx[j]-idx[j-1])))
             temporary_arma=egret_sources[0].interpolation(np.array([idx[j-1],idx[j]]),(temp[j-1:j+1,i]).squeeze())
-            
-            #print("This is the array",idx[j-1],idx[j],new_dt)
             new_time_array = np.linspace(idx[j-1],idx[j],(idx[j]-idx[j-1])/new_dt+1)
-            #print(new_time_array)
             interpolated_signal = temporary_arma(new_time_array)
             Temp.append(list(interpolated_signal[0:resample]))
-          
-            #print("This is time",new_time_array)
-            print("This is the interpolated signal",interpolated_signal)
           Temp=np.hstack(Temp)
-          #Temp=Temp[0::3]
-          print("This is temp",len(Temp))
           Array[:,i]=np.array(Temp)
-          print("This is the array",Array)
       setattr(raven,var,Array)
-      print("This is the reset",getattr(raven,var))
       new, dims = reshape_variable_as_clustered(var, getattr(raven, var), raven._indexMap[0], cluster_info, pivot_id)
       new_name = var + '_cluster_shaped'
-      print("This is the new_name in dispatch",new, new_name,dims)
-      ##tttt
-      #(2000)
       set_raven_var(raven, new_name, new)
       new_indices[new_name] = dims
   if new_indices:
@@ -237,17 +202,9 @@ def run(raven, inputs):
 
 
   # get years we're running
-  print("This is raven_vars",np.shape(getattr(raven,var))[1])
   years = range(cluster_info['macro_first'], cluster_info['macro_last']+1)
   temporary_var=(meta['EGRET'].keys())
-  print("These are the keys", temporary_var,meta.keys())
   ###### Added lines#####
-  #for i in range(0,len(years)):
-    #for j in range(0,len(inputs[indices[0]])):
-      #print("This is j", j)
-  
-
- 
   dispatches = dispatch_all_years(years, cluster_info, inputs, egret_case, egret_sources, egret_components, meta)
 
   # add some other things asked for to the collection

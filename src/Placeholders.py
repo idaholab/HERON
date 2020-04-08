@@ -9,15 +9,10 @@ import abc
 from base import Base
 import time
 from scipy import interpolate
-raven_path = '~/projects/raven/framework'
-sys.path.append(os.path.expanduser(raven_path))
+import _utils as hutils
+framework_path = hutils.get_raven_loc()
+sys.path.append(framework_path)
 from utils import InputData, utils, InputTypes
-import time
-
-
-
-
-
 class Placeholder(Base):
   """
     Objects that hold a place in the EGRET workflow
@@ -53,8 +48,6 @@ class Placeholder(Base):
       @ Out, None
     """
     specs = self.get_input_specs()()
-    print("These are the specs", xml)
-    #time.sleep(2000)
     specs.parseNode(xml)
     self.name = specs.parameterValues['name']
     self._source = specs.value
@@ -104,11 +97,8 @@ class ARMA(Placeholder):
       @ In, None
       @ Out, None
     """
-    print("This is the usal work flow")
     Placeholder.__init__(self, **kwargs)
     self._type = 'ARMA'
-    #self._type = 'Resampling_time'
-
   def read_input(self, xml):
     specs = Placeholder.read_input(self, xml)
     self._var_names = specs.parameterValues['variable']

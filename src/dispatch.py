@@ -12,11 +12,10 @@ import matplotlib.pyplot as mp
 import pandas as pd
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
-
-
 # load EGRET environment, so we can unpickle objects (why do I have to do this even with dill?)
 ## TODO how to know where it is?
-sys.path.append(os.path.expanduser('/Users/gaira/heron/src'))
+file_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.expanduser(file_path))
 from DispatchScenario import Scenario, DispatchRecord
 # from Economics import CashFlowInputWriter
 # load RAVEN environment so we can use graph structure
@@ -130,11 +129,7 @@ def run(raven, inputs):
   if egret_case.get_Resample_T() == None:
     pass
   else:
-
-    print("Sources",egret_sources,dir(egret_sources[0]))
-    #tt
     meta['EGRET']['Resample_T']=egret_case.get_Resample_T()
-    print("HITTING")
   ##############################
 
   for comp in egret_components:

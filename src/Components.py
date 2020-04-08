@@ -9,25 +9,14 @@ import numpy as np
 from base import Base
 import time
 import xml.etree.ElementTree as ET
-
-
-# CashFlow imports
-# cashflow_path = '~/projects/CashFlow/src'
-# sys.path.append(os.path.expanduser(cashflow_path))
 from Economics import CashFlowUser
 from ValuedParams import ValuedParam
-
-# raven imports
-raven_path = '/Users/gaira/Optimizer/OpT/raven/framework'#/Users/gaira/egret/raven/framework'
-sys.path.append(os.path.expanduser(raven_path))
+import _utils as hutils
+framework_path = hutils.get_raven_loc()
+sys.path.append(framework_path)
 from utils import InputData, xmlUtils,InputTypes
 import MessageHandler
-
 mh = MessageHandler.MessageHandler()
-
-
-
-
 def factory(xml, method='sweep'):
   """
     Tool for constructing compnents without the input_loader
@@ -53,7 +42,7 @@ class Component(Base, CashFlowUser):
       @ In, None
       @ Out, input_specs, InputData, specs
     """
-    input_specs = InputData.parameterInputFactory('Component', ordered=False, baseNode=None, descr=r""" The \xmlNode{component} represents the component which is a part or element of a larger whole, use to produce, consume one source of energy and produce another. """)
+    input_specs = InputData.parameterInputFactory('Component', ordered=False, baseNode=None, descr=r""" The \xmlNode{Component} represents the component which is a part or element of a larger whole, use to produce, consume one source of energy and produce another. """)
     input_specs.addParam('name', param_type=InputTypes.StringType, required=True, descr=r""" Name of the component""")
     # production
     ## this unit may be able to make stuff, possibly from other stuff

@@ -4,9 +4,9 @@
 from __future__ import unicode_literals, print_function
 import os
 import sys
-
-raven_path = '~/projects/raven/framework' # TODO plugin RAVEN path
-sys.path.append(os.path.expanduser(raven_path))
+import _utils as hutils
+framework_path = hutils.get_raven_loc()
+sys.path.append(framework_path)
 from utils import InputData,InputTypes
 
 # class for potentially dynamically-evaluated quantities

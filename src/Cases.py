@@ -6,18 +6,13 @@ import os
 import sys
 import copy
 import importlib
-
 from base import Base
 import Components
 import Placeholders
-raven_path = '~/projects/raven/raven_framework'
-sys.path.append(os.path.expanduser(raven_path))
+import _utils as hutils
+framework_path = hutils.get_raven_loc()
+sys.path.append(framework_path)
 from utils import InputData, xmlUtils,InputTypes
-
-
-
-
-
 
 class Case(Base):
   """
@@ -32,25 +27,6 @@ class Case(Base):
       @ In, None
       @ Out, input_specs, InputData, specs
     """
-    #####
-    """
-    InputData Specification for the class Case.
-    @ ModeOptions, minimize, maximize or sweep over multiple values of capacities
-    @ EconMetrics, can be NPV (Net Present Value) and lcoe (levelized cost of energy)
-    @ num_arma_samples, copies of the trained signals
-    @ history_length, total length of the input ARMA signal
-    @ ProjectTime, total length of the project
-    @ DiscountRate, interest rate required to compute the econometrics
-    @ tax, taxation rate
-    @ inflation, inflation rate
-    @ verbosity, length of the output argument
-    @ resources, resource to be produced or consumed
-    @ dispatch_increments, amount to be dispatched in a fixed time interval
-    """
-
-  
-
-    #####
     input_specs = InputData.parameterInputFactory('Case', ordered=False, baseNode=None, descr= r""" The \xmlNode{Case} contains
     the basic parameters needed for a HERON case. """)
     input_specs.addParam('name', param_type=InputTypes.StringType, required=True, descr=r"""An appropriate user defined name of the case.""")

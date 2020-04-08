@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import sys,os
 import shutil as sh
-path=os.path.dirname(__file__)
+path=os.path.dirname(os.path.abspath(__file__))
 path2=os.path.join(path,'../src')
 sys.path.append(path2)
 import Components, Cases, Economics
@@ -16,7 +16,9 @@ list_of_files = ['Components', 'Cases', 'Economics']
 
 def read(texname):
   """ 
-  A function to read the .tex file 
+  A function to read the .tex file
+  @ In, texname: LaTex file name 
+  @ Out, filler_text: Text
   """
 
   with open(path+texname,'r') as fd:
@@ -24,8 +26,13 @@ def read(texname):
   return filler_text
 
 def create(module,cls,filename):
-  """ A function to create the .tex file by 
-  enquiring the methods in raven 
+  """ 
+  A function to create the .tex file by 
+  enquiring the methods in raven.
+  @ In, module: Name of the module to be enquired
+  @ In, cls: Class name
+  @ In, filename: Filename
+  @ Out, Creates LaTex files
   """
   attribute = getattr(module,cls)
   stepSpec = attribute.get_input_specs()()
@@ -42,6 +49,9 @@ def create(module,cls,filename):
   return
 ###create the tex files using the members in the list_of_files
 for i, file_name in enumerate(list_of_files):
+  #text_one has the file name and the file name has the 
+  #class of the same name but without an 's'. Therefore text_two has the 
+  #class name.#
   text_one = list_of_files[i]
   text_two = text_one[:-1]+''
   text_one = text_one.replace(" ' ", "")

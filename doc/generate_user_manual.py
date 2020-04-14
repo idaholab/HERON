@@ -2,9 +2,11 @@ from string import punctuation
 import glob
 import os,sys
 import Enquire
+from version import git_tag
 import shutil as sh
 from distutils.dir_util import copy_tree
 import re
+#Version = git_tag()
 path = os.path.dirname(os.path.abspath(__file__))
 path_to_src = os.path.join(path,'src')
 print("Printing the HERON-Manual.tex...")

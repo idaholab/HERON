@@ -39,10 +39,10 @@ def create(module,cls,filename):
   fname = str(filename) +'.tex'
   if fname == 'Cases.tex':
     filler_text_case = read('/../CaseIn.tex')
-    tex='\\section' + '{'+str(filename) +' ' + 'Introduction' +'}' +filler_text_case +'\n'*2 +tex
+    tex='\\section' + '{' + str(filename) + ' ' + 'Introduction' +'}' +filler_text_case +'\n'*2 +tex
   if fname == 'Economics.tex':
     filler_text_economics = read('/../EconIn.tex')
-    tex='\\section' +'{' +str(filename) +' ' +'Introduction' +'}' +filler_text_economics +'\n'*2 +tex
+    tex='\\section' +'{' + str(filename) + ' ' +'Introduction' +'}' +filler_text_economics +'\n'*2 +tex
   with open(fname, 'w') as f:
     f.writelines(tex)
   return

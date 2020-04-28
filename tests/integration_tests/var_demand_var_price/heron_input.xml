@@ -25,7 +25,9 @@
       <inflation>0.0</inflation>
       <verbosity>50</verbosity>
     </economics>
-    <dispatch_increment resource="electricity">1e6</dispatch_increment> <!-- MW -->
+    <dispatcher>
+      <increment resource="electricity">1e6</increment> <!-- MW -->
+    </dispatcher>
   </Case>
 
   <Components>

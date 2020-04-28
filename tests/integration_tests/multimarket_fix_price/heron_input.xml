@@ -25,9 +25,10 @@
       <inflation>0.0</inflation>
       <verbosity>50</verbosity>
     </economics>
-    <!--<dispatch_increment resource="hydrogen">1e6</dispatch_increment> -->
-    <dispatch_increment resource="electricity">1e6</dispatch_increment> <!-- MW -->
-    <!--<seconds_per_arma_unit>1</seconds_per_arma_unit>--> <!-- TODO implement, to go from sample length to year -->
+    <dispatcher>
+      <type>generic</type>
+      <increment resource="electricity">1e6</increment> <!-- MW -->
+    </dispatcher>
   </Case>
 
   <Components>

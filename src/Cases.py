@@ -58,9 +58,13 @@ class Case(Base):
     input_specs.addSub(econ)
 
     # increments for resources
-    incr = InputData.parameterInputFactory('dispatch_increment', contentType=InputTypes.FloatType)
+    dispatch = InputData.parameterInputFactory('dispatcher', ordered=False)
+    dispatch_options = InputTypes.makeEnumType('DispatchOptions', 'DispatchOptionsType', ['generic'])
+    dispatch.addSub(InputData.parameterInputFactory('type', contentType=dispatch_options))
+    incr = InputData.parameterInputFactory('increment', contentType=InputTypes.FloatType)
     incr.addParam('resource', param_type=InputTypes.StringType, required=True)
-    input_specs.addSub(incr)
+    dispatch.addSub(incr)
+    input_specs.addSub(dispatch)
 
     return input_specs
 
@@ -80,8 +84,9 @@ class Case(Base):
     self._hist_len = None      # total history length, in same units as _hist_interval
     self._num_hist = None      # number of history steps, hist_len / hist_interval
     self._global_econ = {}     # global economics settings, as a pass-through
-    self._increments = {} 
-    self._Resample_T = None        # user-set increments for resources
+    self._increments = {}      # stepwise increments for resource balancing
+    self._Resample_T = None    # user-set increments for resources
+    self._dispatcher = None    # type of dispatcher to use
 
   def read_input(self, xml):
     """
@@ -91,7 +96,6 @@ class Case(Base):
     """
     # get specs for allowable inputs
     specs = self.get_input_specs()()
-    #print("This is",xml)
     specs.parseNode(xml)
     self.name = specs.parameterValues['name']
     for item in specs.subparts:
@@ -114,13 +118,22 @@ class Case(Base):
       elif item.getName() == 'economics':
         for sub in item.subparts:
           self._global_econ[sub.getName()] = sub.value
-      elif item.getName() == 'dispatch_increment':
-        self._increments[item.parameterValues['resource']] = item.value
+      elif item.getName() == 'dispatcher':
+        # TODO load a Dispatcher object here!
+        self._dispatcher = item.findFirst('type').value
+        for sub in item.subparts:
+          if item.getName() == 'increment':
+            self._increments[item.parameterValues['resource']] = item.value
 
-    print(self._hist_len, self._hist_interval)
+    # checks
+    if self._dispatcher is None:
+      print('HERON: dispatcher was not defined, so using "generic".')
+      self._dispatcher = 'generic'
+      # TODO load dispatcher and run specs
 
+    # derivative calculations
     self._num_hist = self._hist_len // self._hist_interval # TODO what if it isn't even?
-    print("This is num",self._num_hist)
+
     self.raiseADebug('Successfully initialized Case {}.'.format(self.name))
 
   def __repr__(self):
@@ -180,7 +193,7 @@ class Case(Base):
     return self._Resample_T
   def get_hist_interval(self):
     return self._hist_interval
-  
+
   def get_hist_length(self):
     return self._hist_len
 

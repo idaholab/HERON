@@ -49,7 +49,7 @@ class Template(TemplateBase):
                                    'data object'    : '{source}_{contents}',
                                    'distribution'   : '{unit}_{feature}_dist',
                                    'ARMA sampler'   : '{rom}_sampler',
-                                   'EGRET lib'      : 'egret.lib',
+                                   'lib file'       : 'heron.lib', # TODO use case name?
                                    'cashfname'      : '_{component}{cashname}',
                                    're_cash'        : '_rec_{period}_{driverType}{driverName}'
                                   })
@@ -135,9 +135,8 @@ class Template(TemplateBase):
     print(msg_format.format(*os.path.split(cash_file)))
     # write library of info so it can be read in dispatch during inner run
     data = (self.__case, self.__components, self.__sources)
-    lib_file = os.path.abspath(os.path.join(destination, self.namingTemplates['EGRET lib']))
+    lib_file = os.path.abspath(os.path.join(destination, self.namingTemplates['lib file']))
     with open(lib_file, 'wb') as lib:
-      print("This is the data I am dumping in lib file", data,type(data[2][0]))
       pk.dump(data, lib)
     print(msg_format.format(*os.path.split(lib_file)))
     # copy "write_inner.py", which has the denoising and capacity fixing algorithms

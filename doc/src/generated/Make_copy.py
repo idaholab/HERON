@@ -5,3 +5,4 @@ path_to_pdf = os.path.join(path,'pdf')
 sh.copy(os.path.join(path,'HERON_user_manual.pdf'),os.path.join(path_to_pdf,'HERON_user_manual.pdf'))
 os.remove("HERON_user_manual.pdf")
 os.remove("HERON_user_manual.tex")
+

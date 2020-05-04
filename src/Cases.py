@@ -10,11 +10,13 @@ import importlib
 from base import Base
 import Components
 import Placeholders
+
+from dispatch.Factory import get_class as get_dispatcher
+
 raven_path = '~/projects/raven/raven_framework'
 sys.path.append(os.path.expanduser(raven_path))
 from utils import InputData, InputTypes, xmlUtils
 
-print("THIS IS CASE BEGIN")
 
 
 
@@ -76,6 +78,9 @@ class Case(Base):
     """
     Base.__init__(self, **kwargs)
     self.name = None           # case name
+    self.dispatch_name = None  # type of dispatcher to use
+    self.dispatcher = None    # type of dispatcher to use
+
     self._mode = None          # extrema to find: min, max, sweep
     self._metric = None        # economic metric to focus on: lcoe, profit, cost
     self._diff_study = None    # is this only a differential study?
@@ -86,7 +91,6 @@ class Case(Base):
     self._global_econ = {}     # global economics settings, as a pass-through
     self._increments = {}      # stepwise increments for resource balancing
     self._Resample_T = None    # user-set increments for resources
-    self._dispatcher = None    # type of dispatcher to use
 
   def read_input(self, xml):
     """
@@ -120,16 +124,18 @@ class Case(Base):
           self._global_econ[sub.getName()] = sub.value
       elif item.getName() == 'dispatcher':
         # TODO load a Dispatcher object here!
-        self._dispatcher = item.findFirst('type').value
+        self.dispatcher_name = item.findFirst('type').value
         for sub in item.subparts:
           if item.getName() == 'increment':
             self._increments[item.parameterValues['resource']] = item.value
 
     # checks
-    if self._dispatcher is None:
+    if self.dispatcher_name is None:
       print('HERON: dispatcher was not defined, so using "generic".')
-      self._dispatcher = 'generic'
-      # TODO load dispatcher and run specs
+      self.dispatcher_name = 'generic'
+    # load dispatcher and run specs
+    dispatcher_type = get_dispatcher(self.dispatch_name)
+    self.dispatcher = dispatcher_type()
 
     # derivative calculations
     self._num_hist = self._hist_len // self._hist_interval # TODO what if it isn't even?

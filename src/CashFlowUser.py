@@ -4,9 +4,9 @@ import sys
 #from collections import defaultdict
 #import numpy as np
 from CashFlows import CashFlowGroup
-
-raven_path = '~/projects/raven/framework' # TODO plugin path
-sys.path.append(os.path.expanduser(raven_path))
+import _utils as hutils
+raven_path = hutils.get_raven_loc()
+sys.path.append(raven_path)
 
 class CashFlowUser:
   """

@@ -9,14 +9,10 @@ import abc
 from base import Base
 import time
 from scipy import interpolate
-raven_path = '~/projects/raven/framework'
-sys.path.append(os.path.expanduser(raven_path))
-from utils import InputData, InputTypes, utils
-
-
-
-
-
+import _utils as hutils
+framework_path = hutils.get_raven_loc()
+sys.path.append(framework_path)
+from utils import InputData, utils, InputTypes
 class Placeholder(Base):
   """
     Objects that hold a place in the EGRET workflow
@@ -103,11 +99,9 @@ class ARMA(Placeholder):
     """
     Placeholder.__init__(self, **kwargs)
     self._type = 'ARMA'
-
   def read_input(self, xml):
     specs = Placeholder.read_input(self, xml)
     self._var_names = specs.parameterValues['variable']
-    print("I AM HERE")
 
   def interpolation(self, x, y):
     
@@ -172,7 +166,6 @@ class Function(Placeholder):
       # var_names = args[2:]
 
       self._module_methods[name] = member
-      #print("THIS IS THE MEMBER",member)
     return # TODO needed? var_names
 
     ######Interpolate method#####
@@ -183,23 +176,45 @@ class Function(Placeholder):
 
 
   def evaluate(self, method, request, data_dict):
-    #print("THIS IS THE RESULT",method,self._module_methods)
     result = self._module_methods[method](request, data_dict)
-
-    print("THIS IS THE", result)
-    #
-    ####Resampling line adding here#######
-    #if 'Resample_T' in data_dict['meta']['EGRET'].keys() and 'Signal' in data_dict['raven_vars'].keys():
-      #new_time_sample=np.arange(0,data_dict['meta']['EGRET']['time'],data_dict['meta']['EGRET']['Resample_T'])
-
-      #temperorary_var = data_dict['raven_vars']['Signal']
-      #print("This is the type",data_dict['meta']['EGRET']['time'],data_dict['meta']['EGRET']['sim_year_index'])
-      
-    #####################################
-    #time.sleep(20000)
-    # result = balance_dict, meta_dict -> check that's true
     if not (hasattr(result, '__len__') and len(result) == 2 and all(isinstance(r, dict) for r in result)):
       raise RuntimeError('From Function "{f}" method "{m}" expected {s}.{m} '.format(f=self.name, m=method, s=self._source) +\
                          'to return with form (results_dict, meta_dict) with both as dictionaries, but received:\n' +\
                          '    {}'.format(result))
     return result
+
+
+
+
+
+class Resampling_time(Placeholder):
+  """
+    Placeholder for signals coming from the ARMA
+  """
+  @classmethod
+  def get_input_specs(cls):
+    """
+      Collects input specifications for this class.
+      @ In, None
+      @ Out, specs, InputData, specs
+    """
+    specs = InputData.parameterInputFactory('Resampling_time', contentType=InputTypes.StringType, ordered=False, baseNode=None)
+    return specs
+
+  def __init__(self, **kwargs):
+    """
+      Constructor.
+      @ In, None
+      @ Out, None
+    """
+    Placeholder.__init__(self, **kwargs)
+    self._type = 'Resampling_time'
+
+  def read_input(self, xml):
+    specs = Placeholder.read_input(self, xml)
+    self._var_names = specs.parameterValues['variable']
+
+
+
+
+

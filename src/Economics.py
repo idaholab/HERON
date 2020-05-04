@@ -6,14 +6,12 @@ from __future__ import unicode_literals, print_function
 import os
 import sys
 from collections import defaultdict
-
 import numpy as np
-
 from ValuedParams import ValuedParam
-
-raven_path = '~/projects/raven/framework' # TODO fix with plugin relative path
-sys.path.append(os.path.expanduser(raven_path))
-from utils import InputData, InputTypes
+import _utils as hutils
+framework_path = hutils.get_raven_loc()
+sys.path.append(framework_path)
+from utils import InputData, xmlUtils,InputTypes
 
 
 class CashFlowUser:
@@ -101,7 +99,8 @@ class CashFlowGroup:
       @ In, None
       @ Out, input_specs, InputData, specs
     """
-    specs = InputData.parameterInputFactory('economics', ordered=False, baseNode=None)
+    specs = InputData.parameterInputFactory('economics', ordered=False, baseNode=None, descr=r""" The \xmlNode{Economics} contains
+    the attributes required to compute the key economic metrics""")
     specs.addSub(InputData.parameterInputFactory('lifetime', contentType=InputTypes.IntegerType))
     cf = CashFlow.get_input_specs()
     specs.addSub(cf)

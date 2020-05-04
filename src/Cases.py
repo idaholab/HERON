@@ -6,22 +6,16 @@ import os
 import sys
 import copy
 import importlib
-
 from base import Base
 import Components
 import Placeholders
 
 from dispatch.Factory import get_class as get_dispatcher
 
-raven_path = '~/projects/raven/raven_framework'
-sys.path.append(os.path.expanduser(raven_path))
+import _utils as hutils
+framework_path = hutils.get_raven_loc()
+sys.path.append(framework_path)
 from utils import InputData, InputTypes, xmlUtils
-
-
-
-
-
-
 
 class Case(Base):
   """
@@ -36,27 +30,38 @@ class Case(Base):
       @ In, None
       @ Out, input_specs, InputData, specs
     """
-    input_specs = InputData.parameterInputFactory('Case', ordered=False, baseNode=None)
-    input_specs.addParam('name', param_type=InputTypes.StringType, required=True)
+    input_specs = InputData.parameterInputFactory('Case', ordered=False, baseNode=None, descr= r""" The \xmlNode{Case} contains
+    the basic parameters needed for a HERON case. """)
+    input_specs.addParam('name', param_type=InputTypes.StringType, required=True, descr=r"""An appropriate user defined name of the case.""")
 
     mode_options = InputTypes.makeEnumType('ModeOptions', 'ModeOptionsType', ['min', 'max', 'sweep'])
+    desc_mode_options = r""" Minimize, maximize or sweep over multiple values of capacities."""
     econ_metrics = InputTypes.makeEnumType('EconMetrics', 'EconMetricsTypes', ['NPV', 'lcoe'])
+    desc_econ_metrics = r""" This metric can be NPV (Net Present Value) and lcoe (levelized cost of energy) used for techno-economic analysis of the power plants."""
 
-    input_specs.addSub(InputData.parameterInputFactory('mode', contentType=mode_options))
-    input_specs.addSub(InputData.parameterInputFactory('metric', contentType=econ_metrics))
-    input_specs.addSub(InputData.parameterInputFactory('differential', contentType=InputTypes.BoolType))
-    input_specs.addSub(InputData.parameterInputFactory('num_arma_samples', contentType=InputTypes.IntegerType))
-    input_specs.addSub(InputData.parameterInputFactory('Resample_T', contentType=InputTypes.IntegerType))
-    input_specs.addSub(InputData.parameterInputFactory('timestep_interval', contentType=InputTypes.IntegerType))
-    input_specs.addSub(InputData.parameterInputFactory('history_length', contentType=InputTypes.IntegerType))
+
+
+
+    input_specs.addSub(InputData.parameterInputFactory('mode', contentType=mode_options,strictMode=True,
+         descr=desc_mode_options))
+    input_specs.addSub(InputData.parameterInputFactory('metric', contentType=econ_metrics, descr=desc_econ_metrics))
+    input_specs.addSub(InputData.parameterInputFactory('differential', contentType=InputTypes.BoolType,strictMode=True,
+         descr=r"""Differential represents the additional cashflow generated when building additional capacities.
+        This value can be either \xmlString{True} or \xmlString{False}."""))
+    input_specs.addSub(InputData.parameterInputFactory('num_arma_samples', contentType=InputTypes.IntegerType, descr=r"""Number of copies of the trained signals."""))
+    input_specs.addSub(InputData.parameterInputFactory('timestep_interval', contentType=InputTypes.IntegerType, descr=r"""Time step interval between two values of signal."""))
+    input_specs.addSub(InputData.parameterInputFactory('history_length', contentType=InputTypes.IntegerType, descr= r"""Total length of one realization of the ARMA signal."""))
 
     # economics global settings
-    econ = InputData.parameterInputFactory('economics', ordered=False)
-    econ.addSub(InputData.parameterInputFactory('ProjectTime', contentType=InputTypes.FloatType))
-    econ.addSub(InputData.parameterInputFactory('DiscountRate', contentType=InputTypes.FloatType))
-    econ.addSub(InputData.parameterInputFactory('tax', contentType=InputTypes.FloatType))
-    econ.addSub(InputData.parameterInputFactory('inflation', contentType=InputTypes.FloatType))
-    econ.addSub(InputData.parameterInputFactory('verbosity', contentType=InputTypes.IntegerType))
+    econ = InputData.parameterInputFactory('economics', ordered=False, descr= r"""\xmlNode{economics} contains the details of the econometrics
+    computations to be performed by the code.""")
+    econ.addSub(InputData.parameterInputFactory('ProjectTime', contentType=InputTypes.FloatType, descr=r"""Total length of the project."""))
+    econ.addSub(InputData.parameterInputFactory('DiscountRate', contentType=InputTypes.FloatType, descr=r"""Interest rate required to compute the discounted cashflow (DCF)"""))
+    econ.addSub(InputData.parameterInputFactory('tax', contentType=InputTypes.FloatType, descr= r"""Taxation rate is a metric which represents the
+    rate at which an individual or corporation is taxed."""))
+    econ.addSub(InputData.parameterInputFactory('inflation', contentType=InputTypes.FloatType, descr=r"""Inflation rate is a metric which represents the
+    the rate at which the average price level of a basket of selected goods and services in an economy increases over some period of time."""))
+    econ.addSub(InputData.parameterInputFactory('verbosity', contentType=InputTypes.IntegerType, descr=r"""Length of the output argument."""))
     input_specs.addSub(econ)
 
     # increments for resources
@@ -64,7 +69,7 @@ class Case(Base):
     dispatch_options = InputTypes.makeEnumType('DispatchOptions', 'DispatchOptionsType', ['generic'])
     dispatch.addSub(InputData.parameterInputFactory('type', contentType=dispatch_options))
     incr = InputData.parameterInputFactory('increment', contentType=InputTypes.FloatType)
-    incr.addParam('resource', param_type=InputTypes.StringType, required=True)
+    incr.addParam('resource', param_type=InputTypes.StringType, required=True, descr=r"""Resource to be consumed or produced.""")
     dispatch.addSub(incr)
     input_specs.addSub(dispatch)
 
@@ -103,7 +108,6 @@ class Case(Base):
     specs.parseNode(xml)
     self.name = specs.parameterValues['name']
     for item in specs.subparts:
-      print("This is the item",item.value)
       if item.getName() == 'mode':
         self._mode = item.value
       elif item.getName() == 'metric':
@@ -113,7 +117,6 @@ class Case(Base):
       elif item.getName() == 'num_arma_samples':
         self._num_samples = item.value
       elif item.getName() == 'Resample_T':
-        print("This is item", item.value)
         self._Resample_T = item.value
       elif item.getName() == 'timestep_interval':
         self._hist_interval = float(item.value)
@@ -359,9 +362,7 @@ class Case(Base):
     ## TODO someday, only load what's needed
     for source in sources:
       name = source.name
-      print("SOURCES")
       if isinstance(source, Placeholders.ARMA):
-        print("THIS IS BEING CALLED FROM CASES")
         # add a model block
         models.append(xmlUtils.newNode('ROM', attrib={'name':name, 'subType':'pickledROM'}))
         # add a read step

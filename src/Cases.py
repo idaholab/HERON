@@ -128,6 +128,7 @@ class Case(Base):
       elif item.getName() == 'dispatcher':
         # TODO load a Dispatcher object here!
         self.dispatcher_name = item.findFirst('type').value
+        self._dispatcher_specs = item
         for sub in item.subparts:
           if item.getName() == 'increment':
             self._increments[item.parameterValues['resource']] = item.value
@@ -197,7 +198,8 @@ class Case(Base):
 
   def get_num_timesteps(self):
     return self._num_hist
-#### ADDED ONE MORE ACCESSOR####
+
+  #### ADDED ONE MORE ACCESSOR####
   def get_Resample_T(self):
     return self._Resample_T
   def get_hist_interval(self):

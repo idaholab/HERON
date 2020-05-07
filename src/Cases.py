@@ -55,6 +55,7 @@ class Case(Base):
     input_specs.addSub(InputData.parameterInputFactory('history_length', contentType=InputTypes.IntegerType,
         descr=r"""total length of one synthetic history within ``inner'' RAVEN dispatch.
               \default{taken from DataGenerators}"""))
+    input_specs.addSub(InputData.parameterInputFactory('Resample_T', contentType=InputTypes.IntegerType)) # FIXME descr
 
     # economics global settings
     econ = InputData.parameterInputFactory('economics', ordered=False,
@@ -96,8 +97,8 @@ class Case(Base):
     """
     Base.__init__(self, **kwargs)
     self.name = None           # case name
-    self._mode = None          # extrema to find: min, max, sweep
-    self._metric = None        # economic metric to focus on: lcoe, profit, cost
+    self._mode = 'sweep'       # extrema to find: min, max, sweep
+    self._metric = 'NPV'       # economic metric to focus on: lcoe, profit, cost
     self._diff_study = None    # is this only a differential study?
     self._num_samples = 1      # number of ARMA stochastic samples to use ("denoises")
     self._hist_interval = None # time step interval, time between production points
@@ -193,9 +194,10 @@ class Case(Base):
 
   def get_num_timesteps(self):
     return self._num_hist
-#### ADDED ONE MORE ACCESSOR####
+
   def get_Resample_T(self):
     return self._Resample_T
+
   def get_hist_interval(self):
     return self._hist_interval
 

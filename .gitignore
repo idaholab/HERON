@@ -3,3 +3,14 @@
 *.swp
 *~
 __pycache__
+/doc/pdfs
+/doc/user_manual/build
+/doc/user_manual/pdf
+*.aux
+*.log
+*.out
+*.toc
+/sqa/rtr/traceability_matrix.tex
+/sqa/rtr/heron_requirements_traceability_matrix.pdf
+version.tex
+

@@ -101,7 +101,7 @@
 		</DataSet>
 	</DataObjects>
 	<Models>
-		<ExternalModel ModuleToLoad="/Users/gaira/heron/src/dispatch.py" name="dispatch" subType="">
+		<ExternalModel ModuleToLoad="/Users/talbpw/projects/heron/src/dispatch.py" name="dispatch" subType="">
 			<variables>GRO_dispatch, GRO_armasamples</variables>
 		</ExternalModel>
 		<EnsembleModel name="sample_and_dispatch" subType="">

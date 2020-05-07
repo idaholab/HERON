@@ -121,7 +121,7 @@
 
   <Models>
     <!-- armas from pk filled in by EGRET -->
-    <ExternalModel ModuleToLoad="/Users/gaira/heron/templates/../src/dispatch.py" name="dispatch" subType="">
+    <ExternalModel ModuleToLoad="/Users/talbpw/projects/heron/templates/../src/dispatch.py" name="dispatch" subType="">
       <!-- TODO generic path -->
       <variables>GRO_dispatch, GRO_armasamples</variables>
       <!--<ExternalXML node='Dispatch' xmlToLoad='input_dispatch.xml'/>-->

@@ -1,10 +1,13 @@
 CONDA
-raven_libraries       *  /Users/gaira/miniconda3/envs/raven_libraries
+raven_libraries       *  /Users/talbpw/anaconda3/envs/raven_libraries
 Running RAVEN in "opt" mode.
-Loading plugin "CashFlow" at /Users/gaira/projects/raven/plugins/CashFlow
+Loading plugin "PRAplugin" at /Users/talbpw/projects/raven/plugins/PRAplugin
+ ... successfully imported "PRAplugin" ...
+Loading plugin "ExamplePlugin" at /Users/talbpw/projects/raven/plugins/ExamplePlugin
+ ... successfully imported "ExamplePlugin" ...
+Loading plugin "CashFlow" at /Users/talbpw/projects/CashFlow
  ... successfully imported "CashFlow" ...
- ... registered "CashFlow.CashFlow" as a "ExternalModel" RAVEN entity.
-Loading plugin "heron" at /Users/gaira/heron
+Loading plugin "heron" at /Users/talbpw/projects/heron
  ... successfully imported "heron" ...
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -36,1410 +39,503 @@ See the License for the specific language governing permissions and
 limitations under the License.
   
 RAVEN Python dependencies located and checked.
-(    0.00 sec) SIMULATION               : Message         -> Simulation started at 2020-02-17 15:26:03
-(    0.00 sec) SIMULATION               : Message         -> Global verbosity level is " debug "
-(    0.01 sec) VariableGroup            : DEBUG           -> Variable group "GRO_interp" includes: stepwise
-(    0.01 sec) VariableGroup            : DEBUG           -> Variable group "GRO_final_return" includes: mean_NPV,std_NPV,med_NPV,max_NPV,min_NPV,perc_5_NPV,perc_95_NPV,samp_NPV,var_NPV
-(    0.01 sec) VariableGroup            : DEBUG           -> Variable group "GRO_armasamples_out_scalar" includes: NPV
-(    0.01 sec) VariableGroup            : DEBUG           -> Variable group "GRO_armasamples_out" includes: NPV,GRO_armasamples_out_Time
-(    0.01 sec) VariableGroup            : DEBUG           -> Variable group "GRO_capacities" includes: BOP_capacity,Electric_Grid_capacity
-(    0.01 sec) VariableGroup            : DEBUG           -> Variable group "GRO_means" includes: Dispatch__BOP__electricity,Dispatch__Electric_Grid__electricity
-(    0.01 sec) VariableGroup            : DEBUG           -> Variable group "GRO_init_disp" includes: Dispatch__BOP__electricity,Dispatch__Electric_Grid__electricity
-(    0.01 sec) VariableGroup            : DEBUG           -> Variable group "GRO_armasamples_out_Time" includes: Dispatch__BOP__electricity,Dispatch__Electric_Grid__electricity
-(    0.01 sec) VariableGroup            : DEBUG           -> Variable group "GRO_armasamples_out" includes: NPV,Dispatch__BOP__electricity,Dispatch__Electric_Grid__electricity
-(    0.01 sec) VariableGroup            : DEBUG           -> Variable group "GRO_dispatch_out_Time" includes: Dispatch__BOP__electricity,Dispatch__Electric_Grid__electricity
-(    0.01 sec) VariableGroup            : DEBUG           -> Variable group "GRO_dispatch_out" includes: Dispatch__BOP__electricity,Dispatch__Electric_Grid__electricity
-(    0.01 sec) VariableGroup            : DEBUG           -> Variable group "GRO_dispatch_in_Time" includes: Signal
-(    0.01 sec) VariableGroup            : DEBUG           -> Variable group "GRO_armasamples_in_scalar" includes: scaling,time_delta,BOP_capacity,Electric_Grid_capacity
-(    0.01 sec) VariableGroup            : DEBUG           -> Variable group "GRO_armasamples_in" includes: scaling,time_delta,BOP_capacity,Electric_Grid_capacity
-(    0.01 sec) VariableGroup            : DEBUG           -> Variable group "GRO_armasamples" includes: scaling,time_delta,BOP_capacity,Electric_Grid_capacity,NPV,Dispatch__BOP__electricity,Dispatch__Electric_Grid__electricity
-(    0.01 sec) VariableGroup            : DEBUG           -> Variable group "GRO_dispatch_in_scalar" includes: BOP_capacity,Electric_Grid_capacity,scaling
-(    0.01 sec) VariableGroup            : DEBUG           -> Variable group "GRO_dispatch_in" includes: BOP_capacity,Electric_Grid_capacity,scaling,Signal
-(    0.01 sec) VariableGroup            : DEBUG           -> Variable group "GRO_dispatch" includes: BOP_capacity,Electric_Grid_capacity,scaling,Signal,Dispatch__BOP__electricity,Dispatch__Electric_Grid__electricity,Time,ClusterTime,Year,Cluster
-(    0.01 sec) SIMULATION               : DEBUG           -> -- Reading the block: RunInfo        --
-(    0.01 sec) SIMULATION               : DEBUG           -> -- Reading the block: Steps          --
-(    0.01 sec) SIMULATION               : DEBUG           -> Reading type MultiRun with name arma_sampling
-(    0.01 sec) STEP MULTIRUN            : DEBUG           -> move this tests to base class when it is ready for all the classes
-(    0.01 sec) STEP MULTIRUN            : DEBUG           -> the mapping used in the model for checking the compatibility of usage should be more similar to self.parList to avoid the double mapping below FIXME
-(    0.01 sec) STEP MULTIRUN            : DEBUG           -> reactivate check on Input as soon as loadCsv gets out from the PostProcessor models!
-(    0.01 sec) STEP MULTIRUN            : DEBUG           -> ------Reading Completed for:
-(    0.01 sec) STEP MULTIRUN            : DEBUG           ->        Class          : MultiRun        from <class 'Steps.SingleRun'>
-(    0.01 sec) STEP MULTIRUN            : DEBUG           ->        Type           : MultiRun
-(    0.01 sec) STEP MULTIRUN            : DEBUG           ->        Name           : arma_sampling
-(    0.01 sec) STEP MULTIRUN            : DEBUG           ->        Initialization Parameters:
-(    0.01 sec) STEP MULTIRUN            : DEBUG           ->        Sleep time     : 0.005
-(    0.01 sec) STEP MULTIRUN            : DEBUG           ->        Initial seed   : None
-(    0.01 sec) STEP MULTIRUN            : DEBUG           ->        Input          : Class: DataObjects Type: PointSet  Global name: dispatch_placeholder
-(    0.01 sec) STEP MULTIRUN            : DEBUG           ->        Model          : Class: Models Type: EnsembleModel  Global name: sample_and_dispatch
-(    0.01 sec) STEP MULTIRUN            : DEBUG           ->        Sampler        : Class: Samplers Type: MonteCarlo  Global name: mc_arma_dispatch
-(    0.01 sec) STEP MULTIRUN            : DEBUG           ->        Output         : Class: DataObjects Type: DataSet  Global name: arma_metrics
-(    0.01 sec) STEP MULTIRUN            : DEBUG           ->        Current Setting:
-(    0.01 sec) SIMULATION               : DEBUG           -> Reading type PostProcess with name summarize
-(    0.01 sec) STEP SINGLERUN           : DEBUG           -> move this tests to base class when it is ready for all the classes
-(    0.01 sec) STEP SINGLERUN           : DEBUG           -> the mapping used in the model for checking the compatibility of usage should be more similar to self.parList to avoid the double mapping below FIXME
-(    0.01 sec) STEP SINGLERUN           : DEBUG           -> reactivate check on Input as soon as loadCsv gets out from the PostProcessor models!
-(    0.01 sec) STEP SINGLERUN           : DEBUG           -> ------Reading Completed for:
-(    0.01 sec) STEP SINGLERUN           : DEBUG           ->        Class          : PostProcess     from <class 'Steps.SingleRun'>
-(    0.01 sec) STEP SINGLERUN           : DEBUG           ->        Type           : PostProcess
-(    0.01 sec) STEP SINGLERUN           : DEBUG           ->        Name           : summarize
-(    0.01 sec) STEP SINGLERUN           : DEBUG           ->        Initialization Parameters:
-(    0.01 sec) STEP SINGLERUN           : DEBUG           ->        Sleep time     : 0.005
-(    0.01 sec) STEP SINGLERUN           : DEBUG           ->        Initial seed   : None
-(    0.01 sec) STEP SINGLERUN           : DEBUG           ->        Input          : Class: DataObjects Type: PointSet  Global name: arma_metrics
-(    0.01 sec) STEP SINGLERUN           : DEBUG           ->        Model          : Class: Models Type: PostProcessor  Global name: average
-(    0.01 sec) STEP SINGLERUN           : DEBUG           ->        Output         : Class: OutStreams Type: Print  Global name: disp_results
-(    0.01 sec) STEP SINGLERUN           : DEBUG           ->        Current Setting:
-(    0.01 sec) SIMULATION               : DEBUG           -> Reading type IOStep with name debug_print
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           -> move this tests to base class when it is ready for all the classes
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           -> ------Reading Completed for:
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Class          : IOStep          from <class 'Steps.Step'>
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Type           : IOStep
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Name           : debug_print
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Initialization Parameters:
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Sleep time     : 0.005
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Initial seed   : None
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Input          : Class: DataObjects Type: PointSet  Global name: arma_samples
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Output         : Class: OutStreams Type: Print  Global name: disp_debug
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Current Setting:
-(    0.02 sec) SIMULATION               : DEBUG           -> Reading type IOStep with name read_Speed
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           -> move this tests to base class when it is ready for all the classes
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           -> ------Reading Completed for:
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Class          : IOStep          from <class 'Steps.Step'>
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Type           : IOStep
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Name           : read_Speed
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Initialization Parameters:
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Sleep time     : 0.005
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Initial seed   : None
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Input          : Class: Files Type:   Global name: /ARMA/interpolated.pk
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Output         : Class: Models Type: ROM  Global name: Speed
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Current Setting:
-(    0.02 sec) SIMULATION               : DEBUG           -> Reading type IOStep with name print_meta_Speed
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           -> move this tests to base class when it is ready for all the classes
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           -> ------Reading Completed for:
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Class          : IOStep          from <class 'Steps.Step'>
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Type           : IOStep
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Name           : print_meta_Speed
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Initialization Parameters:
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Sleep time     : 0.005
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Initial seed   : None
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Input          : Class: Models Type: ROM  Global name: Speed
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Output         : Class: OutStreams Type: Print  Global name: Speed_meta
-(    0.02 sec) STEP IOCOMBINED          : DEBUG           ->        Current Setting:
-(    0.02 sec) SIMULATION               : DEBUG           -> -- Reading the block: DataObjects    --
-(    0.02 sec) SIMULATION               : DEBUG           -> Reading type DataSet with name arma_samples
-(    0.02 sec) DataSet                  : DEBUG           -> Replaced text in <Input> with variable group "GRO_armasamples_in"
-(    0.02 sec) DataSet                  : DEBUG           -> Replaced text in <Output> with variable group "GRO_armasamples_out"
-(    0.02 sec) DataSet                  : DEBUG           -> Replaced text in <Index> with variable group "GRO_armasamples_out_Time"
-(    0.02 sec) DataSet                  : DEBUG           -> Replaced text in <Index> with variable group "GRO_armasamples_out_Time"
-(    0.02 sec) DataSet                  : DEBUG           -> Replaced text in <Index> with variable group "GRO_armasamples_out_Time"
-(    0.02 sec) DataSet                  : DEBUG           -> ------Reading Completed for:
-(    0.02 sec) DataSet                  : DEBUG           ->        Class          : DataSet         from <class 'DataObjects.DataObject.DataObject'>
-(    0.02 sec) DataSet                  : DEBUG           ->        Type           : DataSet
-(    0.02 sec) DataSet                  : DEBUG           ->        Name           : arma_samples
-(    0.02 sec) DataSet                  : DEBUG           ->        Initialization Parameters:
-(    0.02 sec) DataSet                  : DEBUG           ->        Current Setting:
-(    0.02 sec) SIMULATION               : DEBUG           -> Reading type PointSet with name arma_metrics
+(    1.94 sec) SIMULATION               : Message         -> Simulation started at 2020-05-07 15:48:27
+(    1.95 sec) SIMULATION               : Message         -> Global verbosity level is " debug "
+(    1.95 sec) VariableGroup            : DEBUG           -> Variable group "GRO_interp" includes: stepwise
+(    1.95 sec) VariableGroup            : DEBUG           -> Variable group "GRO_final_return" includes: mean_NPV,std_NPV,med_NPV,max_NPV,min_NPV,perc_5_NPV,perc_95_NPV,samp_NPV,var_NPV
+(    1.95 sec) VariableGroup            : DEBUG           -> Variable group "GRO_armasamples_out_scalar" includes: NPV
+(    1.95 sec) VariableGroup            : DEBUG           -> Variable group "GRO_armasamples_out" includes: NPV,GRO_armasamples_out_Time
+(    1.95 sec) VariableGroup            : DEBUG           -> Variable group "GRO_capacities" includes: BOP_capacity,Electric_Grid_capacity
+(    1.95 sec) VariableGroup            : DEBUG           -> Variable group "GRO_means" includes: Dispatch__BOP__electricity,Dispatch__Electric_Grid__electricity
+(    1.95 sec) VariableGroup            : DEBUG           -> Variable group "GRO_init_disp" includes: Dispatch__BOP__electricity,Dispatch__Electric_Grid__electricity
+(    1.95 sec) VariableGroup            : DEBUG           -> Variable group "GRO_armasamples_out_Time" includes: Dispatch__BOP__electricity,Dispatch__Electric_Grid__electricity
+(    1.95 sec) VariableGroup            : DEBUG           -> Variable group "GRO_armasamples_out" includes: NPV,Dispatch__BOP__electricity,Dispatch__Electric_Grid__electricity
+(    1.95 sec) VariableGroup            : DEBUG           -> Variable group "GRO_dispatch_out_Time" includes: Dispatch__BOP__electricity,Dispatch__Electric_Grid__electricity
+(    1.95 sec) VariableGroup            : DEBUG           -> Variable group "GRO_dispatch_out" includes: Dispatch__BOP__electricity,Dispatch__Electric_Grid__electricity
+(    1.95 sec) VariableGroup            : DEBUG           -> Variable group "GRO_dispatch_in_Time" includes: Signal
+(    1.95 sec) VariableGroup            : DEBUG           -> Variable group "GRO_armasamples_in_scalar" includes: scaling,time_delta,BOP_capacity,Electric_Grid_capacity
+(    1.95 sec) VariableGroup            : DEBUG           -> Variable group "GRO_armasamples_in" includes: scaling,time_delta,BOP_capacity,Electric_Grid_capacity
+(    1.95 sec) VariableGroup            : DEBUG           -> Variable group "GRO_armasamples" includes: scaling,time_delta,BOP_capacity,Electric_Grid_capacity,NPV,Dispatch__BOP__electricity,Dispatch__Electric_Grid__electricity
+(    1.95 sec) VariableGroup            : DEBUG           -> Variable group "GRO_dispatch_in_scalar" includes: BOP_capacity,Electric_Grid_capacity,scaling
+(    1.95 sec) VariableGroup            : DEBUG           -> Variable group "GRO_dispatch_in" includes: BOP_capacity,Electric_Grid_capacity,scaling,Signal
+(    1.95 sec) VariableGroup            : DEBUG           -> Variable group "GRO_dispatch" includes: BOP_capacity,Electric_Grid_capacity,scaling,Signal,Dispatch__BOP__electricity,Dispatch__Electric_Grid__electricity,Time,ClusterTime,Year,Cluster
+(    1.95 sec) SIMULATION               : DEBUG           -> -- Reading the block: RunInfo        --
+(    1.95 sec) SIMULATION               : DEBUG           -> -- Reading the block: Steps          --
+(    1.95 sec) SIMULATION               : DEBUG           -> Reading type MultiRun with name arma_sampling
+(    1.96 sec) STEP MULTIRUN            : DEBUG           -> move this tests to base class when it is ready for all the classes
+(    1.96 sec) STEP MULTIRUN            : DEBUG           -> the mapping used in the model for checking the compatibility of usage should be more similar to self.parList to avoid the double mapping below FIXME
+(    1.96 sec) STEP MULTIRUN            : DEBUG           -> reactivate check on Input as soon as loadCsv gets out from the PostProcessor models!
+(    1.96 sec) STEP MULTIRUN            : DEBUG           -> ------Reading Completed for:
+(    1.96 sec) STEP MULTIRUN            : DEBUG           ->        Class          : MultiRun        from <class 'Steps.SingleRun'>
+(    1.96 sec) STEP MULTIRUN            : DEBUG           ->        Type           : MultiRun
+(    1.96 sec) STEP MULTIRUN            : DEBUG           ->        Name           : arma_sampling
+(    1.96 sec) STEP MULTIRUN            : DEBUG           ->        Initialization Parameters:
+(    1.96 sec) STEP MULTIRUN            : DEBUG           ->        Sleep time     : 0.005
+(    1.96 sec) STEP MULTIRUN            : DEBUG           ->        Initial seed   : None
+(    1.96 sec) STEP MULTIRUN            : DEBUG           ->        Input          : Class: DataObjects Type: PointSet  Global name: dispatch_placeholder
+(    1.96 sec) STEP MULTIRUN            : DEBUG           ->        Model          : Class: Models Type: EnsembleModel  Global name: sample_and_dispatch
+(    1.96 sec) STEP MULTIRUN            : DEBUG           ->        Sampler        : Class: Samplers Type: MonteCarlo  Global name: mc_arma_dispatch
+(    1.96 sec) STEP MULTIRUN            : DEBUG           ->        Output         : Class: DataObjects Type: DataSet  Global name: arma_metrics
+(    1.96 sec) STEP MULTIRUN            : DEBUG           ->        Current Setting:
+(    1.96 sec) SIMULATION               : DEBUG           -> Reading type PostProcess with name summarize
+(    1.96 sec) STEP SINGLERUN           : DEBUG           -> move this tests to base class when it is ready for all the classes
+(    1.96 sec) STEP SINGLERUN           : DEBUG           -> the mapping used in the model for checking the compatibility of usage should be more similar to self.parList to avoid the double mapping below FIXME
+(    1.96 sec) STEP SINGLERUN           : DEBUG           -> reactivate check on Input as soon as loadCsv gets out from the PostProcessor models!
+(    1.96 sec) STEP SINGLERUN           : DEBUG           -> ------Reading Completed for:
+(    1.96 sec) STEP SINGLERUN           : DEBUG           ->        Class          : PostProcess     from <class 'Steps.SingleRun'>
+(    1.96 sec) STEP SINGLERUN           : DEBUG           ->        Type           : PostProcess
+(    1.96 sec) STEP SINGLERUN           : DEBUG           ->        Name           : summarize
+(    1.96 sec) STEP SINGLERUN           : DEBUG           ->        Initialization Parameters:
+(    1.96 sec) STEP SINGLERUN           : DEBUG           ->        Sleep time     : 0.005
+(    1.96 sec) STEP SINGLERUN           : DEBUG           ->        Initial seed   : None
+(    1.96 sec) STEP SINGLERUN           : DEBUG           ->        Input          : Class: DataObjects Type: PointSet  Global name: arma_metrics
+(    1.96 sec) STEP SINGLERUN           : DEBUG           ->        Model          : Class: Models Type: PostProcessor  Global name: average
+(    1.96 sec) STEP SINGLERUN           : DEBUG           ->        Output         : Class: OutStreams Type: Print  Global name: disp_results
+(    1.96 sec) STEP SINGLERUN           : DEBUG           ->        Current Setting:
+(    1.96 sec) SIMULATION               : DEBUG           -> Reading type IOStep with name debug_print
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           -> move this tests to base class when it is ready for all the classes
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           -> ------Reading Completed for:
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Class          : IOStep          from <class 'Steps.Step'>
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Type           : IOStep
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Name           : debug_print
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Initialization Parameters:
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Sleep time     : 0.005
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Initial seed   : None
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Input          : Class: DataObjects Type: PointSet  Global name: arma_samples
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Output         : Class: OutStreams Type: Print  Global name: disp_debug
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Current Setting:
+(    1.96 sec) SIMULATION               : DEBUG           -> Reading type IOStep with name read_Speed
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           -> move this tests to base class when it is ready for all the classes
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           -> ------Reading Completed for:
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Class          : IOStep          from <class 'Steps.Step'>
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Type           : IOStep
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Name           : read_Speed
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Initialization Parameters:
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Sleep time     : 0.005
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Initial seed   : None
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Input          : Class: Files Type:   Global name: /ARMA/interpolated.pk
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Output         : Class: Models Type: ROM  Global name: Speed
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Current Setting:
+(    1.96 sec) SIMULATION               : DEBUG           -> Reading type IOStep with name print_meta_Speed
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           -> move this tests to base class when it is ready for all the classes
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           -> ------Reading Completed for:
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Class          : IOStep          from <class 'Steps.Step'>
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Type           : IOStep
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Name           : print_meta_Speed
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Initialization Parameters:
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Sleep time     : 0.005
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Initial seed   : None
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Input          : Class: Models Type: ROM  Global name: Speed
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Output         : Class: OutStreams Type: Print  Global name: Speed_meta
+(    1.96 sec) STEP IOCOMBINED          : DEBUG           ->        Current Setting:
+(    1.96 sec) SIMULATION               : DEBUG           -> -- Reading the block: DataObjects    --
+(    1.96 sec) SIMULATION               : DEBUG           -> Reading type DataSet with name arma_samples
+(    1.96 sec) DataSet                  : DEBUG           -> Replaced text in <Input> with variable group "GRO_armasamples_in"
+(    1.96 sec) DataSet                  : DEBUG           -> Replaced text in <Output> with variable group "GRO_armasamples_out"
+(    1.96 sec) DataSet                  : DEBUG           -> Replaced text in <Index> with variable group "GRO_armasamples_out_Time"
+(    1.96 sec) DataSet                  : DEBUG           -> Replaced text in <Index> with variable group "GRO_armasamples_out_Time"
+(    1.96 sec) DataSet                  : DEBUG           -> Replaced text in <Index> with variable group "GRO_armasamples_out_Time"
+(    1.96 sec) DataSet                  : DEBUG           -> ------Reading Completed for:
+(    1.96 sec) DataSet                  : DEBUG           ->        Class          : DataSet         from <class 'DataObjects.DataObject.DataObject'>
+(    1.96 sec) DataSet                  : DEBUG           ->        Type           : DataSet
+(    1.96 sec) DataSet                  : DEBUG           ->        Name           : arma_samples
+(    1.96 sec) DataSet                  : DEBUG           ->        Initialization Parameters:
+(    1.96 sec) DataSet                  : DEBUG           ->        Current Setting:
+(    1.96 sec) SIMULATION               : DEBUG           -> Reading type PointSet with name arma_metrics
 InputData: Using param spec "DataSet" to read XML node "PointSet.
-(    0.02 sec) PointSet                 : DEBUG           -> ------Reading Completed for:
-(    0.02 sec) PointSet                 : DEBUG           ->        Class          : PointSet        from <class 'DataObjects.DataSet.DataSet'>
-(    0.02 sec) PointSet                 : DEBUG           ->        Type           : PointSet
-(    0.02 sec) PointSet                 : DEBUG           ->        Name           : arma_metrics
-(    0.02 sec) PointSet                 : DEBUG           ->        Initialization Parameters:
-(    0.02 sec) PointSet                 : DEBUG           ->        Current Setting:
-(    0.02 sec) SIMULATION               : DEBUG           -> Reading type PointSet with name metrics_avg
-(    0.02 sec) PointSet                 : DEBUG           -> Replaced text in <Output> with variable group "GRO_final_return"
+(    1.96 sec) PointSet                 : DEBUG           -> ------Reading Completed for:
+(    1.96 sec) PointSet                 : DEBUG           ->        Class          : PointSet        from <class 'DataObjects.DataSet.DataSet'>
+(    1.96 sec) PointSet                 : DEBUG           ->        Type           : PointSet
+(    1.96 sec) PointSet                 : DEBUG           ->        Name           : arma_metrics
+(    1.96 sec) PointSet                 : DEBUG           ->        Initialization Parameters:
+(    1.96 sec) PointSet                 : DEBUG           ->        Current Setting:
+(    1.96 sec) SIMULATION               : DEBUG           -> Reading type PointSet with name metrics_avg
+(    1.96 sec) PointSet                 : DEBUG           -> Replaced text in <Output> with variable group "GRO_final_return"
 InputData: Using param spec "DataSet" to read XML node "PointSet.
-(    0.02 sec) PointSet                 : DEBUG           -> ------Reading Completed for:
-(    0.02 sec) PointSet                 : DEBUG           ->        Class          : PointSet        from <class 'DataObjects.DataSet.DataSet'>
-(    0.02 sec) PointSet                 : DEBUG           ->        Type           : PointSet
-(    0.02 sec) PointSet                 : DEBUG           ->        Name           : metrics_avg
-(    0.02 sec) PointSet                 : DEBUG           ->        Initialization Parameters:
-(    0.02 sec) PointSet                 : DEBUG           ->        Current Setting:
-(    0.02 sec) SIMULATION               : DEBUG           -> Reading type DataSet with name disp_avg
-(    0.02 sec) DataSet                  : DEBUG           -> Replaced text in <Output> with variable group "GRO_means"
-(    0.02 sec) DataSet                  : DEBUG           -> Replaced text in <Index> with variable group "GRO_means"
-(    0.02 sec) DataSet                  : DEBUG           -> Replaced text in <Index> with variable group "GRO_means"
-(    0.02 sec) DataSet                  : DEBUG           -> ------Reading Completed for:
-(    0.02 sec) DataSet                  : DEBUG           ->        Class          : DataSet         from <class 'DataObjects.DataObject.DataObject'>
-(    0.02 sec) DataSet                  : DEBUG           ->        Type           : DataSet
-(    0.02 sec) DataSet                  : DEBUG           ->        Name           : disp_avg
-(    0.02 sec) DataSet                  : DEBUG           ->        Initialization Parameters:
-(    0.02 sec) DataSet                  : DEBUG           ->        Current Setting:
-(    0.02 sec) SIMULATION               : DEBUG           -> Reading type DataSet with name dispatch_eval
-(    0.02 sec) DataSet                  : DEBUG           -> Replaced text in <Input> with variable group "GRO_dispatch_in"
-(    0.02 sec) DataSet                  : DEBUG           -> Replaced text in <Output> with variable group "GRO_dispatch_out"
-(    0.02 sec) DataSet                  : DEBUG           -> Replaced text in <Index> with variable group "GRO_dispatch_in_Time"
-(    0.02 sec) DataSet                  : DEBUG           -> Replaced text in <Index> with variable group "GRO_dispatch_out_Time"
-(    0.02 sec) DataSet                  : DEBUG           -> Replaced text in <Index> with variable group "GRO_dispatch_in_Time"
-(    0.02 sec) DataSet                  : DEBUG           -> Replaced text in <Index> with variable group "GRO_dispatch_out_Time"
-(    0.02 sec) DataSet                  : DEBUG           -> Replaced text in <Index> with variable group "GRO_dispatch_out_Time"
-(    0.02 sec) DataSet                  : DEBUG           -> ------Reading Completed for:
-(    0.02 sec) DataSet                  : DEBUG           ->        Class          : DataSet         from <class 'DataObjects.DataObject.DataObject'>
-(    0.02 sec) DataSet                  : DEBUG           ->        Type           : DataSet
-(    0.02 sec) DataSet                  : DEBUG           ->        Name           : dispatch_eval
-(    0.02 sec) DataSet                  : DEBUG           ->        Initialization Parameters:
-(    0.02 sec) DataSet                  : DEBUG           ->        Current Setting:
-(    0.02 sec) SIMULATION               : DEBUG           -> Reading type PointSet with name dispatch_placeholder
-(    0.02 sec) PointSet                 : DEBUG           -> Replaced text in <Input> with variable group "GRO_dispatch_in_scalar"
+(    1.96 sec) PointSet                 : DEBUG           -> ------Reading Completed for:
+(    1.96 sec) PointSet                 : DEBUG           ->        Class          : PointSet        from <class 'DataObjects.DataSet.DataSet'>
+(    1.96 sec) PointSet                 : DEBUG           ->        Type           : PointSet
+(    1.96 sec) PointSet                 : DEBUG           ->        Name           : metrics_avg
+(    1.96 sec) PointSet                 : DEBUG           ->        Initialization Parameters:
+(    1.96 sec) PointSet                 : DEBUG           ->        Current Setting:
+(    1.96 sec) SIMULATION               : DEBUG           -> Reading type DataSet with name disp_avg
+(    1.96 sec) DataSet                  : DEBUG           -> Replaced text in <Output> with variable group "GRO_means"
+(    1.96 sec) DataSet                  : DEBUG           -> Replaced text in <Index> with variable group "GRO_means"
+(    1.96 sec) DataSet                  : DEBUG           -> Replaced text in <Index> with variable group "GRO_means"
+(    1.96 sec) DataSet                  : DEBUG           -> ------Reading Completed for:
+(    1.96 sec) DataSet                  : DEBUG           ->        Class          : DataSet         from <class 'DataObjects.DataObject.DataObject'>
+(    1.96 sec) DataSet                  : DEBUG           ->        Type           : DataSet
+(    1.96 sec) DataSet                  : DEBUG           ->        Name           : disp_avg
+(    1.96 sec) DataSet                  : DEBUG           ->        Initialization Parameters:
+(    1.96 sec) DataSet                  : DEBUG           ->        Current Setting:
+(    1.96 sec) SIMULATION               : DEBUG           -> Reading type DataSet with name dispatch_eval
+(    1.96 sec) DataSet                  : DEBUG           -> Replaced text in <Input> with variable group "GRO_dispatch_in"
+(    1.96 sec) DataSet                  : DEBUG           -> Replaced text in <Output> with variable group "GRO_dispatch_out"
+(    1.96 sec) DataSet                  : DEBUG           -> Replaced text in <Index> with variable group "GRO_dispatch_in_Time"
+(    1.96 sec) DataSet                  : DEBUG           -> Replaced text in <Index> with variable group "GRO_dispatch_out_Time"
+(    1.96 sec) DataSet                  : DEBUG           -> Replaced text in <Index> with variable group "GRO_dispatch_in_Time"
+(    1.96 sec) DataSet                  : DEBUG           -> Replaced text in <Index> with variable group "GRO_dispatch_out_Time"
+(    1.96 sec) DataSet                  : DEBUG           -> Replaced text in <Index> with variable group "GRO_dispatch_out_Time"
+(    1.96 sec) DataSet                  : DEBUG           -> ------Reading Completed for:
+(    1.96 sec) DataSet                  : DEBUG           ->        Class          : DataSet         from <class 'DataObjects.DataObject.DataObject'>
+(    1.96 sec) DataSet                  : DEBUG           ->        Type           : DataSet
+(    1.96 sec) DataSet                  : DEBUG           ->        Name           : dispatch_eval
+(    1.96 sec) DataSet                  : DEBUG           ->        Initialization Parameters:
+(    1.96 sec) DataSet                  : DEBUG           ->        Current Setting:
+(    1.96 sec) SIMULATION               : DEBUG           -> Reading type PointSet with name dispatch_placeholder
+(    1.96 sec) PointSet                 : DEBUG           -> Replaced text in <Input> with variable group "GRO_dispatch_in_scalar"
 InputData: Using param spec "DataSet" to read XML node "PointSet.
-(    0.02 sec) PointSet                 : DEBUG           -> ------Reading Completed for:
-(    0.02 sec) PointSet                 : DEBUG           ->        Class          : PointSet        from <class 'DataObjects.DataSet.DataSet'>
-(    0.02 sec) PointSet                 : DEBUG           ->        Type           : PointSet
-(    0.02 sec) PointSet                 : DEBUG           ->        Name           : dispatch_placeholder
-(    0.02 sec) PointSet                 : DEBUG           ->        Initialization Parameters:
-(    0.02 sec) PointSet                 : DEBUG           ->        Current Setting:
-(    0.02 sec) SIMULATION               : DEBUG           -> Reading type DataSet with name Speed_meta
-(    0.02 sec) DataSet                  : DEBUG           -> ------Reading Completed for:
-(    0.02 sec) DataSet                  : DEBUG           ->        Class          : DataSet         from <class 'DataObjects.DataObject.DataObject'>
-(    0.02 sec) DataSet                  : DEBUG           ->        Type           : DataSet
-(    0.02 sec) DataSet                  : DEBUG           ->        Name           : Speed_meta
-(    0.02 sec) DataSet                  : DEBUG           ->        Initialization Parameters:
-(    0.02 sec) DataSet                  : DEBUG           ->        Current Setting:
-(    0.02 sec) SIMULATION               : DEBUG           -> Reading type PointSet with name Speed_placeholder
+(    1.96 sec) PointSet                 : DEBUG           -> ------Reading Completed for:
+(    1.96 sec) PointSet                 : DEBUG           ->        Class          : PointSet        from <class 'DataObjects.DataSet.DataSet'>
+(    1.96 sec) PointSet                 : DEBUG           ->        Type           : PointSet
+(    1.96 sec) PointSet                 : DEBUG           ->        Name           : dispatch_placeholder
+(    1.96 sec) PointSet                 : DEBUG           ->        Initialization Parameters:
+(    1.96 sec) PointSet                 : DEBUG           ->        Current Setting:
+(    1.96 sec) SIMULATION               : DEBUG           -> Reading type DataSet with name Speed_meta
+(    1.96 sec) DataSet                  : DEBUG           -> ------Reading Completed for:
+(    1.96 sec) DataSet                  : DEBUG           ->        Class          : DataSet         from <class 'DataObjects.DataObject.DataObject'>
+(    1.96 sec) DataSet                  : DEBUG           ->        Type           : DataSet
+(    1.96 sec) DataSet                  : DEBUG           ->        Name           : Speed_meta
+(    1.96 sec) DataSet                  : DEBUG           ->        Initialization Parameters:
+(    1.96 sec) DataSet                  : DEBUG           ->        Current Setting:
+(    1.96 sec) SIMULATION               : DEBUG           -> Reading type PointSet with name Speed_placeholder
 InputData: Using param spec "DataSet" to read XML node "PointSet.
-(    0.02 sec) PointSet                 : DEBUG           -> ------Reading Completed for:
-(    0.02 sec) PointSet                 : DEBUG           ->        Class          : PointSet        from <class 'DataObjects.DataSet.DataSet'>
-(    0.02 sec) PointSet                 : DEBUG           ->        Type           : PointSet
-(    0.02 sec) PointSet                 : DEBUG           ->        Name           : Speed_placeholder
-(    0.02 sec) PointSet                 : DEBUG           ->        Initialization Parameters:
-(    0.02 sec) PointSet                 : DEBUG           ->        Current Setting:
-(    0.02 sec) SIMULATION               : DEBUG           -> Reading type DataSet with name Speed_samples
-(    0.02 sec) DataSet                  : DEBUG           -> ------Reading Completed for:
-(    0.02 sec) DataSet                  : DEBUG           ->        Class          : DataSet         from <class 'DataObjects.DataObject.DataObject'>
-(    0.02 sec) DataSet                  : DEBUG           ->        Type           : DataSet
-(    0.02 sec) DataSet                  : DEBUG           ->        Name           : Speed_samples
-(    0.02 sec) DataSet                  : DEBUG           ->        Initialization Parameters:
-(    0.02 sec) DataSet                  : DEBUG           ->        Current Setting:
-(    0.02 sec) SIMULATION               : DEBUG           -> -- Reading the block: Models         --
-(    0.03 sec) SIMULATION               : DEBUG           -> Reading type ExternalModel with name dispatch
-(    0.03 sec) EXTERNAL MODEL           : DEBUG           -> Replaced text in <variables> with variable group "GRO_dispatch"
-(    0.03 sec) EXTERNAL MODEL           : DEBUG           -> Replaced text in <variables> with variable group "GRO_armasamples"
-(            ) UTILS                    : Message         -> importing module /Users/gaira/heron/src/dispatch
-(    0.04 sec) ExternalModel            : DEBUG           -> ------Reading Completed for:
-(    0.04 sec) ExternalModel            : DEBUG           ->        Class          : ExternalModel   from <class 'Models.Dummy.Dummy'>
-(    0.04 sec) ExternalModel            : DEBUG           ->        Type           : ExternalModel
-(    0.04 sec) ExternalModel            : DEBUG           ->        Name           : dispatch
-(    0.04 sec) ExternalModel            : DEBUG           ->        Initialization Parameters:
-(    0.04 sec) ExternalModel            : DEBUG           ->        subType        : 
-(    0.04 sec) ExternalModel            : DEBUG           ->        Current Setting:
-(    0.04 sec) SIMULATION               : DEBUG           -> Reading type EnsembleModel with name sample_and_dispatch
-(    0.04 sec) EnsembleModel            : DEBUG           -> ------Reading Completed for:
-(    0.04 sec) EnsembleModel            : DEBUG           ->        Class          : EnsembleModel   from <class 'Models.Dummy.Dummy'>
-(    0.04 sec) EnsembleModel            : DEBUG           ->        Type           : EnsembleModel
-(    0.04 sec) EnsembleModel            : DEBUG           ->        Name           : sample_and_dispatch
-(    0.04 sec) EnsembleModel            : DEBUG           ->        Initialization Parameters:
-(    0.04 sec) EnsembleModel            : DEBUG           ->        Models contained in EnsembleModel are : dict_keys(['dispatch', 'Speed'])
-(    0.04 sec) EnsembleModel            : DEBUG           ->        Model dispatch TargetEvaluation is : None
-(    0.04 sec) EnsembleModel            : DEBUG           ->        Model dispatch Inputs are : []
-(    0.04 sec) EnsembleModel            : DEBUG           ->        Model Speed TargetEvaluation is : None
-(    0.04 sec) EnsembleModel            : DEBUG           ->        Model Speed Inputs are : []
-(    0.04 sec) EnsembleModel            : DEBUG           ->        Current Setting:
-(    0.04 sec) EnsembleModel            : DEBUG           ->        Models contained in EnsembleModel are : dict_keys(['dispatch', 'Speed'])
-(    0.04 sec) EnsembleModel            : DEBUG           ->        Model dispatch TargetEvaluation is : None
-(    0.04 sec) EnsembleModel            : DEBUG           ->        Model dispatch Inputs are : []
-(    0.04 sec) EnsembleModel            : DEBUG           ->        Model Speed TargetEvaluation is : None
-(    0.04 sec) EnsembleModel            : DEBUG           ->        Model Speed Inputs are : []
-(    0.04 sec) SIMULATION               : DEBUG           -> Reading type PostProcessor with name average
-(    0.04 sec) PostProcessor            : DEBUG           -> ------Reading Completed for:
-(    0.04 sec) PostProcessor            : DEBUG           ->        Class          : PostProcessor   from <class 'Models.Model.Model'>
-(    0.04 sec) PostProcessor            : DEBUG           ->        Type           : PostProcessor
-(    0.04 sec) PostProcessor            : DEBUG           ->        Name           : average
-(    0.04 sec) PostProcessor            : DEBUG           ->        Initialization Parameters:
-(    0.04 sec) PostProcessor            : DEBUG           ->        subType        : BasicStatistics
-(    0.04 sec) PostProcessor            : DEBUG           ->        Current Setting:
-(    0.04 sec) SIMULATION               : DEBUG           -> Reading type ROM with name Speed
-(    0.05 sec) ROM                      : DEBUG           -> ------Reading Completed for:
-(    0.05 sec) ROM                      : DEBUG           ->        Class          : ROM             from <class 'Models.Dummy.Dummy'>
-(    0.05 sec) ROM                      : DEBUG           ->        Type           : ROM
-(    0.05 sec) ROM                      : DEBUG           ->        Name           : Speed
-(    0.05 sec) ROM                      : DEBUG           ->        Initialization Parameters:
-(    0.05 sec) ROM                      : DEBUG           ->        returnType     : 
-(    0.05 sec) ROM                      : DEBUG           ->        qualityEstType : []
-(    0.05 sec) ROM                      : DEBUG           ->        Features       : ['PlaceHolder']
-(    0.05 sec) ROM                      : DEBUG           ->        Target         : PlaceHolder
-(    0.05 sec) ROM                      : DEBUG           ->        Current Setting:
-(    0.05 sec) SIMULATION               : DEBUG           -> -- Reading the block: Files          --
-(    0.05 sec) SIMULATION               : DEBUG           -> Reading type Input with name libs
-(    0.05 sec) UserGenerated File       : DEBUG           -> ------Reading Completed for:
-(    0.05 sec) UserGenerated File       : DEBUG           ->        Class          : UserGenerated   from <class 'Files.File'>
-(    0.05 sec) UserGenerated File       : DEBUG           ->        Type           : UserGenerated
-(    0.05 sec) UserGenerated File       : DEBUG           ->        Name           : libs
-(    0.05 sec) UserGenerated File       : DEBUG           ->        Initialization Parameters:
-(    0.05 sec) UserGenerated File       : DEBUG           ->        Current Setting:
-(    0.05 sec) SIMULATION               : DEBUG           -> Reading type Input with name /ARMA/interpolated.pk
-(    0.05 sec) UserGenerated File       : DEBUG           -> ------Reading Completed for:
-(    0.05 sec) UserGenerated File       : DEBUG           ->        Class          : UserGenerated   from <class 'Files.File'>
-(    0.05 sec) UserGenerated File       : DEBUG           ->        Type           : UserGenerated
-(    0.05 sec) UserGenerated File       : DEBUG           ->        Name           : /ARMA/interpolated.pk
-(    0.05 sec) UserGenerated File       : DEBUG           ->        Initialization Parameters:
-(    0.05 sec) UserGenerated File       : DEBUG           ->        Current Setting:
-(    0.05 sec) SIMULATION               : DEBUG           -> -- Reading the block: Samplers       --
-(    0.05 sec) SIMULATION               : DEBUG           -> Reading type MonteCarlo with name mc_arma_dispatch
-(    0.05 sec) MonteCarlo               : DEBUG           -> ------Reading Completed for:
-(    0.05 sec) MonteCarlo               : DEBUG           ->        Class          : MonteCarlo      from <class 'Samplers.ForwardSampler.ForwardSampler'>
-(    0.05 sec) MonteCarlo               : DEBUG           ->        Type           : MonteCarlo
-(    0.05 sec) MonteCarlo               : DEBUG           ->        Name           : mc_arma_dispatch
-(    0.05 sec) MonteCarlo               : DEBUG           ->        Initialization Parameters:
-(    0.05 sec) MonteCarlo               : DEBUG           ->        limit          : 2
-(    0.05 sec) MonteCarlo               : DEBUG           ->        initial seed   : 42
-(    0.05 sec) MonteCarlo               : DEBUG           ->        Current Setting:
-(    0.05 sec) MonteCarlo               : DEBUG           ->        counter        : 0
-(    0.05 sec) MonteCarlo               : DEBUG           ->        initial seed   : 42
-(    0.05 sec) MonteCarlo               : DEBUG           ->        SampledVarsPb  : {}
-(    0.05 sec) MonteCarlo               : DEBUG           ->        crowDist       : {}
-(    0.05 sec) SIMULATION               : DEBUG           -> -- Reading the block: OutStreams     --
-(    0.05 sec) SIMULATION               : DEBUG           -> Reading type Print with name disp_debug
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           -> ------Reading Completed for:
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Class          : OutStreamPrint  from <class 'OutStreams.OutStreamManager.OutStreamManager'>
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Type           : OutStreamPrint
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Name           : disp_debug
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Initialization Parameters:
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Global Class Type                 : OutStreamManager
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Specialized Class Type            : OutStreamPrint
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Overwrite output everytime called : True
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Source Name 0 :: arma_samples
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Current Setting:
-(    0.05 sec) SIMULATION               : DEBUG           -> Reading type Print with name disp_results
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           -> ------Reading Completed for:
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Class          : OutStreamPrint  from <class 'OutStreams.OutStreamManager.OutStreamManager'>
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Type           : OutStreamPrint
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Name           : disp_results
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Initialization Parameters:
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Global Class Type                 : OutStreamManager
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Specialized Class Type            : OutStreamPrint
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Overwrite output everytime called : True
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Source Name 0 :: metrics_avg
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Current Setting:
-(    0.05 sec) SIMULATION               : DEBUG           -> Reading type Print with name Speed_meta
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           -> ------Reading Completed for:
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Class          : OutStreamPrint  from <class 'OutStreams.OutStreamManager.OutStreamManager'>
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Type           : OutStreamPrint
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Name           : Speed_meta
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Initialization Parameters:
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Global Class Type                 : OutStreamManager
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Specialized Class Type            : OutStreamPrint
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Overwrite output everytime called : True
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Source Name 0 :: Speed_meta
-(    0.05 sec) OUTSTREAM MANAGER        : DEBUG           ->        Current Setting:
-(    0.05 sec) SIMULATION               : DEBUG           -> Moving to working directory: /Users/gaira/heron/tests/integration_tests/var_demand_fix_price/Sweep_Runs_o/sweep/2/Sweep_Runs_i
-(    0.05 sec) Job Handler              : DEBUG           -> Setting maxQueueSize to 1
-(    0.05 sec) SIMULATION               : DEBUG           -> entering the run
-(    0.05 sec) SIMULATION               : Message         -> -- Beginning step read_Speed of type: IOStep                        --
-(    0.05 sec) STEP IOCOMBINED          : Message         -> ***  Beginning initialization ***
-(    0.05 sec) STEP IOCOMBINED          : DEBUG           -> jobHandler initialized
-(    0.05 sec) STEP IOCOMBINED          : Message         -> ***    Initialization done    ***
-(    0.05 sec) STEP IOCOMBINED          : Message         -> ***       Beginning run       ***
-(    0.07 sec) STEP IOCOMBINED          : Message         -> ***       Run finished        ***
-(    0.07 sec) STEP IOCOMBINED          : Message         -> ***     Closing the step      ***
-(    0.07 sec) STEP IOCOMBINED          : Message         -> ***        Step closed        ***
-(    0.07 sec) SIMULATION               : Message         -> -- End step read_Speed of type: IOStep                         --
+(    1.96 sec) PointSet                 : DEBUG           -> ------Reading Completed for:
+(    1.96 sec) PointSet                 : DEBUG           ->        Class          : PointSet        from <class 'DataObjects.DataSet.DataSet'>
+(    1.96 sec) PointSet                 : DEBUG           ->        Type           : PointSet
+(    1.96 sec) PointSet                 : DEBUG           ->        Name           : Speed_placeholder
+(    1.96 sec) PointSet                 : DEBUG           ->        Initialization Parameters:
+(    1.96 sec) PointSet                 : DEBUG           ->        Current Setting:
+(    1.96 sec) SIMULATION               : DEBUG           -> Reading type DataSet with name Speed_samples
+(    1.97 sec) DataSet                  : DEBUG           -> ------Reading Completed for:
+(    1.97 sec) DataSet                  : DEBUG           ->        Class          : DataSet         from <class 'DataObjects.DataObject.DataObject'>
+(    1.97 sec) DataSet                  : DEBUG           ->        Type           : DataSet
+(    1.97 sec) DataSet                  : DEBUG           ->        Name           : Speed_samples
+(    1.97 sec) DataSet                  : DEBUG           ->        Initialization Parameters:
+(    1.97 sec) DataSet                  : DEBUG           ->        Current Setting:
+(    1.97 sec) SIMULATION               : DEBUG           -> -- Reading the block: Models         --
+(    1.97 sec) SIMULATION               : DEBUG           -> Reading type ExternalModel with name dispatch
+(    1.97 sec) EXTERNAL MODEL           : DEBUG           -> Replaced text in <variables> with variable group "GRO_dispatch"
+(    1.97 sec) EXTERNAL MODEL           : DEBUG           -> Replaced text in <variables> with variable group "GRO_armasamples"
+(            ) UTILS                    : Message         -> importing module /Users/talbpw/projects/heron/src/dispatch
+(    1.98 sec) ExternalModel            : DEBUG           -> ------Reading Completed for:
+(    1.98 sec) ExternalModel            : DEBUG           ->        Class          : ExternalModel   from <class 'Models.Dummy.Dummy'>
+(    1.98 sec) ExternalModel            : DEBUG           ->        Type           : ExternalModel
+(    1.98 sec) ExternalModel            : DEBUG           ->        Name           : dispatch
+(    1.98 sec) ExternalModel            : DEBUG           ->        Initialization Parameters:
+(    1.98 sec) ExternalModel            : DEBUG           ->        subType        : 
+(    1.98 sec) ExternalModel            : DEBUG           ->        Current Setting:
+(    1.98 sec) SIMULATION               : DEBUG           -> Reading type EnsembleModel with name sample_and_dispatch
+(    1.98 sec) EnsembleModel            : DEBUG           -> ------Reading Completed for:
+(    1.98 sec) EnsembleModel            : DEBUG           ->        Class          : EnsembleModel   from <class 'Models.Dummy.Dummy'>
+(    1.98 sec) EnsembleModel            : DEBUG           ->        Type           : EnsembleModel
+(    1.98 sec) EnsembleModel            : DEBUG           ->        Name           : sample_and_dispatch
+(    1.98 sec) EnsembleModel            : DEBUG           ->        Initialization Parameters:
+(    1.98 sec) EnsembleModel            : DEBUG           ->        Models contained in EnsembleModel are : dict_keys(['dispatch', 'Speed'])
+(    1.98 sec) EnsembleModel            : DEBUG           ->        Model dispatch TargetEvaluation is : None
+(    1.98 sec) EnsembleModel            : DEBUG           ->        Model dispatch Inputs are : []
+(    1.98 sec) EnsembleModel            : DEBUG           ->        Model Speed TargetEvaluation is : None
+(    1.98 sec) EnsembleModel            : DEBUG           ->        Model Speed Inputs are : []
+(    1.98 sec) EnsembleModel            : DEBUG           ->        Current Setting:
+(    1.98 sec) EnsembleModel            : DEBUG           ->        Models contained in EnsembleModel are : dict_keys(['dispatch', 'Speed'])
+(    1.98 sec) EnsembleModel            : DEBUG           ->        Model dispatch TargetEvaluation is : None
+(    1.98 sec) EnsembleModel            : DEBUG           ->        Model dispatch Inputs are : []
+(    1.98 sec) EnsembleModel            : DEBUG           ->        Model Speed TargetEvaluation is : None
+(    1.98 sec) EnsembleModel            : DEBUG           ->        Model Speed Inputs are : []
+(    1.98 sec) SIMULATION               : DEBUG           -> Reading type PostProcessor with name average
+(    1.98 sec) PostProcessor            : DEBUG           -> ------Reading Completed for:
+(    1.98 sec) PostProcessor            : DEBUG           ->        Class          : PostProcessor   from <class 'Models.Model.Model'>
+(    1.98 sec) PostProcessor            : DEBUG           ->        Type           : PostProcessor
+(    1.98 sec) PostProcessor            : DEBUG           ->        Name           : average
+(    1.98 sec) PostProcessor            : DEBUG           ->        Initialization Parameters:
+(    1.98 sec) PostProcessor            : DEBUG           ->        subType        : BasicStatistics
+(    1.98 sec) PostProcessor            : DEBUG           ->        Current Setting:
+(    1.98 sec) SIMULATION               : DEBUG           -> Reading type ROM with name Speed
+(    2.00 sec) ROM                      : DEBUG           -> ------Reading Completed for:
+(    2.00 sec) ROM                      : DEBUG           ->        Class          : ROM             from <class 'Models.Dummy.Dummy'>
+(    2.00 sec) ROM                      : DEBUG           ->        Type           : ROM
+(    2.00 sec) ROM                      : DEBUG           ->        Name           : Speed
+(    2.00 sec) ROM                      : DEBUG           ->        Initialization Parameters:
+(    2.00 sec) ROM                      : DEBUG           ->        returnType     : 
+(    2.00 sec) ROM                      : DEBUG           ->        qualityEstType : []
+(    2.00 sec) ROM                      : DEBUG           ->        Features       : ['PlaceHolder']
+(    2.00 sec) ROM                      : DEBUG           ->        Target         : PlaceHolder
+(    2.00 sec) ROM                      : DEBUG           ->        Current Setting:
+(    2.00 sec) SIMULATION               : DEBUG           -> -- Reading the block: Files          --
+(    2.00 sec) SIMULATION               : DEBUG           -> Reading type Input with name libs
+(    2.00 sec) UserGenerated File       : DEBUG           -> ------Reading Completed for:
+(    2.00 sec) UserGenerated File       : DEBUG           ->        Class          : UserGenerated   from <class 'Files.File'>
+(    2.00 sec) UserGenerated File       : DEBUG           ->        Type           : UserGenerated
+(    2.00 sec) UserGenerated File       : DEBUG           ->        Name           : libs
+(    2.00 sec) UserGenerated File       : DEBUG           ->        Initialization Parameters:
+(    2.00 sec) UserGenerated File       : DEBUG           ->        Current Setting:
+(    2.00 sec) SIMULATION               : DEBUG           -> Reading type Input with name /ARMA/interpolated.pk
+(    2.00 sec) UserGenerated File       : DEBUG           -> ------Reading Completed for:
+(    2.00 sec) UserGenerated File       : DEBUG           ->        Class          : UserGenerated   from <class 'Files.File'>
+(    2.00 sec) UserGenerated File       : DEBUG           ->        Type           : UserGenerated
+(    2.00 sec) UserGenerated File       : DEBUG           ->        Name           : /ARMA/interpolated.pk
+(    2.00 sec) UserGenerated File       : DEBUG           ->        Initialization Parameters:
+(    2.00 sec) UserGenerated File       : DEBUG           ->        Current Setting:
+(    2.00 sec) SIMULATION               : DEBUG           -> -- Reading the block: Samplers       --
+(    2.00 sec) SIMULATION               : DEBUG           -> Reading type MonteCarlo with name mc_arma_dispatch
+(    2.00 sec) MonteCarlo               : DEBUG           -> ------Reading Completed for:
+(    2.00 sec) MonteCarlo               : DEBUG           ->        Class          : MonteCarlo      from <class 'Samplers.ForwardSampler.ForwardSampler'>
+(    2.00 sec) MonteCarlo               : DEBUG           ->        Type           : MonteCarlo
+(    2.00 sec) MonteCarlo               : DEBUG           ->        Name           : mc_arma_dispatch
+(    2.00 sec) MonteCarlo               : DEBUG           ->        Initialization Parameters:
+(    2.00 sec) MonteCarlo               : DEBUG           ->        limit          : 2
+(    2.00 sec) MonteCarlo               : DEBUG           ->        initial seed   : 42
+(    2.00 sec) MonteCarlo               : DEBUG           ->        Current Setting:
+(    2.00 sec) MonteCarlo               : DEBUG           ->        counter        : 0
+(    2.00 sec) MonteCarlo               : DEBUG           ->        initial seed   : 42
+(    2.00 sec) MonteCarlo               : DEBUG           ->        SampledVarsPb  : {}
+(    2.00 sec) MonteCarlo               : DEBUG           ->        crowDist       : {}
+(    2.00 sec) SIMULATION               : DEBUG           -> -- Reading the block: OutStreams     --
+(    2.00 sec) SIMULATION               : DEBUG           -> Reading type Print with name disp_debug
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           -> ------Reading Completed for:
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Class          : OutStreamPrint  from <class 'OutStreams.OutStreamManager.OutStreamManager'>
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Type           : OutStreamPrint
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Name           : disp_debug
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Initialization Parameters:
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Global Class Type                 : OutStreamManager
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Specialized Class Type            : OutStreamPrint
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Overwrite output everytime called : True
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Source Name 0 :: arma_samples
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Current Setting:
+(    2.00 sec) SIMULATION               : DEBUG           -> Reading type Print with name disp_results
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           -> ------Reading Completed for:
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Class          : OutStreamPrint  from <class 'OutStreams.OutStreamManager.OutStreamManager'>
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Type           : OutStreamPrint
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Name           : disp_results
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Initialization Parameters:
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Global Class Type                 : OutStreamManager
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Specialized Class Type            : OutStreamPrint
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Overwrite output everytime called : True
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Source Name 0 :: metrics_avg
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Current Setting:
+(    2.00 sec) SIMULATION               : DEBUG           -> Reading type Print with name Speed_meta
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           -> ------Reading Completed for:
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Class          : OutStreamPrint  from <class 'OutStreams.OutStreamManager.OutStreamManager'>
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Type           : OutStreamPrint
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Name           : Speed_meta
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Initialization Parameters:
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Global Class Type                 : OutStreamManager
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Specialized Class Type            : OutStreamPrint
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Overwrite output everytime called : True
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Source Name 0 :: Speed_meta
+(    2.00 sec) OUTSTREAM MANAGER        : DEBUG           ->        Current Setting:
+(    2.00 sec) SIMULATION               : DEBUG           -> Moving to working directory: /Users/talbpw/projects/heron/tests/integration_tests/var_demand_fix_price/Sweep_Runs_o/sweep/2/Sweep_Runs_i
+(    2.00 sec) Job Handler              : DEBUG           -> Setting maxQueueSize to 1
+(    2.00 sec) SIMULATION               : DEBUG           -> entering the run
+(    2.00 sec) SIMULATION               : Message         -> -- Beginning step read_Speed of type: IOStep                        --
+(    2.00 sec) STEP IOCOMBINED          : Message         -> ***  Beginning initialization ***
+(    2.00 sec) STEP IOCOMBINED          : DEBUG           -> jobHandler initialized
+(    2.00 sec) STEP IOCOMBINED          : Message         -> ***    Initialization done    ***
+(    2.00 sec) STEP IOCOMBINED          : Message         -> ***       Beginning run       ***
+(    2.39 sec) STEP IOCOMBINED          : Message         -> ***       Run finished        ***
+(    2.39 sec) STEP IOCOMBINED          : Message         -> ***     Closing the step      ***
+(    2.39 sec) STEP IOCOMBINED          : Message         -> ***        Step closed        ***
+(    2.39 sec) SIMULATION               : Message         -> -- End step read_Speed of type: IOStep                         --
 
-(    0.07 sec) SIMULATION               : Message         -> -- Beginning step print_meta_Speed of type: IOStep                  --
-(    0.07 sec) STEP IOCOMBINED          : Message         -> ***  Beginning initialization ***
-(    0.07 sec) STEP IOCOMBINED          : DEBUG           -> jobHandler initialized
-(    0.07 sec) STEP IOCOMBINED          : DEBUG           -> for the role Output the item of class OutStreamPrint  and name Speed_meta      has been initialized
-(    0.07 sec) STEP IOCOMBINED          : Message         -> ***    Initialization done    ***
-(    0.07 sec) STEP IOCOMBINED          : Message         -> ***       Beginning run       ***
-(    0.07 sec) STEP IOCOMBINED          : DEBUG           -> Adding meta "Speed" to output "Speed_meta"
-(    0.07 sec) DataSet                  : Warning         -> Nothing to write to CSV! Checking metadata ...
-(    0.07 sec) DataSet                  : DEBUG           -> Printing metadata XML: "Speed_meta.xml"
-(    0.07 sec) STEP IOCOMBINED          : Message         -> ***       Run finished        ***
-(    0.07 sec) STEP IOCOMBINED          : Message         -> ***     Closing the step      ***
-(    0.07 sec) STEP IOCOMBINED          : Message         -> ***        Step closed        ***
-(    0.07 sec) SIMULATION               : Message         -> -- End step print_meta_Speed of type: IOStep                   --
+(    2.39 sec) SIMULATION               : Message         -> -- Beginning step print_meta_Speed of type: IOStep                  --
+(    2.39 sec) STEP IOCOMBINED          : Message         -> ***  Beginning initialization ***
+(    2.39 sec) STEP IOCOMBINED          : DEBUG           -> jobHandler initialized
+(    2.39 sec) STEP IOCOMBINED          : DEBUG           -> for the role Output the item of class OutStreamPrint  and name Speed_meta      has been initialized
+(    2.39 sec) STEP IOCOMBINED          : Message         -> ***    Initialization done    ***
+(    2.39 sec) STEP IOCOMBINED          : Message         -> ***       Beginning run       ***
+(    2.39 sec) STEP IOCOMBINED          : DEBUG           -> Adding meta "Speed" to output "Speed_meta"
+(    2.39 sec) DataSet                  : Warning         -> Nothing to write to CSV! Checking metadata ...
+(    2.39 sec) DataSet                  : DEBUG           -> Printing metadata XML: "Speed_meta.xml"
+(    2.39 sec) STEP IOCOMBINED          : Message         -> ***       Run finished        ***
+(    2.40 sec) STEP IOCOMBINED          : Message         -> ***     Closing the step      ***
+(    2.40 sec) STEP IOCOMBINED          : Message         -> ***        Step closed        ***
+(    2.40 sec) SIMULATION               : Message         -> -- End step print_meta_Speed of type: IOStep                   --
 
-(    0.07 sec) SIMULATION               : Message         -> -- Beginning step arma_sampling of type: MultiRun                   --
-(    0.07 sec) STEP MULTIRUN            : Message         -> ***  Beginning initialization ***
-(    0.07 sec) STEP MULTIRUN            : DEBUG           -> jobHandler initialized
-(    0.07 sec) EnsembleModel            : Message         -> Model Execution list: Speed -> dispatch
-(    0.07 sec) EnsembleModel            : Message         -> EnsembleModel connections determined a linear system. Picard's iterations not activated!
-(    0.07 sec) EnsembleModel            : DEBUG           -> Specs of Graph Network represented by EnsembleModel:
-(    0.07 sec) EnsembleModel            : DEBUG           -> Graph Degree Sequence is    : (1, 0)
-(    0.07 sec) EnsembleModel            : DEBUG           -> Graph Minimum/Maximum degree: (0, 1)
-(    0.07 sec) EnsembleModel            : DEBUG           -> Graph density/diameter      : (1.0, 2)
-(    0.07 sec) STEP MULTIRUN            : DEBUG           -> for the role Model  the item of class EnsembleModel   and name sample_and_dispatch has been initialized
-(    0.07 sec) STEP MULTIRUN            : DEBUG           -> for the role Output the item of class DataSet         and name arma_samples    has been initialized
-(    0.07 sec) STEP MULTIRUN            : DEBUG           -> for the role Output the item of class PointSet        and name arma_metrics    has been initialized
-(    0.07 sec) MonteCarlo               : Message         -> No restart for MonteCarlo
-(    0.07 sec) STEP MULTIRUN            : DEBUG           -> for the role of sampler the item of class MonteCarlo and name mc_arma_dispatch has been initialized
-(    0.07 sec) STEP MULTIRUN            : DEBUG           -> Sampler initialization dictionary: {'externalSeeding': None}
-(    0.07 sec) STEP MULTIRUN            : DEBUG           -> Generating input batch of size 1
-(    0.07 sec) MonteCarlo               : DEBUG           -> Found new point to sample: {'scaling': 1.0, 'BOP_capacity': 1098.0, 'Electric_Grid_capacity': 1e+200, 'denoises': 2}
-(    0.07 sec) STEP MULTIRUN            : DEBUG           -> Submitted input 1
-(    0.07 sec) STEP MULTIRUN            : Message         -> ***    Initialization done    ***
-(    0.08 sec) EnsembleModel            : DEBUG           -> Submitting model Speed
-(    0.08 sec) STEP MULTIRUN            : Message         -> ***       Beginning run       ***
-(    0.08 sec) Interp. Cluster ROM      : DEBUG           -> Evaluating interpolated ROM ...
-(    0.08 sec) Interp. Cluster ROM      : DEBUG           ->  ... evaluating macro step "1" of "3"
-(    0.08 sec) Interp. Cluster ROM      : DEBUG           ->  ... evaluating macro step "2" of "3"
-(    0.08 sec) Interp. Cluster ROM      : DEBUG           ->  ... evaluating macro step "3" of "3"
-(    0.09 sec) EnsembleModel            : DEBUG           -> Submitting model dispatch
-THIS IS CASE BEGIN
-This is the case <HERON Case> [<EGRET ARMA>, <EGRET Function>]
-Sources [<EGRET ARMA>, <EGRET Function>] ['__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', '_source', '_type', '_var_names', '_workingDir', 'getLocalVerbosity', 'get_input_specs', 'get_variable', 'interpolation', 'is_type', 'messageHandler', 'name', 'print_me', 'raiseADebug', 'raiseAMessage', 'raiseAWarning', 'raiseAnError', 'read_input', 'set_message_handler']
-HITTING
-DEBUGG comps: [<EGRET Component "BOP"">, <EGRET Component "Electric_Grid"">]
-RESOURCE "electricity":
-    produced by: ['BOP']
-    consumed by: ['Electric_Grid']
-This is the ARMA DATA [[ -2.73691077e-10   9.40568449e-11  -3.48523767e-10]
- [  3.09016994e-01   3.09016994e-01   3.09016994e-01]
- [  5.87785252e-01   5.87785252e-01   5.87785252e-01]
- [  8.09016994e-01   8.09016994e-01   8.09016994e-01]
- [  9.51056516e-01   9.51056516e-01   9.51056516e-01]
- [  1.00000000e+00   1.00000000e+00   1.00000000e+00]
- [  9.51056516e-01   9.51056516e-01   9.51056516e-01]
- [  8.09016994e-01   8.09016994e-01   8.09016994e-01]
- [  5.87785252e-01   5.87785252e-01   5.87785252e-01]
- [  3.09016994e-01   3.09016995e-01   3.09016994e-01]
- [ -8.49804872e-11   3.34634448e-10   2.67439306e-10]
- [ -3.09016995e-01  -3.09016995e-01  -3.09016995e-01]
- [ -5.87785252e-01  -5.87785252e-01  -5.87785252e-01]
- [ -8.09016994e-01  -8.09016994e-01  -8.09016994e-01]
- [ -9.51056516e-01  -9.51056516e-01  -9.51056516e-01]
- [ -1.00000000e+00  -9.99999999e-01  -1.00000000e+00]
- [ -9.51056516e-01  -9.51056516e-01  -9.51056516e-01]
- [ -8.09016994e-01  -8.09016994e-01  -8.09016994e-01]
- [ -5.87785252e-01  -5.87785252e-01  -5.87785252e-01]
- [ -3.09016994e-01  -3.09016994e-01  -3.09016994e-01]
- [ -3.48032308e-10  -3.47981310e-10   3.14630769e-10]] Time ['Time', 'Year'] [  0.    0.5   1.    1.5   2.    2.5   3.    3.5   4.    4.5   5.    5.5
-   6.    6.5   7.    7.5   8.    8.5   9.    9.5  10. ] <class 'Placeholders.ARMA'>
-[[ -2.73691077e-10   9.40568449e-11  -3.48523767e-10]
- [  3.09016994e-01   3.09016994e-01   3.09016994e-01]
- [  5.87785252e-01   5.87785252e-01   5.87785252e-01]
- [  8.09016994e-01   8.09016994e-01   8.09016994e-01]
- [  9.51056516e-01   9.51056516e-01   9.51056516e-01]
- [  1.00000000e+00   1.00000000e+00   1.00000000e+00]
- [  9.51056516e-01   9.51056516e-01   9.51056516e-01]
- [  8.09016994e-01   8.09016994e-01   8.09016994e-01]
- [  5.87785252e-01   5.87785252e-01   5.87785252e-01]
- [  3.09016994e-01   3.09016995e-01   3.09016994e-01]
- [ -8.49804872e-11   3.34634448e-10   2.67439306e-10]
- [ -3.09016995e-01  -3.09016995e-01  -3.09016995e-01]
- [ -5.87785252e-01  -5.87785252e-01  -5.87785252e-01]
- [ -8.09016994e-01  -8.09016994e-01  -8.09016994e-01]
- [ -9.51056516e-01  -9.51056516e-01  -9.51056516e-01]
- [ -1.00000000e+00  -9.99999999e-01  -1.00000000e+00]
- [ -9.51056516e-01  -9.51056516e-01  -9.51056516e-01]
- [ -8.09016994e-01  -8.09016994e-01  -8.09016994e-01]
- [ -5.87785252e-01  -5.87785252e-01  -5.87785252e-01]
- [ -3.09016994e-01  -3.09016994e-01  -3.09016994e-01]
- [ -3.48032308e-10  -3.47981310e-10   3.14630769e-10]]
-This is Res 60
-This is old_dt 0.5 0.166666666667 10.0 21 [  0.    0.5   1.    1.5   2.    2.5   3.    3.5   4.    4.5   5.    5.5
-   6.    6.5   7.    7.5   8.    8.5   9.    9.5  10. ]
-This is the interpolated signal [ -2.73691077e-10   1.03005665e-01   2.06011329e-01   3.09016994e-01]
-This is the interpolated signal [ 0.30901699  0.40193975  0.4948625   0.58778525]
-This is the interpolated signal [ 0.58778525  0.66152917  0.73527308  0.80901699]
-This is the interpolated signal [ 0.80901699  0.8563635   0.90371001  0.95105652]
-This is the interpolated signal [ 0.95105652  0.96737101  0.98368551  1.        ]
-This is the interpolated signal [ 1.          0.98368551  0.96737101  0.95105652]
-This is the interpolated signal [ 0.95105652  0.90371001  0.8563635   0.80901699]
-This is the interpolated signal [ 0.80901699  0.73527308  0.66152917  0.58778525]
-This is the interpolated signal [ 0.58778525  0.4948625   0.40193975  0.30901699]
-This is the interpolated signal [  3.09016994e-01   2.06011329e-01   1.03005665e-01  -8.49804872e-11]
-This is the interpolated signal [ -8.49804872e-11  -1.03005665e-01  -2.06011330e-01  -3.09016995e-01]
-This is the interpolated signal [-0.30901699 -0.40193975 -0.4948625  -0.58778525]
-This is the interpolated signal [-0.58778525 -0.66152917 -0.73527308 -0.80901699]
-This is the interpolated signal [-0.80901699 -0.8563635  -0.90371001 -0.95105652]
-This is the interpolated signal [-0.95105652 -0.96737101 -0.98368551 -1.        ]
-This is the interpolated signal [-1.         -0.98368551 -0.96737101 -0.95105652]
-This is the interpolated signal [-0.95105652 -0.90371001 -0.8563635  -0.80901699]
-This is the interpolated signal [-0.80901699 -0.73527308 -0.66152917 -0.58778525]
-This is the interpolated signal [-0.58778525 -0.4948625  -0.40193975 -0.30901699]
-This is the interpolated signal [ -3.09016994e-01  -2.06011330e-01  -1.03005665e-01  -3.48032308e-10]
-This is temp 60
-This is the array [[ -2.73691077e-010   2.21322253e-314   5.60270442e-321]
- [  1.03005665e-001   1.12646967e-321   0.00000000e+000]
- [  2.06011329e-001   5.20748924e-090   2.40741251e-057]
- [  3.09016994e-001   3.85589694e-086   9.96183076e-043]
- [  4.01939747e-001   9.18211415e-072   9.15604176e-072]
- [  4.94862500e-001   1.26931504e-076   3.11624471e-033]
- [  5.87785252e-001   6.09941526e-154   7.87078431e-067]
- [  6.61529166e-001   2.52823562e-052   1.28195398e-153]
- [  7.35273080e-001   9.15604169e-072   4.85106907e-086]
- [  8.09016994e-001   2.36942798e-038   4.85559450e-033]
- [  8.56363502e-001   4.27405110e-033   9.49313575e-259]
- [  9.03710009e-001   5.20650803e-090   1.57772186e-052]
- [  9.51056516e-001   5.05214483e-086   1.17740945e-047]
- [  9.67371011e-001   1.39804328e-076   1.39642638e-076]
- [  9.83685505e-001   1.18295070e-076   1.39736982e-076]
- [  1.00000000e+000   6.09941526e-154   2.31859902e-052]
- [  9.83685505e-001   1.44975895e-047   1.28195398e-153]
- [  9.67371010e-001   9.15604182e-072   4.85106907e-086]
- [  9.51056516e-001   2.36942798e-038   4.85559450e-033]
- [  9.03710008e-001   4.27405110e-033   9.49313575e-259]
- [  8.56363501e-001   5.20268774e-090   4.43859635e-038]
- [  8.09016994e-001   4.24783896e-086   7.86207956e-067]
- [  7.35273080e-001   9.18211415e-072   9.15604176e-072]
- [  6.61529166e-001   1.26931570e-076   3.11624471e-033]
- [  5.87785252e-001   2.50915390e-091   5.93282517e-038]
- [  4.94862499e-001   3.06060580e-057   1.20766191e-153]
- [  4.01939747e-001   1.48346279e-076   3.85589765e-086]
- [  3.09016994e-001   3.54000736e-062   4.85559450e-033]
- [  2.06011329e-001   4.27405110e-033   9.49313575e-259]
- [  1.03005665e-001   5.20268774e-090   4.43862550e-038]
- [ -8.49804872e-011   4.25804988e-086   7.86207956e-067]
- [ -1.03005665e-001   9.18211415e-072   9.15604176e-072]
- [ -2.06011330e-001   1.26931504e-076   3.11625955e-033]
- [ -3.09016995e-001   2.50915390e-091   2.31859902e-052]
- [ -4.01939747e-001   1.44975895e-047   1.28195398e-153]
- [ -4.94862499e-001   9.15604182e-072   3.45374471e-086]
- [ -5.87785252e-001   2.80468278e-033   4.85787506e-033]
- [ -6.61529166e-001   1.39804329e-076   9.49186542e-259]
- [ -7.35273080e-001   5.20650803e-090   1.57773222e-052]
- [ -8.09016994e-001   5.06235575e-086   1.17740945e-047]
- [ -8.56363501e-001   9.18211415e-072   9.15604176e-072]
- [ -9.03710009e-001   1.26931504e-076   3.11625955e-033]
- [ -9.51056516e-001   2.50915390e-091   7.87078431e-067]
- [ -9.67371011e-001   2.52823562e-052   1.28195398e-153]
- [ -9.83685505e-001   9.15604169e-072   3.85589765e-086]
- [ -1.00000000e+000   3.54000736e-062   4.85559450e-033]
- [ -9.83685505e-001   4.27405110e-033   9.49313575e-259]
- [ -9.67371010e-001   5.20842187e-090   2.40556140e-057]
- [ -9.51056516e-001   3.84568602e-086   4.27856493e-033]
- [ -9.03710008e-001   2.21406638e-314   2.21406421e-314]
- [ -8.56363501e-001   2.21406641e-314   2.21406425e-314]
- [ -8.09016994e-001   0.00000000e+000   0.00000000e+000]
- [ -7.35273080e-001   0.00000000e+000   0.00000000e+000]
- [ -6.61529166e-001   0.00000000e+000   0.00000000e+000]
- [ -5.87785252e-001   0.00000000e+000   0.00000000e+000]
- [ -4.94862500e-001   0.00000000e+000   0.00000000e+000]
- [ -4.01939747e-001   0.00000000e+000   0.00000000e+000]
- [ -3.09016994e-001   0.00000000e+000   0.00000000e+000]
- [ -2.06011330e-001   0.00000000e+000   0.00000000e+000]
- [ -1.03005665e-001   0.00000000e+000   0.00000000e+000]]
-This is the interpolated signal [  9.40568449e-11   1.03005665e-01   2.06011329e-01   3.09016994e-01]
-This is the interpolated signal [ 0.30901699  0.40193975  0.4948625   0.58778525]
-This is the interpolated signal [ 0.58778525  0.66152917  0.73527308  0.80901699]
-This is the interpolated signal [ 0.80901699  0.8563635   0.90371001  0.95105652]
-This is the interpolated signal [ 0.95105652  0.96737101  0.98368551  1.        ]
-This is the interpolated signal [ 1.          0.98368551  0.96737101  0.95105652]
-This is the interpolated signal [ 0.95105652  0.90371001  0.8563635   0.80901699]
-This is the interpolated signal [ 0.80901699  0.73527308  0.66152917  0.58778525]
-This is the interpolated signal [ 0.58778525  0.4948625   0.40193975  0.30901699]
-This is the interpolated signal [  3.09016995e-01   2.06011330e-01   1.03005665e-01   3.34634448e-10]
-This is the interpolated signal [  3.34634448e-10  -1.03005665e-01  -2.06011330e-01  -3.09016995e-01]
-This is the interpolated signal [-0.30901699 -0.40193975 -0.4948625  -0.58778525]
-This is the interpolated signal [-0.58778525 -0.66152917 -0.73527308 -0.80901699]
-This is the interpolated signal [-0.80901699 -0.8563635  -0.90371001 -0.95105652]
-This is the interpolated signal [-0.95105652 -0.96737101 -0.9836855  -1.        ]
-This is the interpolated signal [-1.         -0.9836855  -0.96737101 -0.95105652]
-This is the interpolated signal [-0.95105652 -0.90371001 -0.8563635  -0.80901699]
-This is the interpolated signal [-0.80901699 -0.73527308 -0.66152917 -0.58778525]
-This is the interpolated signal [-0.58778525 -0.4948625  -0.40193975 -0.30901699]
-This is the interpolated signal [ -3.09016994e-01  -2.06011329e-01  -1.03005665e-01  -3.47981310e-10]
-This is temp 60
-This is the array [[ -2.73691077e-010   9.40568449e-011   5.60270442e-321]
- [  1.03005665e-001   1.03005665e-001   0.00000000e+000]
- [  2.06011329e-001   2.06011329e-001   2.40741251e-057]
- [  3.09016994e-001   3.09016994e-001   9.96183076e-043]
- [  4.01939747e-001   4.01939747e-001   9.15604176e-072]
- [  4.94862500e-001   4.94862499e-001   3.11624471e-033]
- [  5.87785252e-001   5.87785252e-001   7.87078431e-067]
- [  6.61529166e-001   6.61529166e-001   1.28195398e-153]
- [  7.35273080e-001   7.35273080e-001   4.85106907e-086]
- [  8.09016994e-001   8.09016994e-001   4.85559450e-033]
- [  8.56363502e-001   8.56363502e-001   9.49313575e-259]
- [  9.03710009e-001   9.03710009e-001   1.57772186e-052]
- [  9.51056516e-001   9.51056516e-001   1.17740945e-047]
- [  9.67371011e-001   9.67371011e-001   1.39642638e-076]
- [  9.83685505e-001   9.83685505e-001   1.39736982e-076]
- [  1.00000000e+000   1.00000000e+000   2.31859902e-052]
- [  9.83685505e-001   9.83685505e-001   1.28195398e-153]
- [  9.67371010e-001   9.67371010e-001   4.85106907e-086]
- [  9.51056516e-001   9.51056516e-001   4.85559450e-033]
- [  9.03710008e-001   9.03710008e-001   9.49313575e-259]
- [  8.56363501e-001   8.56363501e-001   4.43859635e-038]
- [  8.09016994e-001   8.09016994e-001   7.86207956e-067]
- [  7.35273080e-001   7.35273080e-001   9.15604176e-072]
- [  6.61529166e-001   6.61529166e-001   3.11624471e-033]
- [  5.87785252e-001   5.87785252e-001   5.93282517e-038]
- [  4.94862499e-001   4.94862499e-001   1.20766191e-153]
- [  4.01939747e-001   4.01939747e-001   3.85589765e-086]
- [  3.09016994e-001   3.09016995e-001   4.85559450e-033]
- [  2.06011329e-001   2.06011330e-001   9.49313575e-259]
- [  1.03005665e-001   1.03005665e-001   4.43862550e-038]
- [ -8.49804872e-011   3.34634448e-010   7.86207956e-067]
- [ -1.03005665e-001  -1.03005665e-001   9.15604176e-072]
- [ -2.06011330e-001  -2.06011330e-001   3.11625955e-033]
- [ -3.09016995e-001  -3.09016995e-001   2.31859902e-052]
- [ -4.01939747e-001  -4.01939747e-001   1.28195398e-153]
- [ -4.94862499e-001  -4.94862500e-001   3.45374471e-086]
- [ -5.87785252e-001  -5.87785252e-001   4.85787506e-033]
- [ -6.61529166e-001  -6.61529166e-001   9.49186542e-259]
- [ -7.35273080e-001  -7.35273080e-001   1.57773222e-052]
- [ -8.09016994e-001  -8.09016994e-001   1.17740945e-047]
- [ -8.56363501e-001  -8.56363501e-001   9.15604176e-072]
- [ -9.03710009e-001  -9.03710009e-001   3.11625955e-033]
- [ -9.51056516e-001  -9.51056516e-001   7.87078431e-067]
- [ -9.67371011e-001  -9.67371011e-001   1.28195398e-153]
- [ -9.83685505e-001  -9.83685505e-001   3.85589765e-086]
- [ -1.00000000e+000  -9.99999999e-001   4.85559450e-033]
- [ -9.83685505e-001  -9.83685505e-001   9.49313575e-259]
- [ -9.67371010e-001  -9.67371010e-001   2.40556140e-057]
- [ -9.51056516e-001  -9.51056516e-001   4.27856493e-033]
- [ -9.03710008e-001  -9.03710009e-001   2.21406421e-314]
- [ -8.56363501e-001  -8.56363501e-001   2.21406425e-314]
- [ -8.09016994e-001  -8.09016994e-001   0.00000000e+000]
- [ -7.35273080e-001  -7.35273080e-001   0.00000000e+000]
- [ -6.61529166e-001  -6.61529166e-001   0.00000000e+000]
- [ -5.87785252e-001  -5.87785252e-001   0.00000000e+000]
- [ -4.94862500e-001  -4.94862499e-001   0.00000000e+000]
- [ -4.01939747e-001  -4.01939747e-001   0.00000000e+000]
- [ -3.09016994e-001  -3.09016994e-001   0.00000000e+000]
- [ -2.06011330e-001  -2.06011329e-001   0.00000000e+000]
- [ -1.03005665e-001  -1.03005665e-001   0.00000000e+000]]
-This is the interpolated signal [ -3.48523767e-10   1.03005664e-01   2.06011329e-01   3.09016994e-01]
-This is the interpolated signal [ 0.30901699  0.40193975  0.4948625   0.58778525]
-This is the interpolated signal [ 0.58778525  0.66152917  0.73527308  0.80901699]
-This is the interpolated signal [ 0.80901699  0.8563635   0.90371001  0.95105652]
-This is the interpolated signal [ 0.95105652  0.96737101  0.98368551  1.        ]
-This is the interpolated signal [ 1.          0.98368551  0.96737101  0.95105652]
-This is the interpolated signal [ 0.95105652  0.90371001  0.8563635   0.80901699]
-This is the interpolated signal [ 0.80901699  0.73527308  0.66152917  0.58778525]
-This is the interpolated signal [ 0.58778525  0.4948625   0.40193975  0.30901699]
-This is the interpolated signal [  3.09016994e-01   2.06011330e-01   1.03005665e-01   2.67439306e-10]
-This is the interpolated signal [  2.67439306e-10  -1.03005665e-01  -2.06011330e-01  -3.09016995e-01]
-This is the interpolated signal [-0.30901699 -0.40193975 -0.4948625  -0.58778525]
-This is the interpolated signal [-0.58778525 -0.66152917 -0.73527308 -0.80901699]
-This is the interpolated signal [-0.80901699 -0.8563635  -0.90371001 -0.95105652]
-This is the interpolated signal [-0.95105652 -0.96737101 -0.98368551 -1.        ]
-This is the interpolated signal [-1.         -0.98368551 -0.96737101 -0.95105652]
-This is the interpolated signal [-0.95105652 -0.90371001 -0.8563635  -0.80901699]
-This is the interpolated signal [-0.80901699 -0.73527308 -0.66152917 -0.58778525]
-This is the interpolated signal [-0.58778525 -0.4948625  -0.40193975 -0.30901699]
-This is the interpolated signal [ -3.09016994e-01  -2.06011329e-01  -1.03005665e-01   3.14630769e-10]
-This is temp 60
-This is the array [[ -2.73691077e-10   9.40568449e-11  -3.48523767e-10]
- [  1.03005665e-01   1.03005665e-01   1.03005664e-01]
- [  2.06011329e-01   2.06011329e-01   2.06011329e-01]
- [  3.09016994e-01   3.09016994e-01   3.09016994e-01]
- [  4.01939747e-01   4.01939747e-01   4.01939747e-01]
- [  4.94862500e-01   4.94862499e-01   4.94862500e-01]
- [  5.87785252e-01   5.87785252e-01   5.87785252e-01]
- [  6.61529166e-01   6.61529166e-01   6.61529166e-01]
- [  7.35273080e-01   7.35273080e-01   7.35273080e-01]
- [  8.09016994e-01   8.09016994e-01   8.09016994e-01]
- [  8.56363502e-01   8.56363502e-01   8.56363501e-01]
- [  9.03710009e-01   9.03710009e-01   9.03710009e-01]
- [  9.51056516e-01   9.51056516e-01   9.51056516e-01]
- [  9.67371011e-01   9.67371011e-01   9.67371011e-01]
- [  9.83685505e-01   9.83685505e-01   9.83685505e-01]
- [  1.00000000e+00   1.00000000e+00   1.00000000e+00]
- [  9.83685505e-01   9.83685505e-01   9.83685505e-01]
- [  9.67371010e-01   9.67371010e-01   9.67371010e-01]
- [  9.51056516e-01   9.51056516e-01   9.51056516e-01]
- [  9.03710008e-01   9.03710008e-01   9.03710009e-01]
- [  8.56363501e-01   8.56363501e-01   8.56363501e-01]
- [  8.09016994e-01   8.09016994e-01   8.09016994e-01]
- [  7.35273080e-01   7.35273080e-01   7.35273080e-01]
- [  6.61529166e-01   6.61529166e-01   6.61529166e-01]
- [  5.87785252e-01   5.87785252e-01   5.87785252e-01]
- [  4.94862499e-01   4.94862499e-01   4.94862500e-01]
- [  4.01939747e-01   4.01939747e-01   4.01939747e-01]
- [  3.09016994e-01   3.09016995e-01   3.09016994e-01]
- [  2.06011329e-01   2.06011330e-01   2.06011330e-01]
- [  1.03005665e-01   1.03005665e-01   1.03005665e-01]
- [ -8.49804872e-11   3.34634448e-10   2.67439306e-10]
- [ -1.03005665e-01  -1.03005665e-01  -1.03005665e-01]
- [ -2.06011330e-01  -2.06011330e-01  -2.06011330e-01]
- [ -3.09016995e-01  -3.09016995e-01  -3.09016995e-01]
- [ -4.01939747e-01  -4.01939747e-01  -4.01939747e-01]
- [ -4.94862499e-01  -4.94862500e-01  -4.94862500e-01]
- [ -5.87785252e-01  -5.87785252e-01  -5.87785252e-01]
- [ -6.61529166e-01  -6.61529166e-01  -6.61529166e-01]
- [ -7.35273080e-01  -7.35273080e-01  -7.35273080e-01]
- [ -8.09016994e-01  -8.09016994e-01  -8.09016994e-01]
- [ -8.56363501e-01  -8.56363501e-01  -8.56363501e-01]
- [ -9.03710009e-01  -9.03710009e-01  -9.03710009e-01]
- [ -9.51056516e-01  -9.51056516e-01  -9.51056516e-01]
- [ -9.67371011e-01  -9.67371011e-01  -9.67371011e-01]
- [ -9.83685505e-01  -9.83685505e-01  -9.83685505e-01]
- [ -1.00000000e+00  -9.99999999e-01  -1.00000000e+00]
- [ -9.83685505e-01  -9.83685505e-01  -9.83685505e-01]
- [ -9.67371010e-01  -9.67371010e-01  -9.67371011e-01]
- [ -9.51056516e-01  -9.51056516e-01  -9.51056516e-01]
- [ -9.03710008e-01  -9.03710009e-01  -9.03710009e-01]
- [ -8.56363501e-01  -8.56363501e-01  -8.56363502e-01]
- [ -8.09016994e-01  -8.09016994e-01  -8.09016994e-01]
- [ -7.35273080e-01  -7.35273080e-01  -7.35273080e-01]
- [ -6.61529166e-01  -6.61529166e-01  -6.61529166e-01]
- [ -5.87785252e-01  -5.87785252e-01  -5.87785252e-01]
- [ -4.94862500e-01  -4.94862499e-01  -4.94862500e-01]
- [ -4.01939747e-01  -4.01939747e-01  -4.01939747e-01]
- [ -3.09016994e-01  -3.09016994e-01  -3.09016994e-01]
- [ -2.06011330e-01  -2.06011329e-01  -2.06011329e-01]
- [ -1.03005665e-01  -1.03005665e-01  -1.03005665e-01]]
-This is the reset [[ -2.73691077e-10   9.40568449e-11  -3.48523767e-10]
- [  1.03005665e-01   1.03005665e-01   1.03005664e-01]
- [  2.06011329e-01   2.06011329e-01   2.06011329e-01]
- [  3.09016994e-01   3.09016994e-01   3.09016994e-01]
- [  4.01939747e-01   4.01939747e-01   4.01939747e-01]
- [  4.94862500e-01   4.94862499e-01   4.94862500e-01]
- [  5.87785252e-01   5.87785252e-01   5.87785252e-01]
- [  6.61529166e-01   6.61529166e-01   6.61529166e-01]
- [  7.35273080e-01   7.35273080e-01   7.35273080e-01]
- [  8.09016994e-01   8.09016994e-01   8.09016994e-01]
- [  8.56363502e-01   8.56363502e-01   8.56363501e-01]
- [  9.03710009e-01   9.03710009e-01   9.03710009e-01]
- [  9.51056516e-01   9.51056516e-01   9.51056516e-01]
- [  9.67371011e-01   9.67371011e-01   9.67371011e-01]
- [  9.83685505e-01   9.83685505e-01   9.83685505e-01]
- [  1.00000000e+00   1.00000000e+00   1.00000000e+00]
- [  9.83685505e-01   9.83685505e-01   9.83685505e-01]
- [  9.67371010e-01   9.67371010e-01   9.67371010e-01]
- [  9.51056516e-01   9.51056516e-01   9.51056516e-01]
- [  9.03710008e-01   9.03710008e-01   9.03710009e-01]
- [  8.56363501e-01   8.56363501e-01   8.56363501e-01]
- [  8.09016994e-01   8.09016994e-01   8.09016994e-01]
- [  7.35273080e-01   7.35273080e-01   7.35273080e-01]
- [  6.61529166e-01   6.61529166e-01   6.61529166e-01]
- [  5.87785252e-01   5.87785252e-01   5.87785252e-01]
- [  4.94862499e-01   4.94862499e-01   4.94862500e-01]
- [  4.01939747e-01   4.01939747e-01   4.01939747e-01]
- [  3.09016994e-01   3.09016995e-01   3.09016994e-01]
- [  2.06011329e-01   2.06011330e-01   2.06011330e-01]
- [  1.03005665e-01   1.03005665e-01   1.03005665e-01]
- [ -8.49804872e-11   3.34634448e-10   2.67439306e-10]
- [ -1.03005665e-01  -1.03005665e-01  -1.03005665e-01]
- [ -2.06011330e-01  -2.06011330e-01  -2.06011330e-01]
- [ -3.09016995e-01  -3.09016995e-01  -3.09016995e-01]
- [ -4.01939747e-01  -4.01939747e-01  -4.01939747e-01]
- [ -4.94862499e-01  -4.94862500e-01  -4.94862500e-01]
- [ -5.87785252e-01  -5.87785252e-01  -5.87785252e-01]
- [ -6.61529166e-01  -6.61529166e-01  -6.61529166e-01]
- [ -7.35273080e-01  -7.35273080e-01  -7.35273080e-01]
- [ -8.09016994e-01  -8.09016994e-01  -8.09016994e-01]
- [ -8.56363501e-01  -8.56363501e-01  -8.56363501e-01]
- [ -9.03710009e-01  -9.03710009e-01  -9.03710009e-01]
- [ -9.51056516e-01  -9.51056516e-01  -9.51056516e-01]
- [ -9.67371011e-01  -9.67371011e-01  -9.67371011e-01]
- [ -9.83685505e-01  -9.83685505e-01  -9.83685505e-01]
- [ -1.00000000e+00  -9.99999999e-01  -1.00000000e+00]
- [ -9.83685505e-01  -9.83685505e-01  -9.83685505e-01]
- [ -9.67371010e-01  -9.67371010e-01  -9.67371011e-01]
- [ -9.51056516e-01  -9.51056516e-01  -9.51056516e-01]
- [ -9.03710008e-01  -9.03710009e-01  -9.03710009e-01]
- [ -8.56363501e-01  -8.56363501e-01  -8.56363502e-01]
- [ -8.09016994e-01  -8.09016994e-01  -8.09016994e-01]
- [ -7.35273080e-01  -7.35273080e-01  -7.35273080e-01]
- [ -6.61529166e-01  -6.61529166e-01  -6.61529166e-01]
- [ -5.87785252e-01  -5.87785252e-01  -5.87785252e-01]
- [ -4.94862500e-01  -4.94862499e-01  -4.94862500e-01]
- [ -4.01939747e-01  -4.01939747e-01  -4.01939747e-01]
- [ -3.09016994e-01  -3.09016994e-01  -3.09016994e-01]
- [ -2.06011330e-01  -2.06011329e-01  -2.06011329e-01]
- [ -1.03005665e-01  -1.03005665e-01  -1.03005665e-01]]
-This is the new_name in dispatch [[[ -2.73691077e-10]
-  [  9.40568449e-11]
-  [ -3.48523767e-10]]
-
- [[  1.03005665e-01]
-  [  1.03005665e-01]
-  [  1.03005664e-01]]
-
- [[  2.06011329e-01]
-  [  2.06011329e-01]
-  [  2.06011329e-01]]
-
- [[  3.09016994e-01]
-  [  3.09016994e-01]
-  [  3.09016994e-01]]
-
- [[  4.01939747e-01]
-  [  4.01939747e-01]
-  [  4.01939747e-01]]
-
- [[  4.94862500e-01]
-  [  4.94862499e-01]
-  [  4.94862500e-01]]
-
- [[  5.87785252e-01]
-  [  5.87785252e-01]
-  [  5.87785252e-01]]
-
- [[  6.61529166e-01]
-  [  6.61529166e-01]
-  [  6.61529166e-01]]
-
- [[  7.35273080e-01]
-  [  7.35273080e-01]
-  [  7.35273080e-01]]
-
- [[  8.09016994e-01]
-  [  8.09016994e-01]
-  [  8.09016994e-01]]
-
- [[  8.56363502e-01]
-  [  8.56363502e-01]
-  [  8.56363501e-01]]
-
- [[  9.03710009e-01]
-  [  9.03710009e-01]
-  [  9.03710009e-01]]
-
- [[  9.51056516e-01]
-  [  9.51056516e-01]
-  [  9.51056516e-01]]
-
- [[  9.67371011e-01]
-  [  9.67371011e-01]
-  [  9.67371011e-01]]
-
- [[  9.83685505e-01]
-  [  9.83685505e-01]
-  [  9.83685505e-01]]
-
- [[  1.00000000e+00]
-  [  1.00000000e+00]
-  [  1.00000000e+00]]
-
- [[  9.83685505e-01]
-  [  9.83685505e-01]
-  [  9.83685505e-01]]
-
- [[  9.67371010e-01]
-  [  9.67371010e-01]
-  [  9.67371010e-01]]
-
- [[  9.51056516e-01]
-  [  9.51056516e-01]
-  [  9.51056516e-01]]
-
- [[  9.03710008e-01]
-  [  9.03710008e-01]
-  [  9.03710009e-01]]
-
- [[  8.56363501e-01]
-  [  8.56363501e-01]
-  [  8.56363501e-01]]] Signal_cluster_shaped ['ClusterTime', 'Year', 'Cluster']
-Setting RAVEN variable "Signal_cluster_shaped" with shape (21, 3, 1)
-This is raven_vars 3
-These are the keys dict_keys(['increments', 'Resample_T', 'resource_map', 'econ_evaluation', 'project_life']) dict_keys(['EGRET'])
-*   *   *   *   *   *   *   *
-*                            
-*   Starting year "0"       
-*                            
-*   *   *   *   *   *   *   *
-DISPATCH: solving cluster 0
-These are the time steps [  0.    0.5   1.    1.5   2.    2.5   3.    3.5   4.    4.5   5.    5.5
-   6.    6.5   7.    7.5   8.    8.5   9.    9.5  10. ]
-(    0.13 sec) Job Handler              : Message         ->  Process Failed <Runners.SharedMemoryRunner.SharedMemoryRunner object at 0x1c45ca2f10> internal returnCode -1
-(    0.13 sec) EnsembleModel            : ERROR           -> The Model  dispatch identified by dispatch++1 failed!
+(    2.40 sec) SIMULATION               : Message         -> -- Beginning step arma_sampling of type: MultiRun                   --
+(    2.40 sec) STEP MULTIRUN            : Message         -> ***  Beginning initialization ***
+(    2.40 sec) STEP MULTIRUN            : DEBUG           -> jobHandler initialized
+(    2.40 sec) EnsembleModel            : Message         -> Model Execution list: Speed -> dispatch
+(    2.40 sec) EnsembleModel            : Message         -> EnsembleModel connections determined a linear system. Picard's iterations not activated!
+(    2.40 sec) EnsembleModel            : DEBUG           -> Specs of Graph Network represented by EnsembleModel:
+(    2.40 sec) EnsembleModel            : DEBUG           -> Graph Degree Sequence is    : (1, 0)
+(    2.40 sec) EnsembleModel            : DEBUG           -> Graph Minimum/Maximum degree: (0, 1)
+(    2.40 sec) EnsembleModel            : DEBUG           -> Graph density/diameter      : (1.0, 2)
+(    2.40 sec) STEP MULTIRUN            : DEBUG           -> for the role Model  the item of class EnsembleModel   and name sample_and_dispatch has been initialized
+(    2.40 sec) STEP MULTIRUN            : DEBUG           -> for the role Output the item of class DataSet         and name arma_samples    has been initialized
+(    2.40 sec) STEP MULTIRUN            : DEBUG           -> for the role Output the item of class PointSet        and name arma_metrics    has been initialized
+(    2.40 sec) MonteCarlo               : Message         -> No restart for MonteCarlo
+(    2.40 sec) STEP MULTIRUN            : DEBUG           -> for the role of sampler the item of class MonteCarlo and name mc_arma_dispatch has been initialized
+(    2.40 sec) STEP MULTIRUN            : DEBUG           -> Sampler initialization dictionary: {'externalSeeding': None}
+(    2.40 sec) STEP MULTIRUN            : DEBUG           -> Generating input batch of size 1
+(    2.40 sec) MonteCarlo               : DEBUG           ->  ... Sample point 1: {'scaling': 1.0, 'BOP_capacity': 1098.0, 'Electric_Grid_capacity': 1e+200, 'denoises': 2}
+(    2.40 sec) STEP MULTIRUN            : DEBUG           -> Submitted input 1
+(    2.40 sec) STEP MULTIRUN            : Message         -> ***    Initialization done    ***
+(    2.40 sec) EnsembleModel            : DEBUG           -> Submitting model Speed
+(    2.40 sec) STEP MULTIRUN            : Message         -> ***       Beginning run       ***
+(    2.40 sec) Interp. Cluster ROM      : DEBUG           -> Evaluating interpolated ROM ...
+(    2.40 sec) Interp. Cluster ROM      : DEBUG           ->  ... evaluating macro step "1" of "3"
+(    2.41 sec) Job Handler              : Message         ->  Process Failed <Runners.SharedMemoryRunner.SharedMemoryRunner object at 0x1c2d32b250> internal returnCode -1
+(    2.41 sec) EnsembleModel            : ERROR           -> The Model  Speed identified by Speed++1 failed!
 --------------------------------------------------
 There were 1 warnings during the simulation run:
 (1 time) Nothing to write to CSV! Checking metadata ...
 --------------------------------------------------
-(    0.13 sec) Job Handler              : Message         ->  Process Failed <Runners.SharedMemoryRunner.SharedMemoryRunner object at 0x1c45c096d0> internal returnCode -1
-(    0.13 sec) STEP MULTIRUN            : DEBUG           -> the job "1" has failed.
-(    0.13 sec) STEP MULTIRUN            : DEBUG           -> Testing if the sampler is ready to generate a new input
-(    0.13 sec) MonteCarlo               : DEBUG           -> Found new point to sample: {'scaling': 1.0, 'BOP_capacity': 1098.0, 'Electric_Grid_capacity': 1e+200, 'denoises': 2}
-(    0.13 sec) EnsembleModel            : DEBUG           -> Submitting model Speed
-(    0.13 sec) Interp. Cluster ROM      : DEBUG           -> Evaluating interpolated ROM ...
-(    0.13 sec) Interp. Cluster ROM      : DEBUG           ->  ... evaluating macro step "1" of "3"
-(    0.13 sec) Interp. Cluster ROM      : DEBUG           ->  ... evaluating macro step "2" of "3"
-(    0.14 sec) Interp. Cluster ROM      : DEBUG           ->  ... evaluating macro step "3" of "3"
-(    0.14 sec) EnsembleModel            : DEBUG           -> Submitting model dispatch
-This is the case <HERON Case> [<EGRET ARMA>, <EGRET Function>]
-Sources [<EGRET ARMA>, <EGRET Function>] ['__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', '_source', '_type', '_var_names', '_workingDir', 'getLocalVerbosity', 'get_input_specs', 'get_variable', 'interpolation', 'is_type', 'messageHandler', 'name', 'print_me', 'raiseADebug', 'raiseAMessage', 'raiseAWarning', 'raiseAnError', 'read_input', 'set_message_handler']
-HITTING
-DEBUGG comps: [<EGRET Component "BOP"">, <EGRET Component "Electric_Grid"">]
-RESOURCE "electricity":
-    produced by: ['BOP']
-    consumed by: ['Electric_Grid']
-This is the ARMA DATA [[ -3.30416732e-10   3.48729467e-10   3.45439675e-10]
- [  3.09016995e-01   3.09016995e-01   3.09016995e-01]
- [  5.87785252e-01   5.87785252e-01   5.87785252e-01]
- [  8.09016994e-01   8.09016994e-01   8.09016994e-01]
- [  9.51056516e-01   9.51056516e-01   9.51056516e-01]
- [  1.00000000e+00   1.00000000e+00   9.99999999e-01]
- [  9.51056516e-01   9.51056516e-01   9.51056516e-01]
- [  8.09016994e-01   8.09016994e-01   8.09016994e-01]
- [  5.87785252e-01   5.87785252e-01   5.87785252e-01]
- [  3.09016994e-01   3.09016995e-01   3.09016994e-01]
- [  8.16093331e-11  -3.48729261e-10  -3.18289057e-10]
- [ -3.09016994e-01  -3.09016995e-01  -3.09016995e-01]
- [ -5.87785252e-01  -5.87785252e-01  -5.87785252e-01]
- [ -8.09016994e-01  -8.09016994e-01  -8.09016994e-01]
- [ -9.51056516e-01  -9.51056516e-01  -9.51056516e-01]
- [ -1.00000000e+00  -1.00000000e+00  -1.00000000e+00]
- [ -9.51056516e-01  -9.51056516e-01  -9.51056516e-01]
- [ -8.09016994e-01  -8.09016994e-01  -8.09016994e-01]
- [ -5.87785252e-01  -5.87785252e-01  -5.87785252e-01]
- [ -3.09016994e-01  -3.09016994e-01  -3.09016995e-01]
- [  6.13275056e-11   3.48534002e-10   3.39861189e-10]] Time ['Time', 'Year'] [  0.    0.5   1.    1.5   2.    2.5   3.    3.5   4.    4.5   5.    5.5
-   6.    6.5   7.    7.5   8.    8.5   9.    9.5  10. ] <class 'Placeholders.ARMA'>
-[[ -3.30416732e-10   3.48729467e-10   3.45439675e-10]
- [  3.09016995e-01   3.09016995e-01   3.09016995e-01]
- [  5.87785252e-01   5.87785252e-01   5.87785252e-01]
- [  8.09016994e-01   8.09016994e-01   8.09016994e-01]
- [  9.51056516e-01   9.51056516e-01   9.51056516e-01]
- [  1.00000000e+00   1.00000000e+00   9.99999999e-01]
- [  9.51056516e-01   9.51056516e-01   9.51056516e-01]
- [  8.09016994e-01   8.09016994e-01   8.09016994e-01]
- [  5.87785252e-01   5.87785252e-01   5.87785252e-01]
- [  3.09016994e-01   3.09016995e-01   3.09016994e-01]
- [  8.16093331e-11  -3.48729261e-10  -3.18289057e-10]
- [ -3.09016994e-01  -3.09016995e-01  -3.09016995e-01]
- [ -5.87785252e-01  -5.87785252e-01  -5.87785252e-01]
- [ -8.09016994e-01  -8.09016994e-01  -8.09016994e-01]
- [ -9.51056516e-01  -9.51056516e-01  -9.51056516e-01]
- [ -1.00000000e+00  -1.00000000e+00  -1.00000000e+00]
- [ -9.51056516e-01  -9.51056516e-01  -9.51056516e-01]
- [ -8.09016994e-01  -8.09016994e-01  -8.09016994e-01]
- [ -5.87785252e-01  -5.87785252e-01  -5.87785252e-01]
- [ -3.09016994e-01  -3.09016994e-01  -3.09016995e-01]
- [  6.13275056e-11   3.48534002e-10   3.39861189e-10]]
-This is Res 60
-This is old_dt 0.5 0.166666666667 10.0 21 [  0.    0.5   1.    1.5   2.    2.5   3.    3.5   4.    4.5   5.    5.5
-   6.    6.5   7.    7.5   8.    8.5   9.    9.5  10. ]
-This is the interpolated signal [ -3.30416732e-10   1.03005665e-01   2.06011330e-01   3.09016995e-01]
-This is the interpolated signal [ 0.30901699  0.40193975  0.4948625   0.58778525]
-This is the interpolated signal [ 0.58778525  0.66152917  0.73527308  0.80901699]
-This is the interpolated signal [ 0.80901699  0.8563635   0.90371001  0.95105652]
-This is the interpolated signal [ 0.95105652  0.96737101  0.98368551  1.        ]
-This is the interpolated signal [ 1.          0.98368551  0.96737101  0.95105652]
-This is the interpolated signal [ 0.95105652  0.90371001  0.8563635   0.80901699]
-This is the interpolated signal [ 0.80901699  0.73527308  0.66152917  0.58778525]
-This is the interpolated signal [ 0.58778525  0.4948625   0.40193975  0.30901699]
-This is the interpolated signal [  3.09016994e-01   2.06011329e-01   1.03005665e-01   8.16093331e-11]
-This is the interpolated signal [  8.16093331e-11  -1.03005665e-01  -2.06011329e-01  -3.09016994e-01]
-This is the interpolated signal [-0.30901699 -0.40193975 -0.4948625  -0.58778525]
-This is the interpolated signal [-0.58778525 -0.66152917 -0.73527308 -0.80901699]
-This is the interpolated signal [-0.80901699 -0.8563635  -0.90371001 -0.95105652]
-This is the interpolated signal [-0.95105652 -0.96737101 -0.98368551 -1.        ]
-This is the interpolated signal [-1.         -0.9836855  -0.96737101 -0.95105652]
-This is the interpolated signal [-0.95105652 -0.90371001 -0.8563635  -0.80901699]
-This is the interpolated signal [-0.80901699 -0.73527308 -0.66152917 -0.58778525]
-This is the interpolated signal [-0.58778525 -0.4948625  -0.40193975 -0.30901699]
-This is the interpolated signal [ -3.09016994e-01  -2.06011329e-01  -1.03005665e-01   6.13275056e-11]
-This is temp 60
-This is the array [[ -3.30416732e-010   2.21322253e-314   5.60270442e-321]
- [  1.03005665e-001   2.21320880e-314   0.00000000e+000]
- [  2.06011330e-001   5.20268032e-090   2.40554560e-057]
- [  3.09016995e-001   3.84568602e-086   2.42342607e-052]
- [  4.01939747e-001   9.18211415e-072   9.15604179e-072]
- [  4.94862500e-001   1.26931570e-076   3.11624471e-033]
- [  5.87785252e-001   6.09941526e-154   7.87078431e-067]
- [  6.61529166e-001   2.52823562e-052   1.28195398e-153]
- [  7.35273080e-001   9.15604169e-072   4.85106907e-086]
- [  8.09016994e-001   2.36942798e-038   4.85559450e-033]
- [  8.56363501e-001   4.27405110e-033   9.49313575e-259]
- [  9.03710008e-001   5.20650803e-090   1.57772186e-052]
- [  9.51056516e-001   5.05214483e-086   1.17740945e-047]
- [  9.67371010e-001   1.39804328e-076   1.39642638e-076]
- [  9.83685505e-001   1.18295070e-076   4.84959929e-033]
- [  1.00000000e+000   6.09941526e-154   2.31859902e-052]
- [  9.83685505e-001   1.44975895e-047   1.28195398e-153]
- [  9.67371010e-001   9.15604182e-072   4.85106907e-086]
- [  9.51056516e-001   2.36942798e-038   4.85559450e-033]
- [  9.03710008e-001   4.27405110e-033   9.49313575e-259]
- [  8.56363501e-001   5.20268774e-090   4.43859635e-038]
- [  8.09016994e-001   4.24783896e-086   7.86207956e-067]
- [  7.35273080e-001   9.18211415e-072   9.15604176e-072]
- [  6.61529166e-001   1.26931570e-076   3.11624471e-033]
- [  5.87785252e-001   6.09941526e-154   4.67294771e-062]
- [  4.94862499e-001   3.50821647e-033   1.20766191e-153]
- [  4.01939747e-001   1.48346280e-076   3.85589765e-086]
- [  3.09016994e-001   3.54000736e-062   4.85559450e-033]
- [  2.06011329e-001   4.27405110e-033   9.49313575e-259]
- [  1.03005665e-001   5.20268774e-090   4.43862550e-038]
- [  8.16093331e-011   4.25804988e-086   7.86207956e-067]
- [ -1.03005665e-001   9.18211415e-072   9.15604176e-072]
- [ -2.06011329e-001   1.26931504e-076   3.11625955e-033]
- [ -3.09016994e-001   2.50915390e-091   2.31859902e-052]
- [ -4.01939747e-001   1.44975895e-047   1.28195398e-153]
- [ -4.94862499e-001   9.15604182e-072   3.45374471e-086]
- [ -5.87785252e-001   8.24222190e-072   1.39804329e-076]
- [ -6.61529166e-001   1.39804329e-076   9.49186542e-259]
- [ -7.35273080e-001   5.20650803e-090   1.57773222e-052]
- [ -8.09016994e-001   5.06235575e-086   1.17740945e-047]
- [ -8.56363502e-001   9.18211415e-072   9.15604176e-072]
- [ -9.03710009e-001   1.26931504e-076   3.11625955e-033]
- [ -9.51056516e-001   2.50915390e-091   7.87078431e-067]
- [ -9.67371011e-001   2.52823562e-052   1.28195398e-153]
- [ -9.83685505e-001   9.15604169e-072   3.85589765e-086]
- [ -1.00000000e+000   3.54000736e-062   4.85559450e-033]
- [ -9.83685505e-001   4.27405110e-033   9.49313575e-259]
- [ -9.67371010e-001   5.20652294e-090   2.40554560e-057]
- [ -9.51056516e-001   3.84568602e-086   4.65923999e-033]
- [ -9.03710009e-001   2.21320874e-314   2.21320874e-314]
- [ -8.56363501e-001   2.21320874e-314   2.21320874e-314]
- [ -8.09016994e-001   2.21320874e-314   2.21320874e-314]
- [ -7.35273080e-001   2.21320874e-314   2.21320874e-314]
- [ -6.61529166e-001   2.21320874e-314   2.21320874e-314]
- [ -5.87785252e-001   2.21320874e-314   2.21320874e-314]
- [ -4.94862499e-001   2.21320874e-314   2.21320874e-314]
- [ -4.01939747e-001   2.21320874e-314   2.21320874e-314]
- [ -3.09016994e-001   2.21320874e-314   2.21320874e-314]
- [ -2.06011329e-001   2.21320874e-314   2.21320874e-314]
- [ -1.03005665e-001   2.21320874e-314   2.21320874e-314]]
-This is the interpolated signal [  3.48729467e-10   1.03005665e-01   2.06011330e-01   3.09016995e-01]
-This is the interpolated signal [ 0.30901699  0.40193975  0.4948625   0.58778525]
-This is the interpolated signal [ 0.58778525  0.66152917  0.73527308  0.80901699]
-This is the interpolated signal [ 0.80901699  0.8563635   0.90371001  0.95105652]
-This is the interpolated signal [ 0.95105652  0.96737101  0.98368551  1.        ]
-This is the interpolated signal [ 1.          0.98368551  0.96737101  0.95105652]
-This is the interpolated signal [ 0.95105652  0.90371001  0.8563635   0.80901699]
-This is the interpolated signal [ 0.80901699  0.73527308  0.66152917  0.58778525]
-This is the interpolated signal [ 0.58778525  0.4948625   0.40193975  0.30901699]
-This is the interpolated signal [  3.09016995e-01   2.06011330e-01   1.03005665e-01  -3.48729261e-10]
-This is the interpolated signal [ -3.48729261e-10  -1.03005665e-01  -2.06011330e-01  -3.09016995e-01]
-This is the interpolated signal [-0.30901699 -0.40193975 -0.4948625  -0.58778525]
-This is the interpolated signal [-0.58778525 -0.66152917 -0.73527308 -0.80901699]
-This is the interpolated signal [-0.80901699 -0.8563635  -0.90371001 -0.95105652]
-This is the interpolated signal [-0.95105652 -0.96737101 -0.98368551 -1.        ]
-This is the interpolated signal [-1.         -0.98368551 -0.96737101 -0.95105652]
-This is the interpolated signal [-0.95105652 -0.90371001 -0.8563635  -0.80901699]
-This is the interpolated signal [-0.80901699 -0.73527308 -0.66152917 -0.58778525]
-This is the interpolated signal [-0.58778525 -0.4948625  -0.40193975 -0.30901699]
-This is the interpolated signal [ -3.09016994e-01  -2.06011329e-01  -1.03005664e-01   3.48534002e-10]
-This is temp 60
-This is the array [[ -3.30416732e-010   3.48729467e-010   5.60270442e-321]
- [  1.03005665e-001   1.03005665e-001   0.00000000e+000]
- [  2.06011330e-001   2.06011330e-001   2.40554560e-057]
- [  3.09016995e-001   3.09016995e-001   2.42342607e-052]
- [  4.01939747e-001   4.01939747e-001   9.15604179e-072]
- [  4.94862500e-001   4.94862499e-001   3.11624471e-033]
- [  5.87785252e-001   5.87785252e-001   7.87078431e-067]
- [  6.61529166e-001   6.61529166e-001   1.28195398e-153]
- [  7.35273080e-001   7.35273080e-001   4.85106907e-086]
- [  8.09016994e-001   8.09016994e-001   4.85559450e-033]
- [  8.56363501e-001   8.56363501e-001   9.49313575e-259]
- [  9.03710008e-001   9.03710009e-001   1.57772186e-052]
- [  9.51056516e-001   9.51056516e-001   1.17740945e-047]
- [  9.67371010e-001   9.67371011e-001   1.39642638e-076]
- [  9.83685505e-001   9.83685505e-001   4.84959929e-033]
- [  1.00000000e+000   1.00000000e+000   2.31859902e-052]
- [  9.83685505e-001   9.83685505e-001   1.28195398e-153]
- [  9.67371010e-001   9.67371011e-001   4.85106907e-086]
- [  9.51056516e-001   9.51056516e-001   4.85559450e-033]
- [  9.03710008e-001   9.03710009e-001   9.49313575e-259]
- [  8.56363501e-001   8.56363501e-001   4.43859635e-038]
- [  8.09016994e-001   8.09016994e-001   7.86207956e-067]
- [  7.35273080e-001   7.35273080e-001   9.15604176e-072]
- [  6.61529166e-001   6.61529166e-001   3.11624471e-033]
- [  5.87785252e-001   5.87785252e-001   4.67294771e-062]
- [  4.94862499e-001   4.94862499e-001   1.20766191e-153]
- [  4.01939747e-001   4.01939747e-001   3.85589765e-086]
- [  3.09016994e-001   3.09016995e-001   4.85559450e-033]
- [  2.06011329e-001   2.06011330e-001   9.49313575e-259]
- [  1.03005665e-001   1.03005665e-001   4.43862550e-038]
- [  8.16093331e-011  -3.48729261e-010   7.86207956e-067]
- [ -1.03005665e-001  -1.03005665e-001   9.15604176e-072]
- [ -2.06011329e-001  -2.06011330e-001   3.11625955e-033]
- [ -3.09016994e-001  -3.09016995e-001   2.31859902e-052]
- [ -4.01939747e-001  -4.01939747e-001   1.28195398e-153]
- [ -4.94862499e-001  -4.94862500e-001   3.45374471e-086]
- [ -5.87785252e-001  -5.87785252e-001   1.39804329e-076]
- [ -6.61529166e-001  -6.61529166e-001   9.49186542e-259]
- [ -7.35273080e-001  -7.35273080e-001   1.57773222e-052]
- [ -8.09016994e-001  -8.09016994e-001   1.17740945e-047]
- [ -8.56363502e-001  -8.56363501e-001   9.15604176e-072]
- [ -9.03710009e-001  -9.03710008e-001   3.11625955e-033]
- [ -9.51056516e-001  -9.51056516e-001   7.87078431e-067]
- [ -9.67371011e-001  -9.67371010e-001   1.28195398e-153]
- [ -9.83685505e-001  -9.83685505e-001   3.85589765e-086]
- [ -1.00000000e+000  -1.00000000e+000   4.85559450e-033]
- [ -9.83685505e-001  -9.83685505e-001   9.49313575e-259]
- [ -9.67371010e-001  -9.67371011e-001   2.40554560e-057]
- [ -9.51056516e-001  -9.51056516e-001   4.65923999e-033]
- [ -9.03710009e-001  -9.03710009e-001   2.21320874e-314]
- [ -8.56363501e-001  -8.56363502e-001   2.21320874e-314]
- [ -8.09016994e-001  -8.09016994e-001   2.21320874e-314]
- [ -7.35273080e-001  -7.35273080e-001   2.21320874e-314]
- [ -6.61529166e-001  -6.61529166e-001   2.21320874e-314]
- [ -5.87785252e-001  -5.87785252e-001   2.21320874e-314]
- [ -4.94862499e-001  -4.94862499e-001   2.21320874e-314]
- [ -4.01939747e-001  -4.01939747e-001   2.21320874e-314]
- [ -3.09016994e-001  -3.09016994e-001   2.21320874e-314]
- [ -2.06011329e-001  -2.06011329e-001   2.21320874e-314]
- [ -1.03005665e-001  -1.03005664e-001   2.21320874e-314]]
-This is the interpolated signal [  3.45439675e-10   1.03005665e-01   2.06011330e-01   3.09016995e-01]
-This is the interpolated signal [ 0.30901699  0.40193975  0.4948625   0.58778525]
-This is the interpolated signal [ 0.58778525  0.66152917  0.73527308  0.80901699]
-This is the interpolated signal [ 0.80901699  0.8563635   0.90371001  0.95105652]
-This is the interpolated signal [ 0.95105652  0.96737101  0.9836855   1.        ]
-This is the interpolated signal [ 1.          0.9836855   0.96737101  0.95105652]
-This is the interpolated signal [ 0.95105652  0.90371001  0.8563635   0.80901699]
-This is the interpolated signal [ 0.80901699  0.73527308  0.66152917  0.58778525]
-This is the interpolated signal [ 0.58778525  0.4948625   0.40193975  0.30901699]
-This is the interpolated signal [  3.09016994e-01   2.06011329e-01   1.03005665e-01  -3.18289057e-10]
-This is the interpolated signal [ -3.18289057e-10  -1.03005665e-01  -2.06011330e-01  -3.09016995e-01]
-This is the interpolated signal [-0.30901699 -0.40193975 -0.4948625  -0.58778525]
-This is the interpolated signal [-0.58778525 -0.66152917 -0.73527308 -0.80901699]
-This is the interpolated signal [-0.80901699 -0.8563635  -0.90371001 -0.95105652]
-This is the interpolated signal [-0.95105652 -0.96737101 -0.98368551 -1.        ]
-This is the interpolated signal [-1.         -0.98368551 -0.96737101 -0.95105652]
-This is the interpolated signal [-0.95105652 -0.90371001 -0.8563635  -0.80901699]
-This is the interpolated signal [-0.80901699 -0.73527308 -0.66152917 -0.58778525]
-This is the interpolated signal [-0.58778525 -0.4948625  -0.40193975 -0.30901699]
-This is the interpolated signal [ -3.09016995e-01  -2.06011330e-01  -1.03005665e-01   3.39861189e-10]
-This is temp 60
-This is the array [[ -3.30416732e-10   3.48729467e-10   3.45439675e-10]
- [  1.03005665e-01   1.03005665e-01   1.03005665e-01]
- [  2.06011330e-01   2.06011330e-01   2.06011330e-01]
- [  3.09016995e-01   3.09016995e-01   3.09016995e-01]
- [  4.01939747e-01   4.01939747e-01   4.01939747e-01]
- [  4.94862500e-01   4.94862499e-01   4.94862500e-01]
- [  5.87785252e-01   5.87785252e-01   5.87785252e-01]
- [  6.61529166e-01   6.61529166e-01   6.61529166e-01]
- [  7.35273080e-01   7.35273080e-01   7.35273080e-01]
- [  8.09016994e-01   8.09016994e-01   8.09016994e-01]
- [  8.56363501e-01   8.56363501e-01   8.56363502e-01]
- [  9.03710008e-01   9.03710009e-01   9.03710009e-01]
- [  9.51056516e-01   9.51056516e-01   9.51056516e-01]
- [  9.67371010e-01   9.67371011e-01   9.67371011e-01]
- [  9.83685505e-01   9.83685505e-01   9.83685505e-01]
- [  1.00000000e+00   1.00000000e+00   9.99999999e-01]
- [  9.83685505e-01   9.83685505e-01   9.83685505e-01]
- [  9.67371010e-01   9.67371011e-01   9.67371011e-01]
- [  9.51056516e-01   9.51056516e-01   9.51056516e-01]
- [  9.03710008e-01   9.03710009e-01   9.03710009e-01]
- [  8.56363501e-01   8.56363501e-01   8.56363502e-01]
- [  8.09016994e-01   8.09016994e-01   8.09016994e-01]
- [  7.35273080e-01   7.35273080e-01   7.35273080e-01]
- [  6.61529166e-01   6.61529166e-01   6.61529166e-01]
- [  5.87785252e-01   5.87785252e-01   5.87785252e-01]
- [  4.94862499e-01   4.94862499e-01   4.94862499e-01]
- [  4.01939747e-01   4.01939747e-01   4.01939747e-01]
- [  3.09016994e-01   3.09016995e-01   3.09016994e-01]
- [  2.06011329e-01   2.06011330e-01   2.06011329e-01]
- [  1.03005665e-01   1.03005665e-01   1.03005665e-01]
- [  8.16093331e-11  -3.48729261e-10  -3.18289057e-10]
- [ -1.03005665e-01  -1.03005665e-01  -1.03005665e-01]
- [ -2.06011329e-01  -2.06011330e-01  -2.06011330e-01]
- [ -3.09016994e-01  -3.09016995e-01  -3.09016995e-01]
- [ -4.01939747e-01  -4.01939747e-01  -4.01939747e-01]
- [ -4.94862499e-01  -4.94862500e-01  -4.94862499e-01]
- [ -5.87785252e-01  -5.87785252e-01  -5.87785252e-01]
- [ -6.61529166e-01  -6.61529166e-01  -6.61529166e-01]
- [ -7.35273080e-01  -7.35273080e-01  -7.35273080e-01]
- [ -8.09016994e-01  -8.09016994e-01  -8.09016994e-01]
- [ -8.56363502e-01  -8.56363501e-01  -8.56363501e-01]
- [ -9.03710009e-01  -9.03710008e-01  -9.03710009e-01]
- [ -9.51056516e-01  -9.51056516e-01  -9.51056516e-01]
- [ -9.67371011e-01  -9.67371010e-01  -9.67371011e-01]
- [ -9.83685505e-01  -9.83685505e-01  -9.83685505e-01]
- [ -1.00000000e+00  -1.00000000e+00  -1.00000000e+00]
- [ -9.83685505e-01  -9.83685505e-01  -9.83685505e-01]
- [ -9.67371010e-01  -9.67371011e-01  -9.67371010e-01]
- [ -9.51056516e-01  -9.51056516e-01  -9.51056516e-01]
- [ -9.03710009e-01  -9.03710009e-01  -9.03710008e-01]
- [ -8.56363501e-01  -8.56363502e-01  -8.56363501e-01]
- [ -8.09016994e-01  -8.09016994e-01  -8.09016994e-01]
- [ -7.35273080e-01  -7.35273080e-01  -7.35273080e-01]
- [ -6.61529166e-01  -6.61529166e-01  -6.61529166e-01]
- [ -5.87785252e-01  -5.87785252e-01  -5.87785252e-01]
- [ -4.94862499e-01  -4.94862499e-01  -4.94862500e-01]
- [ -4.01939747e-01  -4.01939747e-01  -4.01939747e-01]
- [ -3.09016994e-01  -3.09016994e-01  -3.09016995e-01]
- [ -2.06011329e-01  -2.06011329e-01  -2.06011330e-01]
- [ -1.03005665e-01  -1.03005664e-01  -1.03005665e-01]]
-This is the reset [[ -3.30416732e-10   3.48729467e-10   3.45439675e-10]
- [  1.03005665e-01   1.03005665e-01   1.03005665e-01]
- [  2.06011330e-01   2.06011330e-01   2.06011330e-01]
- [  3.09016995e-01   3.09016995e-01   3.09016995e-01]
- [  4.01939747e-01   4.01939747e-01   4.01939747e-01]
- [  4.94862500e-01   4.94862499e-01   4.94862500e-01]
- [  5.87785252e-01   5.87785252e-01   5.87785252e-01]
- [  6.61529166e-01   6.61529166e-01   6.61529166e-01]
- [  7.35273080e-01   7.35273080e-01   7.35273080e-01]
- [  8.09016994e-01   8.09016994e-01   8.09016994e-01]
- [  8.56363501e-01   8.56363501e-01   8.56363502e-01]
- [  9.03710008e-01   9.03710009e-01   9.03710009e-01]
- [  9.51056516e-01   9.51056516e-01   9.51056516e-01]
- [  9.67371010e-01   9.67371011e-01   9.67371011e-01]
- [  9.83685505e-01   9.83685505e-01   9.83685505e-01]
- [  1.00000000e+00   1.00000000e+00   9.99999999e-01]
- [  9.83685505e-01   9.83685505e-01   9.83685505e-01]
- [  9.67371010e-01   9.67371011e-01   9.67371011e-01]
- [  9.51056516e-01   9.51056516e-01   9.51056516e-01]
- [  9.03710008e-01   9.03710009e-01   9.03710009e-01]
- [  8.56363501e-01   8.56363501e-01   8.56363502e-01]
- [  8.09016994e-01   8.09016994e-01   8.09016994e-01]
- [  7.35273080e-01   7.35273080e-01   7.35273080e-01]
- [  6.61529166e-01   6.61529166e-01   6.61529166e-01]
- [  5.87785252e-01   5.87785252e-01   5.87785252e-01]
- [  4.94862499e-01   4.94862499e-01   4.94862499e-01]
- [  4.01939747e-01   4.01939747e-01   4.01939747e-01]
- [  3.09016994e-01   3.09016995e-01   3.09016994e-01]
- [  2.06011329e-01   2.06011330e-01   2.06011329e-01]
- [  1.03005665e-01   1.03005665e-01   1.03005665e-01]
- [  8.16093331e-11  -3.48729261e-10  -3.18289057e-10]
- [ -1.03005665e-01  -1.03005665e-01  -1.03005665e-01]
- [ -2.06011329e-01  -2.06011330e-01  -2.06011330e-01]
- [ -3.09016994e-01  -3.09016995e-01  -3.09016995e-01]
- [ -4.01939747e-01  -4.01939747e-01  -4.01939747e-01]
- [ -4.94862499e-01  -4.94862500e-01  -4.94862499e-01]
- [ -5.87785252e-01  -5.87785252e-01  -5.87785252e-01]
- [ -6.61529166e-01  -6.61529166e-01  -6.61529166e-01]
- [ -7.35273080e-01  -7.35273080e-01  -7.35273080e-01]
- [ -8.09016994e-01  -8.09016994e-01  -8.09016994e-01]
- [ -8.56363502e-01  -8.56363501e-01  -8.56363501e-01]
- [ -9.03710009e-01  -9.03710008e-01  -9.03710009e-01]
- [ -9.51056516e-01  -9.51056516e-01  -9.51056516e-01]
- [ -9.67371011e-01  -9.67371010e-01  -9.67371011e-01]
- [ -9.83685505e-01  -9.83685505e-01  -9.83685505e-01]
- [ -1.00000000e+00  -1.00000000e+00  -1.00000000e+00]
- [ -9.83685505e-01  -9.83685505e-01  -9.83685505e-01]
- [ -9.67371010e-01  -9.67371011e-01  -9.67371010e-01]
- [ -9.51056516e-01  -9.51056516e-01  -9.51056516e-01]
- [ -9.03710009e-01  -9.03710009e-01  -9.03710008e-01]
- [ -8.56363501e-01  -8.56363502e-01  -8.56363501e-01]
- [ -8.09016994e-01  -8.09016994e-01  -8.09016994e-01]
- [ -7.35273080e-01  -7.35273080e-01  -7.35273080e-01]
- [ -6.61529166e-01  -6.61529166e-01  -6.61529166e-01]
- [ -5.87785252e-01  -5.87785252e-01  -5.87785252e-01]
- [ -4.94862499e-01  -4.94862499e-01  -4.94862500e-01]
- [ -4.01939747e-01  -4.01939747e-01  -4.01939747e-01]
- [ -3.09016994e-01  -3.09016994e-01  -3.09016995e-01]
- [ -2.06011329e-01  -2.06011329e-01  -2.06011330e-01]
- [ -1.03005665e-01  -1.03005664e-01  -1.03005665e-01]]
-This is the new_name in dispatch [[[ -3.30416732e-10]
-  [  3.48729467e-10]
-  [  3.45439675e-10]]
-
- [[  1.03005665e-01]
-  [  1.03005665e-01]
-  [  1.03005665e-01]]
-
- [[  2.06011330e-01]
-  [  2.06011330e-01]
-  [  2.06011330e-01]]
-
- [[  3.09016995e-01]
-  [  3.09016995e-01]
-  [  3.09016995e-01]]
-
- [[  4.01939747e-01]
-  [  4.01939747e-01]
-  [  4.01939747e-01]]
-
- [[  4.94862500e-01]
-  [  4.94862499e-01]
-  [  4.94862500e-01]]
-
- [[  5.87785252e-01]
-  [  5.87785252e-01]
-  [  5.87785252e-01]]
-
- [[  6.61529166e-01]
-  [  6.61529166e-01]
-  [  6.61529166e-01]]
-
- [[  7.35273080e-01]
-  [  7.35273080e-01]
-  [  7.35273080e-01]]
-
- [[  8.09016994e-01]
-  [  8.09016994e-01]
-  [  8.09016994e-01]]
-
- [[  8.56363501e-01]
-  [  8.56363501e-01]
-  [  8.56363502e-01]]
-
- [[  9.03710008e-01]
-  [  9.03710009e-01]
-  [  9.03710009e-01]]
-
- [[  9.51056516e-01]
-  [  9.51056516e-01]
-  [  9.51056516e-01]]
-
- [[  9.67371010e-01]
-  [  9.67371011e-01]
-  [  9.67371011e-01]]
-
- [[  9.83685505e-01]
-  [  9.83685505e-01]
-  [  9.83685505e-01]]
-
- [[  1.00000000e+00]
-  [  1.00000000e+00]
-  [  9.99999999e-01]]
-
- [[  9.83685505e-01]
-  [  9.83685505e-01]
-  [  9.83685505e-01]]
-
- [[  9.67371010e-01]
-  [  9.67371011e-01]
-  [  9.67371011e-01]]
-
- [[  9.51056516e-01]
-  [  9.51056516e-01]
-  [  9.51056516e-01]]
-
- [[  9.03710008e-01]
-  [  9.03710009e-01]
-  [  9.03710009e-01]]
-
- [[  8.56363501e-01]
-  [  8.56363501e-01]
-  [  8.56363502e-01]]] Signal_cluster_shaped ['ClusterTime', 'Year', 'Cluster']
-Setting RAVEN variable "Signal_cluster_shaped" with shape (21, 3, 1)
-This is raven_vars 3
-These are the keys dict_keys(['increments', 'Resample_T', 'resource_map', 'econ_evaluation', 'project_life']) dict_keys(['EGRET'])
-*   *   *   *   *   *   *   *
-*                            
-*   Starting year "0"       
-*                            
-*   *   *   *   *   *   *   *
-DISPATCH: solving cluster 0
-These are the time steps [  0.    0.5   1.    1.5   2.    2.5   3.    3.5   4.    4.5   5.    5.5
-   6.    6.5   7.    7.5   8.    8.5   9.    9.5  10. ]
-(    0.17 sec) Job Handler              : Message         ->  Process Failed <Runners.SharedMemoryRunner.SharedMemoryRunner object at 0x1c45cb4190> internal returnCode -1
-(    0.17 sec) EnsembleModel            : ERROR           -> The Model  dispatch identified by dispatch++2 failed!
+(    2.41 sec) Job Handler              : Message         ->  Process Failed <Runners.SharedMemoryRunner.SharedMemoryRunner object at 0x1c30154210> internal returnCode -1
+(    2.41 sec) STEP MULTIRUN            : DEBUG           -> the job "1" has failed.
+(    2.41 sec) STEP MULTIRUN            : DEBUG           -> Testing if the sampler is ready to generate a new input
+(    2.41 sec) MonteCarlo               : DEBUG           -> Sampling limit reached!
+(    2.41 sec) MonteCarlo               : DEBUG           ->  ... Sample point 2: {'scaling': 1.0, 'BOP_capacity': 1098.0, 'Electric_Grid_capacity': 1e+200, 'denoises': 2}
+(    2.42 sec) EnsembleModel            : DEBUG           -> Submitting model Speed
+(    2.42 sec) Interp. Cluster ROM      : DEBUG           -> Evaluating interpolated ROM ...
+(    2.42 sec) Interp. Cluster ROM      : DEBUG           ->  ... evaluating macro step "1" of "3"
+(    2.42 sec) Job Handler              : Message         ->  Process Failed <Runners.SharedMemoryRunner.SharedMemoryRunner object at 0x1c2d32b250> internal returnCode -1
+(    2.42 sec) EnsembleModel            : ERROR           -> The Model  Speed identified by Speed++2 failed!
 --------------------------------------------------
 There were 1 warnings during the simulation run:
 (1 time) Nothing to write to CSV! Checking metadata ...
 --------------------------------------------------
-(    0.17 sec) Job Handler              : Message         ->  Process Failed <Runners.SharedMemoryRunner.SharedMemoryRunner object at 0x1c459d21d0> internal returnCode -1
-(    0.17 sec) STEP MULTIRUN            : DEBUG           -> the job "2" has failed.
-(    0.17 sec) STEP MULTIRUN            : DEBUG           -> Testing if the sampler is ready to generate a new input
-(    0.17 sec) STEP MULTIRUN            : DEBUG           -> Finished with 6 runs submitted, 0 jobs running, and 0 completed jobs waiting to be processed.
-(    0.17 sec) MonteCarlo               : DEBUG           -> ===============
-(    0.17 sec) MonteCarlo               : DEBUG           -> | RUN SUMMARY |
-(    0.17 sec) MonteCarlo               : DEBUG           -> ===============
-(    0.17 sec) MonteCarlo               : Warning         -> There were 2 failed runs!  Run with verbosity = debug for more details.
-(    0.17 sec) MonteCarlo               : DEBUG           ->   Run number 1 FAILED:
-(    0.17 sec) MonteCarlo               : DEBUG           ->       return code : -1
-(    0.17 sec) MonteCarlo               : DEBUG           ->   Run number 2 FAILED:
-(    0.17 sec) MonteCarlo               : DEBUG           ->       return code : -1
-(    0.17 sec) MonteCarlo               : DEBUG           ->   Continuing with reduced-size Monte-Carlo sampling.
-(    0.17 sec) MonteCarlo               : DEBUG           -> ===============
-(    0.17 sec) MonteCarlo               : DEBUG           ->   END SUMMARY  
-(    0.17 sec) MonteCarlo               : DEBUG           -> ===============
-(    0.17 sec) STEP MULTIRUN            : Message         -> ***       Run finished        ***
-(    0.17 sec) STEP MULTIRUN            : Message         -> ***     Closing the step      ***
-(    0.17 sec) STEP MULTIRUN            : Message         -> ***        Step closed        ***
-(    0.17 sec) SIMULATION               : Message         -> -- End step arma_sampling of type: MultiRun                    --
+(    2.42 sec) Job Handler              : Message         ->  Process Failed <Runners.SharedMemoryRunner.SharedMemoryRunner object at 0x1c2f0b0890> internal returnCode -1
+(    2.42 sec) STEP MULTIRUN            : DEBUG           -> the job "2" has failed.
+(    2.42 sec) STEP MULTIRUN            : DEBUG           -> Testing if the sampler is ready to generate a new input
+(    2.42 sec) MonteCarlo               : DEBUG           -> Sampling limit reached! No new samples ...
+(    2.42 sec) STEP MULTIRUN            : DEBUG           ->  ... sampler has no new inputs currently.
+(    2.42 sec) MonteCarlo               : DEBUG           -> Sampling limit reached! No new samples ...
+(    2.42 sec) STEP MULTIRUN            : DEBUG           -> Sampling finished with 4 runs submitted, 0 jobs running, and 0 completed jobs waiting to be processed.
+(    2.42 sec) MonteCarlo               : DEBUG           -> ===============
+(    2.42 sec) MonteCarlo               : DEBUG           -> | RUN SUMMARY |
+(    2.42 sec) MonteCarlo               : DEBUG           -> ===============
+(    2.42 sec) MonteCarlo               : Warning         -> There were 2 failed runs!  Run with verbosity = debug for more details.
+(    2.42 sec) MonteCarlo               : DEBUG           ->   Run number 1 FAILED:
+(    2.42 sec) MonteCarlo               : DEBUG           ->       return code : -1
+(    2.42 sec) MonteCarlo               : DEBUG           ->   Run number 2 FAILED:
+(    2.42 sec) MonteCarlo               : DEBUG           ->       return code : -1
+(    2.42 sec) MonteCarlo               : DEBUG           ->   Continuing with reduced-size Monte-Carlo sampling.
+(    2.42 sec) MonteCarlo               : DEBUG           -> ===============
+(    2.42 sec) MonteCarlo               : DEBUG           ->   END SUMMARY  
+(    2.42 sec) MonteCarlo               : DEBUG           -> ===============
+(    2.42 sec) STEP MULTIRUN            : Message         -> ***       Run finished        ***
+(    2.42 sec) STEP MULTIRUN            : Message         -> ***     Closing the step      ***
+(    2.42 sec) STEP MULTIRUN            : Message         -> ***        Step closed        ***
+(    2.42 sec) SIMULATION               : Message         -> -- End step arma_sampling of type: MultiRun                    --
 
-(    0.17 sec) SIMULATION               : Message         -> -- Beginning step summarize of type: PostProcess                    --
-(    0.17 sec) STEP SINGLERUN           : Message         -> ***  Beginning initialization ***
-(    0.17 sec) STEP SINGLERUN           : DEBUG           -> jobHandler initialized
-(    0.17 sec) STEP SINGLERUN           : DEBUG           -> for the role Model  the item of class PostProcessor   and name average         has been initialized
-(    0.17 sec) STEP SINGLERUN           : DEBUG           -> for the role Output the item of class PointSet        and name metrics_avg     has been initialized
-(    0.17 sec) STEP SINGLERUN           : DEBUG           -> for the role Output the item of class OutStreamPrint  and name disp_results    has been initialized
-(    0.17 sec) STEP SINGLERUN           : Message         -> ***    Initialization done    ***
-(    0.17 sec) STEP SINGLERUN           : Message         -> ***       Beginning run       ***
-(    0.17 sec) PostProcessor            : ERROR           -> In post-processor average the input arma_metrics is empty.
-/Users/gaira/miniconda3/envs/raven_libraries/lib/python3.7/site-packages/patsy/constraint.py:13: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3,and in 3.9 it will stop working
+(    2.42 sec) SIMULATION               : Message         -> -- Beginning step summarize of type: PostProcess                    --
+(    2.42 sec) STEP SINGLERUN           : Message         -> ***  Beginning initialization ***
+(    2.42 sec) STEP SINGLERUN           : DEBUG           -> jobHandler initialized
+(    2.42 sec) STEP SINGLERUN           : DEBUG           -> for the role Model  the item of class PostProcessor   and name average         has been initialized
+(    2.42 sec) STEP SINGLERUN           : DEBUG           -> for the role Output the item of class PointSet        and name metrics_avg     has been initialized
+(    2.42 sec) STEP SINGLERUN           : DEBUG           -> for the role Output the item of class OutStreamPrint  and name disp_results    has been initialized
+(    2.42 sec) STEP SINGLERUN           : Message         -> ***    Initialization done    ***
+(    2.42 sec) STEP SINGLERUN           : Message         -> ***       Beginning run       ***
+(    2.42 sec) PostProcessor            : ERROR           -> In post-processor average the input arma_metrics is empty.
+/Users/talbpw/anaconda3/envs/raven_libraries/lib/python3.7/site-packages/patsy/constraint.py:13: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3,and in 3.9 it will stop working
   from collections import Mapping
-/Users/gaira/miniconda3/envs/raven_libraries/lib/python3.7/site-packages/statsmodels/base/wrapper.py:100: DeprecationWarning: `formatargspec` is deprecated since Python 3.5. Use `signature` and the `Signature` object directly
+/Users/talbpw/anaconda3/envs/raven_libraries/lib/python3.7/site-packages/statsmodels/base/wrapper.py:100: DeprecationWarning: `formatargspec` is deprecated since Python 3.5. Use `signature` and the `Signature` object directly
   defaults=argspec[3])
-/Users/gaira/miniconda3/envs/raven_libraries/lib/python3.7/site-packages/tensorflow/python/pywrap_tensorflow_internal.py:15: DeprecationWarning: the imp module is deprecated in favour of importlib; see the module's documentation for alternative uses
-  import imp
-/Users/gaira/miniconda3/envs/raven_libraries/lib/python3.7/site-packages/tensorflow/python/util/nest.py:824: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3,and in 3.9 it will stop working
-  _pywrap_tensorflow.RegisterType("Sequence", _collections.Sequence)
-/Users/gaira/miniconda3/envs/raven_libraries/lib/python3.7/site-packages/tensorflow/python/training/checkpointable/data_structures.py:312: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3,and in 3.9 it will stop working
-  class _ListWrapper(List, collections.MutableSequence,
-/Users/gaira/miniconda3/envs/raven_libraries/lib/python3.7/site-packages/tensorflow/python/training/checkpointable/data_structures.py:546: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3,and in 3.9 it will stop working
-  class _DictWrapper(Mapping, collections.MutableMapping):
-/Users/gaira/miniconda3/envs/raven_libraries/lib/python3.7/site-packages/tensorflow/python/training/checkpointable/util.py:448: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3,and in 3.9 it will stop working
-  class _ObjectIdentitySet(collections.MutableSet):
-/Users/gaira/heron/src/dispatch.py:214: DeprecationWarning: object of type <class 'numpy.float64'> cannot be safely interpreted as an integer.
-  new_time_array = np.linspace(idx[j-1],idx[j],(idx[j]-idx[j-1])/new_dt+1)
-Exception in thread dispatch++1:
+Exception in thread Speed++1:
 Traceback (most recent call last):
-  File "/Users/gaira/miniconda3/envs/raven_libraries/lib/python3.7/threading.py", line 926, in _bootstrap_inner
+  File "/Users/talbpw/anaconda3/envs/raven_libraries/lib/python3.7/threading.py", line 926, in _bootstrap_inner
     self.run()
-  File "/Users/gaira/miniconda3/envs/raven_libraries/lib/python3.7/threading.py", line 870, in run
+  File "/Users/talbpw/anaconda3/envs/raven_libraries/lib/python3.7/threading.py", line 870, in run
     self._target(*self._args, **self._kwargs)
-  File "/Users/gaira/projects/raven/framework/Runners/SharedMemoryRunner.py", line 134, in <lambda>
+  File "/Users/talbpw/projects/raven/framework/Runners/SharedMemoryRunner.py", line 134, in <lambda>
     self.thread = InterruptibleThread(target = lambda q, *arg : q.append(self.functionToRun(*arg)),
-  File "/Users/gaira/projects/raven/framework/Models/ExternalModel.py", line 273, in evaluateSample
-    result,instSelf = self._externalRun(inRun,Input[1],) #entry [1] is the external model object; it doesn't appear to be needed
-  File "/Users/gaira/projects/raven/framework/Models/ExternalModel.py", line 221, in _externalRun
-    self.sim.run(externalSelf, InputDict)
-  File "/Users/gaira/heron/src/dispatch.py", line 251, in run
-    dispatches = dispatch_all_years(years, cluster_info, inputs, egret_case, egret_sources, egret_components, meta)
-  File "/Users/gaira/heron/src/dispatch.py", line 345, in dispatch_all_years
-    dispatch_map, meta = dispatch_clusters(inputs, egret_case, egret_sources, egret_components, meta, cluster_info)
-  File "/Users/gaira/heron/src/dispatch.py", line 437, in dispatch_clusters
-    dispatch, meta = dispatch_one_year(inputs, case, sources, components, meta)
-  File "/Users/gaira/heron/src/dispatch.py", line 452, in dispatch_one_year
-    tttt
-NameError: name 'tttt' is not defined
+  File "/Users/talbpw/projects/raven/framework/Models/ROM.py", line 1463, in evaluateSample
+    result = self._externalRun(inRun)
+  File "/Users/talbpw/projects/raven/framework/Models/ROM.py", line 1441, in _externalRun
+    returnDict = self.evaluate(inRun)
+  File "/Users/talbpw/projects/raven/framework/Models/ROM.py", line 1429, in evaluate
+    outputEvaluation = self.supervisedEngine.evaluate(inputToROM)
+  File "/Users/talbpw/projects/raven/framework/LearningGate.py", line 274, in evaluate
+    sliceEvaluation = rom.evaluate(request)
+  File "/Users/talbpw/projects/raven/framework/SupervisedLearning/ROMCollection.py", line 1462, in evaluate
+    subResult = model.evaluate(edict) # TODO same input for all macro steps? True for ARMA at least...
+  File "/Users/talbpw/projects/raven/framework/SupervisedLearning/ROMCollection.py", line 703, in evaluate
+    result, weights = self._createTruncatedEvaluation(edict)
+  File "/Users/talbpw/projects/raven/framework/SupervisedLearning/ROMCollection.py", line 881, in _createTruncatedEvaluation
+    result, indexMap, sampleWeights, pivotLen = self._collectClusteredEvaluations(evaluationDict, pivotID)
+  File "/Users/talbpw/projects/raven/framework/SupervisedLearning/ROMCollection.py", line 841, in _collectClusteredEvaluations
+    chooseRomMode = 'first' if self._evaluationChoice is None else self._evaluationChoice
+AttributeError: 'Clusters' object has no attribute '_evaluationChoice'
 
 Exception in thread 1:
 Traceback (most recent call last):
-  File "/Users/gaira/miniconda3/envs/raven_libraries/lib/python3.7/threading.py", line 926, in _bootstrap_inner
+  File "/Users/talbpw/anaconda3/envs/raven_libraries/lib/python3.7/threading.py", line 926, in _bootstrap_inner
     self.run()
-  File "/Users/gaira/miniconda3/envs/raven_libraries/lib/python3.7/threading.py", line 870, in run
+  File "/Users/talbpw/anaconda3/envs/raven_libraries/lib/python3.7/threading.py", line 870, in run
     self._target(*self._args, **self._kwargs)
-  File "/Users/gaira/projects/raven/framework/Runners/SharedMemoryRunner.py", line 134, in <lambda>
+  File "/Users/talbpw/projects/raven/framework/Runners/SharedMemoryRunner.py", line 134, in <lambda>
     self.thread = InterruptibleThread(target = lambda q, *arg : q.append(self.functionToRun(*arg)),
-  File "/Users/gaira/projects/raven/framework/Models/EnsembleModel.py", line 497, in evaluateSample
+  File "/Users/talbpw/projects/raven/framework/Models/EnsembleModel.py", line 495, in evaluateSample
     returnValue = (Input,self._externalRun(Input,jobHandler))
-  File "/Users/gaira/projects/raven/framework/Models/EnsembleModel.py", line 663, in _externalRun
+  File "/Users/talbpw/projects/raven/framework/Models/EnsembleModel.py", line 660, in _externalRun
     self.raiseAnError(RuntimeError,"The Model  " + modelIn + " identified by " + finishedRun[0].identifier +" failed!")
-  File "/Users/gaira/projects/raven/framework/MessageHandler.py", line 97, in raiseAnError
+  File "/Users/talbpw/projects/raven/framework/MessageHandler.py", line 98, in raiseAnError
     self.messageHandler.error(self,etype,msg,str(tag),verbosity,color)
-  File "/Users/gaira/projects/raven/framework/MessageHandler.py", line 311, in error
+  File "/Users/talbpw/projects/raven/framework/MessageHandler.py", line 312, in error
     raise etype(message)
-RuntimeError: The Model  dispatch identified by dispatch++1 failed!
+RuntimeError: The Model  Speed identified by Speed++1 failed!
 
-Exception in thread dispatch++2:
+Exception in thread Speed++2:
 Traceback (most recent call last):
-  File "/Users/gaira/miniconda3/envs/raven_libraries/lib/python3.7/threading.py", line 926, in _bootstrap_inner
+  File "/Users/talbpw/anaconda3/envs/raven_libraries/lib/python3.7/threading.py", line 926, in _bootstrap_inner
     self.run()
-  File "/Users/gaira/miniconda3/envs/raven_libraries/lib/python3.7/threading.py", line 870, in run
+  File "/Users/talbpw/anaconda3/envs/raven_libraries/lib/python3.7/threading.py", line 870, in run
     self._target(*self._args, **self._kwargs)
-  File "/Users/gaira/projects/raven/framework/Runners/SharedMemoryRunner.py", line 134, in <lambda>
+  File "/Users/talbpw/projects/raven/framework/Runners/SharedMemoryRunner.py", line 134, in <lambda>
     self.thread = InterruptibleThread(target = lambda q, *arg : q.append(self.functionToRun(*arg)),
-  File "/Users/gaira/projects/raven/framework/Models/ExternalModel.py", line 273, in evaluateSample
-    result,instSelf = self._externalRun(inRun,Input[1],) #entry [1] is the external model object; it doesn't appear to be needed
-  File "/Users/gaira/projects/raven/framework/Models/ExternalModel.py", line 221, in _externalRun
-    self.sim.run(externalSelf, InputDict)
-  File "/Users/gaira/heron/src/dispatch.py", line 251, in run
-    dispatches = dispatch_all_years(years, cluster_info, inputs, egret_case, egret_sources, egret_components, meta)
-  File "/Users/gaira/heron/src/dispatch.py", line 345, in dispatch_all_years
-    dispatch_map, meta = dispatch_clusters(inputs, egret_case, egret_sources, egret_components, meta, cluster_info)
-  File "/Users/gaira/heron/src/dispatch.py", line 437, in dispatch_clusters
-    dispatch, meta = dispatch_one_year(inputs, case, sources, components, meta)
-  File "/Users/gaira/heron/src/dispatch.py", line 452, in dispatch_one_year
-    tttt
-NameError: name 'tttt' is not defined
+  File "/Users/talbpw/projects/raven/framework/Models/ROM.py", line 1463, in evaluateSample
+    result = self._externalRun(inRun)
+  File "/Users/talbpw/projects/raven/framework/Models/ROM.py", line 1441, in _externalRun
+    returnDict = self.evaluate(inRun)
+  File "/Users/talbpw/projects/raven/framework/Models/ROM.py", line 1429, in evaluate
+    outputEvaluation = self.supervisedEngine.evaluate(inputToROM)
+  File "/Users/talbpw/projects/raven/framework/LearningGate.py", line 274, in evaluate
+    sliceEvaluation = rom.evaluate(request)
+  File "/Users/talbpw/projects/raven/framework/SupervisedLearning/ROMCollection.py", line 1462, in evaluate
+    subResult = model.evaluate(edict) # TODO same input for all macro steps? True for ARMA at least...
+  File "/Users/talbpw/projects/raven/framework/SupervisedLearning/ROMCollection.py", line 703, in evaluate
+    result, weights = self._createTruncatedEvaluation(edict)
+  File "/Users/talbpw/projects/raven/framework/SupervisedLearning/ROMCollection.py", line 881, in _createTruncatedEvaluation
+    result, indexMap, sampleWeights, pivotLen = self._collectClusteredEvaluations(evaluationDict, pivotID)
+  File "/Users/talbpw/projects/raven/framework/SupervisedLearning/ROMCollection.py", line 841, in _collectClusteredEvaluations
+    chooseRomMode = 'first' if self._evaluationChoice is None else self._evaluationChoice
+AttributeError: 'Clusters' object has no attribute '_evaluationChoice'
 
 Exception in thread 2:
 Traceback (most recent call last):
-  File "/Users/gaira/miniconda3/envs/raven_libraries/lib/python3.7/threading.py", line 926, in _bootstrap_inner
+  File "/Users/talbpw/anaconda3/envs/raven_libraries/lib/python3.7/threading.py", line 926, in _bootstrap_inner
     self.run()
-  File "/Users/gaira/miniconda3/envs/raven_libraries/lib/python3.7/threading.py", line 870, in run
+  File "/Users/talbpw/anaconda3/envs/raven_libraries/lib/python3.7/threading.py", line 870, in run
     self._target(*self._args, **self._kwargs)
-  File "/Users/gaira/projects/raven/framework/Runners/SharedMemoryRunner.py", line 134, in <lambda>
+  File "/Users/talbpw/projects/raven/framework/Runners/SharedMemoryRunner.py", line 134, in <lambda>
     self.thread = InterruptibleThread(target = lambda q, *arg : q.append(self.functionToRun(*arg)),
-  File "/Users/gaira/projects/raven/framework/Models/EnsembleModel.py", line 497, in evaluateSample
+  File "/Users/talbpw/projects/raven/framework/Models/EnsembleModel.py", line 495, in evaluateSample
     returnValue = (Input,self._externalRun(Input,jobHandler))
-  File "/Users/gaira/projects/raven/framework/Models/EnsembleModel.py", line 663, in _externalRun
+  File "/Users/talbpw/projects/raven/framework/Models/EnsembleModel.py", line 660, in _externalRun
     self.raiseAnError(RuntimeError,"The Model  " + modelIn + " identified by " + finishedRun[0].identifier +" failed!")
-  File "/Users/gaira/projects/raven/framework/MessageHandler.py", line 97, in raiseAnError
+  File "/Users/talbpw/projects/raven/framework/MessageHandler.py", line 98, in raiseAnError
     self.messageHandler.error(self,etype,msg,str(tag),verbosity,color)
-  File "/Users/gaira/projects/raven/framework/MessageHandler.py", line 311, in error
+  File "/Users/talbpw/projects/raven/framework/MessageHandler.py", line 312, in error
     raise etype(message)
-RuntimeError: The Model  dispatch identified by dispatch++2 failed!
+RuntimeError: The Model  Speed identified by Speed++2 failed!
 
 Exception in thread generalOut:
 Traceback (most recent call last):
-  File "/Users/gaira/miniconda3/envs/raven_libraries/lib/python3.7/threading.py", line 926, in _bootstrap_inner
+  File "/Users/talbpw/anaconda3/envs/raven_libraries/lib/python3.7/threading.py", line 926, in _bootstrap_inner
     self.run()
-  File "/Users/gaira/miniconda3/envs/raven_libraries/lib/python3.7/threading.py", line 870, in run
+  File "/Users/talbpw/anaconda3/envs/raven_libraries/lib/python3.7/threading.py", line 870, in run
     self._target(*self._args, **self._kwargs)
-  File "/Users/gaira/projects/raven/framework/Runners/SharedMemoryRunner.py", line 134, in <lambda>
+  File "/Users/talbpw/projects/raven/framework/Runners/SharedMemoryRunner.py", line 134, in <lambda>
     self.thread = InterruptibleThread(target = lambda q, *arg : q.append(self.functionToRun(*arg)),
-  File "/Users/gaira/projects/raven/framework/Models/PostProcessor.py", line 185, in evaluateSample
+  File "/Users/talbpw/projects/raven/framework/Models/PostProcessor.py", line 186, in evaluateSample
     returnValue = (Input, self.interface.run(Input))
-  File "/Users/gaira/projects/raven/framework/PostProcessors/BasicStatistics.py", line 1210, in run
+  File "/Users/talbpw/projects/raven/framework/PostProcessors/BasicStatistics.py", line 1208, in run
     inputData = self.inputToInternal(inputIn)
-  File "/Users/gaira/projects/raven/framework/PostProcessors/BasicStatistics.py", line 155, in inputToInternal
+  File "/Users/talbpw/projects/raven/framework/PostProcessors/BasicStatistics.py", line 153, in inputToInternal
     self.raiseAnError(IOError, "In post-processor " +self.name+" the input "+currentInput.name+" is empty.")
-  File "/Users/gaira/projects/raven/framework/MessageHandler.py", line 97, in raiseAnError
+  File "/Users/talbpw/projects/raven/framework/MessageHandler.py", line 98, in raiseAnError
     self.messageHandler.error(self,etype,msg,str(tag),verbosity,color)
-  File "/Users/gaira/projects/raven/framework/MessageHandler.py", line 311, in error
+  File "/Users/talbpw/projects/raven/framework/MessageHandler.py", line 312, in error
     raise etype(message)
 OSError: In post-processor average the input arma_metrics is empty.
 --------------------------------------------------
@@ -1447,25 +543,25 @@ There were 2 warnings during the simulation run:
 (1 time) Nothing to write to CSV! Checking metadata ...
 (1 time) There were 2 failed runs!  Run with verbosity = debug for more details.
 --------------------------------------------------
-(    0.18 sec) Job Handler              : Message         ->  Process Failed <Runners.SharedMemoryRunner.SharedMemoryRunner object at 0x1c45c14710> internal returnCode -1
-(    0.18 sec) STEP SINGLERUN           : DEBUG           -> the job "generalOut" has failed.
-(    0.18 sec) STEP SINGLERUN           : Warning         -> There were 1 failed runs!
-(    0.18 sec) STEP SINGLERUN           : Message         -> ***       Run finished        ***
-(    0.18 sec) STEP SINGLERUN           : Message         -> ***     Closing the step      ***
-(    0.18 sec) STEP SINGLERUN           : Message         -> ***        Step closed        ***
-(    0.18 sec) SIMULATION               : Message         -> -- End step summarize of type: PostProcess                     --
+(    2.43 sec) Job Handler              : Message         ->  Process Failed <Runners.SharedMemoryRunner.SharedMemoryRunner object at 0x1c2f2e4cd0> internal returnCode -1
+(    2.43 sec) STEP SINGLERUN           : DEBUG           -> the job "generalOut" has failed.
+(    2.43 sec) STEP SINGLERUN           : Warning         -> There were 1 failed runs!
+(    2.43 sec) STEP SINGLERUN           : Message         -> ***       Run finished        ***
+(    2.43 sec) STEP SINGLERUN           : Message         -> ***     Closing the step      ***
+(    2.43 sec) STEP SINGLERUN           : Message         -> ***        Step closed        ***
+(    2.43 sec) SIMULATION               : Message         -> -- End step summarize of type: PostProcess                     --
 
-(    0.18 sec) SIMULATION               : Message         -> -- Beginning step debug_print of type: IOStep                       --
-(    0.18 sec) STEP IOCOMBINED          : Message         -> ***  Beginning initialization ***
-(    0.18 sec) STEP IOCOMBINED          : DEBUG           -> jobHandler initialized
-(    0.18 sec) STEP IOCOMBINED          : DEBUG           -> for the role Output the item of class OutStreamPrint  and name disp_debug      has been initialized
-(    0.18 sec) STEP IOCOMBINED          : Message         -> ***    Initialization done    ***
-(    0.18 sec) STEP IOCOMBINED          : Message         -> ***       Beginning run       ***
-(    0.18 sec) DataSet                  : Warning         -> Nothing to write to CSV! Checking metadata ...
-(    0.18 sec) STEP IOCOMBINED          : Message         -> ***       Run finished        ***
-(    0.18 sec) STEP IOCOMBINED          : Message         -> ***     Closing the step      ***
-(    0.18 sec) STEP IOCOMBINED          : Message         -> ***        Step closed        ***
-(    0.18 sec) SIMULATION               : Message         -> -- End step debug_print of type: IOStep                        --
+(    2.43 sec) SIMULATION               : Message         -> -- Beginning step debug_print of type: IOStep                       --
+(    2.43 sec) STEP IOCOMBINED          : Message         -> ***  Beginning initialization ***
+(    2.43 sec) STEP IOCOMBINED          : DEBUG           -> jobHandler initialized
+(    2.43 sec) STEP IOCOMBINED          : DEBUG           -> for the role Output the item of class OutStreamPrint  and name disp_debug      has been initialized
+(    2.43 sec) STEP IOCOMBINED          : Message         -> ***    Initialization done    ***
+(    2.43 sec) STEP IOCOMBINED          : Message         -> ***       Beginning run       ***
+(    2.43 sec) DataSet                  : Warning         -> Nothing to write to CSV! Checking metadata ...
+(    2.43 sec) STEP IOCOMBINED          : Message         -> ***       Run finished        ***
+(    2.43 sec) STEP IOCOMBINED          : Message         -> ***     Closing the step      ***
+(    2.43 sec) STEP IOCOMBINED          : Message         -> ***        Step closed        ***
+(    2.43 sec) SIMULATION               : Message         -> -- End step debug_print of type: IOStep                        --
 
 --------------------------------------------------
 There were 4 warnings during the simulation run:
@@ -1473,5 +569,5 @@ There were 4 warnings during the simulation run:
 (1 time) There were 1 failed runs!
 (1 time) There were 2 failed runs!  Run with verbosity = debug for more details.
 --------------------------------------------------
-(    0.18 sec) SIMULATION               : Message         -> Run complete!
+(    2.43 sec) SIMULATION               : Message         -> Run complete!
 

@@ -11,23 +11,21 @@
   </TestInfo>
 
   <Case name="Sweep_Runs">
+    <!--
     <mode>sweep</mode>
     <metric>NPV</metric>
-    <!--<differential>True</differential> -->
+    -->
     <num_arma_samples>2</num_arma_samples>
     <timestep_interval>1</timestep_interval> <!-- unit=seconds -->
     <history_length>20</history_length>
     <economics>
       <ProjectTime>3</ProjectTime>
       <DiscountRate>0.08</DiscountRate>
-      <!--Corporate Tax Rate -->
       <tax>0.0</tax>
       <inflation>0.0</inflation>
       <verbosity>50</verbosity>
     </economics>
-    <!--<dispatch_increment resource="hydrogen">1e6</dispatch_increment> -->
     <dispatch_increment resource="electricity">1e6</dispatch_increment> <!-- MW -->
-    <!--<seconds_per_arma_unit>1</seconds_per_arma_unit>--> <!-- TODO implement, to go from sample length to year -->
   </Case>
 
   <Components>

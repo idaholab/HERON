@@ -16,7 +16,7 @@ import Cases, Components, Placeholders
 # from utils import InputData
 
 specs_to_load = {'Cases': ['Case'],
-                 'Components': ['Producer', 'Demand', 'Storage'],
+                 'Components': ['Component'],
                  'Placeholders': ['ARMA', 'Function'],
 }
 
@@ -47,7 +47,7 @@ def create(module, contents):
     intro = read(intro_file)
   else:
     intro = ''
-  to_write = '\\section{{{name} Introduction}}'.format(name=module)
+  to_write = '\\section{{{name}}}'.format(name=module)
   to_write += intro
   to_write += '\n' * 2
   mod = getattr(sys.modules[__name__], module)

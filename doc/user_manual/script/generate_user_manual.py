@@ -24,8 +24,9 @@ filenames = collect_tex.specs_to_load.keys()
 
 string = ''
 input_template = '\\input{{{name}}}\n'
-for txt in ['Introduction', 'Howtorun']:
-  string += input_template.format(name=os.path.join(source_path, txt))
+# these are directly in the src
+#for txt in ['Introduction', 'Howtorun']:
+#  string += input_template.format(name=os.path.join(source_path, txt))
 for txt in filenames:
   string += input_template.format(name=txt)
 

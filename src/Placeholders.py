@@ -13,6 +13,7 @@ import _utils as hutils
 framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)
 from utils import InputData, utils, InputTypes
+
 class Placeholder(Base):
   """
     Objects that hold a place in the EGRET workflow
@@ -86,9 +87,14 @@ class ARMA(Placeholder):
       @ In, None
       @ Out, specs, InputData, specs
     """
-    specs = InputData.parameterInputFactory('ARMA', contentType=InputTypes.StringType, ordered=False, baseNode=None)
-    specs.addParam('name', param_type=InputTypes.StringType, required=True)
-    specs.addParam('variable', param_type=InputTypes.StringListType, required=True)
+    specs = InputData.parameterInputFactory('ARMA', contentType=InputTypes.StringType, ordered=False, baseNode=None,
+        descr=r"""This data source is a source of synthetically-generated histories trained by RAVEN.
+              The RAVEN ARMA ROM should be trained and serialized before using it in HERON.""")
+    specs.addParam('name', param_type=InputTypes.StringType, required=True,
+        descr=r"""identifier for this data source in HERON and in the HERON input file. """)
+    specs.addParam('variable', param_type=InputTypes.StringListType, required=True,
+        descr=r"""provides the names of the variables from the synthetic history generators that will
+              be used in this analysis.""")
     return specs
 
   def __init__(self, **kwargs):
@@ -104,7 +110,7 @@ class ARMA(Placeholder):
     self._var_names = specs.parameterValues['variable']
 
   def interpolation(self, x, y):
-    
+
     return interpolate.interp1d(x, y)
 
   #def evaluate_arma(self, local_t,data_dict):
@@ -127,8 +133,12 @@ class Function(Placeholder):
       @ In, None
       @ Out, specs, InputData, specs
     """
-    specs = InputData.parameterInputFactory('Function', contentType=InputTypes.StringType, ordered=False, baseNode=None)
-    specs.addParam('name', param_type=InputTypes.StringType, required=True)
+    specs = InputData.parameterInputFactory('Function', contentType=InputTypes.StringType,
+        ordered=False, baseNode=None,
+        descr=r"""This data source is a custom Python function to provide derived values.
+              Python functions have access to the variables within the dispatcher.""")
+    specs.addParam('name', param_type=InputTypes.StringType, required=True,
+        descr=r"""identifier for this data source in HERON and in the HERON input file. """)
     return specs
 
   def __init__(self, **kwargs):

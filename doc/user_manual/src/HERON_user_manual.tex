@@ -7,12 +7,21 @@
 \usepackage{amssymb}
 \usepackage[labelfont=bf]{caption}
 \usepackage{pifont}
-\usepackage{enumerate}
+% \usepackage{enumerate}
 \usepackage{listings}
 \usepackage{fullpage}
 \usepackage{xcolor}          % Using xcolor for more robust color specification
 \usepackage{ifthen}          % For simple checking in newcommand blocks
 \usepackage{textcomp}
+
+% increase allowable depth of itemize lists
+% - note that as of this writing we need a depth of 5.
+\usepackage{enumitem}
+\setlistdepth{7}
+\setlist[itemize]{label=$\circ$}
+\renewlist{itemize}{itemize}{7}
+% end itemize depth adjustment
+
 %\usepackage{authblk}         % For making the author list look prettier
 %\renewcommand\Authsep{,~\,}
 % Custom colors
@@ -166,6 +175,9 @@ Abhinav Gairola\\
     \maketitle
     \SANDmain
     \tableofcontents
+    \input{../src/Introduction}
+    \input{../src/Howtorun}
+    \input{../src/InputStructure}
 %INSERT_SECTIONS_HERE
     \providecommand*{\phantomsection}{}
     \phantomsection

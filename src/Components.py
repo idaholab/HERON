@@ -42,8 +42,12 @@ class Component(Base, CashFlowUser):
       @ In, None
       @ Out, input_specs, InputData, specs
     """
-    input_specs = InputData.parameterInputFactory('Component', ordered=False, baseNode=None, descr=r""" The \xmlNode{Component} represents the component which is a part or element of a larger whole, use to produce, consume one source of energy and produce another. """)
-    input_specs.addParam('name', param_type=InputTypes.StringType, required=True, descr=r""" Name of the component""")
+    input_specs = InputData.parameterInputFactory('Component', ordered=False, baseNode=None,
+        descr=r"""defines a component as an element of the grid system. Components are defined by the action they
+              perform such as \xmlNode{produces} or \xmlNode{consumes}; see details below.""")
+    input_specs.addParam('name', param_type=InputTypes.StringType, required=True,
+        descr=r"""identifier for the component. This identifier will be used to generate variables
+              and relate signals to this component throughout the HERON analysis.""")
     # production
     ## this unit may be able to make stuff, possibly from other stuff
     input_specs.addSub(Producer.get_input_specs())
@@ -272,25 +276,47 @@ class Interaction(Base):
       @ Out, input_specs, InputData, specs
     """
     if cls.tag == 'produces':
-      desc = r""" Produces a resource by consuming any generic fuel."""
+      desc = r"""indicates that this component produces one or more resources by consuming other resources."""
+      resource_desc = r"""the resource produced by this component's activity."""
     elif cls.tag == 'stores':
-      desc = r""" Stores the energy in a battery."""
+      desc = r"""indicates that this component stores one resource, potentially absorbing or providing that resource."""
+      resource_desc = r"""the resource stored by this component."""
     elif cls.tag == "demands":
-      desc = r"""Demands a resource which it consumes."""
+      desc = r"""indicates that this component exclusively consumes a resource."""
+      resource_desc = r"""the resource consumed by this component."""
     specs = InputData.parameterInputFactory(cls.tag, ordered=False, descr=desc)
-    specs.addParam('resource', param_type=InputTypes.StringListType, required=True, descr=r"""Resource to be consumed or produced.""")
-    dispatch_opts = InputTypes.makeEnumType('dispatch_opts', 'dispatch_opts', ['independent', 'dependent', 'fixed'])
-    specs.addParam('dispatch', param_type=dispatch_opts, descr=r"""Amount to be dispatched.""")
+    specs.addParam('resource', param_type=InputTypes.StringListType, required=True,
+        descr=resource_desc)
+    dispatch_opts = InputTypes.makeEnumType('dispatch_opts', 'dispatch_opts', ['fixed', 'independent', 'dependent'])
+    specs.addParam('dispatch', param_type=dispatch_opts,
+        descr=r"""describes the way this component should be dispatched, or its flexibility.
+              \texttt{fixed} indicates the component always fully dispatched at its maximum level.
+              \texttt{independent} indicates the component is fully dispatchable by the dispatch optimization algorithm.
+              \texttt{dependent} indicates that while this component is not directly controllable by the dispatch
+              algorithm, it can however be flexibly dispatched in response to other units changing dispatch level.
+              For example, when attempting to increase profitability, the \texttt{fixed} components are not adjustable,
+              but the \texttt{independent} components can be adjusted to attempt to improve the economic metric.
+              In response to the \texttt{independent} component adjustment, the \texttt{dependent} components
+              may respond to balance the resource usage from the changing behavior of other components.""")
 
     cap = ValuedParam.get_input_specs('capacity')
+    cap.descr = r"""provides the maximum value at which this component can act, in units of the indicated resource. """
     #cap.removeSub('ARMA')
     #cap.removeSub('Function')
     #cap.removeSub('variable')
-    cap.addParam('resource', param_type=InputTypes.StringType, descr=r"""Resources to be consumed or produced.""")
+    cap.addParam('resource', param_type=InputTypes.StringType,
+        descr=r"""indicates the resource that defines the capacity of this component's operation. For example,
+              if a component consumes steam and electricity to produce hydrogen, the capacity of the component
+              can be defined by the maximum steam consumable, maximum electricity consumable, or maximum
+              hydrogen producable. Any choice should be nominally equivalent, but determines the units
+              of the value of this node.""")
     specs.addSub(cap)
 
     minn = ValuedParam.get_input_specs('minimum')
-    minn.addParam('resource', param_type=InputTypes.StringType)
+    minn.descr = r"""provides the minimum value at which this component can act, in units of the indicated resource. """
+    minn.addParam('resource', param_type=InputTypes.StringType,
+        descr=r"""indicates the resource that defines the minimum activity level for this component,
+              as with the component's capacity.""")
     specs.addSub(minn)
     return specs
 

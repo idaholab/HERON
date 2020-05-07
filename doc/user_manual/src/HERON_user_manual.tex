@@ -1,5 +1,5 @@
 % \input{} or \include{} lines will added later
-\documentclass[pdf,12pt]{../../INLreport}
+\documentclass[pdf,12pt]{../src/INLreport}
 \usepackage{times}
 \usepackage{longtable}
 \usepackage[FIGBOTCAP,normal,bf,tight]{subfigure}
@@ -7,12 +7,21 @@
 \usepackage{amssymb}
 \usepackage[labelfont=bf]{caption}
 \usepackage{pifont}
-\usepackage{enumerate}
+% \usepackage{enumerate}
 \usepackage{listings}
 \usepackage{fullpage}
 \usepackage{xcolor}          % Using xcolor for more robust color specification
 \usepackage{ifthen}          % For simple checking in newcommand blocks
 \usepackage{textcomp}
+
+% increase allowable depth of itemize lists
+% - note that as of this writing we need a depth of 5.
+\usepackage{enumitem}
+\setlistdepth{7}
+\setlist[itemize]{label=$\circ$}
+\renewlist{itemize}{itemize}{7}
+% end itemize depth adjustment
+
 %\usepackage{authblk}         % For making the author list look prettier
 %\renewcommand\Authsep{,~\,}
 % Custom colors
@@ -149,7 +158,7 @@ Abhinav Gairola\\
 \\Jia Zhou
 }
 \date{}
-\SANDnum{}
+\SANDnum{INL/EXT-XX-XXXXX}
 \SANDprintDate{\today}
 \SANDauthor{Cristian Rabiti, Paul W. Talbot, Abhinav Gairola, Jia Zhou}
 \SANDreleaseType{Revision 1}
@@ -166,7 +175,10 @@ Abhinav Gairola\\
     \maketitle
     \SANDmain
     \tableofcontents
-%\clearpage
+    \input{../src/Introduction}
+    \input{../src/Howtorun}
+    \input{../src/InputStructure}
+%INSERT_SECTIONS_HERE
     \providecommand*{\phantomsection}{}
     \phantomsection
     \addcontentsline{toc}{section}{References}

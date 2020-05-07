@@ -1,0 +1,36 @@
+\section{Input Structure}
+In the following sections we describe the input structure in a general sense, with details in
+following chapters.
+
+\subsection{XML Input}
+HERON makes use of the eXtensible Markup Language (XML) for its input structure, similar to RAVEN.
+XML is made up of nodes, which have parameters and subnodes. For example:
+\begin{lstlisting}[style=XML,morekeywords={class}]
+  <node_tag par_name="par_value">
+    <sub_tag sub_par_name="sub_par_value">sub_value</sub_tag>
+  </node_tag>
+\end{lstlisting}
+The node's name (or tag) opens the XML element. In the example, we have two nodes, named
+\xmlNode{node\_tag} and \xmlNode{sub\_tag}. The node \xmlNode{node\_tag} has a parameter with
+name \xmlAttr{par\_name}. The parameter \xmlAttr{par\_name} has the value
+\xmlString{par\_value}. Similarly, the \xmlNode{sub\_tag} node has a parameter and
+corresponding value. The \xmlNode{sub\_tag} further has a value itself given by
+\xmlString{sub\_value}.
+
+We will use the terminology \xmlNode{node}, \xmlNode{subnode}, \xmlAttr{parameter}, and
+\xmlString{value} to describe the input structure of HERON.
+
+\subsection{Structure}
+The HERON XML Input makes use of three main nodes within the root node \xmlNode{HERON}:
+\begin{itemize}
+  \item \xmlNode{Case}, in which general features of the desired solve are described, including general
+    economics to apply, simulation properties such as project length and time stepping, and so forth.
+  \item \xmlNode{Components}, in which the components of the grid system to analyze are defined,
+    including their physical processes and economics.
+  \item \xmlNode{DataGenerators}, in which data manipulation tools such as synthetic history
+  generators and custom code functions.
+  \item \xmlNode{TestInfo}, which is reserved for regression tests in HERON, describes the purpose
+  of the test and information about the test's implementation.
+\end{itemize}
+
+Details for the three nodes used in HERON analyses are enumerated the following sections.

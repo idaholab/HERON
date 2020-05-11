@@ -11,11 +11,14 @@
   </TestInfo>
 
   <Case name="Sweep_Runs">
+    <!--
     <mode>sweep</mode>
     <metric>NPV</metric>
+    -->
     <num_arma_samples>2</num_arma_samples>
     <timestep_interval>500</timestep_interval>
-    <Resample_T>60</Resample_T><!--New History length-->
+    <!--New History length-->
+    <!--<Resample_T>60</Resample_T>-->
     <history_length>20</history_length>
     <economics>
       <ProjectTime>2</ProjectTime>
@@ -72,7 +75,11 @@
 
   <DataGenerators>
   <ARMA name='Speed' variable="Signal">/ARMA/interpolated.pk</ARMA>
+<<<<<<< HEAD
   <Resampling_time name='sampling' variable="dt">500</Resampling_time>
+=======
+  <!--<Resampling_time name='sampling' variable="dt">500</Resampling_time>-->
+>>>>>>> feda1089627e871e50b23b1583617db06384b9f2
   <Function name="transfer">transfers.py</Function>
   </DataGenerators>
 

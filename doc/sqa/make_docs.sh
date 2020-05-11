@@ -20,8 +20,8 @@ do
   fi
 done
 
-rm -Rvf sqa_built_documents
-mkdir sqa_built_documents
+rm -Rvf sqa_built_documents > /dev/null
+mkdir sqa_built_documents > /dev/null
 # load raven libraries; use utils to do this.
 RAVEN_PATH=$(python $(pwd)/../../src/_utils.py get_raven_loc)
 source $RAVEN_PATH/../scripts/establish_conda_env.sh --load --quiet
@@ -43,10 +43,11 @@ fi
 # copy files that are not built
 # Configuration Item list
 cp CIlist/*.docx sqa_built_documents/
-# CR_scheme #TODO we don't have this ...
-cp CR_scheme.pptx sqa_built_documents/
+#TODO we don't have the following ...
+# CR_scheme
+# cp CR_scheme.pptx sqa_built_documents/
 # Dashboard
-cp HERON_SQA_Status_Dashboard.pptx sqa_built_documents/
+# cp HERON_SQA_Status_Dashboard.pptx sqa_built_documents/
 
 if git describe
 then
@@ -63,7 +64,7 @@ fi
 
 for DIR in  sdd rtr srs srs_rtr_combined; do
     cd $DIR
-    echo Building in $DIR...
+    echo ... building in $DIR...
     if [ "$(uname)" == "Darwin" ] || [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]
     then
       if [[ 1 -eq $VERB ]]
@@ -82,10 +83,10 @@ for DIR in  sdd rtr srs srs_rtr_combined; do
       fi
     fi
     if [[ 0 -eq $MADE ]]; then
-        echo ...Successfully made docs in $DIR
+        echo ... ... successfully made docs in $DIR
         cp *.pdf ../sqa_built_documents
     else
-        echo ...Failed to make docs in $DIR
+        echo ... ... failed to make docs in $DIR
         exit -1
     fi
     cd $SCRIPT_DIR

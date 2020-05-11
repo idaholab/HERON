@@ -1,0 +1,93 @@
+<Simulation verbosity="debug">
+  <RunInfo>
+    <JobName>Sweep_Runs_o</JobName>
+    <WorkingDir>Sweep_Runs_o</WorkingDir>
+    <Sequence>sweep</Sequence>
+    <!--<batchSize>20</batchSize>
+    <mode>mpi<runqsub/></mode>
+    <internalParallel>False</internalParallel>
+    <expectedTime>72:0:0</expectedTime>
+    <clusterParameters>-P nst -j oe</clusterParameters>-->
+  </RunInfo>
+
+  <Steps>
+    <MultiRun name="sweep">
+      <Input class="Files" type="raven">inner_workflow</Input>
+      <Input class="Files" type="">egret_lib</Input>
+      <Input class="Files" type="">transfers</Input>
+      <!-- TODO model files for inner -->
+      <Model class="Models" type="Code">raven</Model>
+      <Sampler class="Samplers" type="Grid">grid</Sampler>
+      <Output class="DataObjects" type="PointSet">grid</Output>
+      <Output class="OutStreams" type="Print">sweep</Output>
+    </MultiRun>
+  </Steps>
+
+  <VariableGroups>
+    <Group name="GRO_capacities">Generator_capacity, Electric_Grid_1_capacity, Electric_Grid_2_capacity</Group>
+    <!-- less metrics -->
+    <Group name="GRO_outer_results">
+      mean_NPV, std_NPV, med_NPV, max_NPV, min_NPV,
+      perc_5_NPV, perc_95_NPV, samp_NPV, var_NPV
+    </Group>
+    <!-- more metrics -->
+    <!-- <Group name='GRO_outer_results'>
+      mean_NPV, std_NPV, skew_NPV, kurt_NPV, vc_NPV, med_NPV, max_NPV, min_NPV,
+      perc_5_NPV, perc_95_NPV, samp_NPV, var_NPV
+    </Group> -->
+  </VariableGroups>
+
+  <DataObjects>
+    <PointSet name="grid">
+      <Input>GRO_capacities</Input>
+      <Output>GRO_outer_results</Output>
+    </PointSet>
+  </DataObjects>
+
+  <Models>
+    <Code name="raven" subType="RAVEN">
+      <executable>/Users/gaira/projects/raven/raven_framework</executable>
+      <outputExportOutStreams>disp_results</outputExportOutStreams>
+      <conversion>
+        <input source="../write_inner.py" />
+      </conversion>
+      <alias type="input" variable="denoises">Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:denoises</alias>
+      <alias type="input" variable="Generator_capacity">Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:Generator_capacity</alias>
+      <alias type="input" variable="Electric_Grid_1_capacity">Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:Electric_Grid_1_capacity</alias>
+      <alias type="input" variable="Electric_Grid_2_capacity">Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:Electric_Grid_2_capacity</alias>
+    </Code>
+  </Models>
+
+  <Distributions>
+    <Uniform name="Generator_capacity_dist">
+      <lowerBound>1095.0</lowerBound>
+      <upperBound>1098.0</upperBound>
+    </Uniform>
+  </Distributions>
+
+  <Samplers>
+    <Grid name="grid">
+      <constant name="denoises">2</constant>
+      <variable name="Generator_capacity">
+        <distribution>Generator_capacity_dist</distribution>
+        <grid construction="custom" type="value">1095.0 1098.0</grid>
+      </variable>
+      <constant name="Electric_Grid_1_capacity">1.0</constant>
+      <constant name="Electric_Grid_2_capacity">1e+200</constant>
+    </Grid>
+  </Samplers>
+
+  <Files>
+    <Input name="inner_workflow" type="raven">../inner.xml</Input>
+    <Input name="egret_lib">../egret.lib</Input>
+    <!-- TODO other model/function files -->
+    <Input name="transfers">../transfers.py</Input>
+  </Files>
+
+  <OutStreams>
+    <Print name="sweep">
+      <type>csv</type>
+      <source>grid</source>
+    </Print>
+  </OutStreams>
+</Simulation>

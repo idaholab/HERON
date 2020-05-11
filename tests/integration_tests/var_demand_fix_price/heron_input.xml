@@ -75,7 +75,11 @@
 
   <DataGenerators>
   <ARMA name='Speed' variable="Signal">/ARMA/interpolated.pk</ARMA>
+<<<<<<< HEAD
   <!--<Resampling_time name='sampling' variable="dt">500</Resampling_time>-->
+=======
+  <Resampling_time name='sampling' variable="dt">500</Resampling_time>
+>>>>>>> f202271bbb84f07a94758c249e5e2a00a15bbe41
   <Function name="transfer">transfers.py</Function>
   </DataGenerators>
 

@@ -13,7 +13,6 @@ import _utils as hutils
 framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)
 from utils import InputData, utils, InputTypes
-
 class Placeholder(Base):
   """
     Objects that hold a place in the EGRET workflow

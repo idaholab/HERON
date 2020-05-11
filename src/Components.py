@@ -276,6 +276,7 @@ class Interaction(Base):
       @ Out, input_specs, InputData, specs
     """
     if cls.tag == 'produces':
+<<<<<<< HEAD
       desc = r"""indicates that this component produces one or more resources by consuming other resources."""
       resource_desc = r"""the resource produced by this component's activity."""
     elif cls.tag == 'stores':
@@ -298,18 +299,33 @@ class Interaction(Base):
               but the \texttt{independent} components can be adjusted to attempt to improve the economic metric.
               In response to the \texttt{independent} component adjustment, the \texttt{dependent} components
               may respond to balance the resource usage from the changing behavior of other components.""")
+=======
+      desc = r""" Produces a resource by consuming any generic fuel."""
+    elif cls.tag == 'stores':
+      desc = r""" Stores the energy in a battery."""
+    elif cls.tag == "demands":
+      desc = r"""Demands a resource which it consumes."""
+    specs = InputData.parameterInputFactory(cls.tag, ordered=False, descr=desc)
+    specs.addParam('resource', param_type=InputTypes.StringListType, required=True, descr=r"""Resource to be consumed or produced.""")
+    dispatch_opts = InputTypes.makeEnumType('dispatch_opts', 'dispatch_opts', ['independent', 'dependent', 'fixed'])
+    specs.addParam('dispatch', param_type=dispatch_opts, descr=r"""Amount to be dispatched.""")
+>>>>>>> f202271bbb84f07a94758c249e5e2a00a15bbe41
 
     cap = ValuedParam.get_input_specs('capacity')
     cap.descr = r"""provides the maximum value at which this component can act, in units of the indicated resource. """
     #cap.removeSub('ARMA')
     #cap.removeSub('Function')
     #cap.removeSub('variable')
+<<<<<<< HEAD
     cap.addParam('resource', param_type=InputTypes.StringType,
         descr=r"""indicates the resource that defines the capacity of this component's operation. For example,
               if a component consumes steam and electricity to produce hydrogen, the capacity of the component
               can be defined by the maximum steam consumable, maximum electricity consumable, or maximum
               hydrogen producable. Any choice should be nominally equivalent, but determines the units
               of the value of this node.""")
+=======
+    cap.addParam('resource', param_type=InputTypes.StringType, descr=r"""Resources to be consumed or produced.""")
+>>>>>>> f202271bbb84f07a94758c249e5e2a00a15bbe41
     specs.addSub(cap)
 
     minn = ValuedParam.get_input_specs('minimum')

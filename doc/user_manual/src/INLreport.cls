@@ -546,7 +546,7 @@
 
 	%\hspace*{-0.5in}
 	\begin{minipage}[b]{6.0in}
-	    \includegraphics{pics/inl-left_black}
+	    \includegraphics{../../pics/inl-left_black}
 	\end{minipage}
 
 
@@ -602,7 +602,7 @@
 	    \vspace{\baselineskip}
 	    \vspace{0.125in}
 
-	    \includegraphics[width=0.75in]{pics/DOEbwlogo}
+	    \includegraphics[width=0.75in]{../../pics/DOEbwlogo}
 	\end{minipage}
 	\end{center}
 
@@ -1729,7 +1729,7 @@
 	\vspace*{\fill}		% Move the logo to the bottom of the page
 	\thispagestyle{empty}
 	\begin{center}
-	    \includegraphics{pics/inl-left_black}
+	    \includegraphics{../../pics/inl-left_black}
 	\end{center}
 
     } % End of AtEndDocument{}

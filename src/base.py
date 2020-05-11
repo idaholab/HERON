@@ -3,7 +3,9 @@
 """
 import os
 import sys
-raven_path = '~/projects/raven/framework'
+
+import _utils as hutils
+raven_path = hutils.get_raven_loc()
 sys.path.append(os.path.expanduser(raven_path))
 from MessageHandler import MessageUser
 

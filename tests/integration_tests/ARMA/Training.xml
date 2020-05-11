@@ -10,7 +10,7 @@
 
   <RunInfo>
     <WorkingDir>Training</WorkingDir>
-    <Sequence>read, train, print, sample</Sequence>
+    <Sequence>read, train, dump, print,sample</Sequence>
     <batchSize>1</batchSize>
   </RunInfo>
 
@@ -23,11 +23,19 @@
       <Input class="DataObjects" type="HistorySet">rawData</Input>
       <Output class="Models" type="ROM">arma</Output>
     </RomTrainer>
+
+    <IOStep name="dump">
+      <Input class="Models" type="ROM">arma</Input>
+      <Output class="Files" type="">pk</Output>
+    </IOStep>
+
     <IOStep name="print">
       <Input class="Models" type="ROM">arma</Input>
       <Output class="DataObjects" type="DataSet">romMeta</Output>
       <Output class="OutStreams" type="Print">romMeta</Output>
     </IOStep>
+
+    
     <MultiRun name="sample">
       <Input class="DataObjects" type="PointSet">dataIn</Input>
       <Model class="Models" type="ROM">arma</Model>
@@ -37,7 +45,8 @@
   </Steps>
 
   <Files>
-    <Input name="rawDataFile">dataSet.csv</Input>
+    <Input name="rawDataFile">Data.csv</Input>
+    <Input name="pk">arma.pk</Input>
   </Files>
 
   <Samplers>

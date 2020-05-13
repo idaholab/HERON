@@ -6,6 +6,7 @@
     <description>
       This trains a non-stochastic sine function for use in HERON tests.
     </description>
+    <classesTested>SupervisedLearning.ARMA</classesTested>
   </TestInfo>
 
   <RunInfo>

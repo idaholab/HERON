@@ -2,7 +2,7 @@
  [./VarDemandFixPrice]
   type = HeronIntegration
   input = heron_input.xml
-  prereq = SineArma
+  # prereq = SineArma
   [./csv]
     type = UnorderedCSV
     output = 'Sweep_Runs_o/sweep.csv'

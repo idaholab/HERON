@@ -61,7 +61,7 @@ class HeronIntegration(RavenTester):
                                                  raven=self.driver,
                                                  flag='',
                                                  input=raven_inp)
-    print('HERON command:', cmd)
+    # print('HERON command:', cmd)
     # print('\n\nDEBUGG dir:\n')
     # import pprint
     # pprint.pprint(self.__dir__())

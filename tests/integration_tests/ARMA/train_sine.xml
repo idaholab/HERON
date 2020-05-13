@@ -69,18 +69,19 @@
       <P>0</P>
       <Q>0</Q>
       <Fourier>10</Fourier>
-
       <Segment grouping='interpolate'>
         <macroParameter>Year</macroParameter>
         <Classifier class='Models' type='PostProcessor'>classifier</Classifier>
-        <subspace divisions='10'>Time</subspace>
+        <subspace divisions='1'>Time</subspace>
       </Segment>
+      <reseedCopies>False</reseedCopies>
+      <seed>42</seed>
     </ROM>
    <PostProcessor name="classifier" subType="DataMining">
       <KDD labelFeature="labels" lib="SciKitLearn">
         <Features>Signal</Features>
         <SKLtype>cluster|KMeans</SKLtype>
-        <n_clusters>10</n_clusters>
+        <n_clusters>1</n_clusters>
       </KDD>
     </PostProcessor>
   </Models>

@@ -7,7 +7,7 @@
   </RunInfo>
 
   <Steps>
-    <!-- EGRET fills in ARMA sampling -->
+    <!-- HERON fills in ARMA sampling -->
     <MultiRun name='arma_sampling'>
       <Input class='DataObjects' type='PointSet'>dispatch_placeholder</Input>
       <Model class='Models' type='EnsembleModel'>sample_and_dispatch</Model>
@@ -32,7 +32,7 @@
     <Group name='GRO_dispatch_in'        >GRO_dispatch_in_scalar, GRO_dispatch_in_Time</Group>
     <Group name='GRO_dispatch_out'       >GRO_dispatch_out_Time</Group>
     <Group name='GRO_dispatch_in_scalar' >GRO_capacities, scaling</Group>
-    <Group name='GRO_dispatch_in_Time'   ><!-- EGRET --></Group>
+    <Group name='GRO_dispatch_in_Time'   ><!-- HERON --></Group>
     <Group name='GRO_dispatch_out_Time'  >GRO_init_disp</Group>
 
     <Group name='GRO_armasamples'          >GRO_armasamples_in, GRO_armasamples_out</Group>
@@ -54,15 +54,15 @@
     </Group>-->
 
       <Group name="GRO_means">
-        <!--EGRET fills components -->
+        <!--HERON fills components -->
       </Group>
     <Group name='GRO_interp'>stepwise</Group>
 
     <Group name='GRO_capacities'>
-      <!-- EGRET fills components -->
+      <!-- HERON fills components -->
     </Group>
     <Group name='GRO_init_disp'>
-      <!-- EGRET fills components -->
+      <!-- HERON fills components -->
     </Group>
   </VariableGroups>
 
@@ -104,14 +104,14 @@
   </DataObjects>
 
   <Models>
-    <!-- armas from pk filled in by EGRET -->
+    <!-- armas from pk filled in by HERON -->
     <ExternalModel name='dispatch' subType='' ModuleToLoad='../../../../src/dispatch'> <!-- TODO generic path -->
       <variables>GRO_dispatch, GRO_armasamples</variables>
       <!--<ExternalXML node='Dispatch' xmlToLoad='input_dispatch.xml'/>-->
     </ExternalModel>
 
     <EnsembleModel name='sample_and_dispatch' subType=''>
-      <!-- armas filled in by EGRET -->
+      <!-- armas filled in by HERON -->
       <Model class='Models' type='ExternalModel'>dispatch
         <Input            class='DataObjects' type='PointSet'>dispatch_placeholder</Input>
         <TargetEvaluation class='DataObjects' type='DataSet' >dispatch_eval</TargetEvaluation>
@@ -135,8 +135,8 @@
   </Models>
 
   <Files>
-    <Input name="libs">../../egret.lib</Input>
-    <!-- EGRET -->
+    <Input name="libs">../../heron.lib</Input>
+    <!-- HERON -->
   </Files>
 
   <Samplers>
@@ -145,7 +145,7 @@
         <initialSeed>42</initialSeed>
         <limit>2</limit>
       </samplerInit>
-      <!-- EGRET makes component capacities nodes, Outer fills them -->
+      <!-- HERON makes component capacities nodes, Outer fills them -->
       <constant name='scaling'>1.0</constant>
     </MonteCarlo>
   </Samplers>

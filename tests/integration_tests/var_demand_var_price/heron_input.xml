@@ -70,9 +70,8 @@
 
   </Components>
 
-
   <DataGenerators>
-    <ARMA name='Speed' variable="Signal">/ARMA/interpolated.pk</ARMA>
+    <ARMA name='Speed' variable="Signal">../ARMA/Sine/arma.pk</ARMA>
     <Function name="transfers">transfers.py</Function>
   </DataGenerators>
 

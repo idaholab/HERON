@@ -1,16 +1,42 @@
-.ravenconfig.xml
+# mac stuff
 .DS_Store
+
+# vim stuff
 *.swp
 *~
+
+# python stuff
 __pycache__
-/doc/pdfs
-/doc/user_manual/build
-/doc/user_manual/pdf
+*.pyc
+
+# install stuff
+/.ravenconfig.xml
+
+# docs stuff
 *.aux
 *.log
 *.out
 *.toc
-/sqa/rtr/traceability_matrix.tex
-/sqa/rtr/heron_requirements_traceability_matrix.pdf
-version.tex
+*.bbl
+*.blg
+/doc/pdfs
+/doc/sqa/rtr/heron_requirements_traceability_matrix.pdf
+/doc/sqa/rtr/traceability_matrix.tex
+/doc/sqa/sdd/heron_software_design_description.pdf
+/doc/sqa/srs/heron_software_requirements_specifications.pdf
+/doc/sqa/srs/requirements.tex
+/doc/sqa/srs_rtr_combined/heron_software_requirements_specifications_and_traceability.pdf
+/doc/sqa/sqa_built_documents/*
+/doc/user_manual/build
+/doc/user_manual/pdf
+/doc/version.tex
+
+# test files
+*arma.pk
+*heron.lib
+*outer.xml
+*inner.xml
+*cash.xml
+/tests/integration_tests/ARMA/Sine/synthetic.*
+*Sweep_Runs_o*
 

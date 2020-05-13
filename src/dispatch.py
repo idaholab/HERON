@@ -111,12 +111,11 @@ def run(raven, inputs):
   while not found:
     counter = 0
     try:
-      with open('../egret.lib', 'rb') as lib:
+      with open('../heron.lib', 'rb') as lib:
         egret_case, egret_components, egret_sources = pk.load(lib)
       found = True
     except FileNotFoundError:
-      print('WARNING: "egret.lib" not yet found; waiting to see if it shows up ...')
-      #time_mod.sleep(10)
+      print('WARNING: "heron.lib" not yet found; waiting to see if it shows up ...')
       counter += 1
     if counter > 6:
       look_for_me = os.path.join(os.path.getcwd(), '..', 'egret.lib')
@@ -163,19 +162,16 @@ def run(raven, inputs):
   new_indices = {}
   for var, indices in getattr(raven, '_indexMap', [{}])[0].items():
     if pivot_id in indices:
-      #setattr(raven,var,0)
-      print("This is the ARMA DATA",getattr(raven, var),pivot_id,indices,inputs[indices[0]],type(egret_sources[0]))
-      #tttt
-      
-      print(getattr(raven,var))
+      ### DEBUGG this is time series re-sampling, does it work as expected?
+      # -> needs testing.
+      # Note that "Res" is None if resampling is not requested.
       Res=egret_case.get_Resample_T()
       Res2=egret_case.get_hist_length()
-      resample=int(Res/Res2)
-      
-      idx=inputs[indices[0]]
-      old_dt=idx[-1]-idx[-2]
-      new_dt=idx[-1]/float(Res)
-      if Res!= None:
+      if Res is not None:
+        resample = int(Res/Res2)
+        idx = inputs[indices[0]]
+        old_dt = idx[-1]-idx[-2]
+        new_dt = idx[-1]/float(Res)
         temp = getattr(raven, var)
         Array=np.empty((Res,np.shape(getattr(raven,var))[1]))
         for i in range(0,np.shape(getattr(raven,var))[1]):
@@ -187,11 +183,14 @@ def run(raven, inputs):
             Temp.append(list(interpolated_signal[0:resample]))
           Temp=np.hstack(Temp)
           Array[:,i]=np.array(Temp)
-      setattr(raven,var,Array)
+        setattr(raven,var,Array)
+      else:
+        pass # TODO can remove this; just means that no resampling is needed.
       new, dims = reshape_variable_as_clustered(var, getattr(raven, var), raven._indexMap[0], cluster_info, pivot_id)
       new_name = var + '_cluster_shaped'
       set_raven_var(raven, new_name, new)
       new_indices[new_name] = dims
+
   if new_indices:
     raven._indexMap[0].update(new_indices)
 
@@ -270,7 +269,6 @@ def _obtain_cluster_details(case, sources):
   return info
 
 def dispatch_all_years(years, cluster_info, inputs, egret_case, egret_sources, egret_components, meta):
-  #time_mod.sleep(2000)
   # find out if we're clustering ARMAs (FIXME we always are?); if so, find out the details
   # cluster_details has info BY MACRO STEP for the clusters of that year.
   # main loop
@@ -380,7 +378,6 @@ def dispatch_clusters(full_inputs, case, sources, components, meta, all_cluster_
   cluster_dispatches = {}
   for c, cluster_info in clusters_info.items():
     print('DISPATCH: solving cluster', c)
-    #time_mod.sleep(2000)
     inputs, start, end = select_cluster_data_from_history(full_inputs, indexMap, cluster_info, 'Time', exceptions=['Year'])
     meta['EGRET']['cluster_selector'] = slice(start, end)
     # TODO right now it looks like nothing in the meta depends on the pivot, so skipping
@@ -400,8 +397,6 @@ def dispatch_one_year(inputs, case, sources, components, meta):
   """ Master dispatcher for components """
   # TODO move much of this to the dispatch_all_years!
   time_steps = inputs['Time']
-  print("These are the time steps",time_steps)
-  tttt
   # who's dispatchable?
   disp_fixed = []    # components that are forced; can't be dispatched
   disp_depend = []   # components that can be dispatched, but shouldn't be primary source of perturbations
@@ -572,7 +567,6 @@ def reshape_variable_as_clustered(var, values, indexMap, cluster_info, pivot):
   #new = np.zeros((num_cluster, num_macro, cl_pivot))
   pivot_index = indexMap[var].index(pivot)
   for cluster in range(num_cluster):
-    #time.sleep(2000)
     start, end = cluster_info['clusters'][macro_first][cluster]['indices']
     selector = [None, None]
     selector[pivot_index] = slice(start, end)

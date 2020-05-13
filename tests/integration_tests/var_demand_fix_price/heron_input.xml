@@ -72,11 +72,10 @@
 
   </Components>
 
-
   <DataGenerators>
-  <ARMA name='Speed' variable="Signal">/ARMA/interpolated.pk</ARMA>
-  <!--<Resampling_time name='sampling' variable="dt">500</Resampling_time>-->
-  <Function name="transfer">transfers.py</Function>
+    <ARMA name='Speed' variable="Signal">../ARMA/Sine/arma.pk</ARMA>
+    <!--<Resampling_time name='sampling' variable="dt">500</Resampling_time>-->
+    <Function name="transfer">transfers.py</Function>
   </DataGenerators>
 
 </HERON>

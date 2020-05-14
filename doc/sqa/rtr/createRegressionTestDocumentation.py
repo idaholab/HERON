@@ -18,6 +18,7 @@
  @author: alfoa
 """
 import os
+import sys
 from glob import glob
 import inspect
 import xml.etree.ElementTree as ET

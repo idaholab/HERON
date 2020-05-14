@@ -164,7 +164,7 @@ class Template(TemplateBase):
     self._modify_outer_samplers(template, case, components)
     self._modify_block_transfer(template)
     # TODO copy needed model/ARMA/etc files to Outer Working Dir so they're known
-    # TODO including the egret library file
+    # TODO including the heron library file
     return template
 
   def _modify_block_transfer(self,template):

@@ -11,9 +11,10 @@
   </TestInfo>
 
   <Case name="Sweep_Runs">
+    <!--
     <mode>sweep</mode>
     <metric>NPV</metric>
-    <!--<differential>True</differential> -->
+    -->
     <num_arma_samples>2</num_arma_samples>
     <timestep_interval>1</timestep_interval> <!-- unit=seconds -->
     <history_length>20</history_length>
@@ -21,7 +22,6 @@
       <ProjectTime>3</ProjectTime>
       <DiscountRate>0.08</DiscountRate>
       <tax>0.0</tax>
-      <!-- Inflation rate consistent with average from 2000-2018 years -->
       <inflation>0.0</inflation>
       <verbosity>50</verbosity>
     </economics>
@@ -72,10 +72,9 @@
 
   </Components>
 
-
   <DataGenerators>
-    <ARMA name='Speed' variable="Signal">/ARMA/interpolated.pk</ARMA>
-    <Function name="transfers">transfers.py</Function> <!-- TODO specify the variables needed? -->
+    <ARMA name='Speed' variable="Signal">../ARMA/Sine/arma.pk</ARMA>
+    <Function name="transfers">transfers.py</Function>
   </DataGenerators>
 
 </HERON>

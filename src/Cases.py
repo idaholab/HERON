@@ -30,46 +30,69 @@ class Case(Base):
       @ In, None
       @ Out, input_specs, InputData, specs
     """
-    input_specs = InputData.parameterInputFactory('Case', ordered=False, baseNode=None, descr= r""" The \xmlNode{Case} contains
-    the basic parameters needed for a HERON case. """)
-    input_specs.addParam('name', param_type=InputTypes.StringType, required=True, descr=r"""An appropriate user defined name of the case.""")
+    input_specs = InputData.parameterInputFactory('Case', ordered=False, baseNode=None,
+        descr=r"""The \xmlNode{Case} node contains the general physics and economics information
+                required for a HERON workflow to be created and solved.""")
+    input_specs.addParam('name', param_type=InputTypes.StringType, required=True,
+        descr=r"""the name by which this analysis should be referred within HERON.""")
 
     mode_options = InputTypes.makeEnumType('ModeOptions', 'ModeOptionsType', ['min', 'max', 'sweep'])
-    desc_mode_options = r""" Minimize, maximize or sweep over multiple values of capacities."""
+    desc_mode_options = r"""determines whether the ``outer'' RAVEN should perform minimization,
+                        maximization, or a parametric study."""
     econ_metrics = InputTypes.makeEnumType('EconMetrics', 'EconMetricsTypes', ['NPV', 'lcoe'])
-    desc_econ_metrics = r""" This metric can be NPV (Net Present Value) and lcoe (levelized cost of energy) used for techno-economic analysis of the power plants."""
+    desc_econ_metrics = r"""indicates the economic metric that should be used for the HERON analysis. For most cases, this
+                        should be NPV."""
 
-
-
-
-    input_specs.addSub(InputData.parameterInputFactory('mode', contentType=mode_options,strictMode=True,
-         descr=desc_mode_options))
-    input_specs.addSub(InputData.parameterInputFactory('metric', contentType=econ_metrics, descr=desc_econ_metrics))
-    input_specs.addSub(InputData.parameterInputFactory('differential', contentType=InputTypes.BoolType,strictMode=True,
-         descr=r"""Differential represents the additional cashflow generated when building additional capacities.
-        This value can be either \xmlString{True} or \xmlString{False}."""))
-    input_specs.addSub(InputData.parameterInputFactory('num_arma_samples', contentType=InputTypes.IntegerType, descr=r"""Number of copies of the trained signals."""))
-    input_specs.addSub(InputData.parameterInputFactory('timestep_interval', contentType=InputTypes.IntegerType, descr=r"""Time step interval between two values of signal."""))
-    input_specs.addSub(InputData.parameterInputFactory('history_length', contentType=InputTypes.IntegerType, descr= r"""Total length of one realization of the ARMA signal."""))
+    # not yet implemented TODO
+    # input_specs.addSub(InputData.parameterInputFactory('mode', contentType=mode_options, strictMode=True, descr=desc_mode_options))
+    # input_specs.addSub(InputData.parameterInputFactory('metric', contentType=econ_metrics, descr=desc_econ_metrics))
+    # input_specs.addSub(InputData.parameterInputFactory('differential', contentType=InputTypes.BoolType, strictMode=True,
+    #     descr=r"""(not implemented) allows differentiation between two HERON runs as a desired economic metric."""
+    input_specs.addSub(InputData.parameterInputFactory('num_arma_samples', contentType=InputTypes.IntegerType,
+        descr=r"""provides the number of synthetic histories that should be considered per system configuration
+              in order to obtain a reasonable representation of the economic metric. Sometimes referred to as
+              ``inner samples'' or ``denoisings''."""))
+    input_specs.addSub(InputData.parameterInputFactory('timestep_interval', contentType=InputTypes.IntegerType,
+        descr=r"""provides the desired interval between two consecutive time steps within the ``inner''
+              RAVEN dispatch solve. \default{provided by DataGenerators}"""))
+    input_specs.addSub(InputData.parameterInputFactory('history_length', contentType=InputTypes.IntegerType,
+        descr=r"""total length of one synthetic history within ``inner'' RAVEN dispatch.
+              \default{taken from DataGenerators}"""))
+    input_specs.addSub(InputData.parameterInputFactory('Resample_T', contentType=InputTypes.IntegerType)) # FIXME descr
 
     # economics global settings
-    econ = InputData.parameterInputFactory('economics', ordered=False, descr= r"""\xmlNode{economics} contains the details of the econometrics
-    computations to be performed by the code.""")
-    econ.addSub(InputData.parameterInputFactory('ProjectTime', contentType=InputTypes.FloatType, descr=r"""Total length of the project."""))
-    econ.addSub(InputData.parameterInputFactory('DiscountRate', contentType=InputTypes.FloatType, descr=r"""Interest rate required to compute the discounted cashflow (DCF)"""))
-    econ.addSub(InputData.parameterInputFactory('tax', contentType=InputTypes.FloatType, descr= r"""Taxation rate is a metric which represents the
-    rate at which an individual or corporation is taxed."""))
-    econ.addSub(InputData.parameterInputFactory('inflation', contentType=InputTypes.FloatType, descr=r"""Inflation rate is a metric which represents the
-    the rate at which the average price level of a basket of selected goods and services in an economy increases over some period of time."""))
-    econ.addSub(InputData.parameterInputFactory('verbosity', contentType=InputTypes.IntegerType, descr=r"""Length of the output argument."""))
+    econ = InputData.parameterInputFactory('economics', ordered=False,
+        descr= r"""node containing general economic setting in which to perform HERON analysis.""")
+    econ.addSub(InputData.parameterInputFactory('ProjectTime', contentType=InputTypes.FloatType,
+        descr=r"""the number of cycles (usually years) for the HERON analysis to cover."""))
+    econ.addSub(InputData.parameterInputFactory('DiscountRate', contentType=InputTypes.FloatType,
+        descr=r"""rate representing the time value of money to the firm used to discount cash flows
+              in the multicycle economic analysis. Passed to the CashFlow module."""))
+    econ.addSub(InputData.parameterInputFactory('tax', contentType=InputTypes.FloatType,
+        descr=r"""the taxation rate, a metric which represents the
+               rate at which the firm is taxed. Passed to the CashFlow module."""))
+    econ.addSub(InputData.parameterInputFactory('inflation', contentType=InputTypes.FloatType,
+        descr=r"""a metric which represents the rate at which the average price of goods and
+              services in an economy increases over a cycle, usually a year.
+              Passed to the CashFlow module."""))
+    econ.addSub(InputData.parameterInputFactory('verbosity', contentType=InputTypes.IntegerType,
+        descr=r"""the level of output to print from the CashFlow calculations. Passed to the CashFlow
+              module.""")) # is this actually CashFlow verbosity or is it really HERON verbosity?
     input_specs.addSub(econ)
 
     # increments for resources
-    dispatch = InputData.parameterInputFactory('dispatcher', ordered=False)
+    dispatch = InputData.parameterInputFactory('dispatcher', ordered=False,
+        descr=r"""This node defines the dispatch strategy and options to use in the ``inner'' run.""")
     dispatch_options = InputTypes.makeEnumType('DispatchOptions', 'DispatchOptionsType', ['generic'])
-    dispatch.addSub(InputData.parameterInputFactory('type', contentType=dispatch_options))
-    incr = InputData.parameterInputFactory('increment', contentType=InputTypes.FloatType)
-    incr.addParam('resource', param_type=InputTypes.StringType, required=True, descr=r"""Resource to be consumed or produced.""")
+    dispatch.addSub(InputData.parameterInputFactory('type', contentType=dispatch_options,
+        descr=r"""the name of the ``inner'' dispatch strategy to use."""))
+    incr = InputData.parameterInputFactory('increment', contentType=InputTypes.FloatType,
+        descr=r"""When performing an incremental resource balance as part of a dispatch solve, this
+              determines the size of incremental adjustments to make for the given resource. If this
+              value is large, then the solve is accelerated, but may miss critical inflection points
+              in economical tradeoff. If this value is small, the solve may take much longer.""")
+    incr.addParam('resource', param_type=InputTypes.StringType, required=True,
+        descr=r"""indicates the resource for which this increment is being defined.""")
     dispatch.addSub(incr)
     input_specs.addSub(dispatch)
 
@@ -83,11 +106,12 @@ class Case(Base):
     """
     Base.__init__(self, **kwargs)
     self.name = None           # case name
+    self._mode = 'sweep'       # extrema to find: min, max, sweep
+    self._metric = 'NPV'       # economic metric to focus on: lcoe, profit, cost
+
     self.dispatch_name = None  # type of dispatcher to use
     self.dispatcher = None    # type of dispatcher to use
 
-    self._mode = None          # extrema to find: min, max, sweep
-    self._metric = None        # economic metric to focus on: lcoe, profit, cost
     self._diff_study = None    # is this only a differential study?
     self._num_samples = 1      # number of ARMA stochastic samples to use ("denoises")
     self._hist_interval = None # time step interval, time between production points
@@ -199,9 +223,9 @@ class Case(Base):
   def get_num_timesteps(self):
     return self._num_hist
 
-  #### ADDED ONE MORE ACCESSOR####
   def get_Resample_T(self):
     return self._Resample_T
+
   def get_hist_interval(self):
     return self._hist_interval
 

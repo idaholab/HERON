@@ -283,7 +283,7 @@ class Template(TemplateBase):
   def _modify_inner(self, template, case, components, sources):
     """ TODO """
     input_filepath=os.path.abspath((os.path.dirname(__file__)))
-    input_filepath=input_filepath+'/../src/dispatch.py'
+    input_filepath=input_filepath+'/../src/DispatchManager'
     ext_model=template.find('Models').find('ExternalModel')
     ext_model.set('ModuleToLoad',input_filepath)
     self._modify_inner_runinfo(template, case)

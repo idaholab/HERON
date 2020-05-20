@@ -1,14 +1,14 @@
 
-from generic import Generic
+# from generic import Generic
 # from marginal import marginal
 # from custom import Custom
-# from pyomo import Pyomo
+from .pyomo_dispatch import Pyomo
 
 known = {
-    'generic': Generic,
+    #'generic': Generic,
     #'marginal': Marginal,
     #'custom': Custom,
-    #'pyomo': Pyomo,
+    'pyomo': Pyomo,
 }
 
 def get_class(typ):

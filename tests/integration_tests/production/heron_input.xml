@@ -32,13 +32,15 @@
   </Case>
 
   <Components>
-    <Component name="Generator">
-      <produces resource="electricity" dispatch="fixed">
-        <capacity resource="electricity">
-          <sweep_values>1095,1098</sweep_values>
+    <Component name="steamer">
+      <produces resource="steam" dispatch="fixed">
+        <capacity resource="steam">
+          <sweep_values>10, 100</sweep_values>
         </capacity>
         <transfer>
-          <Function method="power_conversion">transfers</Function>
+          <linear>
+            <rate resource="steam">1</rate>
+          </linear>
         </transfer>
       </produces>
       <economics>
@@ -46,21 +48,37 @@
       </economics>
     </Component>
 
-    <Component name="Electric_Grid_1">
+    <Component name="generator">
+      <produces resource="electricity" dispatch="independent">
+        <capacity resource="steam">
+          <fixed_value>100</fixed_value>
+        </capacity>
+        <transfer>
+          <linear>
+            <rate resource="steam">-1</rate>
+            <rate resource="electricity">0.5</rate>
+          </linear>
+        </transfer>
+      </produces>
+      <economics>
+        <lifetime>27</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="electr_market">
       <demands resource="electricity" dispatch="dependent"><!---->
         <capacity>
-          <fixed_value>1e0</fixed_value>
-
+          <fixed_value>-2</fixed_value>
         </capacity>
       </demands>
       <economics>
         <lifetime>3</lifetime>
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
           <driver>
-            <Function method="electric_source">transfers</Function>
+            <Function method="electric_consume">transfers</Function>
           </driver>
           <reference_price>
-            <fixed_value>10.0</fixed_value>
+            <fixed_value>1</fixed_value>
           </reference_price>
           <reference_driver>
             <fixed_value>1</fixed_value>
@@ -72,22 +90,20 @@
       </economics>
     </Component>
 
-    <Component name="Electric_Grid_2">
-      <demands resource="electricity" dispatch="independent">
+    <Component name="electr_penalty">
+      <demands resource="electricity" dispatch="dependent">
         <capacity>
-          <fixed_value>1e200</fixed_value>
+          <fixed_value>-1e200</fixed_value>
         </capacity>
       </demands>
       <economics>
         <lifetime>3</lifetime>
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
           <driver>
-
-            <Function method="electric_source">transfers</Function>
+            <Function method="electric_consume">transfers</Function>
           </driver>
           <reference_price>
-
-            <fixed_value>0.1</fixed_value>
+            <fixed_value>-1</fixed_value>
           </reference_price>
           <reference_driver>
             <fixed_value>1</fixed_value>

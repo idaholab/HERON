@@ -10,6 +10,7 @@ from base import Base
 import Components
 import Placeholders
 
+from dispatch.Factory import known as known_dispatchers
 from dispatch.Factory import get_class as get_dispatcher
 
 import _utils as hutils
@@ -83,7 +84,8 @@ class Case(Base):
     # increments for resources
     dispatch = InputData.parameterInputFactory('dispatcher', ordered=False,
         descr=r"""This node defines the dispatch strategy and options to use in the ``inner'' run.""")
-    dispatch_options = InputTypes.makeEnumType('DispatchOptions', 'DispatchOptionsType', ['generic'])
+    # TODO get types directly from Factory!
+    dispatch_options = InputTypes.makeEnumType('DispatchOptions', 'DispatchOptionsType', [d for d in known_dispatchers])
     dispatch.addSub(InputData.parameterInputFactory('type', contentType=dispatch_options,
         descr=r"""the name of the ``inner'' dispatch strategy to use."""))
     incr = InputData.parameterInputFactory('increment', contentType=InputTypes.FloatType,
@@ -132,6 +134,7 @@ class Case(Base):
     specs.parseNode(xml)
     self.name = specs.parameterValues['name']
     for item in specs.subparts:
+      # TODO move from iterative list to seeking list, at least for required nodes
       if item.getName() == 'mode':
         self._mode = item.value
       elif item.getName() == 'metric':
@@ -150,25 +153,33 @@ class Case(Base):
         for sub in item.subparts:
           self._global_econ[sub.getName()] = sub.value
       elif item.getName() == 'dispatcher':
-        # TODO load a Dispatcher object here!
-        self.dispatcher_name = item.findFirst('type').value
-        self._dispatcher_specs = item
+        # instantiate a dispatcher object.
+        dispatch_name = item.findFirst('type').value
+        dispatcher_type = get_dispatcher(dispatch_name)
+        self.dispatcher = dispatcher_type()
+        self.dispatcher.read_input(item)
+        # XXX Remove -> send to dispatcher instead
         for sub in item.subparts:
           if item.getName() == 'increment':
             self._increments[item.parameterValues['resource']] = item.value
 
     # checks
-    if self.dispatcher_name is None:
-      print('HERON: dispatcher was not defined, so using "generic".')
-      self.dispatcher_name = 'generic'
-    # load dispatcher and run specs
-    dispatcher_type = get_dispatcher(self.dispatch_name)
-    self.dispatcher = dispatcher_type()
+    if self.dispatcher is None:
+      self.raiseAnError('No <dispatch> node was provided in the <Case> node!')
 
     # derivative calculations
     self._num_hist = self._hist_len // self._hist_interval # TODO what if it isn't even?
 
     self.raiseADebug('Successfully initialized Case {}.'.format(self.name))
+
+  def initialize(self, components, sources):
+    """
+      Called after all objects are created, allows post-input initialization
+      @ In, components, list, HERON components
+      @ In, sources, list, HERON sources (placeholders)
+      @ Out, None
+    """
+    self.dispatcher.initialize(self, components, sources)
 
   def __repr__(self):
     return '<HERON Case>'
@@ -233,7 +244,6 @@ class Case(Base):
     return self._hist_len
 
   #### API ####
-
   def write_workflows(self, components, sources, loc):
     """
       Writes workflows for this case to XMLs on disk.
@@ -262,7 +272,6 @@ class Case(Base):
     template_class = module.Template()
     template_class.loadTemplate(None, template_dir)
     return template_class
-
 
   def _modify(self, templates, components, sources):
     """ TODO """
@@ -415,16 +424,4 @@ class Case(Base):
         pass # TODO
       elif isinstance(source, Placeholders.Function):
         pass # TODO
-
-
-
-
     return template
-
-
-
-
-
-
-
-

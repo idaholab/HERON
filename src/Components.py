@@ -124,7 +124,6 @@ class Component(Base, CashFlowUser):
       self.raiseAnError(IOError, '<economics> node missing from component "{}"!'.format(self.name))
     CashFlowUser.read_input(self, econ_node)
 
-
   def get_crossrefs(self):
     """
       Collect the required value entities needed for this component to function.
@@ -198,6 +197,12 @@ class Component(Base, CashFlowUser):
     outputs.update(self.get_interaction().get_outputs())
     return outputs
 
+  def get_resources(self):
+    res = set()
+    res.update(self.get_inputs())
+    res.update(self.get_outputs())
+    return res
+
   def get_capacity(self, meta, raven_vars, dispatch, t, raw=False):
     """
       returns the capacity of the interaction of this component
@@ -212,6 +217,9 @@ class Component(Base, CashFlowUser):
 
   def get_capacity_var(self):
     return self.get_interaction().get_capacity_var()
+
+  def is_dispatchable(self):
+    return self.get_interaction().is_dispatchable()
 
   def set_capacity(self, cap):
     """
@@ -330,6 +338,7 @@ class Interaction(Base):
     self._minimum = None                # lowest interaction level, if dispatchable
     self._minimum_var = None            # limiting variable for minimum
     self._function_method_map = {}      # maps things that call functions to the method within the function that needs calling
+    self._transfer = None               # the production rate (if any), in produces per consumes
                                         #   for example, {(Producer, 'capacity'): 'method'}
 
   def read_input(self, specs, mode, comp_name):
@@ -464,6 +473,10 @@ class Interaction(Base):
       raise SyntaxError('Resource "{}" is listed as capacity limiter, but not an output of the component! Got: {}'.format(self._capacity_var, balance))
     return balance, meta
 
+  def get_transfer(self):
+    """ Returns the transfer function, if any TODO """
+    return self._transfer
+
 
 
 class Producer(Interaction):
@@ -493,7 +506,6 @@ class Producer(Interaction):
     Interaction.__init__(self, **kwargs)
     self._produces = []   # the resource(s) produced by this interaction
     self._consumes = []   # the resource(s) consumed by this interaction
-    self._transfer = None # the production rate, in produces per consumes
 
   def read_input(self, specs, mode, comp_name):
     """

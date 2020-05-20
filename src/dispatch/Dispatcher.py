@@ -1,7 +1,7 @@
 """
   Base class for dispatchers.
 """
-import InputData, InputTypes
+from utils import InputData, InputTypes
 
 class Dispatcher:
   """

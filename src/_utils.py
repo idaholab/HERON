@@ -35,6 +35,17 @@ def get_cashflow_loc(raven_path=None):
   cf_loc = plugin_handler.getPluginLocation('CashFlow')
   return cf_loc
 
+def get_all_resources(components):
+  """
+    Provides a set of all resources used among all components
+    @ In, components, list, HERON component objects
+    @ Out, resources, list, resources used in case
+  """
+  res = set()
+  for comp in components:
+    res.update(comp.get_resources())
+  return res
+
 if __name__ == '__main__':
   action = sys.argv[1]
   if action == 'get_raven_loc':

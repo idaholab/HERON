@@ -1,13 +1,12 @@
 <HERON>
   <TestInfo>
-    <name>MultiMarketFixedPrice</name>
-    <author>gaira</author>
-    <created>2019-12-12</created>
+    <name>production</name>
+    <author>talbpaul</author>
+    <created>2020-05-26</created>
     <description>
-      Tests HERON creating workflows and running with a fixed deregulated market price.
+      Tests including a consume-and-produce unit, and the pyomo dispatcher.
     </description>
     <classesTested>HERON</classesTested>
-    <requirements>H-EA-3</requirements>
   </TestInfo>
 
   <Case name="Sweep_Runs">
@@ -37,11 +36,6 @@
         <capacity resource="steam">
           <sweep_values>10, 100</sweep_values>
         </capacity>
-        <transfer>
-          <linear>
-            <rate resource="steam">1</rate>
-          </linear>
-        </transfer>
       </produces>
       <economics>
         <lifetime>27</lifetime>
@@ -50,8 +44,9 @@
 
     <Component name="generator">
       <produces resource="electricity" dispatch="independent">
+        <consumes>steam</consumes>
         <capacity resource="steam">
-          <fixed_value>100</fixed_value>
+          <fixed_value>-100</fixed_value>
         </capacity>
         <transfer>
           <linear>
@@ -103,7 +98,7 @@
             <Function method="electric_consume">transfers</Function>
           </driver>
           <reference_price>
-            <fixed_value>-1</fixed_value>
+            <fixed_value>1</fixed_value>
           </reference_price>
           <reference_driver>
             <fixed_value>1</fixed_value>

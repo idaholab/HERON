@@ -247,7 +247,7 @@ class ValuedParam:
       # multiplicity
       if len(given) > 1:
         raise IOError(err_msg)
-      for rate_node in item.findAll('rate'):
+      for rate_node in item.findFirst('linear').findAll('rate'):
         resource = rate_node.parameterValues['resource']
         rate = rate_node.value
         self._coefficients[resource] = rate

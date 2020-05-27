@@ -74,7 +74,7 @@ class CashFlowUser:
       @ In, raven_vars, dict, additional variables (presumably from raven) that might be needed
       @ In, meta, dict, further dictionary of information that might be needed
       @ In, t, int, time step at which cost needs to be evaluated
-      @ Out, cost, float, cost of activity
+      @ Out, cost, dict, cost of activity as a breakdown
     """
     return self._economics.incremental_cost(activity, raven_vars, meta, t)
 
@@ -171,7 +171,7 @@ class CashFlowGroup:
       @ In, raven_vars, dict, additional inputs from RAVEN call (or similar)
       @ In, meta, dict, additional user-defined meta
       @ In, t, int, time of current evaluation (if any) # TODO default?
-      @ Out, cost, float, cash flow evaluation
+      @ Out, cost, dict, cash flow evaluations
     """
     # combine into a single dict for the evaluation calls
     info = {'raven_vars': raven_vars, 'meta': meta}#, 't': t}
@@ -384,8 +384,8 @@ class CashFlow:
     aliases = {} # currently unused, but mechanism left in place
     #aliases['capacity'] = '{}_capacity'.format(self._component.name)
     # for now, add the activity to the dictionary # TODO slow, speed this up
-    res_vals = activity.to_dict()
-    values_dict['raven_vars'].update(res_vals)
+    #res_vals = activity.to_dict()
+    values_dict['raven_vars']['HERON_activity_report'] = activity
     params = self.calculate_params(values_dict, aliases=aliases, times=t)
     return params['cost']
 

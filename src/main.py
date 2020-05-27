@@ -60,7 +60,6 @@ class HERON(Base):
     for source in self._sources:
       source.print_me(tabs=tabs+1, tab=tab)
 
-
   def create_raven_workflow(self, case=None):
     """
       Loads, modifies, and writes a RAVEN template workflow based on the Case.
@@ -71,9 +70,6 @@ class HERON(Base):
       case = self._case
     # let the case do the work
     case.write_workflows(self._components, self._sources, self._input_dir)
-
-
-
 
   def run(self):
     """ TODO

@@ -4,6 +4,8 @@
 
 def electric_consume(data, meta):
   # flip sign because we consume the electricity
-  E = -1.0 * meta['raven_vars']['electricity']
+  activity = meta['raven_vars']['HERON_activity_report']
+  t = meta['t']
+  E = -1.0 * activity['electricity'][t]
   data = {'driver': E}
   return data, meta

@@ -17,7 +17,7 @@ class Base(MessageUser):
     #  self.raiseADebug('Set message handler for', self)
 
   def __repr__(self):
-    return '<EGRET {}>'.format(self.__class__.__name__)
+    return '<HERON {}>'.format(self.__class__.__name__)
 
   def set_message_handler(self, mh):
     self.messageHandler = mh

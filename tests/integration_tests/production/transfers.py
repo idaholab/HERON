@@ -3,9 +3,20 @@
 """
 
 def electric_consume(data, meta):
+  ## works with generic?
+  # activity = meta['raven_vars']['HERON_pyomo_model']
+  # t = meta['t']
   # flip sign because we consume the electricity
-  activity = meta['raven_vars']['HERON_activity_report']
+  # E = -1.0 * activity['electricity'][t]
+
+  ## works with pyomo
+  # model = meta['HERON']['pyomo_model']
+  # component = meta['HERON']['component']
+  activity = meta['meta']['HERON']['activity']
+  indexer = meta['meta']['HERON']['index_map']
+  E_index = indexer['electricity']
   t = meta['t']
-  E = -1.0 * activity['electricity'][t]
+  # TODO a get_activity method for the dispatcher -> returns object-safe activity (expression or value)?
+  E = -1 * activity[E_index, t]
   data = {'driver': E}
   return data, meta

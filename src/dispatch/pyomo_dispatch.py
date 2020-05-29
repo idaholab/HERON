@@ -130,9 +130,9 @@ class Pyomo(Dispatcher):
     self._create_conservation(m, resources) # conservation of resources (e.g. production == consumption)
     self._create_objective(m) # objective
     # solve
-    self._debug_pyomo_print(m)
+    # self._debug_pyomo_print(m)
     soln = pyo.SolverFactory('cbc').solve(m)
-    soln.write() # DEBUGG
+    # soln.write() # DEBUGG
     self._debug_print_soln(m) # DEBUGG
     # return dict of numpy arrays
     result = self._retrieve_solution(m)
@@ -226,7 +226,7 @@ class Pyomo(Dispatcher):
   def _create_objective(self, m):
     """ TODO """
     ## cashflow eval
-    m.obj = pyo.Objective(rule=self._cashflow_rule)
+    m.obj = pyo.Objective(rule=self._cashflow_rule, sense=pyo.maximize)
 
   ### UTILITIES for general use
   def _get_prod_bounds(self, comp):
@@ -287,18 +287,49 @@ class Pyomo(Dispatcher):
 
   def _cashflow_rule(self, m):
     total = 0 # sum of cashflows
-    activity = self._retrieve_solution(m)
     for comp in m.Components:
       name = comp.name
-      indexer = m.resource_index_map[comp.name]
-      df = pd.DataFrame.from_dict(activity[name], dtype=float)
-      print('DEBUGG df:', df)
+      indexer = m.resource_index_map[name]
+      comp_subtotal = 0
+      activity = getattr(m, "{c}_production".format(c=name))
+      if activity is None:
+        raise RuntimeError('DEBUGG')
+      else:
+        print('DEBUGG activity:', activity, type(activity))
       for t in m.T:
-        value = comp.get_incremental_cost(df, {}, {}, 0) # TODO activity, raven_vars, meta, t
-        print('DEBUGG value:', comp.name, t, value)
-        iiiiiii
-        total += sum(value.values())
-    return - total # minimization sense
+        # retrieve alpha, D, D', x, and evaluate
+        ## TODO how do I know the drivers??
+        cfs = comp.get_incremental_cost(None,
+                                        {}, # raven_vars
+                                        {'HERON': {'pyomo_model': m,
+                                                   'component': comp,
+                                                   'activity': activity,
+                                                   'index_map': indexer,
+                                                   # 'dispatch': self, TODO for getters, setters
+                                                   }}, # meta
+                                        t) # t
+        time_subtotal = sum(cfs.values())
+        comp_subtotal += time_subtotal
+      total += comp_subtotal
+    return total
+
+
+
+    # FIXME OLD this isn't returning expressions, it's evaluating in place!
+    # activity = self._retrieve_solution(m)
+    # for comp in m.Components:
+    #   name = comp.name
+    #   indexer = m.resource_index_map[comp.name]
+    #   df = pd.DataFrame.from_dict(activity[name], dtype=float)
+    #   for t in m.T:
+    #     value = comp.get_incremental_cost(df,
+    #                                       {}, # raven_vars
+    #                                       {'HERON': {'pyomo_model': m,
+    #                                                  'component': comp,
+    #                                                  }}, # meta
+    #                                               t) # t
+    #     total += sum(value.values())
+    # return - total # minimization sense
 
   def _conservation_rule(self, res, m, t):
     """ Constructs conservation constraints. TODO """
@@ -344,6 +375,7 @@ class Pyomo(Dispatcher):
   def _debug_print_soln(self, m):
     """ TODO """
     print('DEBUGG solution:')
+    print('  objective value:', m.obj())
     for c, comp in enumerate(m.Components):
       name = comp.name
       print('  component:', c, name)

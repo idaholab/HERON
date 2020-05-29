@@ -49,7 +49,7 @@ class HERON(Base):
     self._case = objects['case']
 
   def __repr__(self):
-    return '<EGRET Simulation>'
+    return '<HERON Simulation>'
 
   def print_me(self, tabs=0, tab='  '):
     pre = tab*tabs

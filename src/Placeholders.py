@@ -1,5 +1,5 @@
 """
-  Evaluated signal values for use in EGRET
+  Evaluated signal values for use in HERON
 """
 from __future__ import unicode_literals, print_function
 import os
@@ -16,7 +16,7 @@ from utils import InputData, utils, InputTypes
 
 class Placeholder(Base):
   """
-    Objects that hold a place in the EGRET workflow
+    Objects that hold a place in the HERON workflow
     but don't hold value until converted into the RAVEN workflow.
   """
   def __init__(self, **kwargs):
@@ -177,13 +177,6 @@ class Function(Placeholder):
 
       self._module_methods[name] = member
     return # TODO needed? var_names
-
-    ######Interpolate method#####
-
-
-
-
-
 
   def evaluate(self, method, request, data_dict):
     result = self._module_methods[method](request, data_dict)

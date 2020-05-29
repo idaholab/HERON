@@ -34,11 +34,25 @@
     <Component name="steamer">
       <produces resource="steam" dispatch="fixed">
         <capacity resource="steam">
-          <sweep_values>10, 100</sweep_values>
+          <sweep_values>1, 100</sweep_values>
         </capacity>
       </produces>
       <economics>
         <lifetime>27</lifetime>
+        <!--<CashFlow name="capex" type="one-time" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <Function method="electric_consume">transfers</Function>
+          </driver>
+          <reference_price>
+            <fixed_value>1</fixed_value>
+          </reference_price>
+          <reference_driver>
+            <fixed_value>1</fixed_value>
+          </reference_driver>
+          <scaling_factor_x>
+            <fixed_value>1</fixed_value>
+          </scaling_factor_x>
+        </CashFlow>-->
       </economics>
     </Component>
 
@@ -57,12 +71,22 @@
       </produces>
       <economics>
         <lifetime>27</lifetime>
+        <!--<CashFlow name="var_om" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <resource>electricity</resource>
+            <Function method="steam_consume">transfers</Function>
+          </driver>
+          <reference_price>
+            <fixed_value>0.01</fixed_value>
+          </reference_price>
+        </CashFlow>-->
       </economics>
     </Component>
 
     <Component name="electr_market">
       <demands resource="electricity" dispatch="dependent"><!---->
         <capacity>
+          <!-- <fixed_value>-2</fixed_value> -->
           <fixed_value>-2</fixed_value>
         </capacity>
       </demands>
@@ -71,19 +95,20 @@
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
           <driver>
             <Function method="electric_consume">transfers</Function>
+            <!-- <resource multiplier="-1" absolute="True">electricity</resource> -->
           </driver>
           <reference_price>
             <fixed_value>1</fixed_value>
           </reference_price>
-          <reference_driver>
-            <fixed_value>1</fixed_value>
-          </reference_driver>
-          <scaling_factor_x>
-            <fixed_value>1</fixed_value>
-          </scaling_factor_x>
         </CashFlow>
       </economics>
     </Component>
+
+    <!-- design notes
+    add a <resource> node for at least CashFlow drivers
+    add multiplier and absolute value options for manipulating entries
+    maybe disallow <linear> and <resource> except for applicable ValuedParams?
+    -->
 
     <Component name="electr_penalty">
       <demands resource="electricity" dispatch="dependent">
@@ -98,14 +123,8 @@
             <Function method="electric_consume">transfers</Function>
           </driver>
           <reference_price>
-            <fixed_value>1</fixed_value>
+            <fixed_value>-1</fixed_value>
           </reference_price>
-          <reference_driver>
-            <fixed_value>1</fixed_value>
-          </reference_driver>
-          <scaling_factor_x>
-            <fixed_value>1</fixed_value>
-          </scaling_factor_x>
         </CashFlow>
       </economics>
     </Component>

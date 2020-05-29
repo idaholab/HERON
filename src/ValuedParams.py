@@ -22,13 +22,15 @@ class ValuedParam:
   valued_methods = ['fixed_value', 'sweep_values', 'opt_bounds']
 
   @classmethod
-  def get_input_specs(cls, name):
+  def get_input_specs(cls, name, disallowed=None):
     """
       Template for parameters that can take a scalar, an ARMA history, or a function
       @ In, name, string, name for spec (tag)
-      @ In, skip, list, optional, elements to not include
+      @ In, disallowed, list(str), names of options not to be included
       @ Out, spec, InputData, value-based spec
     """
+    if disallowed is None:
+      disallowed = []
     spec = InputData.parameterInputFactory(name,
         descr=r"""This value can be taken from any \emph{one} of the sources described below.""")
     # for when the value is fixed (takes precedence over "sweep" and "opt") ...
@@ -252,7 +254,6 @@ class ValuedParam:
         rate = rate_node.value
         self._coefficients[resource] = rate
       return 'linear', None, None, None
-
 
     ## by now, we only have the "valued" options
     # implementation check: we don't do growth with fixed vals yet.

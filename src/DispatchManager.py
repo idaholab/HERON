@@ -18,7 +18,9 @@ class DispatchRunner:
   """
     Manages the interface between RAVEN and running the dispatch
   """
+  # TODO move naming templates to a common place for consistency!
   naming_template = {'comp capacity': '{comp}_capacity',
+                     'dispatch var': 'Dispatch__{comp}__{res}',
                     }
 
   def __init__(self):
@@ -68,10 +70,26 @@ class DispatchRunner:
     """
     # TODO for each segment/cluster ..
     # TODO for each year ... ?
-    self._dispatcher.dispatch(self._case,
-                              self._components,
-                              self._sources,
-                              {})
+    ## TODO create "time" variable?
+    dispatch = self._dispatcher.dispatch(self._case,
+                                         self._components,
+                                         self._sources,
+                                         {})
+    # TODO collect data per year/cluster/etc
+    return dispatch
+
+  def save_variables(self, raven, dispatch):
+    """ generates RAVEN-acceptable variables TODO """
+    # TODO clustering, multiyear
+    # TODO should this be a Runner method or separate?
+    template = self.naming_template['dispatch var']
+    for comp_name, data in dispatch.items():
+      for resource, usage in data.items():
+        name = template.format(comp=comp_name, res=resource)
+        setattr(raven, name, usage)
+        # TODO indexMap?
+
+
 
 
 def run(raven, raven_dict):
@@ -90,4 +108,6 @@ def run(raven, raven_dict):
   # load data from RAVEN
   runner.extract_variables(raven, raven_dict)
   # TODO clustering, multiyear, etc?
-  runner.run()
+  dispatch = runner.run()
+  runner.save_variables(raven, dispatch)
+

@@ -77,26 +77,32 @@ class Pyomo(Dispatcher):
     """
     time = np.arange(100) # FIXME
     resources = sorted(list(hutils.get_all_resources(components))) # list of all active resources
-    # TODO rolling window?
+    # results in format {comp: {resource: [... dispatch ...]}}
+    dispatch = dict((comp.name, dict((res, np.zeros(len(time))) for res in comp.get_resources())) for comp in components)
+    # rolling window
     start_index = 0
     final_index = len(time)
     # TODO make dispatch scenario? How to store results?
     while start_index < final_index:
       end_index = start_index + self._window_len
-      print('DEBUGG starting window {} to {}'.format(start_index, end_index))
       if end_index > final_index:
         end_index = final_index
+      print('DEBUGG starting window {} to {}'.format(start_index, end_index))
       start = time_mod.time()
       subdisp = self.dispatch_window(start_index, end_index,
                                      case, components, sources, resources,
                                      variables)
       end = time_mod.time()
       print('DEBUGG solve time: {} s'.format(end-start))
-      import pprint
-      pprint.pprint(subdisp)
-      # TODO update dispatch
-      CRASHME
+      # store result in corresponding part of dispatch
+      for comp in components:
+        data = dispatch[comp.name]
+        for res in data:
+          data[res][start_index:end_index] = subdisp[comp.name][res]
       start_index = end_index
+    import pprint
+    pprint.pprint(dispatch)
+    return dispatch
 
   ### INTERNAL
   def dispatch_window(self, start_index, end_index,
@@ -133,7 +139,7 @@ class Pyomo(Dispatcher):
     # self._debug_pyomo_print(m)
     soln = pyo.SolverFactory('cbc').solve(m)
     # soln.write() # DEBUGG
-    self._debug_print_soln(m) # DEBUGG
+    #self._debug_print_soln(m) # DEBUGG
     # return dict of numpy arrays
     result = self._retrieve_solution(m)
     return result
@@ -188,6 +194,7 @@ class Pyomo(Dispatcher):
     r = m.resource_index_map[name][cap_res] # production index of the governing resource
     # production is always lower than capacity
     ## NOTE get_capacity returns (data, meta) and data is dict
+    ## TODO does this work with, e.g., ARMA-based capacities?
     cap = comp.get_capacity(None, None, None, None)[0][cap_res] # value of capacity limit (units of governing resource)
     rule = partial(self._capacity_rule, prod_name, r, cap)
     constr = pyo.Constraint(m.T, rule=rule)
@@ -381,6 +388,6 @@ class Pyomo(Dispatcher):
       print('  component:', c, name)
       for res, r in m.resource_index_map[name].items():
         print('    resource:', r, res)
-        for t, time in enumerate(m.T):
+        for t, time_index in enumerate(m.T):
           prod = getattr(m, '{n}_production'.format(n=name))
-          print('      time:', t, time, prod[r, t].value)
+          print('      time:', t, time_index, prod[r, time_index].value)

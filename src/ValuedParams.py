@@ -179,7 +179,7 @@ class ValuedParam:
       raise RuntimeError('Unrecognized data source:', self.type)
     # if the return dict wasn't auto-created, create it now
     if ret is None:
-      ret = (value, inputs['meta'])
+      ret = (value, inputs)
     return ret
 
   def _load(self, comp_name, item, mode, alias_dict):
@@ -330,7 +330,7 @@ class ValuedParam:
     request = inputs.pop('request', None) # sometimes just the inputs will be used without the request, like in elasticity curves
     result = self._obj.evaluate(method, request, inputs)
     balance = result[0]
-    meta = result[1]['meta']
+    meta = result[1]
     return balance, meta
 
   def _evaluate_variable(self, inputs, target_var, aliases):

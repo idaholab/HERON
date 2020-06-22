@@ -52,6 +52,8 @@ class Placeholder(Base):
     specs.parseNode(xml)
     self.name = specs.parameterValues['name']
     self._source = specs.value
+    # check source exists
+    self._target_file = os.path.abspath(self._source)
     return specs
 
   def print_me(self, tabs=0, tab='  '):
@@ -105,9 +107,11 @@ class ARMA(Placeholder):
     """
     Placeholder.__init__(self, **kwargs)
     self._type = 'ARMA'
+
   def read_input(self, xml):
     specs = Placeholder.read_input(self, xml)
     self._var_names = specs.parameterValues['variable']
+    # check that the source ARMA exists
 
   def interpolation(self, x, y):
 

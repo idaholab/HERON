@@ -17,6 +17,7 @@ import pyutilib.subprocess.GlobalData
 pyutilib.subprocess.GlobalData.DEFINE_SIGNAL_HANDLERS_DEFAULT = False
 
 from .Dispatcher import Dispatcher
+from .DispatchState import DispatchState
 try:
   import _utils as hutils
 except (ModuleNotFoundError, ImportError):
@@ -66,7 +67,7 @@ class Pyomo(Dispatcher):
     print('DEBUGG specs:', specs)
 
   ### API
-  def dispatch(self, case, components, sources, variables):
+  def dispatch(self, case, components, sources, meta):
     """
       Performs dispatch.
       @ In, case, HERON Case, Case that this dispatch is part of
@@ -75,23 +76,26 @@ class Pyomo(Dispatcher):
       @ In, variables, dict, additional variables passed through
       @ Out, disp, DispatchScenario, resulting dispatch
     """
-    time = np.arange(100) # FIXME
+    t_start, t_end, t_num = self.get_time_discr()
+    time = np.linspace(t_start, t_end, t_num) # Note we don't care about segment/cluster here
     resources = sorted(list(hutils.get_all_resources(components))) # list of all active resources
-    # results in format {comp: {resource: [... dispatch ...]}}
+    # pre-build results structure
+    ## results in format {comp: {resource: [... dispatch ...]}}
     dispatch = dict((comp.name, dict((res, np.zeros(len(time))) for res in comp.get_resources())) for comp in components)
     # rolling window
     start_index = 0
     final_index = len(time)
-    # TODO make dispatch scenario? How to store results?
+    # TODO window overlap!  ( )[ ] -> (   [  )   ]
     while start_index < final_index:
       end_index = start_index + self._window_len
       if end_index > final_index:
-        end_index = final_index
+        end_index = final_index # + 1?
+      specific_time = time[start_index:end_index]
       print('DEBUGG starting window {} to {}'.format(start_index, end_index))
       start = time_mod.time()
-      subdisp = self.dispatch_window(start_index, end_index,
+      subdisp = self.dispatch_window(specific_time,
                                      case, components, sources, resources,
-                                     variables)
+                                     meta)
       end = time_mod.time()
       print('DEBUGG solve time: {} s'.format(end-start))
       # store result in corresponding part of dispatch
@@ -105,24 +109,28 @@ class Pyomo(Dispatcher):
     return dispatch
 
   ### INTERNAL
-  def dispatch_window(self, start_index, end_index,
+  def dispatch_window(self, time,
                       case, components, sources, resources,
-                      variables):
+                      meta):
     # build the Pyomo model
     # TODO abstract this model as much as possible BEFORE, then concrete initialization per window
     m = pyo.ConcreteModel()
     # indices
     C = np.arange(0, len(components), dtype=int) # indexes component
     R = np.arange(0, len(resources), dtype=int) # indexes resources
-    T = np.arange(start_index, end_index, dtype=int) # indexes resources
+    # T = np.arange(start_index, end_index, dtype=int) # indexes resources
+    T = np.arange(0, len(time), dtype=int) # indexes resources
     m.C = pyo.Set(initialize=C)
     m.R = pyo.Set(initialize=R)
     m.T = pyo.Set(initialize=T)
-    m.resource_index_map = {} # maps the resource to its index WITHIN APPLICABLE components (sparse matrix)
-                              #   e.g. component: {resource: local index}, ... etc}
+    m.Times = time
+    m.resource_index_map = meta['HERON']['resource_indexer'] # maps the resource to its index WITHIN APPLICABLE components (sparse matrix)
+                                                             #   e.g. component: {resource: local index}, ... etc}
     # properties
     m.Case = case
     m.Components = components
+    m.Activity = PyomoState()
+    m.Activity.initialize(m.Components, m.resource_index_map, m.Times, m) # XXX not m.T, want actual times!!!
     # constraints and variables
     for comp in components:
       # NOTE: "fixed" components could hypothetically be treated differently
@@ -134,48 +142,23 @@ class Pyomo(Dispatcher):
       self._create_transfer(m, comp, prod_name)    # transfer functions (constraints)
       # ramp rates TODO ## INCLUDING previous-time boundary condition TODO
     self._create_conservation(m, resources) # conservation of resources (e.g. production == consumption)
-    self._create_objective(m) # objective
+    self._create_objective(meta, m) # objective
     # solve
     # self._debug_pyomo_print(m)
     soln = pyo.SolverFactory('cbc').solve(m)
     # soln.write() # DEBUGG
-    #self._debug_print_soln(m) # DEBUGG
+    self._debug_print_soln(m) # DEBUGG
     # return dict of numpy arrays
     result = self._retrieve_solution(m)
     return result
 
   ### PYOMO Element Constructors
-  def _create_fixed(self, m, comp):
-    """ TODO """
-    # FIXME didn't work, so set minimum == maximum constraint
-    xxxxxxx
-    name = comp.name
-    r_i_map = dict((res, r) for r, res in enumerate(comp.get_resources()))
-    m.resource_index_map[name] = r_i_map
-    res_indexer = pyo.Set(initialize=range(len(r_i_map)))
-    cap_res = comp.get_capacity_var()       # name of resource that defines capacity
-    cap = comp.get_capacity(None, None, None, None)[0][cap_res] # value of capacity limit (units of governing resource)
-    # size for usage
-    cap *= np.ones(len(m.T))
-    data = np.empty((len(r_i_map), len(m.T)))
-    ratios = self._get_transfer_coeffs(m, comp)
-    for res, r in r_i_map.items():
-      if res == cap_res:
-        data[r][:] = cap
-      else:
-        data[r][:] = cap * ratios[res]
-    #indexer = partial(self._get_fixed_activity, data)
-    #param = pyo.Param(res_indexer, m.T, initialize=indexer)
-    setattr(m, '{c}_production'.format(c=name), data) # TODO I don't like this, but it works.
-
   def _create_production(self, m, comp):
     """ TODO """
     name = comp.name
-    # map resources to their index FOR THIS COMPONENT (not global)
-    m.resource_index_map[name] = dict((res, r) for r, res in enumerate(comp.get_resources()))
     # create pyomo indexer for this component's resources
-    res_indexer = pyo.Set(initialize=range(len(m.resource_index_map[name])))
-    setattr(m, '{c}_res_index_map'.format(c=name), res_indexer)
+    res_indexer = pyo.Set(initialize=range(len(m.resource_index_map[comp])))
+    setattr(m, f'{name}_res_index_map', res_indexer)
     # production variable depends on resource, time
     # # TODO if transfer function is linear, isn't this technically redundant? Maybe only need one resource ...
     ## Method 1: set variable bounds directly --> not working! why??
@@ -191,10 +174,11 @@ class Pyomo(Dispatcher):
     """ TODO """
     name = comp.name
     cap_res = comp.get_capacity_var()       # name of resource that defines capacity
-    r = m.resource_index_map[name][cap_res] # production index of the governing resource
+    r = m.resource_index_map[comp][cap_res] # production index of the governing resource
     # production is always lower than capacity
     ## NOTE get_capacity returns (data, meta) and data is dict
     ## TODO does this work with, e.g., ARMA-based capacities?
+    ### -> "time" is stored on "m" and could be used to correctly evaluate the capacity
     cap = comp.get_capacity(None, None, None, None)[0][cap_res] # value of capacity limit (units of governing resource)
     rule = partial(self._capacity_rule, prod_name, r, cap)
     constr = pyo.Constraint(m.T, rule=rule)
@@ -214,10 +198,13 @@ class Pyomo(Dispatcher):
     # transfer functions
     # e.g. 2A + 3B -> 1C + 2E
     # get linear coefficients
+    # TODO this could also take a transfer function from an external Python function assuming
+    #    we're careful about how the expression-vs-float gets used
+    #    and figure out how to handle multiple ins, multiple outs
     ratios = self._get_transfer_coeffs(m, comp)
     ref_r, ref_name, _ = ratios.pop('__reference', (None, None, None))
     for resource, ratio in ratios.items():
-      r = m.resource_index_map[name][resource]
+      r = m.resource_index_map[comp][resource]
       rule_name = '{c}_{r}_{fr}_transfer'.format(c=name, r=resource, fr=ref_name)
       rule = partial(self._transfer_rule, ratio, r, ref_r, prod_name) # XXX
       constr = pyo.Constraint(m.T, rule=rule)
@@ -230,10 +217,11 @@ class Pyomo(Dispatcher):
       constr = pyo.Constraint(m.T, rule=rule)
       setattr(m, '{r}_conservation'.format(r=resource), constr)
 
-  def _create_objective(self, m):
+  def _create_objective(self, meta, m):
     """ TODO """
     ## cashflow eval
-    m.obj = pyo.Objective(rule=self._cashflow_rule, sense=pyo.maximize)
+    rule = partial(self._cashflow_rule, meta)
+    m.obj = pyo.Objective(rule=rule, sense=pyo.maximize)
 
   ### UTILITIES for general use
   def _get_prod_bounds(self, comp):
@@ -258,7 +246,7 @@ class Pyomo(Dispatcher):
     first_coef = None
     ratios = {}
     for resource, coef in coeffs.items():
-      r = m.resource_index_map[name][resource]
+      r = m.resource_index_map[comp][resource]
       if first_r is None:
         # set up nominal resource to compare to
         first_r = r
@@ -277,7 +265,7 @@ class Pyomo(Dispatcher):
     for comp in m.Components:
       prod = getattr(m, '{n}_production'.format(n=comp.name))
       result[comp.name] = {}
-      for res, comp_r in m.resource_index_map[comp.name].items():
+      for res, comp_r in m.resource_index_map[comp].items():
         #global_r = m.Resources.index(res)
         result[comp.name][res] = np.fromiter((prod[comp_r, t].value for t in m.T), dtype=float, count=len(m.T))
         #result[:, c, global_r] = list(prod[comp_r, t] for t in m.T) # TODO can we extract the vector?
@@ -292,58 +280,18 @@ class Pyomo(Dispatcher):
     else:
       return prod[r, t] >= cap
 
-  def _cashflow_rule(self, m):
-    total = 0 # sum of cashflows
-    for comp in m.Components:
-      name = comp.name
-      indexer = m.resource_index_map[name]
-      comp_subtotal = 0
-      activity = getattr(m, "{c}_production".format(c=name))
-      if activity is None:
-        raise RuntimeError('DEBUGG')
-      else:
-        print('DEBUGG activity:', activity, type(activity))
-      for t in m.T:
-        # retrieve alpha, D, D', x, and evaluate
-        ## TODO how do I know the drivers??
-        cfs = comp.get_incremental_cost(None,
-                                        {}, # raven_vars
-                                        {'HERON': {'pyomo_model': m,
-                                                   'component': comp,
-                                                   'activity': activity,
-                                                   'index_map': indexer,
-                                                   # 'dispatch': self, TODO for getters, setters
-                                                   }}, # meta
-                                        t) # t
-        time_subtotal = sum(cfs.values())
-        comp_subtotal += time_subtotal
-      total += comp_subtotal
+  def _cashflow_rule(self, meta, m):
+    activity = m.Activity # dict((comp, getattr(m, f"{comp.name}_production")) for comp in m.Components)
+    total = self._compute_cashflows(m.Components, activity, m.Times, meta)
     return total
-
-
-
-    # FIXME OLD this isn't returning expressions, it's evaluating in place!
-    # activity = self._retrieve_solution(m)
-    # for comp in m.Components:
-    #   name = comp.name
-    #   indexer = m.resource_index_map[comp.name]
-    #   df = pd.DataFrame.from_dict(activity[name], dtype=float)
-    #   for t in m.T:
-    #     value = comp.get_incremental_cost(df,
-    #                                       {}, # raven_vars
-    #                                       {'HERON': {'pyomo_model': m,
-    #                                                  'component': comp,
-    #                                                  }}, # meta
-    #                                               t) # t
-    #     total += sum(value.values())
-    # return - total # minimization sense
 
   def _conservation_rule(self, res, m, t):
     """ Constructs conservation constraints. TODO """
     balance = 0
-    for comp_name, res_dict in m.resource_index_map.items():
+    for comp, res_dict in m.resource_index_map.items():
       if res in res_dict:
-        balance += getattr(m, '{c}_production'.format(c=comp_name))[res_dict[res], t]
+        # TODO move to this? balance += m._activity.get_activity(comp, res, t)
+        balance += getattr(m, f'{comp.name}_production')[res_dict[res], t]
     return balance == 0 # TODO tol?
 
   def _min_prod_rule(self, prod_name, r, cap, minimum, m, t):
@@ -381,13 +329,39 @@ class Pyomo(Dispatcher):
 
   def _debug_print_soln(self, m):
     """ TODO """
+    print('*'*80)
     print('DEBUGG solution:')
     print('  objective value:', m.obj())
     for c, comp in enumerate(m.Components):
       name = comp.name
       print('  component:', c, name)
-      for res, r in m.resource_index_map[name].items():
+      for res, r in m.resource_index_map[comp].items():
         print('    resource:', r, res)
         for t, time_index in enumerate(m.T):
           prod = getattr(m, '{n}_production'.format(n=name))
           print('      time:', t, time_index, prod[r, time_index].value)
+    print('*'*80)
+
+
+
+
+
+# DispatchState for Pyomo dispatcher
+class PyomoState(DispatchState):
+  def __init__(self):
+    DispatchState.__init__(self)
+    self._model = None # Pyomo model object
+
+  def initialize(self, components, resources_map, times, model):
+    DispatchState.initialize(self, components, resources_map, times)
+    self._model = model
+
+  def get_activity_indexed(self, comp, r, t, valued=False):
+    var = getattr(self._model, f'{comp.name}_production')
+    prod = getattr(self._model, f'{comp.name}_production')[r, t]
+    if valued:
+      return prod()
+    return prod
+
+  def set_activity_indexed(self, comp, r, t, value, valued=False):
+    raise NotImplementedError

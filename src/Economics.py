@@ -67,16 +67,15 @@ class CashFlowUser:
     """
     self._economics.set_crossrefs(refs)
 
-  def get_incremental_cost(self, activity, raven_vars, meta, t):
+  def get_state_cost(self, activity, meta):
     """
-      get the cost given particular activities
-      @ In, activity, pandas.Series, scenario variable values to evaluate cost of
+      get the cost given particular activities (state) of the cash flow user
       @ In, raven_vars, dict, additional variables (presumably from raven) that might be needed
       @ In, meta, dict, further dictionary of information that might be needed
-      @ In, t, int, time step at which cost needs to be evaluated
+      XXX @ In, time, float, time at which cost needs to be evaluated
       @ Out, cost, dict, cost of activity as a breakdown
     """
-    return self._economics.incremental_cost(activity, raven_vars, meta, t)
+    return self.get_economics().evaluate_cfs(activity, meta)
 
   def get_economics(self):
     """
@@ -168,19 +167,17 @@ class CashFlowGroup:
   #######
   # API #
   #######
-  def incremental_cost(self, activity, raven_vars, meta, t):
+  def evaluate_cfs(self, activity, meta):
     """
       Calculates the incremental cost of a particular system configuration.
       @ In, activity, XArray.DataArray, array of driver-centric variable values
       @ In, raven_vars, dict, additional inputs from RAVEN call (or similar)
       @ In, meta, dict, additional user-defined meta
-      @ In, t, int, time of current evaluation (if any) # TODO default?
+      XXX @ In, time, float, time at which cost needs to be evaluated
       @ Out, cost, dict, cash flow evaluations
     """
-    # combine into a single dict for the evaluation calls
-    info = {'raven_vars': raven_vars, 'meta': meta}#, 't': t}
     # combine all cash flows into single cash flow evaluation
-    cost = dict((cf.name, cf.evaluate_cost(activity, info, t)) for cf in self._cash_flows)
+    cost = dict((cf.name, cf.evaluate_cost(activity, meta)) for cf in self.get_cashflows())
     return cost
 
   def get_cashflows(self):
@@ -429,7 +426,7 @@ class CashFlow:
       valued_param = self._crossrefs[attr]
       valued_param.set_object(obj)
 
-  def evaluate_cost(self, activity, values_dict, t):
+  def evaluate_cost(self, activity, values_dict):
     """
       Evaluates cost of a particular scenario provided by "activity".
       @ In, activity, pandas.Series, multi-indexed array of scenario activities
@@ -446,34 +443,18 @@ class CashFlow:
     #res_vals = activity.to_dict() # TODO slow, speed this up
     # if 'HERON' not in values_dict['meta']:
     #   values_dict['meta']['HERON'] = {}
-    # values_dict['meta']['HERON']['activity'] = activity
-    params = self.calculate_params(values_dict, aliases=aliases, times=t)
+    values_dict['HERON']['activity'] = activity
+    params = self.calculate_params(values_dict)
     return params['cost']
 
-  def calculate_params(self, values_dict, aliases=None, aggregate=True, times=None):
-    #if 'reference_driver' not in values_dict.keys():
-    #  values_dict.update({'reference_driver':1})
-
-    #if 'scaling_factor_x' not in values_dict.keys():
-    #  values_dict.update({'scaling_factor_x':1})
+  def calculate_params(self, values_dict):
     """
       Calculates the value of the cash flow parameters.
       @ In, values_dict, dict, mapping from simulation variable names to their values (as floats or numpy arrays)
-      @ In, aliases, dict, optional, means to translate variable names using an alias. Not well-tested!
-      @ In, aggregate, bool, optional, if True then make an effort to collapse array values to floats meaningfully
       @ Out, params, dict, dictionary of parameters mapped to values including the cost
     """
-    if aliases is None:
-      aliases = {}
-    # if a specific time is requested, input that now
-    if times is not None:
-      times = np.atleast_1d(times)
-    T = len(times)
-    ## neither "x" nor "Dp" should have time dependence, # TODO assumption for now.
-    Dp = self._reference.evaluate(values_dict, target_var='reference_driver', aliases=aliases)[0]['reference_driver']
-    Dp = float(Dp)
-    x = self._scale.evaluate(values_dict, target_var='scaling_factor_x', aliases=aliases)[0]['scaling_factor_x']
-    x = float(x)
+    Dp = float(self._reference.evaluate(values_dict, target_var='reference_driver')[0]['reference_driver'])
+    x = float(self._scale.evaluate(values_dict, target_var='scaling_factor_x')[0]['scaling_factor_x'])
     ## a and D need to be filled as time dependent
     ### TODO messes with Pyomo, just do one time at a time for now
     # a = np.zeros(T)
@@ -495,9 +476,14 @@ class CashFlow:
     #   else:
     #     raise RuntimeError('Requested time stamps were empty!')
     ### TODO pyomo safe
-    values_dict['t'] = times[0]
-    a = self._alpha.evaluate(values_dict, target_var='reference_price', aliases=aliases)[0]['reference_price']#[0]
-    D = self._driver.evaluate(values_dict, target_var='driver', aliases=aliases)[0]['driver']
+    #values_dict['t'] = times[0]
+    returned = self._alpha.evaluate(values_dict, target_var='reference_price')[0]
+    print('DEBUGG return:', returned)
+    a = returned['reference_price'] #self._alpha.evaluate(values_dict, target_var='reference_price')[0]['reference_price']#[0]
+    returned2 = self._driver.evaluate(values_dict, target_var='driver')[0]
+    print('DEBUGG return2:', returned2)
+    D = returned2['driver'] #self._driver.evaluate(values_dict, target_var='driver')[0]['driver']
+    print('')
     cost = a * (D / Dp) ** x
     params = {'alpha': a, 'driver': D, 'ref_driver': Dp, 'scaling': x, 'cost': cost} # TODO float(cost) except in pyomo it's not a float
     return params

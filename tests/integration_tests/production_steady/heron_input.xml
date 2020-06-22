@@ -5,18 +5,20 @@
     <created>2020-05-26</created>
     <description>
       Tests including a consume-and-produce unit, and the pyomo dispatcher.
+      Does not use an ARMA, but takes time discretization from user input.
+      May be able to serve as a timing test in the future.
+      ``steamer'' produces steam which is consumed by ``generator'' to produce electricity. This electricity
+      can then be sold at the ``electr_market'' at a profit or ``electr_penalty'' at a cost.
     </description>
     <classesTested>HERON</classesTested>
   </TestInfo>
 
   <Case name="Sweep_Runs">
-    <!--
-    <mode>sweep</mode>
-    <metric>NPV</metric>
-    -->
     <num_arma_samples>2</num_arma_samples>
-    <timestep_interval>1</timestep_interval> <!-- unit=seconds -->
-    <history_length>20</history_length>
+    <time_discretization>
+      <end_time>8760</end_time>
+      <num_steps>8761</num_steps>
+    </time_discretization>
     <economics>
       <ProjectTime>3</ProjectTime>
       <DiscountRate>0.08</DiscountRate>

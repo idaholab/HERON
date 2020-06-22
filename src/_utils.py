@@ -55,3 +55,20 @@ if __name__ == '__main__':
   else:
     raise IOError('Unrecognized action: "{}"'.format(action))
 
+def get_project_lifetime(case, components):
+  """ obtains the project lifetime TODO """
+  # load CashFlow
+  try:
+    from CashFlow.src.main import get_project_length
+    from CashFlow.src import CashFlows
+  except (ImportError, ModuleNotFoundError) as e:
+    loc = get_cashflow_loc()
+    sys.path.append(loc)
+    from CashFlow.src.main import get_project_length
+    from CashFlow.src import CashFlows
+    sys.path.pop()
+  econ_comps = list(comp.get_economics() for comp in components)
+  econ_params = case.get_econ(econ_comps)
+  econ_settings = CashFlows.GlobalSettings()
+  econ_settings.set_params(econ_params)
+  return get_project_length(econ_settings, econ_comps)

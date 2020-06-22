@@ -6,6 +6,9 @@ import os
 import sys
 import copy
 import importlib
+
+import numpy as np
+
 from base import Base
 import Components
 import Placeholders
@@ -53,13 +56,23 @@ class Case(Base):
         descr=r"""provides the number of synthetic histories that should be considered per system configuration
               in order to obtain a reasonable representation of the economic metric. Sometimes referred to as
               ``inner samples'' or ``denoisings''."""))
-    input_specs.addSub(InputData.parameterInputFactory('timestep_interval', contentType=InputTypes.IntegerType,
-        descr=r"""provides the desired interval between two consecutive time steps within the ``inner''
-              RAVEN dispatch solve. \default{provided by DataGenerators}"""))
-    input_specs.addSub(InputData.parameterInputFactory('history_length', contentType=InputTypes.IntegerType,
-        descr=r"""total length of one synthetic history within ``inner'' RAVEN dispatch.
-              \default{taken from DataGenerators}"""))
-    input_specs.addSub(InputData.parameterInputFactory('Resample_T', contentType=InputTypes.IntegerType)) # FIXME descr
+
+    # time discretization
+    time_discr = InputData.parameterInputFactory('time_discretization',
+        descr=r"""node that defines how within-cycle time discretization should be handled for solving the dispatch.""")
+    time_discr.addSub(InputData.parameterInputFactory('start_time', contentType=InputTypes.FloatType,
+        descr=r"""value for \texttt{time} variable at which the inner dispatch should begin. \default{0}"""))
+    time_discr.addSub(InputData.parameterInputFactory('end_time', contentType=InputTypes.FloatType,
+        descr=r"""value for \texttt{time} variable at which the inner dispatch should end. If not specified,
+              both \xmlNode{time_interval} and \xmlNode{num_timesteps} must be defined."""))
+    time_discr.addSub(InputData.parameterInputFactory('num_steps', contentType=InputTypes.IntegerType,
+        descr=r"""number of discrete time steps for the inner dispatch.
+              Either this node or \xmlNode{time_interval} must be defined."""))
+    time_discr.addSub(InputData.parameterInputFactory('time_interval', contentType=InputTypes.FloatType,
+        descr=r"""length of a time step for the inner dispatch, in units of the time variable (not indices).
+              Either this node or \xmlNode{num_timesteps} must be defined. Note that if an integer number of
+              intervals do not fit between \xmlNode{start_time} and \xmlNode{end_time}, an error will be raised."""))
+    input_specs.addSub(time_discr)
 
     # economics global settings
     econ = InputData.parameterInputFactory('economics', ordered=False,
@@ -121,6 +134,8 @@ class Case(Base):
     self._num_hist = None      # number of history steps, hist_len / hist_interval
     self._global_econ = {}     # global economics settings, as a pass-through
     self._increments = {}      # stepwise increments for resource balancing
+
+    self._time_discretization = None # (start, end, number) for constructing time discretization, same as argument to np.linspace
     self._Resample_T = None    # user-set increments for resources
 
   def read_input(self, xml):
@@ -143,12 +158,9 @@ class Case(Base):
         self._diff_study = item.value
       elif item.getName() == 'num_arma_samples':
         self._num_samples = item.value
-      elif item.getName() == 'Resample_T':
-        self._Resample_T = item.value
-      elif item.getName() == 'timestep_interval':
-        self._hist_interval = float(item.value)
-      elif item.getName() == 'history_length':
-        self._hist_len = item.value
+      elif item.getName() == 'time_discretization':
+        self._time_discretization = self._read_time_discr(item)
+
       elif item.getName() == 'economics':
         for sub in item.subparts:
           self._global_econ[sub.getName()] = sub.value
@@ -166,11 +178,54 @@ class Case(Base):
     # checks
     if self.dispatcher is None:
       self.raiseAnError('No <dispatch> node was provided in the <Case> node!')
+    if self._time_discretization is None:
+      self.raiseAnError('<time_discretization> node was not provided in the <Case> node!')
+
+    # TODO what if time discretization not provided yet?
+    self.dispatcher.set_time_discr(self._time_discretization)
 
     # derivative calculations
-    self._num_hist = self._hist_len // self._hist_interval # TODO what if it isn't even?
+    # OLD self._num_hist = self._hist_len // self._hist_interval # TODO what if it isn't even?
 
     self.raiseADebug('Successfully initialized Case {}.'.format(self.name))
+
+  def _read_time_discr(self, node):
+    """
+      Reads the time discretization node.
+      @ In, node, InputParams.ParameterInput, time discretization head node
+      @ Out, discr, tuple, (start, end, num_steps) for creating numpy linspace
+    """
+    # start
+    start_node = node.findFirst('start_time')
+    if start_node is None:
+      start = 0.0
+    else:
+      start = start_node.value
+    # options:
+    end_node = node.findFirst('end_time')
+    dt_node = node.findFirst('time_interval')
+    num_node = node.findFirst('num_steps')
+    # - specify end and num steps
+    if (end_node and num_node):
+      end = end_node.value
+      num = num_node.value
+    # - specify end and dt
+    elif (end_node and dt_node):
+      end = end_node.value
+      dt = dt_node.value
+      num = int(np.floor((end - start) / dt))
+    # - specify dt and num steps
+    elif (dt_node and num_node):
+      dt = dt_node.value
+      num = num_node.value
+      end = dt * num + start
+    else:
+      self.raiseAnError(IOError, 'Invalid time discretization choices! Must specify any of the following pairs: ' +
+                                 '(<end_time> and <num_steps>) or ' +
+                                 '(<end_time> and <time_interval>) or ' +
+                                 '(<num_steps> and <time_interval>.)')
+    # TODO can we take it automatically from an ARMA later, either by default or if told to?
+    return (start, end, num)
 
   def initialize(self, components, sources):
     """

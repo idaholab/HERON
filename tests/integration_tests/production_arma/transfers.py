@@ -33,5 +33,5 @@ def flex_price(data, meta):
   # TODO need to assure correct Time, Year, Cluster/Segment/None
   # scale electricity consumed to flex between -1 and 1
   amount = - 2 * (sine[t, year] - 0.5)
-  data = {'driver': amount}
+  data = {'reference_price': amount}
   return data, meta

@@ -117,8 +117,24 @@ class DispatchRunner:
     # store meta
     meta = {'HERON': heron_meta}
 
+    # check the "signal" history length
+    signal_shapes = {}
+    for source in self._sources:
+      var_names = source.get_variable()
+      if var_names is None:
+        var_names = []
+      for name in var_names:
+        if name not in signal_shapes:
+          s = raven_vars[name].shape
+          signal_shapes[name] = s
+    if not all((shape == s) for shape in signal_shapes.values()):
+      print('History shapes:', signal_shapes)
+      print('Index Map:', raven_vars.get('_indexMap', None))
+      raise IOError('Synthetic histories are not of consistent shape! See "History Shapes" and "Index Map" above!')
+
     # determine analysis structure
     structure = self._get_structure(raven_vars)
+    # TODO sanity check history length
     if structure['clustered']:
       seg_type = 'Cluster'
       segs = range(len(structure['clustered']))

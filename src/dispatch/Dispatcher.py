@@ -94,13 +94,13 @@ class Dispatcher:
     total = 0
     specific_meta = dict(meta) # TODO what level of copying do we need here?
     resource_indexer = meta['HERON']['resource_indexer']
-    print('DEBUGG computing cashflows!')
+    #print('DEBUGG computing cashflows!')
     for comp in components:
-      print(f'DEBUGG ... comp {comp.name}')
+      #print(f'DEBUGG ... comp {comp.name}')
       specific_meta['HERON']['component'] = comp
       comp_subtotal = 0
       for t, time in enumerate(times):
-        print(f'DEBUGG ... ... time {t}')
+        #print(f'DEBUGG ... ... time {t}')
         # NOTE care here to assure that pyomo-indexed variables work here too
         specific_activity = {}
         for resource, r in resource_indexer[comp].items():

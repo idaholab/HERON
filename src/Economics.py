@@ -477,13 +477,8 @@ class CashFlow:
     #     raise RuntimeError('Requested time stamps were empty!')
     ### TODO pyomo safe
     #values_dict['t'] = times[0]
-    returned = self._alpha.evaluate(values_dict, target_var='reference_price')[0]
-    print('DEBUGG return:', returned)
-    a = returned['reference_price'] #self._alpha.evaluate(values_dict, target_var='reference_price')[0]['reference_price']#[0]
-    returned2 = self._driver.evaluate(values_dict, target_var='driver')[0]
-    print('DEBUGG return2:', returned2)
-    D = returned2['driver'] #self._driver.evaluate(values_dict, target_var='driver')[0]['driver']
-    print('')
+    a = self._alpha.evaluate(values_dict, target_var='reference_price')[0]['reference_price']
+    D = self._driver.evaluate(values_dict, target_var='driver')[0]['driver']
     cost = a * (D / Dp) ** x
     params = {'alpha': a, 'driver': D, 'ref_driver': Dp, 'scaling': x, 'cost': cost} # TODO float(cost) except in pyomo it's not a float
     return params

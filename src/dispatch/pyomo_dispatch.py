@@ -85,6 +85,7 @@ class Pyomo(Dispatcher):
     # rolling window
     start_index = 0
     final_index = len(time)
+    print('DEBUGG TOTAL time indices:', start_index, final_index)
     # TODO window overlap!  ( )[ ] -> (   [  )   ]
     while start_index < final_index:
       end_index = start_index + self._window_len

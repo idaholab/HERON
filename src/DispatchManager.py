@@ -242,6 +242,7 @@ class DispatchRunner:
         specific_meta = dict(meta) # TODO more deepcopy needed?
         resource_indexer = meta['HERON']['resource_indexer']
         TODO # evaluate cash flow params HERE, or do it in the loop?
+
         for c, comp in self._components:
           # get corresponding current and final CashFlow.Component
           cf_comp = local_comps[c]
@@ -265,7 +266,7 @@ class DispatchRunner:
                 # hourly period needs to be multiplied by the representativity of the cluster
                 year_cf = cf._yearly_cashflow[year] # FIXME we haven't calculated the values yet!!!!
                 final_cf._yearly_cashflow[y+1] += year_cf
-            params =
+            params = ASDF
             for t, time in enumerate(times):
               for resource, r in resource_indexer[comp].items():
                 specific_activity[resource] = dispatch.get_activity(comp, resource, time)

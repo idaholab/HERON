@@ -17,7 +17,7 @@ import pyutilib.subprocess.GlobalData
 pyutilib.subprocess.GlobalData.DEFINE_SIGNAL_HANDLERS_DEFAULT = False
 
 from .Dispatcher import Dispatcher
-from .DispatchState import DispatchState
+from .DispatchState import DispatchState, NumpyState
 try:
   import _utils as hutils
 except (ModuleNotFoundError, ImportError):
@@ -81,11 +81,13 @@ class Pyomo(Dispatcher):
     resources = sorted(list(hutils.get_all_resources(components))) # list of all active resources
     # pre-build results structure
     ## results in format {comp: {resource: [... dispatch ...]}}
-    dispatch = dict((comp.name, dict((res, np.zeros(len(time))) for res in comp.get_resources())) for comp in components)
+    # FIXME use a DispatchState instead of a dictionary dispatch
+    ## we can use NumpyState here so we don't need to worry about a Pyomo model object
+    dispatch = NumpyState()# dict((comp.name, dict((res, np.zeros(len(time))) for res in comp.get_resources())) for comp in components)
+    dispatch.initialize(components, meta['HERON']['resource_indexer'], time)
     # rolling window
     start_index = 0
     final_index = len(time)
-    print('DEBUGG TOTAL time indices:', start_index, final_index)
     # TODO window overlap!  ( )[ ] -> (   [  )   ]
     while start_index < final_index:
       end_index = start_index + self._window_len
@@ -101,13 +103,15 @@ class Pyomo(Dispatcher):
       print('DEBUGG solve time: {} s'.format(end-start))
       # store result in corresponding part of dispatch
       for comp in components:
-        data = dispatch[comp.name]
-        for res in data:
-          data[res][start_index:end_index] = subdisp[comp.name][res]
+        for res, values in subdisp[comp.name].items():
+          dispatch.set_activity_vector(comp, res, start_index, end_index, values)
+          # data[res][start_index:end_index] = subdisp[comp.name][res]
       start_index = end_index
-    import pprint
-    pprint.pprint(dispatch)
-    return dispatch
+    # DEBUGG
+    #print(dispatch)
+    # run full cashflow on activity
+    cf = self._compute_cashflows(components, dispatch, time, meta)
+    return dispatch, cf
 
   ### INTERNAL
   def dispatch_window(self, time,
@@ -131,7 +135,7 @@ class Pyomo(Dispatcher):
     m.Case = case
     m.Components = components
     m.Activity = PyomoState()
-    m.Activity.initialize(m.Components, m.resource_index_map, m.Times, m) # XXX not m.T, want actual times!!!
+    m.Activity.initialize(m.Components, m.resource_index_map, m.Times, m)
     # constraints and variables
     for comp in components:
       # NOTE: "fixed" components could hypothetically be treated differently
@@ -148,7 +152,7 @@ class Pyomo(Dispatcher):
     # self._debug_pyomo_print(m)
     soln = pyo.SolverFactory('cbc').solve(m)
     # soln.write() # DEBUGG
-    self._debug_print_soln(m) # DEBUGG
+    #self._debug_print_soln(m) # DEBUGG
     # return dict of numpy arrays
     result = self._retrieve_solution(m)
     return result

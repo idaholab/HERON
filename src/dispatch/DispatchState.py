@@ -1,4 +1,5 @@
 import numpy as np
+from io import StringIO
 
 class DispatchState:
   """ utility that expresses the activity (i.e. production level) of all the components in the system """
@@ -23,6 +24,14 @@ class DispatchState:
     self._components = components
     self._resources = resources_map
     self._times = times
+
+  def __repr__(self):
+    """
+      Compiles string representation of object.
+      @ In, None
+      @ Out, repr, str, string representation
+    """
+    return '<HERON generic DispatchState object>'
 
   def get_activity(self, comp, res, time, **kwargs):
     """
@@ -99,7 +108,23 @@ class NumpyState(DispatchState):
     DispatchState.initialize(self, components, resources_map, times)
     self._data = {}
     for comp in components:
-      self._data[comp] = np.zeros((len(self._resources[comp.name]), len(times)))
+      self._data[comp] = np.zeros((len(self._resources[comp]), len(times)))
+
+  def __repr__(self):
+    """
+      Compiles string representation of object.
+      @ In, None
+      @ Out, repr, str, string representation
+    """
+    msg = StringIO()
+    msg.write('<HERON NumpyState dispatch record: \n')
+    for comp in self._data:
+      resources = self._resources[comp]
+      msg.write(f'   component: {comp.name}\n')
+      for res, r in self._resources[comp].items():
+        msg.write(f'      {res}: {self._data[comp][r]}\n')
+    msg.write('END NumpyState dispatch record>')
+    return msg.getvalue()
 
   def get_activity_indexed(self, comp, r, t):
     """
@@ -111,7 +136,7 @@ class NumpyState(DispatchState):
       @ Out, activity, float, amount of resource "res" produced/consumed by "comp" at time "time";
                               note positive is producting, negative is consuming
     """
-    return self._data[r, t]
+    return self._data[comp][r, t]
 
   def set_activity_indexed(self, comp, res, time, value):
     """
@@ -122,5 +147,9 @@ class NumpyState(DispatchState):
       @ In, value, float, activity level; note positive is producting, negative is consuming
       @ Out, None
     """
-    self._data[r, t] = value
+    self._data[comp][r, t] = value
 
+  def set_activity_vector(self, comp, res, start_time, end_time, values):
+    """ TODO """
+    r = self._resources[comp][res]
+    self._data[comp][r, start_time:end_time] = values

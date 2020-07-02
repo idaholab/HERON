@@ -435,14 +435,7 @@ class CashFlow:
       @ Out, cost, float, cost of activity
     """
     # note this method gets called a LOT, so speedups here are quite effective
-    # "activity" is a pandas series with production levels -> example from HERON case
-    # build aliases
-    aliases = {} # currently unused, but mechanism left in place
-    #aliases['capacity'] = '{}_capacity'.format(self._component.name)
-    # for now, add the activity to the dictionary
-    #res_vals = activity.to_dict() # TODO slow, speed this up
-    # if 'HERON' not in values_dict['meta']:
-    #   values_dict['meta']['HERON'] = {}
+    # add the activity to the dictionary
     values_dict['HERON']['activity'] = activity
     params = self.calculate_params(values_dict)
     return params['cost']
@@ -453,30 +446,9 @@ class CashFlow:
       @ In, values_dict, dict, mapping from simulation variable names to their values (as floats or numpy arrays)
       @ Out, params, dict, dictionary of parameters mapped to values including the cost
     """
+    # TODO maybe don't cast these as floats, as they could be symbolic expressions (seems unlikely)
     Dp = float(self._reference.evaluate(values_dict, target_var='reference_driver')[0]['reference_driver'])
     x = float(self._scale.evaluate(values_dict, target_var='scaling_factor_x')[0]['scaling_factor_x'])
-    ## a and D need to be filled as time dependent
-    ### TODO messes with Pyomo, just do one time at a time for now
-    # a = np.zeros(T)
-    # D = np.zeros(T)
-    # for i, t in enumerate(times):
-    #   values_dict['t'] = t
-    #   a[i] = self._alpha.evaluate(values_dict, target_var='reference_price', aliases=aliases)[0]['reference_price']#[0]
-    #   D[i] = self._driver.evaluate(values_dict, target_var='driver', aliases=aliases)[0]['driver']
-    # if aggregate:
-    #   # parameters might be time-dependent, so aggregate them appropriately
-    #   if T > 1:
-    #     ## "alpha" should be the average price
-    #     a = float(a.mean())
-    #     ## "D" should be the total amount produced
-    #     D = float(D.sum())
-    #   elif T == 1:
-    #     a = float(a)
-    #     D = float(D)
-    #   else:
-    #     raise RuntimeError('Requested time stamps were empty!')
-    ### TODO pyomo safe
-    #values_dict['t'] = times[0]
     a = self._alpha.evaluate(values_dict, target_var='reference_price')[0]['reference_price']
     D = self._driver.evaluate(values_dict, target_var='driver')[0]['driver']
     cost = a * (D / Dp) ** x

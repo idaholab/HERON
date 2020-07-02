@@ -46,15 +46,6 @@ def get_all_resources(components):
     res.update(comp.get_resources())
   return res
 
-if __name__ == '__main__':
-  action = sys.argv[1]
-  if action == 'get_raven_loc':
-    print(get_raven_loc())
-  elif action == 'get_cashflow_loc':
-    print(get_cashflow_loc())
-  else:
-    raise IOError('Unrecognized action: "{}"'.format(action))
-
 def get_project_lifetime(case, components):
   """ obtains the project lifetime TODO """
   # load CashFlow
@@ -72,3 +63,12 @@ def get_project_lifetime(case, components):
   econ_settings = CashFlows.GlobalSettings()
   econ_settings.set_params(econ_params)
   return get_project_length(econ_settings, econ_comps)
+
+if __name__ == '__main__':
+  action = sys.argv[1]
+  if action == 'get_raven_loc':
+    print(get_raven_loc())
+  elif action == 'get_cashflow_loc':
+    print(get_cashflow_loc())
+  else:
+    raise IOError('Unrecognized action: "{}"'.format(action))

@@ -65,6 +65,7 @@ class Dispatcher:
     """
     assert info is not None
     # TODO is this the right idea?
+    # TODO what if clustering?
     # don't expand into linspace right now, just store the pieces
     self._time_discretization = info
 

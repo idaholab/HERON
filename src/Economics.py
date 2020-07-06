@@ -51,6 +51,10 @@ class CashFlowUser:
     self._economics = CashFlowGroup(self)
     self._economics.read_input(specs)
 
+  def get_cashflows(self):
+    """ TODO """
+    return self._economics.get_cashflows()
+
   def get_crossrefs(self):
     """
       Collect the required value entities needed for this component to function.

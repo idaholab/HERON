@@ -110,8 +110,8 @@ class Pyomo(Dispatcher):
     # DEBUGG
     #print(dispatch)
     # run full cashflow on activity
-    cf = self._compute_cashflows(components, dispatch, time, meta)
-    return dispatch, cf
+    #cf = self._compute_cashflows(components, dispatch, time, meta)
+    return dispatch
 
   ### INTERNAL
   def dispatch_window(self, time,

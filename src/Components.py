@@ -17,6 +17,7 @@ sys.path.append(framework_path)
 from utils import InputData, xmlUtils,InputTypes
 import MessageHandler
 mh = MessageHandler.MessageHandler()
+
 def factory(xml, method='sweep'):
   """
     Tool for constructing compnents without the input_loader

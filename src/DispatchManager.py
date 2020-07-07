@@ -403,7 +403,7 @@ class DispatchRunner:
     #     setattr(raven, name, usage)
     #     # TODO indexMap?
     for metric, value in metrics.items():
-      setattr(raven, metric, value)
+      setattr(raven, metric, np.atleast_1d(value))
 
   def _get_structure(self, raven_vars):
     """ interpret the clustering information from the ROM TODO """

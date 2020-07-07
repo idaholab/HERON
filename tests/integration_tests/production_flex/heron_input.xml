@@ -14,7 +14,7 @@
   </TestInfo>
 
   <Case name="Sweep_Runs">
-    <num_arma_samples>2</num_arma_samples>
+    <num_arma_samples>10</num_arma_samples>
     <time_discretization>
       <time_variable>Time</time_variable>
       <end_time>2</end_time>

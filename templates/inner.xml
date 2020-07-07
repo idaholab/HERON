@@ -37,10 +37,10 @@
 
     <Group name='GRO_armasamples'          >GRO_armasamples_in, GRO_armasamples_out</Group>
     <Group name='GRO_armasamples_in'       >GRO_armasamples_in_scalar</Group>
-    <Group name='GRO_armasamples_out'      >GRO_armasamples_out_scalar, GRO_armasamples_out_Time</Group>
+    <Group name='GRO_armasamples_out'      >GRO_armasamples_out_scalar</Group>
     <Group name='GRO_armasamples_in_scalar'>scaling, time_delta, GRO_capacities</Group>
     <Group name='GRO_armasamples_out_scalar'>NPV</Group>
-    <Group name='GRO_armasamples_out_Time' >GRO_init_disp</Group>
+    <!-- <Group name='GRO_armasamples_out_Time' >GRO_init_disp</Group> -->
 
     <!-- less metrics -->
     <Group name='GRO_final_return'>
@@ -70,9 +70,9 @@
     <DataSet name="arma_samples">
       <Input>GRO_armasamples_in</Input>
       <Output>GRO_armasamples_out</Output>
-      <Index var="ClusterTime">GRO_armasamples_out_Time</Index>
+      <!-- <Index var="ClusterTime">GRO_armasamples_out_Time</Index>
       <Index var="Year">GRO_armasamples_out_Time</Index>
-      <Index var="Cluster">GRO_armasamples_out_Time</Index>
+      <Index var="Cluster">GRO_armasamples_out_Time</Index> -->
     </DataSet>
     <PointSet name="arma_metrics">
       <Output>NPV</Output>
@@ -89,11 +89,12 @@
     <!--     ARMA preprocessing ensemble -->
     <DataSet name="dispatch_eval">
       <Input>GRO_dispatch_in</Input>
-      <Output>GRO_dispatch_out</Output>
+      <!-- <Output>GRO_dispatch_out</Output> -->
       <Index var="Time">GRO_dispatch_in_Time</Index>
-      <Index var="ClusterTime">GRO_dispatch_out_Time</Index>
-      <Index var="Year">GRO_dispatch_in_Time, GRO_dispatch_out_Time</Index>
-      <Index var="Cluster">GRO_dispatch_out_Time</Index>
+      <!-- <Index var="ClusterTime">GRO_dispatch_out_Time</Index> -->
+      <Index var="Year">GRO_dispatch_in_Time</Index>
+      <!-- <Index var="Year">GRO_dispatch_in_Time, GRO_dispatch_out_Time</Index> -->
+      <!-- <Index var="Cluster">GRO_dispatch_out_Time</Index> -->
     </DataSet>
 
     <!-- Ensemble Model Placeholders -->
@@ -143,7 +144,7 @@
     <MonteCarlo name='mc_arma_dispatch'>
       <samplerInit>
         <initialSeed>42</initialSeed>
-        <limit>2</limit>
+        <limit>3</limit>
       </samplerInit>
       <!-- HERON makes component capacities nodes, Outer fills them -->
       <constant name='scaling'>1.0</constant>

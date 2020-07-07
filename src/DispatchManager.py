@@ -162,11 +162,8 @@ class DispatchRunner:
                     f'than requested project years ({project_life})!')
 
     all_dispatch = self._do_dispatch(meta, all_structure, project_life, interp_years, segs, seg_type)
-    self._do_cashflow(meta, all_dispatch, all_structure, project_life, interp_years, segs, seg_type)
-        # given
-    # TODO collect data per year/cluster/etc
-    tttttt
-    return dispatch
+    metrics = self._do_cashflow(meta, all_dispatch, all_structure, project_life, interp_years, segs, seg_type)
+    return all_dispatch, metrics
 
   def _do_dispatch(self, meta, all_structure, project_life, interp_years, segs, seg_type):
     """ perform dispatching TODO """
@@ -330,10 +327,11 @@ class DispatchRunner:
     raven_vars = meta['HERON']['RAVEN_vars_full']
     cf_metrics = CashFlow_run(final_settings, list(final_components.values()), raven_vars)
 
+    print('****************************************')
     print('DEBUGG final cashflow metrics:')
     for k, v in cf_metrics.items():
       print('  ', k, v)
-    cccccccccc
+    print('****************************************')
     return cf_metrics
 
   def _build_econ_objects(self, heron_case, heron_components, project_life):
@@ -394,17 +392,18 @@ class DispatchRunner:
       cf_comp.add_cashflows(cf_cfs)
     return global_settings, cf_components
 
-
-  def save_variables(self, raven, dispatch):
+  def save_variables(self, raven, dispatch, metrics):
     """ generates RAVEN-acceptable variables TODO """
     # TODO clustering, multiyear
     # TODO should this be a Runner method or separate?
-    template = self.naming_template['dispatch var']
-    for comp_name, data in dispatch.items():
-      for resource, usage in data.items():
-        name = template.format(comp=comp_name, res=resource)
-        setattr(raven, name, usage)
-        # TODO indexMap?
+    # template = self.naming_template['dispatch var']
+    # for comp_name, data in dispatch.items():
+    #   for resource, usage in data.items():
+    #     name = template.format(comp=comp_name, res=resource)
+    #     setattr(raven, name, usage)
+    #     # TODO indexMap?
+    for metric, value in metrics.items():
+      setattr(raven, metric, value)
 
   def _get_structure(self, raven_vars):
     """ interpret the clustering information from the ROM TODO """
@@ -595,6 +594,6 @@ def run(raven, raven_dict):
   # load data from RAVEN
   raven_vars = runner.extract_variables(raven, raven_dict)
   # TODO clustering, multiyear, etc?
-  dispatch = runner.run(raven_vars)
-  runner.save_variables(raven, dispatch)
+  dispatch, metrics = runner.run(raven_vars)
+  runner.save_variables(raven, dispatch, metrics)
 

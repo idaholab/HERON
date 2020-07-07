@@ -94,7 +94,7 @@
         </capacity>
       </demands>
       <economics>
-        <lifetime>3</lifetime>
+        <lifetime>30</lifetime>
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
           <driver>
             <Function method="electric_consume">transfers</Function>
@@ -120,7 +120,7 @@
         </capacity>
       </demands>
       <economics>
-        <lifetime>3</lifetime>
+        <lifetime>30</lifetime>
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
           <driver>
             <Function method="electric_consume">transfers</Function>

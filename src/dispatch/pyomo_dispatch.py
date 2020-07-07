@@ -152,7 +152,7 @@ class Pyomo(Dispatcher):
     # self._debug_pyomo_print(m)
     soln = pyo.SolverFactory('cbc').solve(m)
     # soln.write() # DEBUGG
-    #self._debug_print_soln(m) # DEBUGG
+    self._debug_print_soln(m) # DEBUGG
     # return dict of numpy arrays
     result = self._retrieve_solution(m)
     return result

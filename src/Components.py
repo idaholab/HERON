@@ -199,6 +199,11 @@ class Component(Base, CashFlowUser):
     return outputs
 
   def get_resources(self):
+    """
+      Provides the full set of resources used by this component.
+      @ In, None
+      @ Out, res, set, set(str) of resource names
+    """
     res = set()
     res.update(self.get_inputs())
     res.update(self.get_outputs())
@@ -217,9 +222,20 @@ class Component(Base, CashFlowUser):
     return self.get_interaction().get_capacity(meta, raven_vars, dispatch, t, raw=raw)
 
   def get_capacity_var(self):
+    """
+      Returns the variable that is used to define this component's capacity.
+      @ In, None
+      @ Out, var, str, name of capacity resource
+    """
     return self.get_interaction().get_capacity_var()
 
   def is_dispatchable(self):
+    """
+      Returns the dispatchability indicator of this component.
+      TODO Note that despite the name, this is NOT boolean, but a string indicator.
+      @ In, None
+      @ Out, dispatchable, str, dispatchability (e.g. independent, dependent, fixed)
+    """
     return self.get_interaction().is_dispatchable()
 
   def set_capacity(self, cap):
@@ -231,6 +247,19 @@ class Component(Base, CashFlowUser):
     return self.get_interaction().set_capacity(cap)
 
   def produce(self, request, meta, raven_variables, dispatch, t, level=None):
+    """
+      Enacts the transfer function for this component to act based on a request.
+      FIXME was used for "generic" dispatcher, does it still apply?
+      @ In, request, dict, mapping of requested resource usage to amount requested (negative is
+                           consume, positive is produce)
+      @ In, meta, dict, metadata information for current status in run
+      @ In, raven_variables, dict, variables from RAVEN TODO part of meta!
+      @ In, dispatch, DispatchState, expression of the current activity levels in the system
+      @ In, t, int, index of "time" at which this production should be performed
+      @ In, level, float, for storages indicates the amount currently stored
+      @ Out, balance, dict, full dict of resources used and produced for request
+      @ Out, meta, dict, updated metadata dictionary
+    """
     #balance = defaultdict(float)
     interaction = self.get_interaction()
     balance, meta = interaction.produce(request, meta, raven_variables, dispatch, t, level)
@@ -239,6 +268,15 @@ class Component(Base, CashFlowUser):
     return balance, meta
 
   def produce_max(self, meta, raven_variables, dispatch, t):
+    """
+      Determines the maximum production possible for this component.
+      @ In, meta, dict, metadata information for current status in run
+      @ In, raven_variables, dict, variables from RAVEN TODO part of meta!
+      @ In, dispatch, DispatchState, expression of the current activity levels in the system
+      @ In, t, int, index of "time" at which this production should be performed
+      @ Out, balance, dict, full dict of resources used and produced for request
+      @ Out, meta, dict, updated metadata dictionary
+    """
     #balance = defaultdict(float)
     interaction = self.get_interaction()
     balance, meta = interaction.produce_max(meta, raven_variables, dispatch, t)
@@ -247,6 +285,15 @@ class Component(Base, CashFlowUser):
     return balance, meta
 
   def produce_min(self, meta, raven_variables, dispatch, t):
+    """
+      Determines the minimum production possible for this component.
+      @ In, meta, dict, metadata information for current status in run
+      @ In, raven_variables, dict, variables from RAVEN TODO part of meta!
+      @ In, dispatch, DispatchState, expression of the current activity levels in the system
+      @ In, t, int, index of "time" at which this production should be performed
+      @ Out, balance, dict, full dict of resources used and produced for request
+      @ Out, meta, dict, updated metadata dictionary
+    """
     #balance = defaultdict(float)
     interaction = self.get_interaction()
     balance, meta = interaction.produce_min(meta, raven_variables, dispatch, t)
@@ -255,15 +302,13 @@ class Component(Base, CashFlowUser):
     return balance, meta
 
   def get_capacity_param(self):
+    """
+      Provides direct access to the ValuedParam for the capacity of this component.
+      @ In, None
+      @ Out, cap, ValuedParam, capacity valued param
+    """
     intr = self.get_interaction()
     return intr.get_capacity(None, None, None, None, raw=True)
-
-  # INHERITED FROM CASHFLOWUSER
-  #def get_incremental_cost(self, activity, raven_vars, meta, t):
-  #  """ get the cost given particular activities """
-  #  return self._economics.incremental_cost(activity, raven_vars, meta, t)
-  #def get_economics(self):
-  #  return self._economics
 
 
 
@@ -330,6 +375,11 @@ class Interaction(Base):
     return specs
 
   def __init__(self, **kwargs):
+    """
+      Constructor
+      @ In, kwargs, dict, arbitrary pass-through arguments
+      @ Out, None
+    """
     Base.__init__(self, **kwargs)
     self._capacity = None               # upper limit of this interaction
     self._capacity_var = None           # which variable limits the capacity (could be produced or consumed?)
@@ -375,6 +425,12 @@ class Interaction(Base):
         self.raiseAnError(IOError, 'If multiple resources are active, "minimum" requires a "resource" specified!')
 
   def _set_valued_param(self, name, comp, spec, mode):
+    """
+      Sets up use of a ValuedParam for this interaction for the "name" attribute of this class.
+      @ In, name, str, name of member of this class
+      @ In, comp, str, name of associated component
+      @ In, spec, InputParam, input specifications
+    """
     vp = ValuedParam(name)
     signal = vp.read(comp, spec, mode)
     self._signals.update(signal)

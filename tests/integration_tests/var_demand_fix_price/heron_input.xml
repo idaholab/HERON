@@ -16,10 +16,11 @@
     <metric>NPV</metric>
     -->
     <num_arma_samples>2</num_arma_samples>
-    <timestep_interval>500</timestep_interval>
-    <!--New History length-->
-    <!--<Resample_T>60</Resample_T>-->
-    <history_length>20</history_length>
+    <time_discretization>
+      <time_variable>Time</time_variable>
+      <end_time>2</end_time>
+      <num_steps>20</num_steps>
+    </time_discretization>
     <economics>
       <ProjectTime>2</ProjectTime>
       <DiscountRate>0.08</DiscountRate>
@@ -28,7 +29,7 @@
       <verbosity>50</verbosity>
     </economics>
     <dispatcher>
-      <increment resource="electricity">1e6</increment>
+      <type>pyomo</type>
     </dispatcher>
   </Case>
 

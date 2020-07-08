@@ -76,7 +76,6 @@ class CashFlowUser:
       get the cost given particular activities (state) of the cash flow user
       @ In, raven_vars, dict, additional variables (presumably from raven) that might be needed
       @ In, meta, dict, further dictionary of information that might be needed
-      XXX @ In, time, float, time at which cost needs to be evaluated
       @ Out, cost, dict, cost of activity as a breakdown
     """
     return self.get_economics().evaluate_cfs(activity, meta)

@@ -245,13 +245,14 @@ class CashFlow:
       @ Out, input_specs, InputData, specs
     """
     cf = InputData.parameterInputFactory('CashFlow')
-    cf.descr = r"""node for defining a CashFlow for a particular Component. Note a CashFlow generally
-               takes the form $C = \alpha \left(\frac{D}{\prime D}\right)\^x$, aggregated depending
-               on the \xmlAttr{type}. For more information, see the CashFlow submodule of RAVEN."""
+    cf.description = r"""node for defining a CashFlow for a particular Component. This HERON
+               CashFlow will be used to generate a TEAL CashFlow from RAVEN's TEAL plugin. Note a CashFlow generally
+               takes the form $C = \alpha \left(\frac{D}{D'}\right)^x$, aggregated depending
+               on the \xmlAttr{type}. For more information, see the TEAL plugin for RAVEN."""
 
     cf.addParam('name', param_type=InputTypes.StringType, required=True,
         descr=r"""the name by which this CashFlow will be identified as part of this component. The
-              general name is prefixed by the component name, such as ComponentName\|CashFlowName. """)
+              general name is prefixed by the component name, such as ComponentName$\vert$CashFlowName. """)
     cf_type_enum = InputTypes.makeEnumType('CFType', 'CFType', ['one-time', 'repeating'])
     cf.addParam('type', param_type=cf_type_enum, required=True,
         descr=r"""the type of CashFlow to calculate. \xmlString(one-time) is suitable for capital

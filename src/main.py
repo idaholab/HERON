@@ -20,6 +20,8 @@ class HERON(Base):
   def __init__(self):
     """
       Constructor.
+      @ In, None
+      @ Out, None
     """
     Base.__init__(self)
     self._components = []   # units involved in this study
@@ -38,6 +40,8 @@ class HERON(Base):
   def read_input(self, name):
     """
       Loads data from input
+      @ In, name, str, name of file to read from
+      @ Out, None
     """
     location, fname = os.path.split(name)
     self._input_dir = location
@@ -49,9 +53,20 @@ class HERON(Base):
     self._case = objects['case']
 
   def __repr__(self):
-    return '<EGRET Simulation>'
+    """
+      String representation of object.
+      @ In, None
+      @ Out, repr, str, string rep
+    """
+    return '<HERON Simulation>'
 
   def print_me(self, tabs=0, tab='  '):
+    """
+      Prints info about self.
+      @ In, tabs, int, number of tabs to insert
+      @ In, tab, str, how tab should be written
+      @ Out, None
+    """
     pre = tab*tabs
     print('Printing simulation state:')
     self._case.print_me(tabs=tabs+1, tab=tab)
@@ -59,7 +74,6 @@ class HERON(Base):
       comp.print_me(tabs=tabs+1, tab=tab)
     for source in self._sources:
       source.print_me(tabs=tabs+1, tab=tab)
-
 
   def create_raven_workflow(self, case=None):
     """
@@ -72,14 +86,6 @@ class HERON(Base):
     # let the case do the work
     case.write_workflows(self._components, self._sources, self._input_dir)
 
-
-
-
-  def run(self):
-    """ TODO
-    """
-
-
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Holistic Energy Resource Optimization Network (HERON)')
   parser.add_argument('xml_input_file', help='HERON XML input file')
@@ -89,5 +95,5 @@ if __name__ == '__main__':
   # print details
   sim.print_me()
   sim.create_raven_workflow()
-  sim.run()
+  # TODO someday? sim.run()
 

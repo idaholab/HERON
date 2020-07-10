@@ -3,7 +3,6 @@
   Each component (or source?) can have one of these to describe its economics.
 """
 from __future__ import unicode_literals, print_function
-import os
 import sys
 from collections import defaultdict
 import numpy as np
@@ -28,7 +27,7 @@ class CashFlowUser:
       Collects input specifications for this class.
       Note this needs to be called as part of an inheriting class's specification definition
       @ In, spec, InputData, specifications that need cash flow added to it
-      @ Out, input_specs, InputData, specs
+      @ Out, spec, InputData, specs
     """
     # this unit probably has some economics
     spec.addSub(CashFlowGroup.get_input_specs())
@@ -37,7 +36,7 @@ class CashFlowUser:
   def __init__(self):
     """
       Constructor
-      @ In, kwargs, dict, optional, arguments to pass to other constructors
+      @ In, None
       @ Out, None
     """
     self._economics = None # CashFlowGroup
@@ -50,6 +49,14 @@ class CashFlowUser:
     """
     self._economics = CashFlowGroup(self)
     self._economics.read_input(specs)
+
+  def get_cashflows(self):
+    """
+      Getter.
+      @ In, None
+      @ Out, cashflow, list, cash flows for this cashflow user (ordered)
+    """
+    return self._economics.get_cashflows()
 
   def get_crossrefs(self):
     """
@@ -67,16 +74,14 @@ class CashFlowUser:
     """
     self._economics.set_crossrefs(refs)
 
-  def get_incremental_cost(self, activity, raven_vars, meta, t):
+  def get_state_cost(self, activity, meta):
     """
-      get the cost given particular activities
-      @ In, activity, pandas.Series, scenario variable values to evaluate cost of
+      get the cost given particular activities (state) of the cash flow user
       @ In, raven_vars, dict, additional variables (presumably from raven) that might be needed
       @ In, meta, dict, further dictionary of information that might be needed
-      @ In, t, int, time step at which cost needs to be evaluated
-      @ Out, cost, float, cost of activity
+      @ Out, cost, dict, cost of activity as a breakdown
     """
-    return self._economics.incremental_cost(activity, raven_vars, meta, t)
+    return self.get_economics().evaluate_cfs(activity, meta)
 
   def get_economics(self):
     """
@@ -88,7 +93,9 @@ class CashFlowUser:
 
 
 class CashFlowGroup:
-  # Just a holder for multiple cash flows, and methods for doing stuff with them
+  """
+    Just a holder for multiple cash flows, and methods for doing stuff with them
+  """
   ##################
   # INITIALIZATION #
   ##################
@@ -99,9 +106,13 @@ class CashFlowGroup:
       @ In, None
       @ Out, input_specs, InputData, specs
     """
-    specs = InputData.parameterInputFactory('economics', ordered=False, baseNode=None, descr=r""" The \xmlNode{Economics} contains
-    the attributes required to compute the key economic metrics""")
-    specs.addSub(InputData.parameterInputFactory('lifetime', contentType=InputTypes.IntegerType))
+    specs = InputData.parameterInputFactory('economics', ordered=False, baseNode=None,
+        descr=r"""this node is where all the economic information about this
+              component is placed.""")
+    specs.addSub(InputData.parameterInputFactory('lifetime', contentType=InputTypes.IntegerType,
+        descr=r"""indicates the number of \emph{cycles} (often \emph{years}) this unit is expected
+              to operate before replacement. Replacement is represented as overnight capital cost
+              in the year the component is replaced."""))
     cf = CashFlow.get_input_specs()
     specs.addSub(cf)
     return specs
@@ -144,7 +155,7 @@ class CashFlowGroup:
     """
       Provides a dictionary of the entities needed by this cashflow group to be evaluated
       @ In, None
-      @ Out, crossreffs, dict, dictionary of crossreferences needed (see ValuedParams)
+      @ Out, crossrefs, dict, dictionary of crossreferences needed (see ValuedParams)
     """
     crossrefs = dict((cf, cf.get_crossrefs()) for cf in self._cash_flows)
     return crossrefs
@@ -164,22 +175,23 @@ class CashFlowGroup:
   #######
   # API #
   #######
-  def incremental_cost(self, activity, raven_vars, meta, t):
+  def evaluate_cfs(self, activity, meta):
     """
       Calculates the incremental cost of a particular system configuration.
       @ In, activity, XArray.DataArray, array of driver-centric variable values
-      @ In, raven_vars, dict, additional inputs from RAVEN call (or similar)
       @ In, meta, dict, additional user-defined meta
-      @ In, t, int, time of current evaluation (if any) # TODO default?
-      @ Out, cost, float, cash flow evaluation
+      @ Out, cost, dict, cash flow evaluations
     """
-    # combine into a single dict for the evaluation calls
-    info = {'raven_vars': raven_vars, 'meta': meta}#, 't': t}
     # combine all cash flows into single cash flow evaluation
-    cost = dict((cf.name, cf.evaluate_cost(activity, info, t)) for cf in self._cash_flows)
+    cost = dict((cf.name, cf.evaluate_cost(activity, meta)) for cf in self.get_cashflows())
     return cost
 
   def get_cashflows(self):
+    """
+      Getter.
+      @ In, None
+      @ Out, cashflow, list, cash flows for this cashflow group (ordered)
+    """
     return self._cash_flows
 
   def get_component(self):
@@ -199,19 +211,31 @@ class CashFlowGroup:
     return self._lifetime
 
   def check_if_finalized(self):
+    """
+      Check finalization status of cashflows for this group.
+      @ In, None
+      @ Out, finalized, bool, True if all are finalized
+    """
     return all(k.is_finalized() for k in self._cash_flows)
 
   def finalize(self, activity, raven_vars, meta, times=None):
     """
       Evaluate the parameters for member cash flows, and freeze values so they aren't changed again.
       @ In, activity, dict, mapping of variables to values (may be np.arrays)
-      @ In,
+      @ In, raven_vars, dict, TODO part of meta! Consolidate!
+      @ In, times, list, optional, times to finalize values for
+      @ Out, None
     """
     info = {'raven_vars': raven_vars, 'meta': meta}
     for cf in self._cash_flows:
       cf.finalize(activity, info, times=times)
 
   def calculate_lifetime_cashflows(self):
+    """
+      Passthrough to CashFlow method of the same name.
+      @ In, None
+      @ Out, None
+    """
     for cf in self._cash_flows:
       cf.calculate_lifetime_cashflow(self._lifetime)
 
@@ -241,20 +265,62 @@ class CashFlow:
       @ Out, input_specs, InputData, specs
     """
     cf = InputData.parameterInputFactory('CashFlow')
+    cf.description = r"""node for defining a CashFlow for a particular Component. This HERON
+               CashFlow will be used to generate a TEAL CashFlow from RAVEN's TEAL plugin. Note a CashFlow generally
+               takes the form $C = \alpha \left(\frac{D}{D'}\right)^x$, aggregated depending
+               on the \xmlAttr{type}. For more information, see the TEAL plugin for RAVEN."""
 
-    cf.addParam('name', param_type=InputTypes.StringType, required=True)
-    cf.addParam('type', param_type=InputTypes.StringType, required=True)
-    cf.addParam('taxable', param_type=InputTypes.BoolType, required=True)
-    cf.addParam('inflation', param_type=InputTypes.StringType, required=True)
-    cf.addParam('mult_target', param_type=InputTypes.BoolType, required=True)
+    cf.addParam('name', param_type=InputTypes.StringType, required=True,
+        descr=r"""the name by which this CashFlow will be identified as part of this component. The
+              general name is prefixed by the component name, such as ComponentName$\vert$CashFlowName. """)
+    cf_type_enum = InputTypes.makeEnumType('CFType', 'CFType', ['one-time', 'repeating'])
+    cf.addParam('type', param_type=cf_type_enum, required=True,
+        descr=r"""the type of CashFlow to calculate. \xmlString(one-time) is suitable for capital
+              expenditure CashFlows, while \xmlString(repeating) is used for repeating costs such as
+              operations and maintenance (fixed or variable), market sales, or similar.""")
+    cf.addParam('taxable', param_type=InputTypes.BoolType, required=True,
+        descr=r"""determines whether this CashFlow is taxed every cycle. """)
+    cf.addParam('inflation', param_type=InputTypes.StringType, required=True,
+        descr=r"""determines how inflation affects this CashFlow every cycle. See the CashFlow submodule
+              of RAVEN.""")
+    cf.addParam('mult_target', param_type=InputTypes.BoolType, required=True,
+        descr=r"""indicates whether this parameter should be a target of the multiplication factor
+              for NPV matching analyses.""")
     period_enum = InputTypes.makeEnumType('period_opts', 'period_opts', ['hour', 'year'])
-    cf.addParam('period', param_type=period_enum, required=False)
+    cf.addParam('period', param_type=period_enum, required=False,
+        descr=r"""for a \xmlNode{CashFlow} with \xmlAttr{type} \xmlString{repeating}, indicates whether
+              the CashFlow repeats every time step (\xmlString{hour}) or every cycle (\xmlString{year})).
+              Generally, CashFlows such as fixed operations and maintenance costs are per-cycle, whereas
+              variable costs such as fuel and maintenance as well as sales are repeated every time step.""")
 
-    cf.addSub(ValuedParam.get_input_specs('driver'))
-    cf.addSub(ValuedParam.get_input_specs('reference_price'))
-    cf.addSub(ValuedParam.get_input_specs('reference_driver'))
-    cf.addSub(ValuedParam.get_input_specs('scaling_factor_x'))
-    cf.addSub(InputData.parameterInputFactory('depreciate', contentType=InputTypes.IntegerType))
+    driver = ValuedParam.get_input_specs('driver')
+    driver.descr = r"""indicates the main driver for this CashFlow, such as the number of units sold
+                   or the size of the constructed unit. Corresponds to $D$ in the CashFlow equation."""
+    cf.addSub(driver)
+
+    reference_price = ValuedParam.get_input_specs('reference_price')
+    reference_price.descr = r"""indicates the cash value of the reference number of units sold.
+                            corresponds to $\alpha$ in the CashFlow equation. If \xmlNode{reference_driver}
+                            is 1, then this is the price-per-unit for the CashFlow."""
+    cf.addSub(reference_price)
+
+    reference_driver = ValuedParam.get_input_specs('reference_driver')
+    reference_driver.desecr = r"""determines the number of units sold to which the \xmlNode{reference_price}
+                              refers. Corresponds to $\prime D$ in the CashFlow equation. """
+    cf.addSub(reference_driver)
+
+    x = ValuedParam.get_input_specs('scaling_factor_x')
+    x.descr = r"""determines the scaling factor for this CashFlow. Corresponds to $x$ in the CashFlow
+              equation. If $x$ is less than one, the per-unit price decreases as the units sold increases
+              above the \xmlNode{reference_driver}, and vice versa."""
+    cf.addSub(x)
+
+    depreciate = InputData.parameterInputFactory('depreciate', contentType=InputTypes.IntegerType)
+    depreciate.descr = r"""indicates the number of cycles over which this CashFlow should be depreciated.
+                       Depreciation schemes are assumed to be MACRS and available cycles are listed
+                       in the CashFlow submodule of RAVEN."""
+    cf.addSub(depreciate)
+
     return cf
 
   def __init__(self, component):
@@ -284,7 +350,6 @@ class CashFlow:
 
 
   def read_input(self, item):
-
     """
       Sets settings from input file
       @ In, item, InputData.ParameterInput, parsed specs from user
@@ -300,7 +365,6 @@ class CashFlow:
     self._period = item.parameterValues.get('period', 'hour')
     # the remainder of the entries are ValuedParams, so they'll be evaluated as-needed
     for sub in item.subparts:
-
       if sub.getName() == 'driver':
         self._set_valued_param('_driver', sub)
       elif sub.getName() == 'reference_price':
@@ -315,13 +379,39 @@ class CashFlow:
       else:
         raise IOError('Unrecognized "CashFlow" node: "{}"'.format(sub.getName()))
 
-    if self._reference == None:
-      raise IOError('Value not there')
+    # driver is required!
+    if self._driver is None:
+      raise IOError('No <driver> node provided for CashFlow {}!'.format(self.name))
+    if self._alpha is None:
+      raise IOError('No <reference_price> node provided for CashFlow {}!'.format(self.name))
 
+    # defaults
+    var_names = ['_reference', '_scale']
+    for name in var_names:
+      if getattr(self, name) is None:
+        # TODO raise a warning?
+        self._set_fixed_param(name, 1)
 
-# Not none set it to default 1
+  # Not none set it to default 1
   def get_period(self):
+    """
+      Getter for Recurring cashflow period type.
+      @ In, None
+      @ Out, period, str, 'hourly' or 'yearly'
+    """
     return self._period
+
+  def _set_fixed_param(self, name, value):
+    """
+      Fixes a ValuedParam to have a constant value
+      @ In, name, str, name of member to store on "self"
+      @ In, value, float, value to set for ValuedParam
+      @ Out, None
+    """
+    vp = ValuedParam(name)
+    vp.type = 'value'
+    vp._value = value # TODO directly accessing private member!
+    setattr(self, name, vp)
 
   def _set_valued_param(self, name, spec):
     """
@@ -340,7 +430,11 @@ class CashFlow:
     setattr(self, name, vp)
 
   def get_alpha_extension(self):
-    """ creates multiplier for the valued shape the alpha cashflow parameter should be in """
+    """
+      creates multiplier for the valued shape the alpha cashflow parameter should be in
+      @ In, None,
+      @ Out, ext, multiplier for "alpha" values based on CashFlow type
+    """
     life = self._component.get_economics().get_lifetime()
     if self._type == 'one-time':
       ext = np.zeros(life+1, dtype=float)
@@ -370,7 +464,7 @@ class CashFlow:
       valued_param = self._crossrefs[attr]
       valued_param.set_object(obj)
 
-  def evaluate_cost(self, activity, values_dict, t):
+  def evaluate_cost(self, activity, values_dict):
     """
       Evaluates cost of a particular scenario provided by "activity".
       @ In, activity, pandas.Series, multi-indexed array of scenario activities
@@ -379,65 +473,36 @@ class CashFlow:
       @ Out, cost, float, cost of activity
     """
     # note this method gets called a LOT, so speedups here are quite effective
-    # "activity" is a pandas series with production levels -> example from EGRET case
-    # build aliases
-    aliases = {} # currently unused, but mechanism left in place
-    #aliases['capacity'] = '{}_capacity'.format(self._component.name)
-    # for now, add the activity to the dictionary # TODO slow, speed this up
-    res_vals = activity.to_dict()
-    values_dict['raven_vars'].update(res_vals)
-    params = self.calculate_params(values_dict, aliases=aliases, times=t)
+    # add the activity to the dictionary
+    values_dict['HERON']['activity'] = activity
+    params = self.calculate_params(values_dict)
     return params['cost']
 
-  def calculate_params(self, values_dict, aliases=None, aggregate=True, times=None):
-    #if 'reference_driver' not in values_dict.keys():
-    #  values_dict.update({'reference_driver':1})
-
-    #if 'scaling_factor_x' not in values_dict.keys():
-    #  values_dict.update({'scaling_factor_x':1})
+  def calculate_params(self, values_dict):
     """
       Calculates the value of the cash flow parameters.
       @ In, values_dict, dict, mapping from simulation variable names to their values (as floats or numpy arrays)
-      @ In, aliases, dict, optional, means to translate variable names using an alias. Not well-tested!
-      @ In, aggregate, bool, optional, if True then make an effort to collapse array values to floats meaningfully
       @ Out, params, dict, dictionary of parameters mapped to values including the cost
     """
-    if aliases is None:
-      aliases = {}
-    # if a specific time is requested, input that now
-    if times is not None:
-      times = np.atleast_1d(times)
-    T = len(times)
-    ## neither "x" nor "Dp" should have time dependence, # TODO assumption for now.
-    Dp = self._reference.evaluate(values_dict, target_var='reference_driver', aliases=aliases)[0]['reference_driver']
-    Dp = float(Dp)
-    x = self._scale.evaluate(values_dict, target_var='scaling_factor_x', aliases=aliases)[0]['scaling_factor_x']
-    x = float(x)
-    ## a and D need to be filled as time dependent
-    a = np.zeros(T)
-    D = np.zeros(T)
-    for i, t in enumerate(times):
-      values_dict['t'] = t
-      a[i] = self._alpha.evaluate(values_dict, target_var='reference_price', aliases=aliases)[0]['reference_price']#[0]
-      D[i] = self._driver.evaluate(values_dict, target_var='driver', aliases=aliases)[0]['driver']
-    if aggregate:
-      # parameters might be time-dependent, so aggregate them appropriately
-      if T > 1:
-        ## "alpha" should be the average price
-        a = float(a.mean())
-        ## "D" should be the total amount produced
-        D = float(D.sum())
-      elif T == 1:
-        a = float(a)
-        D = float(D)
-      else:
-        raise RuntimeError('Requested time stamps were empty!')
+    # TODO maybe don't cast these as floats, as they could be symbolic expressions (seems unlikely)
+    Dp = float(self._reference.evaluate(values_dict, target_var='reference_driver')[0]['reference_driver'])
+    x = float(self._scale.evaluate(values_dict, target_var='scaling_factor_x')[0]['scaling_factor_x'])
+    a = self._alpha.evaluate(values_dict, target_var='reference_price')[0]['reference_price']
+    D = self._driver.evaluate(values_dict, target_var='driver')[0]['driver']
     cost = a * (D / Dp) ** x
-    params = {'alpha': a, 'driver': D, 'ref_driver': Dp, 'scaling': x, 'cost': float(cost)}
+    params = {'alpha': a, 'driver': D, 'ref_driver': Dp, 'scaling': x, 'cost': cost} # TODO float(cost) except in pyomo it's not a float
     return params
 
   def get_cashflow_params(self, values_dict, aliases, dispatches, years):
-    """ creates a param dict for initializing a CashFlows.CashFlow """
+    """
+      creates a param dict for initializing a CashFlows.CashFlow
+      FIXME deprecated
+      @ In, values_dict, dict, parameters dictionary
+      @ In, aliases, dict, aliased names (unused)
+      @ In, dispatches, dict, component activity
+      @ In, years, int, years to obtain values for
+      @ Out, params, dict, params needed for CashFlow
+    """
     # OLD
     params = {'name': self.name,
               'reference': vals_dict['ref_driver'],

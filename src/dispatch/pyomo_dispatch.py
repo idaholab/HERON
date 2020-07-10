@@ -73,15 +73,13 @@ class Pyomo(Dispatcher):
       @ In, case, HERON Case, Case that this dispatch is part of
       @ In, components, list, HERON components available to the dispatch
       @ In, sources, list, HERON source (placeholders) for signals
-      @ In, variables, dict, additional variables passed through
+      @ In, meta, dict, additional variables passed through
       @ Out, disp, DispatchScenario, resulting dispatch
     """
     t_start, t_end, t_num = self.get_time_discr()
     time = np.linspace(t_start, t_end, t_num) # Note we don't care about segment/cluster here
     resources = sorted(list(hutils.get_all_resources(components))) # list of all active resources
     # pre-build results structure
-    ## results in format {comp: {resource: [... dispatch ...]}}
-    # FIXME use a DispatchState instead of a dictionary dispatch
     ## we can use NumpyState here so we don't need to worry about a Pyomo model object
     dispatch = NumpyState()# dict((comp.name, dict((res, np.zeros(len(time))) for res in comp.get_resources())) for comp in components)
     dispatch.initialize(components, meta['HERON']['resource_indexer'], time)
@@ -105,18 +103,23 @@ class Pyomo(Dispatcher):
       for comp in components:
         for res, values in subdisp[comp.name].items():
           dispatch.set_activity_vector(comp, res, start_index, end_index, values)
-          # data[res][start_index:end_index] = subdisp[comp.name][res]
       start_index = end_index
-    # DEBUGG
-    #print(dispatch)
-    # run full cashflow on activity
-    #cf = self._compute_cashflows(components, dispatch, time, meta)
     return dispatch
 
   ### INTERNAL
   def dispatch_window(self, time,
                       case, components, sources, resources,
                       meta):
+    """
+      Dispatches one part of a rolling window.
+      @ In, time, np.array, value of time to evaluate
+      @ In, case, HERON Case, Case that this dispatch is part of
+      @ In, components, list, HERON components available to the dispatch
+      @ In, sources, list, HERON source (placeholders) for signals
+      @ In, resources, list, sorted list of all resources in problem
+      @ In, meta, dict, additional variables passed through
+      @ Out, result, dict, results of window dispatch
+    """
     # build the Pyomo model
     # TODO abstract this model as much as possible BEFORE, then concrete initialization per window
     m = pyo.ConcreteModel()
@@ -159,7 +162,12 @@ class Pyomo(Dispatcher):
 
   ### PYOMO Element Constructors
   def _create_production(self, m, comp):
-    """ TODO """
+    """
+      Creates production pyomo variable object for a component
+      @ In, m, pyo.ConcreteModel, associated model
+      @ In, comp, HERON Component, component to make production variables for
+      @ Out, prod_name, str, name of production variable
+    """
     name = comp.name
     # create pyomo indexer for this component's resources
     res_indexer = pyo.Set(initialize=range(len(m.resource_index_map[comp])))
@@ -176,7 +184,13 @@ class Pyomo(Dispatcher):
     return prod_name
 
   def _create_capacity(self, m, comp, prod_name):
-    """ TODO """
+    """
+      Creates pyomo capacity constraints
+      @ In, m, pyo.ConcreteModel, associated model
+      @ In, comp, HERON Component, component to make variables for
+      @ In, prod_name, str, name of production variable
+      @ Out, None
+    """
     name = comp.name
     cap_res = comp.get_capacity_var()       # name of resource that defines capacity
     r = m.resource_index_map[comp][cap_res] # production index of the governing resource
@@ -198,7 +212,13 @@ class Pyomo(Dispatcher):
     setattr(m, '{c}_{r}_minprod_constr'.format(c=name, r=cap_res), constr)
 
   def _create_transfer(self, m, comp, prod_name):
-    """ TODO """
+    """
+      Creates pyomo transfer function constraints
+      @ In, m, pyo.ConcreteModel, associated model
+      @ In, comp, HERON Component, component to make variables for
+      @ In, prod_name, str, name of production variable
+      @ Out, None
+    """
     name = comp.name
     # transfer functions
     # e.g. 2A + 3B -> 1C + 2E
@@ -216,20 +236,35 @@ class Pyomo(Dispatcher):
       setattr(m, rule_name, constr)
 
   def _create_conservation(self, m, resources):
-    """ TODO """
+    """
+      Creates pyomo conservation constraints
+      @ In, m, pyo.ConcreteModel, associated model
+      @ In, resources, list, list of resources in problem
+      @ Out, None
+    """
     for res, resource in enumerate(resources):
       rule = partial(self._conservation_rule, resource) #lambda m, c, t: abs(np.sum(m.Production[c, res, t])) <=1e-14 # TODO zero tolerance value?
       constr = pyo.Constraint(m.T, rule=rule)
       setattr(m, '{r}_conservation'.format(r=resource), constr)
 
   def _create_objective(self, meta, m):
-    """ TODO """
+    """
+      Creates pyomo objective function
+      @ In, meta, dict, additional variables to pass through
+      @ In, m, pyo.ConcreteModel, associated model
+      @ Out, None
+    """
     ## cashflow eval
     rule = partial(self._cashflow_rule, meta)
     m.obj = pyo.Objective(rule=rule, sense=pyo.maximize)
 
   ### UTILITIES for general use
   def _get_prod_bounds(self, comp):
+    """
+      Determines the production limits of the given component
+      @ In, comp, HERON component, component to get bounds of
+      @ Out, (min, max, domain), float/float/pyomo domain, limits and domain of variables
+    """
     cap_res = comp.get_capacity_var()       # name of resource that defines capacity
     maximum = comp.get_capacity(None, None, None, None)[0][cap_res]
     # TODO minimum!
@@ -240,6 +275,15 @@ class Pyomo(Dispatcher):
       return maximum, 0, pyo.NonPositiveReals
 
   def _get_transfer_coeffs(self, m, comp):
+    """
+      Obtains transfer function ratios (assuming Linear ValuedParams)
+      Form: 1A + 3B -> 2C + 4D
+      Ratios are calculated with respect to first resource listed, so e.g. B = 3/1 * A
+      TODO I think we can handle general external functions, maybe?
+      @ In, m, pyo.ConcreteModel, associated model
+      @ In, comp, HERON component, component to get coefficients of
+      @ Out, ratios, dict, ratios of transfer function variables
+    """
     name = comp.name
     transfer = comp.get_interaction().get_transfer()  # get the transfer ValuedParam, if any
     if transfer is None:
@@ -264,34 +308,56 @@ class Pyomo(Dispatcher):
     return ratios
 
   def _retrieve_solution(self, m):
-    """ TODO """
-    #result = np.full((len(m.T), len(m.Components), len(m.Resources)), None)
+    """
+      Extracts solution from Pyomo optimization
+      @ In, m, pyo.ConcreteModel, associated (solved) model
+      @ Out, result, dict, {comp: {resource: [production], etc}, etc}
+    """
     result = {} # {component: {resource: production}}
     for comp in m.Components:
       prod = getattr(m, '{n}_production'.format(n=comp.name))
       result[comp.name] = {}
       for res, comp_r in m.resource_index_map[comp].items():
-        #global_r = m.Resources.index(res)
         result[comp.name][res] = np.fromiter((prod[comp_r, t].value for t in m.T), dtype=float, count=len(m.T))
-        #result[:, c, global_r] = list(prod[comp_r, t] for t in m.T) # TODO can we extract the vector?
     return result
 
   ### RULES for partial function calls
+  # these get called using "functools.partial" to make Pyomo constraints, vars, objectives, etc
   def _capacity_rule(self, prod_name, r, cap, m, t):
-    """ Constructs capacity constraints. TODO"""
+    """
+      Constructs pyomo capacity constraints.
+      @ In, prod_name, str, name of production variable
+      @ In, r, int, index of resource for capacity constraining
+      @ In, cap, float, value to constrain resource at
+      @ In, m, pyo.ConcreteModel, associated model
+      @ In, t, int, time index for capacity rule
+    """
     prod = getattr(m, prod_name)
+    # note that a negative capacity means a CONSUMPTION capacity instead of PRODUCTION
     if cap > 0:
       return prod[r, t] <= cap
     else:
       return prod[r, t] >= cap
 
   def _cashflow_rule(self, meta, m):
+    """
+      Objective function rule.
+      @ In, meta, dict, additional variable passthrough
+      @ In, m, pyo.ConcreteModel, associated model
+      @ Out, total, float, evaluation of cost
+    """
     activity = m.Activity # dict((comp, getattr(m, f"{comp.name}_production")) for comp in m.Components)
     total = self._compute_cashflows(m.Components, activity, m.Times, meta)
     return total
 
   def _conservation_rule(self, res, m, t):
-    """ Constructs conservation constraints. TODO """
+    """
+      Constructs conservation constraints.
+      @ In, res, str, name of resource
+      @ In, m, pyo.ConcreteModel, associated model
+      @ In, t, int, index of time variable
+      @ Out, conservation, bool, balance check
+    """
     balance = 0
     for comp, res_dict in m.resource_index_map.items():
       if res in res_dict:
@@ -300,25 +366,44 @@ class Pyomo(Dispatcher):
     return balance == 0 # TODO tol?
 
   def _min_prod_rule(self, prod_name, r, cap, minimum, m, t):
+    """
+      Constructs minimum production constraint
+      @ In, prod_name, str, name of production variable
+      @ In, r, int, index of resource for capacity constraining
+      @ In, cap, float, capacity value for component
+      @ In, minimum, float, minimum allowable production
+      @ In, m, pyo.ConcreteModel, associated model
+      @ In, t, int, index of time variable
+      @ Out, minimum, bool, min check
+    """
     prod = getattr(m, prod_name)
+    # negative capacity means consuming instead of producing
     if cap > 0:
       return prod[r, t] >= minimum
     else:
       return prod[r, t] <= minimum
 
   def _transfer_rule(self, ratio, r, ref_r, prod_name, m, t):
-    """ Constructs transfer function constraints TODO"""
+    """
+      Constructs transfer function constraints
+      @ In, ratio, float, ratio for resource to nominal first resource
+      @ In, r, int, index of transfer resource
+      @ In, ref_r, int, index of reference resource
+      @ In, prod_name, str, name of production variable
+      @ In, m, pyo.ConcreteModel, associated model
+      @ In, t, int, index of time variable
+      @ Out, transfer, bool, transfer ratio check
+    """
     prod = getattr(m, prod_name)
     return prod[r, t] == prod[ref_r, t] * ratio # TODO tolerance??
 
-  def _get_fixed_activity(self, array, m, r, t):
-    """ TODO """
-    # FIXME this didn't work at all, it evaluated as a partial not a valued index ...
-    return array[r, t]
-
   ### DEBUG
   def _debug_pyomo_print(self, m):
-    """ TODO """
+    """
+      Prints the setup pieces of the Pyomo model
+      @ In, m, pyo.ConcreteModel, model to interrogate
+      @ Out, None
+    """
     print('/' + '='*80)
     print('DEBUGG model pieces:')
     print('  -> objective:')
@@ -333,7 +418,11 @@ class Pyomo(Dispatcher):
     print('')
 
   def _debug_print_soln(self, m):
-    """ TODO """
+    """
+      Prints the solution from the Pyomo model
+      @ In, m, pyo.ConcreteModel, model to interrogate
+      @ Out, None
+    """
     print('*'*80)
     print('DEBUGG solution:')
     print('  objective value:', m.obj())

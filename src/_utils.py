@@ -47,7 +47,12 @@ def get_all_resources(components):
   return res
 
 def get_project_lifetime(case, components):
-  """ obtains the project lifetime TODO """
+  """
+    obtains the project lifetime
+    @ In, case, HERON case, case
+    @ In, components, list, HERON components
+    @ Out, lifetime, int, project lifetime (usually years)
+  """
   # load CashFlow
   try:
     from CashFlow.src.main import get_project_length

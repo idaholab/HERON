@@ -7,7 +7,7 @@ import sys
 import _utils as hutils
 framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)
-from utils import InputData,InputTypes
+from utils import InputData, InputTypes
 
 # class for potentially dynamically-evaluated quantities
 class ValuedParam:
@@ -100,6 +100,12 @@ class ValuedParam:
     self._coefficients = {}  # for (linear) coefficents, resource: coefficient
 
   def get_growth(self):
+    """
+      Obtains the yearly growth parameter and mode, if any
+      @ In, None
+      @ Out, val, float, growth value
+      @ Out, mode, str, growth mode (linear or exponential)
+    """
     return self._growth_val, self._growth_mode
 
   def get_source(self):
@@ -134,6 +140,7 @@ class ValuedParam:
       @ In, spec, InputData params, input specifications
       @ In, mode, type of simulation calculation
       @ In, alias_dict, dict, optional, aliases to use for variable naming
+      @ Out, signal, list, signals needed to evaluate this ValuedParam at runtime
     """
     # aliases get used to convert variable names, notably for the cashflow's "capacity"
     if alias_dict is None:

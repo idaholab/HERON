@@ -245,10 +245,20 @@ class Case(Base):
     self.dispatcher.initialize(self, components, sources)
 
   def __repr__(self):
+    """
+      Determines how this class appears when printed.
+      @ In, None
+      @ Out, repr, str, string representation
+    """
     return '<HERON Case>'
 
   def print_me(self, tabs=0, tab='  '):
-    """ Prints info about self """
+    """
+      Prints info about self
+      @ In, tabs, int, number of tabs to insert before print
+      @ In, tab, str, tab prefix
+      @ Out, None
+    """
     pre = tab*tabs
     print(pre+'Case:')
     print(pre+'  name:', self.name)
@@ -258,9 +268,19 @@ class Case(Base):
 
   #### ACCESSORS ####
   def get_increments(self):
+    """
+      Accessor.
+      @ In, None
+      @ Out, self._increments, dict, increments for resource evaluation
+    """
     return self._increments
 
   def get_working_dir(self, which):
+    """
+      Accessor.
+      @ In, which, str, o or i, whether outer or inner working dir is needed
+      @ Out, working_dir, str, relevant working dir
+    """
     if which == 'outer':
       io = 'o'
     elif which == 'inner':
@@ -270,6 +290,11 @@ class Case(Base):
     return '{case}_{io}'.format(case=self.name, io=io)
 
   def get_econ(self, components):
+    """
+      Accessor for economic settings for this case
+      @ In, components, list, list of HERON components
+      @ Out, get_econ, dict, dictionary of global economic settings
+    """
     # only add additional params the first time this is called
     if 'active' not in self._global_econ:
       # NOTE self._metric can only be NPV right now! XXX TODO FIXME
@@ -285,16 +310,35 @@ class Case(Base):
     return self._global_econ
 
   def get_metric(self):
+    """
+      Accessor
+      @ In, None
+      @ Out, metric, str, target metric for this case
+    """
     return self._metric
 
   def get_mode(self):
-    """ returns mode """
+    """
+      Accessor
+      @ In, None
+      @ Out, mode, str, mode of analysis for this case (sweep, opt, etc)
+    """
     return self._mode
 
   def get_num_samples(self):
+    """
+      Accessor
+      @ In, None
+      @ Out, num_samples, int, number of dispatch realizations to consider
+    """
     return self._num_samples
 
   def get_num_timesteps(self):
+    """
+      Accessor
+      @ In, None
+      @ Out, num_timesteps, int, number of time steps for inner dispatch
+    """
     return self._num_hist
 
   def get_time_name(self):
@@ -306,12 +350,27 @@ class Case(Base):
     return self._time_varname
 
   def get_Resample_T(self):
+    """
+      Accessor
+      @ In, None
+      @ Out, Resample_T, float, user-requested time deltas
+    """
     return self._Resample_T
 
   def get_hist_interval(self):
+    """
+      Accessor
+      @ In, None
+      @ Out, hist_interval, float, user-requested time deltas
+    """
     return self._hist_interval
 
   def get_hist_length(self):
+    """
+      Accessor
+      @ In, None
+      @ Out, hist_len, int, length of inner histories
+    """
     return self._hist_len
 
   #### API ####
@@ -331,7 +390,11 @@ class Case(Base):
 
   #### UTILITIES ####
   def _load_template(self):
-    """ TODO """
+    """
+      Loads template files for modification
+      @ In, None
+      @ Out, template_class, RAVEN Template, instantiated Template class
+    """
     src_dir = os.path.dirname(os.path.realpath(__file__))
     heron_dir = os.path.abspath(os.path.join(src_dir, '..'))
     template_dir = os.path.abspath(os.path.join(heron_dir, 'templates'))
@@ -345,13 +408,25 @@ class Case(Base):
     return template_class
 
   def _modify(self, templates, components, sources):
-    """ TODO """
+    """
+      Modifies template files to prepare case.
+      @ In, templates, dict, map of file templates
+      @ In, components, list, HERON Components
+      @ In, sources, list, HERON Placeholders
+      @ Out, _modify, dict, modified files
+    """
     outer = self._modify_outer(templates['outer'], components, sources)
     inner = self._modify_inner(templates['inner'], components, sources)
     return {'outer':outer, 'inner':inner}
 
   def _modify_outer(self, template, components, sources):
-    """ TODO """
+    """
+      Modifies the "outer" template file
+      @ In, template, xml, file template
+      @ In, components, list, HERON Components
+      @ In, sources, list, HERON Placeholders
+      @ Out, template, xml, modified template
+    """
     ###################
     # RUN INFO        #
     ###################
@@ -451,7 +526,13 @@ class Case(Base):
     return template
 
   def _modify_inner(self, template, components, sources):
-    """ TODO """
+    """
+      Modifies the "inner" template file
+      @ In, template, xml, file template
+      @ In, components, list, HERON Components
+      @ In, sources, list, HERON Placeholders
+      @ Out, template, xml, modified template
+    """
     ###################
     # RUN INFO        #
     # STEPS           #

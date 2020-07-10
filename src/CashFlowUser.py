@@ -1,8 +1,5 @@
 
-import os
 import sys
-#from collections import defaultdict
-#import numpy as np
 from CashFlows import CashFlowGroup
 import _utils as hutils
 raven_path = hutils.get_raven_loc()
@@ -31,7 +28,7 @@ class CashFlowUser:
   def __init__(self):
     """
       Constructor
-      @ In, kwargs, dict, optional, arguments to pass to other constructors
+      @ In, None
       @ Out, None
     """
     self._economics = None # CashFlowGroup

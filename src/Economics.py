@@ -3,7 +3,6 @@
   Each component (or source?) can have one of these to describe its economics.
 """
 from __future__ import unicode_literals, print_function
-import os
 import sys
 from collections import defaultdict
 import numpy as np
@@ -28,7 +27,7 @@ class CashFlowUser:
       Collects input specifications for this class.
       Note this needs to be called as part of an inheriting class's specification definition
       @ In, spec, InputData, specifications that need cash flow added to it
-      @ Out, input_specs, InputData, specs
+      @ Out, spec, InputData, specs
     """
     # this unit probably has some economics
     spec.addSub(CashFlowGroup.get_input_specs())
@@ -37,7 +36,7 @@ class CashFlowUser:
   def __init__(self):
     """
       Constructor
-      @ In, kwargs, dict, optional, arguments to pass to other constructors
+      @ In, None
       @ Out, None
     """
     self._economics = None # CashFlowGroup
@@ -52,7 +51,11 @@ class CashFlowUser:
     self._economics.read_input(specs)
 
   def get_cashflows(self):
-    """ TODO """
+    """
+      Getter.
+      @ In, None
+      @ Out, cashflow, list, cash flows for this cashflow user (ordered)
+    """
     return self._economics.get_cashflows()
 
   def get_crossrefs(self):
@@ -90,7 +93,9 @@ class CashFlowUser:
 
 
 class CashFlowGroup:
-  # Just a holder for multiple cash flows, and methods for doing stuff with them
+  """
+    Just a holder for multiple cash flows, and methods for doing stuff with them
+  """
   ##################
   # INITIALIZATION #
   ##################
@@ -150,7 +155,7 @@ class CashFlowGroup:
     """
       Provides a dictionary of the entities needed by this cashflow group to be evaluated
       @ In, None
-      @ Out, crossreffs, dict, dictionary of crossreferences needed (see ValuedParams)
+      @ Out, crossrefs, dict, dictionary of crossreferences needed (see ValuedParams)
     """
     crossrefs = dict((cf, cf.get_crossrefs()) for cf in self._cash_flows)
     return crossrefs
@@ -174,9 +179,7 @@ class CashFlowGroup:
     """
       Calculates the incremental cost of a particular system configuration.
       @ In, activity, XArray.DataArray, array of driver-centric variable values
-      @ In, raven_vars, dict, additional inputs from RAVEN call (or similar)
       @ In, meta, dict, additional user-defined meta
-      XXX @ In, time, float, time at which cost needs to be evaluated
       @ Out, cost, dict, cash flow evaluations
     """
     # combine all cash flows into single cash flow evaluation
@@ -184,6 +187,11 @@ class CashFlowGroup:
     return cost
 
   def get_cashflows(self):
+    """
+      Getter.
+      @ In, None
+      @ Out, cashflow, list, cash flows for this cashflow group (ordered)
+    """
     return self._cash_flows
 
   def get_component(self):
@@ -203,19 +211,31 @@ class CashFlowGroup:
     return self._lifetime
 
   def check_if_finalized(self):
+    """
+      Check finalization status of cashflows for this group.
+      @ In, None
+      @ Out, finalized, bool, True if all are finalized
+    """
     return all(k.is_finalized() for k in self._cash_flows)
 
   def finalize(self, activity, raven_vars, meta, times=None):
     """
       Evaluate the parameters for member cash flows, and freeze values so they aren't changed again.
       @ In, activity, dict, mapping of variables to values (may be np.arrays)
-      @ In,
+      @ In, raven_vars, dict, TODO part of meta! Consolidate!
+      @ In, times, list, optional, times to finalize values for
+      @ Out, None
     """
     info = {'raven_vars': raven_vars, 'meta': meta}
     for cf in self._cash_flows:
       cf.finalize(activity, info, times=times)
 
   def calculate_lifetime_cashflows(self):
+    """
+      Passthrough to CashFlow method of the same name.
+      @ In, None
+      @ Out, None
+    """
     for cf in self._cash_flows:
       cf.calculate_lifetime_cashflow(self._lifetime)
 
@@ -330,7 +350,6 @@ class CashFlow:
 
 
   def read_input(self, item):
-
     """
       Sets settings from input file
       @ In, item, InputData.ParameterInput, parsed specs from user
@@ -375,9 +394,20 @@ class CashFlow:
 
   # Not none set it to default 1
   def get_period(self):
+    """
+      Getter for Recurring cashflow period type.
+      @ In, None
+      @ Out, period, str, 'hourly' or 'yearly'
+    """
     return self._period
 
   def _set_fixed_param(self, name, value):
+    """
+      Fixes a ValuedParam to have a constant value
+      @ In, name, str, name of member to store on "self"
+      @ In, value, float, value to set for ValuedParam
+      @ Out, None
+    """
     vp = ValuedParam(name)
     vp.type = 'value'
     vp._value = value # TODO directly accessing private member!
@@ -400,7 +430,11 @@ class CashFlow:
     setattr(self, name, vp)
 
   def get_alpha_extension(self):
-    """ creates multiplier for the valued shape the alpha cashflow parameter should be in """
+    """
+      creates multiplier for the valued shape the alpha cashflow parameter should be in
+      @ In, None,
+      @ Out, ext, multiplier for "alpha" values based on CashFlow type
+    """
     life = self._component.get_economics().get_lifetime()
     if self._type == 'one-time':
       ext = np.zeros(life+1, dtype=float)
@@ -460,7 +494,15 @@ class CashFlow:
     return params
 
   def get_cashflow_params(self, values_dict, aliases, dispatches, years):
-    """ creates a param dict for initializing a CashFlows.CashFlow """
+    """
+      creates a param dict for initializing a CashFlows.CashFlow
+      FIXME deprecated
+      @ In, values_dict, dict, parameters dictionary
+      @ In, aliases, dict, aliased names (unused)
+      @ In, dispatches, dict, component activity
+      @ In, years, int, years to obtain values for
+      @ Out, params, dict, params needed for CashFlow
+    """
     # OLD
     params = {'name': self.name,
               'reference': vals_dict['ref_driver'],

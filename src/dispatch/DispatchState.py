@@ -17,8 +17,8 @@ class DispatchState:
     """
       Set up dispatch state to hold data
       @ In, components, list, HERON components to be stored
-      @ In, resources, list, string resources to be stored
-      @ In, time, list, float times to store
+      @ In, resources_map, dict, map of resources to indices for each component
+      @ In, times, list, float times to store activity
       @ Out, None
     """
     self._components = components
@@ -36,10 +36,9 @@ class DispatchState:
   def get_activity(self, comp, res, time, **kwargs):
     """
       Getter for activity level.
-      Note, if any of the arguments are "None" it is assumed that means "all"
       @ In, comp, HERON Component, component whose information should be retrieved
       @ In, res, string, name of resource to retrieve
-      @ In, time, float, time at which activity should be provided (TODO should this be an int?)
+      @ In, time, float, time at which activity should be provided
       @ Out, activity, float, amount of resource "res" produced/consumed by "comp" at time "time";
                               note positive is producting, negative is consuming
     """
@@ -50,11 +49,11 @@ class DispatchState:
   def set_activity(self, comp, res, time, value, **kwargs):
     """
       Setter for activity level.
-      Note, if any of the arguments are "None" it is assumed that means "all"
       @ In, comp, HERON Component, component whose information should be set
       @ In, res, string, name of resource to retrieve
-      @ In, time, float, time at which activity should be provided (TODO should this be an int?)
+      @ In, time, float, time at which activity should be provided
       @ In, value, float, activity level; note positive is producting, negative is consuming
+      @ In, kwargs, dict, additional pass-through keyword arguments
       @ Out, None
     """
     r = self._resources[comp][res]
@@ -67,9 +66,11 @@ class DispatchState:
       @ In, comp, HERON Component, component whose information should be retrieved
       @ In, r, int, index of resource to retrieve (as given by meta[HERON][resource_indexer])
       @ In, t, int, index of time at which activity should be provided
+      @ In, kwargs, dict, additional pass-through keyword arguments
       @ Out, activity, float, amount of resource "res" produced/consumed by "comp" at time "time";
                               note positive is producting, negative is consuming
     """
+    # to be overwritten by implementing classes
     raise NotImplementedError
 
   def set_activity_indexed(self, comp, r, t, value, **kwargs):
@@ -78,9 +79,12 @@ class DispatchState:
       @ In, comp, HERON Component, component whose information should be retrieved
       @ In, r, int, index of resource to retrieve (as given by meta[HERON][resource_indexer])
       @ In, t, int, index of time at which activity should be provided
+      @ In, value, float, value to set for activity
+      @ In, kwargs, dict, additional pass-through keyword arguments
       @ Out, activity, float, amount of resource "res" produced/consumed by "comp" at time "time";
                               note positive is producting, negative is consuming
     """
+    # to be overwritten by implementing classes
     raise NotImplementedError
 
 
@@ -88,6 +92,7 @@ class DispatchState:
 
 # NumpyState is the nominal DispatchState implementation
 class NumpyState(DispatchState):
+  """ implemenatation of DispatchState using Numpy. A good nominal choice if additional functionality isn't needed. """
   def __init__(self):
     """
       Constructor.
@@ -101,7 +106,7 @@ class NumpyState(DispatchState):
     """
       Set up dispatch state to hold data
       @ In, components, list, HERON components to be stored
-      @ In, resources, list, string resources to be stored
+      @ In, resources_map, dict, map of resources to indices for each component
       @ In, time, list, float times to store
       @ Out, None
     """
@@ -121,35 +126,45 @@ class NumpyState(DispatchState):
     for comp in self._data:
       resources = self._resources[comp]
       msg.write(f'   component: {comp.name}\n')
-      for res, r in self._resources[comp].items():
+      for res, r in resources.items():
         msg.write(f'      {res}: {self._data[comp][r]}\n')
     msg.write('END NumpyState dispatch record>')
     return msg.getvalue()
 
-  def get_activity_indexed(self, comp, r, t):
+  def get_activity_indexed(self, comp, r, t, **kwargs):
     """
       Getter for activity level.
       Note, if any of the arguments are "None" it is assumed that means "all"
       @ In, comp, HERON Component, component whose information should be retrieved
       @ In, r, int, index of resource to retrieve (as given by meta[HERON][resource_indexer])
       @ In, t, int, index of time at which activity should be provided
+      @ In, kwargs, dict, additional pass-through keyword arguments
       @ Out, activity, float, amount of resource "res" produced/consumed by "comp" at time "time";
                               note positive is producting, negative is consuming
     """
     return self._data[comp][r, t]
 
-  def set_activity_indexed(self, comp, res, time, value):
+  def set_activity_indexed(self, comp, r, t, value, **kwargs):
     """
       Setter for activity level.
       @ In, comp, HERON Component, component whose information should be set
       @ In, res, string, name of resource to retrieve
       @ In, time, float, time at which activity should be provided
       @ In, value, float, activity level; note positive is producting, negative is consuming
+      @ In, kwargs, dict, additional pass-through keyword arguments
       @ Out, None
     """
     self._data[comp][r, t] = value
 
   def set_activity_vector(self, comp, res, start_time, end_time, values):
-    """ TODO """
+    """
+      Shortcut utility for setting values all-at-once in a vector.
+      @ In, comp, HERON Component, component whose information should be set
+      @ In, res, string, name of resource to retrieve
+      @ In, start_time, int, first time index at which activity is provided
+      @ In, end_time, int, last time at which activity is provided (not inclusive)
+      @ In, values, np.array, activity level; note positive is producting, negative is consuming
+      @ Out, None
+    """
     r = self._resources[comp][res]
     self._data[comp][r, start_time:end_time] = values

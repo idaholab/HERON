@@ -53,6 +53,7 @@ class Dispatcher:
   def get_time_discr(self):
     """
       Retrieves the time discretization information.
+      @ In, None
       @ Out, info, tuple, (start, end, number of steps) for time discretization
     """
     return self._time_discretization
@@ -65,7 +66,6 @@ class Dispatcher:
     """
     assert info is not None
     # TODO is this the right idea?
-    # TODO what if clustering?
     # don't expand into linspace right now, just store the pieces
     self._time_discretization = info
 
@@ -91,6 +91,7 @@ class Dispatcher:
       @ In, activity, DispatchState instance, activity by component/resources/time
       @ In, times, np.array(float), time values to evaluate; may be length 1 or longer
       @ In, meta, dict, additional info to be passed through to functional evaluations
+      @ Out, total, float, total cashflows for given components
     """
     total = 0
     specific_meta = dict(meta) # TODO what level of copying do we need here?

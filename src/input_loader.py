@@ -17,10 +17,6 @@ from utils import xmlUtils
 sys.path.pop()
 
 
-
-
-
-
 def load(name):
   """
     Loads file into XML format

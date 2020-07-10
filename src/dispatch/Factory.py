@@ -12,4 +12,9 @@ known = {
 }
 
 def get_class(typ):
+  """
+    Returns the requested dispatcher type.
+    @ In, typ, str, name of one of the dispatchers
+    @ Out, class, object, class object
+  """
   return known.get(typ, None)

@@ -115,7 +115,8 @@ class DispatchRunner:
     """
       Runs dispatcher.
       @ In, raven_vars, dict, dictionary of variables from raven to pass through
-      @ Out, None?
+      @ Out, all_dispatch, DispatchState, results of dispatching
+      @ Out, metrics, dict, economic metric results
     """
     ## TODO move as much of this as possible to "intialize" instead of "run"!
     # build meta variable
@@ -166,7 +167,15 @@ class DispatchRunner:
     return all_dispatch, metrics
 
   def _do_dispatch(self, meta, all_structure, project_life, interp_years, segs, seg_type):
-    """ perform dispatching TODO """
+    """
+      perform dispatching
+      @ In, meta, dict, dictionary of passthrough variables
+      @ In, project_life, int, total analysis years (e.g. 30)
+      @ In, interp_years, list, actual analysis tagged years (e.g. range(2015, 2045))
+      @ In, segs, list, segments/clusters/divisions
+      @ In, seg_type, str, "segment" or "cluster" if segmented or clustered
+      @ Out, dispatch_results, list(DispatchState), results of dispatch for each segment/cluster and year
+    """
     structure = all_structure['summary']
     num_segs = len(segs)
     active_index = {}
@@ -201,7 +210,17 @@ class DispatchRunner:
     return dispatch_results
 
   def _do_cashflow(self, meta, all_dispatch, all_structure, project_life, interp_years, segs, seg_type):
-    """ run cashflow analysis TODO """
+    """
+      run cashflow analysis
+      @ In, meta, dict, passthrough variables
+      @ In, all_dispatch, list, DispatchState for each cluster/segment and year
+      @ In, all_structure, dict, structure of ARMA evaluates (cluster, multiyear, etc)
+      @ In, project_life, int, length of project
+      @ In, interp_years, list, actual project years
+      @ In, segs, list, list of segments/clusters
+      @ In, seg_type, str, type of divisions (segments or clusters)
+      @ Out, cf_metrics, dict, CashFlow metric evaluations for full project life
+    """
     num_segs = len(segs)
     # get final econoomics objects
     # FINAL settings/components/cashflows use the multiplicity of divisions for aggregated evaluation
@@ -393,7 +412,13 @@ class DispatchRunner:
     return global_settings, cf_components
 
   def save_variables(self, raven, dispatch, metrics):
-    """ generates RAVEN-acceptable variables TODO """
+    """
+      generates RAVEN-acceptable variables
+      Saves variables on "raven" object for returning
+      @ In, raven, object, RAVEN object for setting values
+      @ In, dispatch, DispatchState, dispatch values (FIXME currently unused)
+      @ In, metrics, dict, economic metrics
+    """
     # TODO clustering, multiyear
     # TODO should this be a Runner method or separate?
     # template = self.naming_template['dispatch var']
@@ -406,7 +431,11 @@ class DispatchRunner:
       setattr(raven, metric, np.atleast_1d(value))
 
   def _get_structure(self, raven_vars):
-    """ interpret the clustering information from the ROM TODO """
+    """
+      interpret the clustering information from the ROM
+      @ In, raven_vars, dict, variables coming from RAVEN
+      @ Out, all_structure, dict, structure (multiyear, cluster/segments, etc) specifications
+    """
     all_structure = {'details': {}, 'summary': {}}
     for source in self._sources:
       # only need ARMA information, not Functions
@@ -585,6 +614,7 @@ def run(raven, raven_dict):
     This is run as part of the INNER ensemble model, run after the synthetic history generation
     @ In, raven, object, RAVEN variables object
     @ In, raven_dict, dict, additional RAVEN information
+    @ Out, None
   """
   path = os.path.join(os.getcwd(), '..', 'heron.lib') # TODO custom name?
   # build runner

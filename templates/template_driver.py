@@ -49,7 +49,7 @@ class Template(TemplateBase):
                                    'data object'    : '{source}_{contents}',
                                    'distribution'   : '{unit}_{feature}_dist',
                                    'ARMA sampler'   : '{rom}_sampler',
-                                   'HERON lib'      : 'heron.lib',
+                                   'lib file'       : 'heron.lib', # TODO use case name?
                                    'cashfname'      : '_{component}{cashname}',
                                    're_cash'        : '_rec_{period}_{driverType}{driverName}'
                                   })
@@ -135,7 +135,7 @@ class Template(TemplateBase):
     print(msg_format.format(*os.path.split(cash_file)))
     # write library of info so it can be read in dispatch during inner run
     data = (self.__case, self.__components, self.__sources)
-    lib_file = os.path.abspath(os.path.join(destination, self.namingTemplates['HERON lib']))
+    lib_file = os.path.abspath(os.path.join(destination, self.namingTemplates['lib file']))
     with open(lib_file, 'wb') as lib:
       pk.dump(data, lib)
     print(msg_format.format(*os.path.split(lib_file)))
@@ -283,7 +283,7 @@ class Template(TemplateBase):
   def _modify_inner(self, template, case, components, sources):
     """ TODO """
     input_filepath=os.path.abspath((os.path.dirname(__file__)))
-    input_filepath=input_filepath+'/../src/dispatch.py'
+    input_filepath=input_filepath+'/../src/DispatchManager'
     ext_model=template.find('Models').find('ExternalModel')
     ext_model.set('ModuleToLoad',input_filepath)
     self._modify_inner_runinfo(template, case)

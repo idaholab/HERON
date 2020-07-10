@@ -35,6 +35,40 @@ def get_cashflow_loc(raven_path=None):
   cf_loc = plugin_handler.getPluginLocation('CashFlow')
   return cf_loc
 
+def get_all_resources(components):
+  """
+    Provides a set of all resources used among all components
+    @ In, components, list, HERON component objects
+    @ Out, resources, list, resources used in case
+  """
+  res = set()
+  for comp in components:
+    res.update(comp.get_resources())
+  return res
+
+def get_project_lifetime(case, components):
+  """
+    obtains the project lifetime
+    @ In, case, HERON case, case
+    @ In, components, list, HERON components
+    @ Out, lifetime, int, project lifetime (usually years)
+  """
+  # load CashFlow
+  try:
+    from CashFlow.src.main import get_project_length
+    from CashFlow.src import CashFlows
+  except (ImportError, ModuleNotFoundError) as e:
+    loc = get_cashflow_loc()
+    sys.path.append(loc)
+    from CashFlow.src.main import get_project_length
+    from CashFlow.src import CashFlows
+    sys.path.pop()
+  econ_comps = list(comp.get_economics() for comp in components)
+  econ_params = case.get_econ(econ_comps)
+  econ_settings = CashFlows.GlobalSettings()
+  econ_settings.set_params(econ_params)
+  return get_project_length(econ_settings, econ_comps)
+
 if __name__ == '__main__':
   action = sys.argv[1]
   if action == 'get_raven_loc':
@@ -43,4 +77,3 @@ if __name__ == '__main__':
     print(get_cashflow_loc())
   else:
     raise IOError('Unrecognized action: "{}"'.format(action))
-

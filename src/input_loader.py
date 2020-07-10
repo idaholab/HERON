@@ -17,10 +17,6 @@ from utils import xmlUtils
 sys.path.pop()
 
 
-
-
-
-
 def load(name):
   """
     Loads file into XML format
@@ -77,6 +73,7 @@ def parse(xml, loc, messageHandler):
         sources.append(new)
 
   # now go back through and link up stuff
+  # TODO move to case.initialize?
   for comp in components:
     found = {}
     for interaction, i_info in comp.get_crossrefs().items():
@@ -94,6 +91,9 @@ def parse(xml, loc, messageHandler):
         else:
           raise IOError('Requested source "{}" for component "{}" was not found!'.format(name, comp.name))
     comp.set_crossrefs(found)
+
+  # then do pre-writing initialization
+  case.initialize(components, sources)
 
   return {'case': case,
           'components': components,

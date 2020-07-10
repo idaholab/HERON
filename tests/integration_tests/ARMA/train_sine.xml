@@ -11,7 +11,7 @@
 
   <RunInfo>
     <WorkingDir>Sine</WorkingDir>
-    <Sequence>load, train, serialize, sample</Sequence>
+    <Sequence>load, train, meta, serialize, sample</Sequence>
   </RunInfo>
 
   <Steps>
@@ -23,6 +23,11 @@
       <Input class="DataObjects" type="HistorySet">input</Input>
       <Output class="Models" type="ROM">arma</Output>
     </RomTrainer>
+    <IOStep name="meta">
+      <Input class="Models" type="ROM">arma</Input>
+      <Output class="DataObjects" type="DataSet">meta</Output>
+      <Output class="OutStreams" type="Print">romMeta</Output>
+    </IOStep>
     <IOStep name="serialize">
       <Input class="Models" type="ROM">arma</Input>
       <Output class="Files" type="">pk</Output>
@@ -59,7 +64,7 @@
       <Index var="Time">Signal</Index>
       <Index var="Year">Signal</Index>
     </DataSet>
-    <DataSet name="romMeta"/>
+    <DataSet name="meta"/>
   </DataObjects>
 
   <Models>
@@ -96,7 +101,7 @@
   <OutStreams>
     <Print name="romMeta">
       <type>csv</type>
-      <source>romMeta</source>
+      <source>meta</source>
     </Print>
     <Print name="synthetic">
       <type>csv</type>

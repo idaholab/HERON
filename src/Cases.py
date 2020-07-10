@@ -6,13 +6,20 @@ import os
 import sys
 import copy
 import importlib
+
+import numpy as np
+
 from base import Base
 import Components
 import Placeholders
+
+from dispatch.Factory import known as known_dispatchers
+from dispatch.Factory import get_class as get_dispatcher
+
 import _utils as hutils
 framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)
-from utils import InputData, xmlUtils,InputTypes
+from utils import InputData, InputTypes, xmlUtils
 
 class Case(Base):
   """
@@ -49,13 +56,26 @@ class Case(Base):
         descr=r"""provides the number of synthetic histories that should be considered per system configuration
               in order to obtain a reasonable representation of the economic metric. Sometimes referred to as
               ``inner samples'' or ``denoisings''."""))
-    input_specs.addSub(InputData.parameterInputFactory('timestep_interval', contentType=InputTypes.IntegerType,
-        descr=r"""provides the desired interval between two consecutive time steps within the ``inner''
-              RAVEN dispatch solve. \default{provided by DataGenerators}"""))
-    input_specs.addSub(InputData.parameterInputFactory('history_length', contentType=InputTypes.IntegerType,
-        descr=r"""total length of one synthetic history within ``inner'' RAVEN dispatch.
-              \default{taken from DataGenerators}"""))
-    input_specs.addSub(InputData.parameterInputFactory('Resample_T', contentType=InputTypes.IntegerType)) # FIXME descr
+
+    # time discretization
+    time_discr = InputData.parameterInputFactory('time_discretization',
+        descr=r"""node that defines how within-cycle time discretization should be handled for
+        solving the dispatch.""")
+    time_discr.addSub(InputData.parameterInputFactory('time_variable', contentType=InputTypes.StringType,
+        descr=r"""name for the \texttt{time} variable used in this simulation. \default{time}"""))
+    time_discr.addSub(InputData.parameterInputFactory('start_time', contentType=InputTypes.FloatType,
+        descr=r"""value for \texttt{time} variable at which the inner dispatch should begin. \default{0}"""))
+    time_discr.addSub(InputData.parameterInputFactory('end_time', contentType=InputTypes.FloatType,
+        descr=r"""value for \texttt{time} variable at which the inner dispatch should end. If not specified,
+              both \xmlNode{time_interval} and \xmlNode{num_timesteps} must be defined."""))
+    time_discr.addSub(InputData.parameterInputFactory('num_steps', contentType=InputTypes.IntegerType,
+        descr=r"""number of discrete time steps for the inner dispatch.
+              Either this node or \xmlNode{time_interval} must be defined."""))
+    time_discr.addSub(InputData.parameterInputFactory('time_interval', contentType=InputTypes.FloatType,
+        descr=r"""length of a time step for the inner dispatch, in units of the time variable (not indices).
+              Either this node or \xmlNode{num_timesteps} must be defined. Note that if an integer number of
+              intervals do not fit between \xmlNode{start_time} and \xmlNode{end_time}, an error will be raised."""))
+    input_specs.addSub(time_discr)
 
     # economics global settings
     econ = InputData.parameterInputFactory('economics', ordered=False,
@@ -78,14 +98,21 @@ class Case(Base):
     input_specs.addSub(econ)
 
     # increments for resources
-    incr = InputData.parameterInputFactory('dispatch_increment', contentType=InputTypes.FloatType,
+    dispatch = InputData.parameterInputFactory('dispatcher', ordered=False,
+        descr=r"""This node defines the dispatch strategy and options to use in the ``inner'' run.""")
+    # TODO get types directly from Factory!
+    dispatch_options = InputTypes.makeEnumType('DispatchOptions', 'DispatchOptionsType', [d for d in known_dispatchers])
+    dispatch.addSub(InputData.parameterInputFactory('type', contentType=dispatch_options,
+        descr=r"""the name of the ``inner'' dispatch strategy to use."""))
+    incr = InputData.parameterInputFactory('increment', contentType=InputTypes.FloatType,
         descr=r"""When performing an incremental resource balance as part of a dispatch solve, this
               determines the size of incremental adjustments to make for the given resource. If this
               value is large, then the solve is accelerated, but may miss critical inflection points
               in economical tradeoff. If this value is small, the solve may take much longer.""")
     incr.addParam('resource', param_type=InputTypes.StringType, required=True,
         descr=r"""indicates the resource for which this increment is being defined.""")
-    input_specs.addSub(incr)
+    dispatch.addSub(incr)
+    input_specs.addSub(dispatch)
 
     return input_specs
 
@@ -99,14 +126,21 @@ class Case(Base):
     self.name = None           # case name
     self._mode = 'sweep'       # extrema to find: min, max, sweep
     self._metric = 'NPV'       # economic metric to focus on: lcoe, profit, cost
+
+    self.dispatch_name = None  # type of dispatcher to use
+    self.dispatcher = None    # type of dispatcher to use
+
     self._diff_study = None    # is this only a differential study?
     self._num_samples = 1      # number of ARMA stochastic samples to use ("denoises")
     self._hist_interval = None # time step interval, time between production points
     self._hist_len = None      # total history length, in same units as _hist_interval
     self._num_hist = None      # number of history steps, hist_len / hist_interval
     self._global_econ = {}     # global economics settings, as a pass-through
-    self._increments = {}
-    self._Resample_T = None        # user-set increments for resources
+    self._increments = {}      # stepwise increments for resource balancing
+    self._time_varname = 'time' # name of the variable throughout simulation
+
+    self._time_discretization = None # (start, end, number) for constructing time discretization, same as argument to np.linspace
+    self._Resample_T = None    # user-set increments for resources
 
   def read_input(self, xml):
     """
@@ -119,6 +153,7 @@ class Case(Base):
     specs.parseNode(xml)
     self.name = specs.parameterValues['name']
     for item in specs.subparts:
+      # TODO move from iterative list to seeking list, at least for required nodes
       if item.getName() == 'mode':
         self._mode = item.value
       elif item.getName() == 'metric':
@@ -127,26 +162,103 @@ class Case(Base):
         self._diff_study = item.value
       elif item.getName() == 'num_arma_samples':
         self._num_samples = item.value
-      elif item.getName() == 'Resample_T':
-        self._Resample_T = item.value
-      elif item.getName() == 'timestep_interval':
-        self._hist_interval = float(item.value)
-      elif item.getName() == 'history_length':
-        self._hist_len = item.value
+      elif item.getName() == 'time_discretization':
+        self._time_discretization = self._read_time_discr(item)
+
       elif item.getName() == 'economics':
         for sub in item.subparts:
           self._global_econ[sub.getName()] = sub.value
-      elif item.getName() == 'dispatch_increment':
-        self._increments[item.parameterValues['resource']] = item.value
+      elif item.getName() == 'dispatcher':
+        # instantiate a dispatcher object.
+        dispatch_name = item.findFirst('type').value
+        dispatcher_type = get_dispatcher(dispatch_name)
+        self.dispatcher = dispatcher_type()
+        self.dispatcher.read_input(item)
+        # XXX Remove -> send to dispatcher instead
+        for sub in item.subparts:
+          if item.getName() == 'increment':
+            self._increments[item.parameterValues['resource']] = item.value
 
-    self._num_hist = self._hist_len // self._hist_interval # TODO what if it isn't even?
+    # checks
+    if self.dispatcher is None:
+      self.raiseAnError('No <dispatch> node was provided in the <Case> node!')
+    if self._time_discretization is None:
+      self.raiseAnError('<time_discretization> node was not provided in the <Case> node!')
+
+    # TODO what if time discretization not provided yet?
+    self.dispatcher.set_time_discr(self._time_discretization)
+
+    # derivative calculations
+    # OLD self._num_hist = self._hist_len // self._hist_interval # TODO what if it isn't even?
+
     self.raiseADebug('Successfully initialized Case {}.'.format(self.name))
 
+  def _read_time_discr(self, node):
+    """
+      Reads the time discretization node.
+      @ In, node, InputParams.ParameterInput, time discretization head node
+      @ Out, discr, tuple, (start, end, num_steps) for creating numpy linspace
+    """
+    # name of time variable
+    var_name = node.findFirst('time_variable')
+    if var_name is not None:
+      self._time_varname = var_name.value
+    # start
+    start_node = node.findFirst('start_time')
+    if start_node is None:
+      start = 0.0
+    else:
+      start = start_node.value
+    # options:
+    end_node = node.findFirst('end_time')
+    dt_node = node.findFirst('time_interval')
+    num_node = node.findFirst('num_steps')
+    # - specify end and num steps
+    if (end_node and num_node):
+      end = end_node.value
+      num = num_node.value
+    # - specify end and dt
+    elif (end_node and dt_node):
+      end = end_node.value
+      dt = dt_node.value
+      num = int(np.floor((end - start) / dt))
+    # - specify dt and num steps
+    elif (dt_node and num_node):
+      dt = dt_node.value
+      num = num_node.value
+      end = dt * num + start
+    else:
+      self.raiseAnError(IOError, 'Invalid time discretization choices! Must specify any of the following pairs: ' +
+                                 '(<end_time> and <num_steps>) or ' +
+                                 '(<end_time> and <time_interval>) or ' +
+                                 '(<num_steps> and <time_interval>.)')
+    # TODO can we take it automatically from an ARMA later, either by default or if told to?
+    return (start, end, num)
+
+  def initialize(self, components, sources):
+    """
+      Called after all objects are created, allows post-input initialization
+      @ In, components, list, HERON components
+      @ In, sources, list, HERON sources (placeholders)
+      @ Out, None
+    """
+    self.dispatcher.initialize(self, components, sources)
+
   def __repr__(self):
+    """
+      Determines how this class appears when printed.
+      @ In, None
+      @ Out, repr, str, string representation
+    """
     return '<HERON Case>'
 
   def print_me(self, tabs=0, tab='  '):
-    """ Prints info about self """
+    """
+      Prints info about self
+      @ In, tabs, int, number of tabs to insert before print
+      @ In, tab, str, tab prefix
+      @ Out, None
+    """
     pre = tab*tabs
     print(pre+'Case:')
     print(pre+'  name:', self.name)
@@ -156,9 +268,19 @@ class Case(Base):
 
   #### ACCESSORS ####
   def get_increments(self):
+    """
+      Accessor.
+      @ In, None
+      @ Out, self._increments, dict, increments for resource evaluation
+    """
     return self._increments
 
   def get_working_dir(self, which):
+    """
+      Accessor.
+      @ In, which, str, o or i, whether outer or inner working dir is needed
+      @ Out, working_dir, str, relevant working dir
+    """
     if which == 'outer':
       io = 'o'
     elif which == 'inner':
@@ -168,6 +290,11 @@ class Case(Base):
     return '{case}_{io}'.format(case=self.name, io=io)
 
   def get_econ(self, components):
+    """
+      Accessor for economic settings for this case
+      @ In, components, list, list of HERON components
+      @ Out, get_econ, dict, dictionary of global economic settings
+    """
     # only add additional params the first time this is called
     if 'active' not in self._global_econ:
       # NOTE self._metric can only be NPV right now! XXX TODO FIXME
@@ -183,29 +310,70 @@ class Case(Base):
     return self._global_econ
 
   def get_metric(self):
+    """
+      Accessor
+      @ In, None
+      @ Out, metric, str, target metric for this case
+    """
     return self._metric
 
   def get_mode(self):
-    """ returns mode """
+    """
+      Accessor
+      @ In, None
+      @ Out, mode, str, mode of analysis for this case (sweep, opt, etc)
+    """
     return self._mode
 
   def get_num_samples(self):
+    """
+      Accessor
+      @ In, None
+      @ Out, num_samples, int, number of dispatch realizations to consider
+    """
     return self._num_samples
 
   def get_num_timesteps(self):
+    """
+      Accessor
+      @ In, None
+      @ Out, num_timesteps, int, number of time steps for inner dispatch
+    """
     return self._num_hist
 
+  def get_time_name(self):
+    """
+      Provides the name of the time variable.
+      @ In, None
+      @ Out, time name, string, name of time variable
+    """
+    return self._time_varname
+
   def get_Resample_T(self):
+    """
+      Accessor
+      @ In, None
+      @ Out, Resample_T, float, user-requested time deltas
+    """
     return self._Resample_T
 
   def get_hist_interval(self):
+    """
+      Accessor
+      @ In, None
+      @ Out, hist_interval, float, user-requested time deltas
+    """
     return self._hist_interval
 
   def get_hist_length(self):
+    """
+      Accessor
+      @ In, None
+      @ Out, hist_len, int, length of inner histories
+    """
     return self._hist_len
 
   #### API ####
-
   def write_workflows(self, components, sources, loc):
     """
       Writes workflows for this case to XMLs on disk.
@@ -222,7 +390,11 @@ class Case(Base):
 
   #### UTILITIES ####
   def _load_template(self):
-    """ TODO """
+    """
+      Loads template files for modification
+      @ In, None
+      @ Out, template_class, RAVEN Template, instantiated Template class
+    """
     src_dir = os.path.dirname(os.path.realpath(__file__))
     heron_dir = os.path.abspath(os.path.join(src_dir, '..'))
     template_dir = os.path.abspath(os.path.join(heron_dir, 'templates'))
@@ -235,15 +407,26 @@ class Case(Base):
     template_class.loadTemplate(None, template_dir)
     return template_class
 
-
   def _modify(self, templates, components, sources):
-    """ TODO """
+    """
+      Modifies template files to prepare case.
+      @ In, templates, dict, map of file templates
+      @ In, components, list, HERON Components
+      @ In, sources, list, HERON Placeholders
+      @ Out, _modify, dict, modified files
+    """
     outer = self._modify_outer(templates['outer'], components, sources)
     inner = self._modify_inner(templates['inner'], components, sources)
     return {'outer':outer, 'inner':inner}
 
   def _modify_outer(self, template, components, sources):
-    """ TODO """
+    """
+      Modifies the "outer" template file
+      @ In, template, xml, file template
+      @ In, components, list, HERON Components
+      @ In, sources, list, HERON Placeholders
+      @ Out, template, xml, modified template
+    """
     ###################
     # RUN INFO        #
     ###################
@@ -343,7 +526,13 @@ class Case(Base):
     return template
 
   def _modify_inner(self, template, components, sources):
-    """ TODO """
+    """
+      Modifies the "inner" template file
+      @ In, template, xml, file template
+      @ In, components, list, HERON Components
+      @ In, sources, list, HERON Placeholders
+      @ Out, template, xml, modified template
+    """
     ###################
     # RUN INFO        #
     # STEPS           #
@@ -387,16 +576,4 @@ class Case(Base):
         pass # TODO
       elif isinstance(source, Placeholders.Function):
         pass # TODO
-
-
-
-
     return template
-
-
-
-
-
-
-
-

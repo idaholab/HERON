@@ -95,5 +95,5 @@ if __name__ == '__main__':
   # print details
   sim.print_me()
   sim.create_raven_workflow()
-  sim.run()
+  # TODO someday? sim.run()
 

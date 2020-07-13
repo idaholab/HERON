@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright 2020, Battelle Energy Alliance, LLC
+# ALL RIGHTS RESERVED
 # Local variable definition ----------------------------------------------------
 # list of files to run.
 declare -a files=(heron_software_requirements_specifications_and_traceability)
@@ -7,7 +9,7 @@ declare -a exts=(txt ps ds)
 
 # Functions definition ---------------------------------------------------------
 # Subroutine to remove files.
-clean_files () { 
+clean_files () {
 	# Remove ald the files with the selected suffixes.
 	for ext in "${exts[@]}"
 	do
@@ -19,7 +21,7 @@ clean_files () {
 }
 
 # Subroutine to generate files.
-gen_files () { 
+gen_files () {
         git log -1 --format="%H %an %aD" .. > ../../version.tex
 	python ../srs/readRequirementsAndCreateLatex.py -i ../srs/requirements_list.xml -o ../srs/requirements.tex
 	python ../rtr/createSQAtracebilityMatrix.py -i ../srs/requirements_list.xml -o ../rtr/traceability_matrix.tex

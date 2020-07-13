@@ -1,4 +1,6 @@
 
+# Copyright 2020, Battelle Energy Alliance, LLC
+# ALL RIGHTS RESERVED
 import dill as pk
 
 def load_heron_lib(path, retry=0):

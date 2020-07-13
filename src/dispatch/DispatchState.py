@@ -1,3 +1,6 @@
+
+# Copyright 2020, Battelle Energy Alliance, LLC
+# ALL RIGHTS RESERVED
 import numpy as np
 from io import StringIO
 

@@ -1,4 +1,6 @@
 
+# Copyright 2020, Battelle Energy Alliance, LLC
+# ALL RIGHTS RESERVED
 import sys
 from CashFlows import CashFlowGroup
 import _utils as hutils

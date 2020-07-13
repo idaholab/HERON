@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright 2020, Battelle Energy Alliance, LLC
+# ALL RIGHTS RESERVED
 
 SCRIPT_NAME=`readlink $0`
 if test -x "$SCRIPT_NAME";

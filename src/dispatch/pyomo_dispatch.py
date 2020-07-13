@@ -11,6 +11,7 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 import pyomo.environ as pyo
+from pyomo.opt import SolverStatus, TerminationCondition
 
 # allows pyomo to solve on threaded processes
 import pyutilib.subprocess.GlobalData
@@ -152,9 +153,17 @@ class Pyomo(Dispatcher):
     self._create_conservation(m, resources) # conservation of resources (e.g. production == consumption)
     self._create_objective(meta, m) # objective
     # solve
-    # self._debug_pyomo_print(m)
+    #self._debug_pyomo_print(m)
     soln = pyo.SolverFactory('cbc').solve(m)
-    # soln.write() # DEBUGG
+    # check solve status
+    if soln.solver.status == SolverStatus.ok and soln.solver.termination_condition == TerminationCondition.optimal:
+      print('DEBUGG solve was successful!')
+    else:
+      print('DEBUGG solve was unsuccessful!')
+      print('DEBUGG status:', soln.solver.status)
+      print('DEBUGG termination:', soln.solver.termination_condition)
+      raise RuntimeError
+    #soln.write() # DEBUGG
     self._debug_print_soln(m) # DEBUGG
     # return dict of numpy arrays
     result = self._retrieve_solution(m)
@@ -203,10 +212,17 @@ class Pyomo(Dispatcher):
     constr = pyo.Constraint(m.T, rule=rule)
     setattr(m, '{c}_{r}_capacity_constr'.format(c=name, r=cap_res), constr)
     # minimum production
+    print('DEBUGG dispatchable?', comp.name, comp.is_dispatchable())
     if comp.is_dispatchable() == 'fixed':
       minimum = cap
+      var = getattr(m, prod_name)
+      values = var.get_values()
+      for k in values:
+        values[k] = cap
+      var.set_values(values)
     else:
       minimum = 0 #  -> for now just use 0, but fix this! XXX
+    print('DEBUGG ... min:', minimum)
     rule = partial(self._min_prod_rule, prod_name, r, cap, minimum)
     constr = pyo.Constraint(m.T, rule=rule)
     setattr(m, '{c}_{r}_minprod_constr'.format(c=name, r=cap_res), constr)

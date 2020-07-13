@@ -19,7 +19,7 @@
     <time_discretization>
       <time_variable>Time</time_variable>
       <end_time>2</end_time>
-      <num_steps>20</num_steps>
+      <num_steps>21</num_steps>
     </time_discretization>
     <economics>
       <ProjectTime>2</ProjectTime>
@@ -39,9 +39,9 @@
         <capacity resource="electricity">
           <sweep_values>1095,1098</sweep_values>
         </capacity>
-            <transfer>
-           <Function method="power_conversion">transfer</Function>
-         </transfer>
+        <!-- <transfer>
+          <Function method="power_conversion">transfers</Function>
+        </transfer> -->
       </produces>
       <economics>
         <lifetime>27</lifetime>
@@ -51,7 +51,7 @@
     <Component name="Electric_Grid">
       <demands resource="electricity" dispatch="independent">
         <capacity>
-          <fixed_value>1e200</fixed_value>
+          <fixed_value>-1e200</fixed_value>
         </capacity>
       </demands>
       <economics>
@@ -77,7 +77,6 @@
 
   <DataGenerators>
     <ARMA name='Speed' variable="Signal">../ARMA/Sine/arma.pk</ARMA>
-    <!--<Resampling_time name='sampling' variable="dt">500</Resampling_time>-->
     <Function name="transfer">transfers.py</Function>
   </DataGenerators>
 

@@ -87,6 +87,21 @@ class DispatchState:
     # to be overwritten by implementing classes
     raise NotImplementedError
 
+  def create_raven_vars(self, template):
+    """
+      Writes out RAVEN variables as expected
+      @ In, template, str, formating string for variable names (using {comp}, {res})
+      @ Out, data, dict, map of raven var names to numpy array data
+    """
+    #template = 'Dispatch__{c}__{r}' # standardized via input
+    data = {}
+    for comp in self._components:
+      for res, r in self._resources[comp].items():
+        result = np.empty(len(self._times))
+        for t, time in enumerate(self._times):
+          result[t] = self.get_activity_indexed(comp, r, t)
+        data[template.format(comp=comp.name, res=res)] = result
+    return data
 
 
 

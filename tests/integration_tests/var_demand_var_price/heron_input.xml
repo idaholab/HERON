@@ -15,11 +15,11 @@
     <mode>sweep</mode>
     <metric>NPV</metric>
     -->
-    <num_arma_samples>2</num_arma_samples>
+    <num_arma_samples>3</num_arma_samples>
     <time_discretization>
       <time_variable>Time</time_variable>
       <end_time>2</end_time>
-      <num_steps>20</num_steps>
+      <num_steps>21</num_steps>
     </time_discretization>
     <economics>
       <ProjectTime>3</ProjectTime>
@@ -39,9 +39,9 @@
         <capacity resource="electricity">
           <sweep_values>1095,1098</sweep_values>
         </capacity>
-        <transfer>
+        <!-- <transfer>
           <Function method="power_conversion">transfers</Function>
-        </transfer>
+        </transfer> -->
       </produces>
       <economics>
         <lifetime>27</lifetime>
@@ -49,9 +49,9 @@
     </Component>
 
     <Component name="Electric_Grid">
-      <demands resource="electricity" dispatch="independent"><!---->
+      <demands resource="electricity" dispatch="independent">
         <capacity>
-          <fixed_value>1e200</fixed_value>
+          <fixed_value>-1e200</fixed_value>
         </capacity>
       </demands>
       <economics>

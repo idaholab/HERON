@@ -154,7 +154,7 @@ class DispatchRunner:
       segs = range(1)
 
     interp_years = range(*structure['interpolated'])
-    project_life = hutils.get_project_lifetime(self._case, self._components)
+    project_life = hutils.get_project_lifetime(self._case, self._components) - 1 # 1 for construction year
     # if the ARMA is a single year, no problem, we replay it for each year
     # if the ARMA is the same or greater number of years than the project_life, we can use the ARMA still
     # otherwise, there's a problem
@@ -180,11 +180,11 @@ class DispatchRunner:
     num_segs = len(segs)
     active_index = {}
     # dispatch storage
-    dispatch_results = []
+    dispatch_results = {}
     # for each project year ...
     for year in range(project_life):
       interp_year = interp_years[year] if len(interp_years) > 1 else (interp_years[0] + year)
-      dispatch_results.append([])
+      dispatch_results[interp_year] = []
       print(f'DEBUGG Dispatching year {interp_year} ({year+1}/{project_life}):')
       # if the ARMA is interpolated, we need to track which year we're in. Otherwise, use just the
       #     nominal first year.
@@ -204,7 +204,7 @@ class DispatchRunner:
                                              self._components,
                                              self._sources,
                                              meta)
-        dispatch_results[-1].append({'dispatch': dispatch, 'division': seg, 'active_index': active_index,
+        dispatch_results[interp_year].append({'dispatch': dispatch, 'division': seg, 'active_index': active_index,
                                      'trunc_vars': meta['HERON'].pop('RAVEN_vars')})
         print(f'DEBUGG ... ... {seg_type} {s+1}/{num_segs} dispatched!')
     return dispatch_results
@@ -228,9 +228,10 @@ class DispatchRunner:
 
     yearly_cluster_data = next(iter(all_structure['details'].values()))['clusters']
     print('DEBUGG preparing FINAL CASHFLOW ...')
+    print('DEBUGG years:', project_life)
     for year in range(project_life):
       interp_year = interp_years[year] if len(interp_years) > 1 else (interp_years[0] + year)
-      year_data = all_dispatch[year]
+      year_data = all_dispatch[interp_year]
 
       for s, seg_data in enumerate(year_data):
         seg = seg_data['division']
@@ -344,6 +345,16 @@ class DispatchRunner:
     print('* Starting final cashflow calculations *')
     print('****************************************')
     raven_vars = meta['HERON']['RAVEN_vars_full']
+    # DEBUGG
+    print('DEBUGG CASHFLOWS')
+    for comp_name, comp in final_components.items():
+      print(f' ... comp {comp_name} ...')
+      for cf in comp.get_cashflows():
+        print(f' ... ... cf {cf.name} ...')
+        print(f' ... ... ... D', cf._driver)
+        print(f' ... ... ... a', cf._alpha)
+        print(f' ... ... ... a', cf._yearly_cashflow)
+
     cf_metrics = CashFlow_run(final_settings, list(final_components.values()), raven_vars)
 
     print('****************************************')
@@ -398,7 +409,7 @@ class DispatchRunner:
                           'mult_target': heron_cf._mult_target, # FIXME protected access
                           }
           cf_cf.set_params(cf_cf_params)
-          cf_cf.init_params(project_life + 1)
+          cf_cf.init_params(project_life)
         elif heron_cf._type == 'one_time': # FIXME protected access
           cf_cf = CashFlows.Capex()
           cf_cf.name = cf_name
@@ -419,6 +430,36 @@ class DispatchRunner:
       @ In, dispatch, DispatchState, dispatch values (FIXME currently unused)
       @ In, metrics, dict, economic metrics
     """
+    # indexer = dict((comp, dict((res, r) for r, res in enumerate(comp.get_resources()))) for comp in self._components)
+    # shape = [len(dispatch), len(next(iter(dispatch)))] # years, clusters
+    template = self.naming_template['dispatch var']
+    # initialize variables
+    # for comp in self._components:
+    #   for res, r in indexer[comp].items():
+    #     name = template.format(c=comp.name, r=res)
+    #     setattr(raven, name, np.zeros(shape)) # FIXME need time!
+    for y, (year, year_data) in enumerate(dispatch.items()):
+      for c, cluster_data in enumerate(year_data):
+        dispatches = cluster_data['dispatch'].create_raven_vars(template)
+        # set up index map, first time only
+        if y == c == 0:
+          # TODO custom names?
+          raven.ClusterTime = np.asarray(cluster_data['dispatch']._times) # TODO assuming same across clusters!
+          raven.Cluster = np.arange(len(year_data))
+          raven.Years = np.asarray(dispatch.keys())
+          if not getattr(raven, '_indexMap', None):
+            raven._indexMap = np.atleast_1d({})
+        for var_name, data in dispatches.items():
+          # if first time, initialize data structure
+          if y == c == 0:
+            shape = (len(dispatch), len(year_data), len(data))
+            setattr(raven, var_name, np.empty(shape)) # FIXME could use np.zeros, but slower?
+          getattr(raven, var_name)[y, c] = data
+          getattr(raven, '_indexMap')[0][var_name] = ['Year', 'Cluster', 'ClusterTime']
+        #for component in self._components:
+          # TODO cheating using the numpy state
+        #  dispatch = cluster_data['dispatch']
+        #  resource_indices = cluster_data._resources[component]
     # TODO clustering, multiyear
     # TODO should this be a Runner method or separate?
     # template = self.naming_template['dispatch var']
@@ -626,4 +667,6 @@ def run(raven, raven_dict):
   # TODO clustering, multiyear, etc?
   dispatch, metrics = runner.run(raven_vars)
   runner.save_variables(raven, dispatch, metrics)
+  # TODO these are extraneous, remove from template!
+  raven.time_delta = 0
 

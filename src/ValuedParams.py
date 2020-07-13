@@ -299,17 +299,20 @@ class ValuedParam:
     key = variable if not target_var else target_var
     if variable in aliases:
       variable = aliases[variable]
-    t = inputs['t']
-    year = inputs['meta']['EGRET']['sim_year_index']
-    dim_map = inputs['raven_vars']['_indexMap'][0][variable]
-    # TODO this is hard-coded to "Year", but so is the ARMA right now.
-    if dim_map[0] == 'Year':
-      selector = (year, t)
-    else:
-      selector = (t, year)
-    #print('DEBUGG dim map:', dim_map)
+    t = inputs['HERON']['time_index']
+    # there may not be a "Year" here, Year is handled by Manager
+    # dim_map = inputs['HERON']['RAVEN_vars']['_indexMap'][0][variable]
+    # if 'Year' in dim_map:
+    #   # TODO this is hard-coded to "Year", but so is the ARMA right now.
+    #   year = inputs['HERON']['active_index']['year']
+    #   if dim_map[0] == 'Year':
+    #     selector = (year, t)
+    #   else:
+    #     selector = (t, year)
+    # else:
+    selector = t
     try:
-      value = inputs['raven_vars'][variable][selector]
+      value = inputs['HERON']['RAVEN_vars'][variable][selector]
       #print('DEBUGG value:')
       #print(value)
       #vvvvvvv

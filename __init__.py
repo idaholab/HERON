@@ -1,2 +1,2 @@
-# from .src import _utils
-# from .src import main as heron
+# Copyright 2020, Battelle Energy Alliance, LLC
+# ALL RIGHTS RESERVED

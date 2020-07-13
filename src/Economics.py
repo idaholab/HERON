@@ -1,3 +1,6 @@
+
+# Copyright 2020, Battelle Energy Alliance, LLC
+# ALL RIGHTS RESERVED
 """
   Defines the Economics entity.
   Each component (or source?) can have one of these to describe its economics.

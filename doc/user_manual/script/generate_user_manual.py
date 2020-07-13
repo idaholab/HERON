@@ -1,3 +1,6 @@
+
+# Copyright 2020, Battelle Energy Alliance, LLC
+# ALL RIGHTS RESERVED
 """
   Populates user manual with automatic documentation.
 """

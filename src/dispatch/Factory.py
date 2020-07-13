@@ -1,4 +1,6 @@
 
+# Copyright 2020, Battelle Energy Alliance, LLC
+# ALL RIGHTS RESERVED
 # from generic import Generic
 # from marginal import marginal
 # from custom import Custom

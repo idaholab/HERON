@@ -11,11 +11,16 @@
   </TestInfo>
 
   <Case name="Sweep_Runs">
+    <!--
     <mode>sweep</mode>
     <metric>NPV</metric>
+    -->
     <num_arma_samples>2</num_arma_samples>
-    <timestep_interval>3600</timestep_interval>
-    <history_length>31536000</history_length>
+    <time_discretization>
+      <time_variable>Time</time_variable>
+      <end_time>2</end_time>
+      <num_steps>21</num_steps>
+    </time_discretization>
     <economics>
       <ProjectTime>2</ProjectTime>
       <DiscountRate>0.08</DiscountRate>
@@ -23,7 +28,9 @@
       <inflation>0.0</inflation>
       <verbosity>50</verbosity>
     </economics>
-    <dispatch_increment resource="electricity">1e6</dispatch_increment>
+    <dispatcher>
+      <type>pyomo</type>
+    </dispatcher>
   </Case>
 
   <Components>
@@ -32,9 +39,9 @@
         <capacity resource="electricity">
           <sweep_values>1095,1098</sweep_values>
         </capacity>
-            <transfer>
-           <Function method="power_conversion">transfer</Function>
-         </transfer>
+        <!-- <transfer>
+          <Function method="power_conversion">transfers</Function>
+        </transfer> -->
       </produces>
       <economics>
         <lifetime>27</lifetime>
@@ -44,7 +51,7 @@
     <Component name="Electric_Grid">
       <demands resource="electricity" dispatch="independent">
         <capacity>
-          <fixed_value>1e200</fixed_value>
+          <fixed_value>-1e200</fixed_value>
         </capacity>
       </demands>
       <economics>
@@ -68,10 +75,9 @@
 
   </Components>
 
-
   <DataGenerators>
-  <ARMA name='Speed' variable="Signal">/ARMA/interpolated.pk</ARMA>
-  <Function name="transfer">transfers.py</Function>
+    <ARMA name='Speed' variable="Signal">../ARMA/Sine/arma.pk</ARMA>
+    <Function name="transfer">transfers.py</Function>
   </DataGenerators>
 
 </HERON>

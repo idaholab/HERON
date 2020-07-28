@@ -1,4 +1,6 @@
 
+# Copyright 2020, Battelle Energy Alliance, LLC
+# ALL RIGHTS RESERVED
 
 
 import os
@@ -33,7 +35,7 @@ class HeronIntegration(RavenTester):
       @ Out, None
     """
     RavenTester.__init__(self, name, param)
-    self.heron_driver = os.path.join(HERON_LOC, 'Heron.py') # TODO main.py?
+    self.heron_driver = os.path.join(HERON_LOC, 'main.py')
     # NOTE: self.driver is RAVEN driver (e.g. /path/to/Driver.py)
 
   def get_command(self):
@@ -46,8 +48,10 @@ class HeronIntegration(RavenTester):
     python = self._get_python_command()
     test_loc = os.path.abspath(self.specs['test_dir'])
     # HERON expects to be run in the dir of the input file currently, TODO fix this
-    cmd += ' cd {loc}'.format(test_loc)
+    cmd += ' cd {loc}'.format(loc=test_loc)
     cmd += ' && '
+    # clear the subdirectory if it's present
+    cmd += ' rm -rf Sweep_Runs_o/ ||: && '
     # run HERON first
     heron_inp = os.path.join(test_loc, self.specs['input'])
     cmd += ' {py} {heron} {input}'.format(py=python,
@@ -57,11 +61,8 @@ class HeronIntegration(RavenTester):
     ## TODO raven flags? So far I can't see it, but lets leave a spot
     raven_inp = os.path.abspath(os.path.join(os.path.dirname(heron_inp), 'outer.xml'))
     cmd += ' && ' # posix, only run second command if first one succeeds
-    cmd += ' {py} {raven} {flag} {input}'.format(py=python,
-                                                 raven=self.driver,
-                                                 flag='',
-                                                 input=raven_inp)
-    print('HERON command:', cmd)
+    cmd += f' {python} {self.driver} {raven_inp}'
+    # print('HERON command:', cmd)
     # print('\n\nDEBUGG dir:\n')
     # import pprint
     # pprint.pprint(self.__dir__())

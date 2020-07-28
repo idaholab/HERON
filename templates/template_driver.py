@@ -1,3 +1,6 @@
+
+# Copyright 2020, Battelle Energy Alliance, LLC
+# ALL RIGHTS RESERVED
 """
   Holds the template information for creating LCOE SWEEP OPT input files.
 """
@@ -49,7 +52,7 @@ class Template(TemplateBase):
                                    'data object'    : '{source}_{contents}',
                                    'distribution'   : '{unit}_{feature}_dist',
                                    'ARMA sampler'   : '{rom}_sampler',
-                                   'EGRET lib'      : 'egret.lib',
+                                   'lib file'       : 'heron.lib', # TODO use case name?
                                    'cashfname'      : '_{component}{cashname}',
                                    're_cash'        : '_rec_{period}_{driverType}{driverName}'
                                   })
@@ -135,7 +138,7 @@ class Template(TemplateBase):
     print(msg_format.format(*os.path.split(cash_file)))
     # write library of info so it can be read in dispatch during inner run
     data = (self.__case, self.__components, self.__sources)
-    lib_file = os.path.abspath(os.path.join(destination, self.namingTemplates['EGRET lib']))
+    lib_file = os.path.abspath(os.path.join(destination, self.namingTemplates['lib file']))
     with open(lib_file, 'wb') as lib:
       pk.dump(data, lib)
     print(msg_format.format(*os.path.split(lib_file)))
@@ -164,7 +167,7 @@ class Template(TemplateBase):
     self._modify_outer_samplers(template, case, components)
     self._modify_block_transfer(template)
     # TODO copy needed model/ARMA/etc files to Outer Working Dir so they're known
-    # TODO including the egret library file
+    # TODO including the heron library file
     return template
 
   def _modify_block_transfer(self,template):
@@ -283,7 +286,7 @@ class Template(TemplateBase):
   def _modify_inner(self, template, case, components, sources):
     """ TODO """
     input_filepath=os.path.abspath((os.path.dirname(__file__)))
-    input_filepath=input_filepath+'/../src/dispatch.py'
+    input_filepath=input_filepath+'/../src/DispatchManager'
     ext_model=template.find('Models').find('ExternalModel')
     ext_model.set('ModuleToLoad',input_filepath)
     self._modify_inner_runinfo(template, case)

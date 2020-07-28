@@ -11,21 +11,26 @@
   </TestInfo>
 
   <Case name="Sweep_Runs">
+    <!--
     <mode>sweep</mode>
     <metric>NPV</metric>
-    <!--<differential>True</differential> -->
-    <num_arma_samples>2</num_arma_samples>
-    <timestep_interval>1</timestep_interval> <!-- unit=seconds -->
-    <history_length>20</history_length>
+    -->
+    <num_arma_samples>3</num_arma_samples>
+    <time_discretization>
+      <time_variable>Time</time_variable>
+      <end_time>2</end_time>
+      <num_steps>21</num_steps>
+    </time_discretization>
     <economics>
       <ProjectTime>3</ProjectTime>
       <DiscountRate>0.08</DiscountRate>
       <tax>0.0</tax>
-      <!-- Inflation rate consistent with average from 2000-2018 years -->
       <inflation>0.0</inflation>
       <verbosity>50</verbosity>
     </economics>
-    <dispatch_increment resource="electricity">1e6</dispatch_increment> <!-- MW -->
+    <dispatcher>
+      <type>pyomo</type>
+    </dispatcher>
   </Case>
 
   <Components>
@@ -34,9 +39,9 @@
         <capacity resource="electricity">
           <sweep_values>1095,1098</sweep_values>
         </capacity>
-        <transfer>
+        <!-- <transfer>
           <Function method="power_conversion">transfers</Function>
-        </transfer>
+        </transfer> -->
       </produces>
       <economics>
         <lifetime>27</lifetime>
@@ -44,9 +49,9 @@
     </Component>
 
     <Component name="Electric_Grid">
-      <demands resource="electricity" dispatch="independent"><!---->
+      <demands resource="electricity" dispatch="independent">
         <capacity>
-          <fixed_value>1e200</fixed_value>
+          <fixed_value>-1e200</fixed_value>
         </capacity>
       </demands>
       <economics>
@@ -70,10 +75,9 @@
 
   </Components>
 
-
   <DataGenerators>
-    <ARMA name='Speed' variable="Signal">/ARMA/interpolated.pk</ARMA>
-    <Function name="transfers">transfers.py</Function> <!-- TODO specify the variables needed? -->
+    <ARMA name='Speed' variable="Signal">../ARMA/Sine/arma.pk</ARMA>
+    <Function name="transfers">transfers.py</Function>
   </DataGenerators>
 
 </HERON>

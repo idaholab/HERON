@@ -1,13 +1,11 @@
 
-import os
+# Copyright 2020, Battelle Energy Alliance, LLC
+# ALL RIGHTS RESERVED
 import sys
-#from collections import defaultdict
-#import numpy as np
 from CashFlows import CashFlowGroup
-
-raven_path = '~/projects/raven/framework' # TODO plugin path
-sys.path.append(os.path.expanduser(raven_path))
-from utils import InputData
+import _utils as hutils
+raven_path = hutils.get_raven_loc()
+sys.path.append(raven_path)
 
 class CashFlowUser:
   """
@@ -32,7 +30,7 @@ class CashFlowUser:
   def __init__(self):
     """
       Constructor
-      @ In, kwargs, dict, optional, arguments to pass to other constructors
+      @ In, None
       @ Out, None
     """
     self._economics = None # CashFlowGroup

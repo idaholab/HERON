@@ -7,7 +7,6 @@
     <!-- Windows doesn't have a reasonably-accessible installer for coincbc -->
     <coincbc os="mac,linux" source='forge' skip_check='True'/>
   </main>
-
   <alternate name='pip'>
     <coincbc>remove</coincbc>
     <glpk>remove</glpk>

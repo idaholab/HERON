@@ -9,11 +9,9 @@ import os
 import sys
 import time as time_mod
 from functools import partial
-from collections import defaultdict
 import platform
 
 import numpy as np
-import pandas as pd
 import pyomo.environ as pyo
 from pyomo.opt import SolverStatus, TerminationCondition
 

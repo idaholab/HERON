@@ -9,10 +9,9 @@ import os
 import sys
 import time as time_mod
 from functools import partial
-from collections import defaultdict
+import platform
 
 import numpy as np
-import pandas as pd
 import pyomo.environ as pyo
 from pyomo.opt import SolverStatus, TerminationCondition
 
@@ -27,6 +26,12 @@ try:
 except (ModuleNotFoundError, ImportError):
   sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
   import _utils as hutils
+
+# Choose solver; CBC is a great choice unless we're on Windows
+if platform.system == 'Windows':
+  SOLVER = 'glpk'
+else:
+  SOLVER = 'cbc'
 
 
 class Pyomo(Dispatcher):
@@ -157,7 +162,7 @@ class Pyomo(Dispatcher):
     self._create_objective(meta, m) # objective
     # solve
     #self._debug_pyomo_print(m)
-    soln = pyo.SolverFactory('cbc').solve(m)
+    soln = pyo.SolverFactory(SOLVER).solve(m)
     # check solve status
     if soln.solver.status == SolverStatus.ok and soln.solver.termination_condition == TerminationCondition.optimal:
       print('DEBUGG solve was successful!')

@@ -25,7 +25,7 @@ def get_raven_loc():
 
 def get_cashflow_loc(raven_path=None):
   """
-    Get CashFlow location in installed RAVEN
+    Get CashFlow (aka TEAL) location in installed RAVEN
     @ In, raven_path, string, optional, if given then start with this path
     @ Out, cf_loc, string, location of CashFlow
   """
@@ -35,7 +35,7 @@ def get_cashflow_loc(raven_path=None):
   sys.path.append(plugin_handler_dir)
   plugin_handler = importlib.import_module('plugin_handler')
   sys.path.pop()
-  cf_loc = plugin_handler.getPluginLocation('CashFlow')
+  cf_loc = plugin_handler.getPluginLocation('TEAL')
   return cf_loc
 
 def get_all_resources(components):
@@ -58,13 +58,13 @@ def get_project_lifetime(case, components):
   """
   # load CashFlow
   try:
-    from CashFlow.src.main import get_project_length
-    from CashFlow.src import CashFlows
+    from TEAL.src.main import get_project_length
+    from TEAL.src import CashFlows
   except (ImportError, ModuleNotFoundError) as e:
     loc = get_cashflow_loc()
     sys.path.append(loc)
-    from CashFlow.src.main import get_project_length
-    from CashFlow.src import CashFlows
+    from TEAL.src.main import get_project_length
+    from TEAL.src import CashFlows
     sys.path.pop()
   econ_comps = list(comp.get_economics() for comp in components)
   econ_params = case.get_econ(econ_comps)

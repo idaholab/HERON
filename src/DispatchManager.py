@@ -23,8 +23,8 @@ sys.path.pop()
 
 cashflow_path = hutils.get_cashflow_loc(raven_path=raven_path)
 sys.path.append(cashflow_path)
-from CashFlow.src import CashFlows
-from CashFlow.src.main import run as CashFlow_run
+from TEAL.src import CashFlows
+from TEAL.src.main import run as CashFlow_run
 sys.path.pop()
 
 class DispatchRunner:

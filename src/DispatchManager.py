@@ -23,8 +23,8 @@ sys.path.pop()
 
 cashflow_path = hutils.get_cashflow_loc(raven_path=raven_path)
 sys.path.append(cashflow_path)
-from CashFlow.src import CashFlows
-from CashFlow.src.main import run as CashFlow_run
+from TEAL.src import CashFlows
+from TEAL.src.main import run as CashFlow_run
 sys.path.pop()
 
 class DispatchRunner:
@@ -278,11 +278,11 @@ class DispatchRunner:
           specific_meta['HERON']['component'] = comp
           specific_meta['HERON']['activity'] = dispatch
           specific_activity = {}
-          final_cashflows = final_comp.get_cashflows()
+          final_cashflows = final_comp.getCashflows()
           for f, heron_cf in enumerate(comp.get_cashflows()):
             print(f'DEBUGG ... ... ... ... cashflow {f}: {heron_cf.name} ...')
             # get the corresponding CashFlow.CashFlow
-            cf_cf = cf_comp.get_cashflows()[f]
+            cf_cf = cf_comp.getCashflows()[f]
             final_cf = final_cashflows[f]
             # sanity continued
             if not (cf_cf.name == final_cf.name == heron_cf.name): raise RuntimeError
@@ -304,7 +304,7 @@ class DispatchRunner:
                               'reference': params['ref_driver'],
                               'X': params['scaling']
                             }
-                cf_cf.set_params(cf_params)
+                cf_cf.setParams(cf_params)
                 # because alpha, driver, etc are only set once for Capex cash flows, we can just
                 # hot swap this cashflow into the final_comp, I think ...
                 # I believe we can do this because Capex are division-independent? Can we just do
@@ -332,7 +332,7 @@ class DispatchRunner:
                   params = heron_cf.calculate_params(specific_meta) # a, D, Dp, x, cost
                   contrib = params['cost'] * multiplicity
                   print(f'DEBUGG ... ... ... ... ... time {t:4d} ({time:1.9e}) contribution: {contrib: 1.9e} ...')
-                  final_cf._yearly_cashflow[year+1] += contrib
+                  final_cf._yearlyCashflow[year+1] += contrib
               else:
                 raise NotImplementedError(f'Unrecognized Recurring period for "{comp.name}" cashflow "{heron_cf.name}": {heron_cf.get_period()}')
             else:
@@ -352,11 +352,11 @@ class DispatchRunner:
     print('DEBUGG CASHFLOWS')
     for comp_name, comp in final_components.items():
       print(f' ... comp {comp_name} ...')
-      for cf in comp.get_cashflows():
+      for cf in comp.getCashflows():
         print(f' ... ... cf {cf.name} ...')
         print(f' ... ... ... D', cf._driver)
         print(f' ... ... ... a', cf._alpha)
-        print(f' ... ... ... a', cf._yearly_cashflow)
+        print(f' ... ... ... a', cf._yearlyCashflow)
 
     cf_metrics = CashFlow_run(final_settings, list(final_components.values()), raven_vars)
 
@@ -383,7 +383,7 @@ class DispatchRunner:
     # build global econ settings for CashFlow
     global_params = heron_case.get_econ(heron_econs)
     global_settings = CashFlows.GlobalSettings()
-    global_settings.set_params(global_params)
+    global_settings.setParams(global_params)
     global_settings._verbosity = 0 # FIXME direct access, also make user option?
     # build CashFlow component instances
     cf_components = {}
@@ -398,7 +398,7 @@ class DispatchRunner:
                         'Life_time': cfg.get_lifetime(),
                         # TODO StartTime, Repetitions, tax, inflation
                        }
-      cf_comp.set_params(cf_comp_params)
+      cf_comp.setParams(cf_comp_params)
       cf_components[comp_name] = cf_comp
       # create all the CashFlow.CashFlows (cf_cf) for the CashFlow.Component
       cf_cfs = []
@@ -411,8 +411,8 @@ class DispatchRunner:
                           'X': 1.0,
                           'mult_target': heron_cf._mult_target, # FIXME protected access
                           }
-          cf_cf.set_params(cf_cf_params)
-          cf_cf.init_params(project_life)
+          cf_cf.setParams(cf_cf_params)
+          cf_cf.initParams(project_life)
         elif heron_cf._type == 'one_time': # FIXME protected access
           cf_cf = CashFlows.Capex()
           cf_cf.name = cf_name
@@ -422,7 +422,7 @@ class DispatchRunner:
           raise NotImplementedError(f'Unknown HERON CashFlow Type: {heron_cf._type}')
         # store new object
         cf_cfs.append(cf_cf)
-      cf_comp.add_cashflows(cf_cfs)
+      cf_comp.addCashflows(cf_cfs)
     return global_settings, cf_components
 
   def save_variables(self, raven, dispatch, metrics):

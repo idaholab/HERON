@@ -58,19 +58,19 @@ def get_project_lifetime(case, components):
   """
   # load CashFlow
   try:
-    from TEAL.src.main import get_project_length
+    from TEAL.src.main import getProjectLength
     from TEAL.src import CashFlows
   except (ImportError, ModuleNotFoundError) as e:
     loc = get_cashflow_loc()
     sys.path.append(loc)
-    from TEAL.src.main import get_project_length
+    from TEAL.src.main import getProjectLength
     from TEAL.src import CashFlows
     sys.path.pop()
   econ_comps = list(comp.get_economics() for comp in components)
   econ_params = case.get_econ(econ_comps)
   econ_settings = CashFlows.GlobalSettings()
-  econ_settings.set_params(econ_params)
-  return get_project_length(econ_settings, econ_comps)
+  econ_settings.setParams(econ_params)
+  return getProjectLength(econ_settings, econ_comps)
 
 if __name__ == '__main__':
   action = sys.argv[1]

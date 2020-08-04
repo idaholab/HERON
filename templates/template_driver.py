@@ -25,8 +25,8 @@ RAVEN_LOC = hutils.get_raven_loc()
 CF_LOC = hutils.get_cashflow_loc(raven_path=RAVEN_LOC)
 
 sys.path.append(os.path.join(CF_LOC, '..'))
-from CashFlow.src.main import get_project_length
-from CashFlow.src import CashFlows
+from TEAL.src.main import getProjectLength
+from TEAL.src import CashFlows
 sys.path.pop()
 
 sys.path.append(os.path.join(RAVEN_LOC, '..'))
@@ -539,8 +539,8 @@ class Template(TemplateBase):
     econ_comps = list(comp.get_economics() for comp in components)
     econ_global_params = case.get_econ(econ_comps)
     econ_global_settings = CashFlows.GlobalSettings()
-    econ_global_settings.set_params(econ_global_params)
-    project_life = get_project_length(econ_global_settings, econ_comps) - 1 # skip construction year
+    econ_global_settings.setParams(econ_global_params)
+    project_life = getProjectLength(econ_global_settings, econ_comps) - 1 # skip construction year
     #multiyear = xmlUtils.newNode('Multiyear')
     #multiyear.append(xmlUtils.newNode('years', text=project_life))
     # TODO FIXME XXX growth param ????

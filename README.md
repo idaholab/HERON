@@ -7,3 +7,5 @@ to run constructed workflows. HERON is a plugin for RAVEN.
 
 Instructions for
 installing RAVEN plugins (including HERON) can be found [on RAVEN's website](https://github.com/idaholab/raven/wiki/Plugins).
+
+See more on the [HERON wiki](https://github.com/idaholab/HERON/wiki)

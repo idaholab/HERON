@@ -1,3 +1,4 @@
+![HERON Logo](./logos/HERON_logo_full.png)
 HERON (Holistic Energy Resource Optimization Network) is a project to construct
 workflows solving complex resource allocation problems to meet target economic
 goals.

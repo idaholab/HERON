@@ -23,6 +23,9 @@ sys.path.pop()
 # get raven location
 RAVEN_LOC = hutils.get_raven_loc()
 CF_LOC = hutils.get_cashflow_loc(raven_path=RAVEN_LOC)
+if CF_LOC is None:
+  raise RuntimeError('TEAL has not been found!\n' +
+                     f'Check TEAL installation for the RAVEN at "{RAVEN_LOC}"')
 
 sys.path.append(os.path.join(CF_LOC, '..'))
 from TEAL.src.main import getProjectLength
@@ -70,7 +73,11 @@ class Template(TemplateBase):
   # API      #
   ############
   def __init__(self):
-    """ Constructor """
+    """
+      Constructor
+      @ In, None
+      @ Out, None
+    """
     here = os.path.dirname(os.path.abspath(sys.modules[self.__class__.__module__].__file__))
     self._template_path = here
     self._template_inner_path = None
@@ -80,8 +87,12 @@ class Template(TemplateBase):
     self._template_inner = None
     self._template_outer = None
 
-  def loadTemplate(self, filename, path):
-    """ todo """
+  def loadTemplate(self, path):
+    """
+      Loads RAVEN template files from source.
+      @ In, path, str, relative path to templates
+      @ Out, None
+    """
     rel_path = os.path.join(self._template_path, path)
     self._template_inner_path = os.path.join(rel_path, 'inner.xml')
     self._template_outer_path = os.path.join(rel_path, 'outer.xml')
@@ -118,7 +129,13 @@ class Template(TemplateBase):
     return inner, outer, cash
 
   def writeWorkflow(self, templates, destination, run=False):
-    """ todo """
+    """
+      Write outer and inner RAVEN workflows.
+      @ In, templates, list, modified XML roots
+      @ In, destination, str, path to write workflows to
+      @ In, run, bool, if True then attempt to run the workflows
+      @ Out, None
+    """
     # TODO use destination?
     # write templates
     inner, outer, cash = templates
@@ -151,60 +168,62 @@ class Template(TemplateBase):
     if run:
       self.runWorkflow(destination)
 
-  # TODO runWorkflow
-
-
   ############
   # UTILS    #
   ############
   ##### OUTER #####
   def _modify_outer(self, template, case, components, sources):
-    """ TODO """
+    """
+      Defines modifications to the outer.xml RAVEN input file.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ In, components, list, list of HERON Component instances for this run
+      @ In, sources, list, list of HERON Placeholder instances for this run
+      @ Out, template, xml.etree.ElementTree.Element, modified template
+    """
     self._modify_outer_runinfo(template, case)
     self._modify_outer_vargroups(template, components)
     self._modify_outer_files(template, sources)
     self._modify_outer_models(template, components)
     self._modify_outer_samplers(template, case, components)
-    self._modify_block_transfer(template)
     # TODO copy needed model/ARMA/etc files to Outer Working Dir so they're known
     # TODO including the heron library file
     return template
 
-  def _modify_block_transfer(self,template):
-    for child in template:
-      if child == template.find('Files'):
-        AK=(child.findall('Input'))
-
-    for i in range(0,len(AK)-1):
-      if ET.tostring(AK[i])==ET.tostring(AK[i+1]):
-        temp =  (AK[i]).attrib['name']
-        AK[i+1].set('name', temp+str(np.random.randint(10)))
-    return(template)
-
   def _modify_outer_runinfo(self, template, case):
-    """ TODO """
+    """
+      Defines modifications to the RunInfo of outer.xml RAVEN input file.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ Out, None
+    """
     run_info = template.find('RunInfo')
     case_name = self.namingTemplates['jobname'].format(case=case.name, io='o')
-    # job name
     run_info.find('JobName').text = case_name
-    # working dir
     run_info.find('WorkingDir').text = case_name
-    # TODO sequence, maybe should be modified after STEPS (or part of it)
 
   def _modify_outer_vargroups(self, template, components):
-    """ TODO """
+    """
+      Defines modifications to the VariableGroups of outer.xml RAVEN input file.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, components, list, list of HERON Component instances for this run
+      @ Out, None
+    """
     var_groups = template.find('VariableGroups')
     # capacities
     caps = var_groups[0]
     caps.text = ', '.join('{}_capacity'.format(x.name) for x in components)
 
   def _modify_outer_files(self, template, sources):
-    files2 = template.find('Files').find('Input')
-    child=files2
+    """
+      Defines modifications to the Files of outer.xml RAVEN input file.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, sources, list, list of HERON Placeholder instances for this run
+      @ Out, None
+    """
     files = template.find('Files')
-
     # modify path to inner
-    inner = files.find('Input') # TODO assuming it's the first file in the template
+    inner = files.find('Input') # NOTE assuming it's the first file in the template
     inner.text = '../inner.xml'
     # add other files needed by inner (functions, armas, etc)
     for source in sources:
@@ -214,9 +233,13 @@ class Template(TemplateBase):
         src = xmlUtils.newNode('Input', attrib={'name': 'transfers'}, text='../'+source._source)
         files.append(src)
 
-
   def _modify_outer_models(self, template, components):
-    """ TODO """
+    """
+      Defines modifications to the Models of outer.xml RAVEN input file.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, components, list, list of HERON Component instances for this run
+      @ Out, None
+    """
     raven = template.find('Models').find('Code')
     # executable
     raven_exec = raven.find('executable')
@@ -231,9 +254,15 @@ class Template(TemplateBase):
       attribs = {'variable':'{}_capacity'.format(name), 'type':'input'}
       new = xmlUtils.newNode('alias', text=text.format(name), attrib=attribs)
       raven.append(new)
-    # conversion script
 
   def _modify_outer_samplers(self, template, case, components):
+    """
+      Defines modifications to the Samplers/Optimizers of outer.xml RAVEN input file.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ In, components, list, list of HERON Component instances for this run
+      @ Out, None
+    """
     """ TODO """
     dists_node = template.find('Distributions')
     samps_node = template.find('Samplers').find('Grid')
@@ -268,7 +297,14 @@ class Template(TemplateBase):
         pass
 
   def _create_new_sweep_capacity(self, comp_name, var_name, capacities):
-    """ for OUTER, creates new distribution and variable for grid sampling """
+    """
+      for OUTER, creates new distribution and variable for grid/opt sampling
+      @ In, comp_name, str, name of component
+      @ In, var_name, str, name of capacity variable
+      @ In, capacities, list, float list of capacities to sweep/opt over
+      @ Out, dist, xml.etree.ElementTree,Element, XML for distribution
+      @ Out, samp, xml.etree.ElementTree,Element, XML for sampler variable
+    """
     # distribution
     dist_name = self.namingTemplates['distribution'].format(unit=comp_name, feature='capacity')
     dist = copy.deepcopy(self.dist_template)
@@ -284,11 +320,18 @@ class Template(TemplateBase):
 
   ##### INNER #####
   def _modify_inner(self, template, case, components, sources):
-    """ TODO """
-    input_filepath=os.path.abspath((os.path.dirname(__file__)))
-    input_filepath=input_filepath+'/../src/DispatchManager'
-    ext_model=template.find('Models').find('ExternalModel')
-    ext_model.set('ModuleToLoad',input_filepath)
+    """
+      Defines modifications to the inner.xml RAVEN input file.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ In, components, list, list of HERON Component instances for this run
+      @ In, sources, list, list of HERON Placeholder instances for this run
+      @ Out, template, xml.etree.ElementTree.Element, modified template
+    """
+    input_filepath = os.path.abspath((os.path.dirname(__file__)))
+    input_filepath = input_filepath+'/../src/DispatchManager'
+    ext_model = template.find('Models').find('ExternalModel')
+    ext_model.set('ModuleToLoad', input_filepath)
     self._modify_inner_runinfo(template, case)
     self._modify_inner_sources(template, case, components, sources)
     # NOTE: this HAS to come before modify_inner_denoisings,
@@ -300,24 +343,31 @@ class Template(TemplateBase):
     return template
 
   def _modify_inner_runinfo(self, template, case):
-    """ TODO """
+    """
+      Defines modifications to the RunInfo of inner.xml RAVEN input file.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ Out, None
+    """
     case_name = self.namingTemplates['jobname'].format(case=case.name, io='i')
     run_info = template.find('RunInfo')
     run_info.find('JobName').text = case_name
     run_info.find('WorkingDir').text = case_name
 
   def _modify_inner_sources(self, template, case, components, sources):
-    # for now, just load all sources
-    ## TODO someday, only load what's needed
+    """
+      Defines modifications to the inner.xml RAVEN input file due to Sources/Placeholders.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ In, components, list, list of HERON Component instances for this run
+      @ In, sources, list, list of HERON Placeholder instances for this run
+      @ Out, None
+    """
     # for every ARMA SOURCE, we need to:
     #  - load the source to a Model
     #  - sample it N times (N = # denoise)
     #  - do signal preprocessing and dispatch
     #  - dump the results to file? --> only for viewing, debugging, so probably yes
-    # for every DENOISE, we need to:
-    #  - write a new Optimizer
-    #  - write a new ...?
-    #  - read in the values as ConstantSource in the Optimizer
     for source in sources:
       if source.is_type('ARMA'):
         # add a step to load the model
@@ -328,10 +378,17 @@ class Template(TemplateBase):
         self._add_arma_to_ensemble(template, source)
         # NOTE assuming input to all ARMAs is "scaling" constant = 1.0, already in MonteCarlo sampler
       elif source.is_type('Function'):
+        # nothing to do ... ?
         pass
 
   def _modify_inner_components(self, template, case, components):
-    """ TODO """
+    """
+      Defines modifications to the inner.xml RAVEN input file due to Components.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ In, components, list, list of HERON Component instances for this run
+      @ Out, None
+    """
     mc = template.find('Samplers').find('MonteCarlo')
     # find specific variable groups
     groups = {}
@@ -374,35 +431,53 @@ class Template(TemplateBase):
         self._updateCommaSeperatedList(groups['init_disp'], var_name)
         self._updateCommaSeperatedList(groups['means'], var_name)
 
-
   ##### CASHFLOW #####
   def _modify_cash(self, template, case, components, sources):
+    """
+      Defines modifications to the cash.xml extension to RAVEN input file.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ In, components, list, list of HERON Component instances for this run
+      @ In, sources, list, list of HERON Placeholder instances for this run
+      @ Out, template, xml.etree.ElementTree.Element, modified template
+    """
     self._modify_cash_Global(template, case)
     self._modify_cash_components(template, case, components)
-
     return template
 
   def _modify_cash_Global(self, template, case):
-    discountRate  = case._global_econ['DiscountRate']
-    verbosity     = case._global_econ['verbosity' ]
-    inflation     = case._global_econ['inflation' ]
-    tax           = case._global_econ['tax']
-    indicator     = case._global_econ['Indicator']
-    try:
-      projectTime   = case._global_econ['ProjectTime']
-    except KeyError:
-      pass
+    """
+      Defines modifications to Global of cash.xml extension to RAVEN input file.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ Out, None
+    """
+    # load variables
+    tax = case._global_econ['tax']
+    verbosity = case._global_econ['verbosity']
+    inflation = case._global_econ['inflation']
+    indicator = case._global_econ['Indicator']
+    discountRate = case._global_econ['DiscountRate']
+    projectTime = case._global_econ.get('ProjectTime', None)
+    # set variables
     template.attrib['verbosity'] = str(verbosity)
     cash_global = template.find('Global')
-    cash_global.find('DiscountRate').text   = str(discountRate)
-    cash_global.find('tax').text            = str(tax)
-    cash_global.find('inflation' ).text     = str(inflation)
-    cash_global.find('Indicator' ).attrib['name'] = indicator['name'][0]
-    cash_global.find('Indicator' ).text     = '\n      '.join(indicator['active'][:])
-    if projectTime:
+    cash_global.find('DiscountRate').text = str(discountRate)
+    cash_global.find('tax').text = str(tax)
+    cash_global.find('inflation').text = str(inflation)
+    cash_global.find('Indicator').attrib['name'] = indicator['name'][0]
+    cash_global.find('Indicator').text = '\n      '.join(indicator['active'][:])
+    if projectTime is not None:
       cash_global.append(xmlUtils.newNode('ProjectTime', text=str(projectTime)))
 
   def _modify_cash_components(self, template, case, components):
+    """
+      Defines modifications to Components of cash.xml extension to RAVEN input file.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ In, components, list, list of HERON Component instances for this run
+      @ Out, template, xml.etree.ElementTree.Element, modified template
+    """
     for component in components:
       subComp = xmlUtils.newNode('Component', attrib={'name': component.name}, text='')
       subEconomics = component.get_economics()
@@ -449,7 +524,12 @@ class Template(TemplateBase):
 
   ##### OTHER UTILS #####
   def _add_arma_to_ensemble(self, template, source):
-    """ TODO """
+    """
+      Adds an ARMA to EnsembleModel evaluation
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, source, HERON Placeholder, information about ARMA to be used
+      @ Out, None
+    """
     # pre-locate some useful nodes
     ens = template.find('Models').findall('EnsembleModel')[0] # NOTE relies on position
     data_objs = template.find('DataObjects')
@@ -484,9 +564,8 @@ class Template(TemplateBase):
 
   def _create_dataobject(self, dataobjects, typ, name, inputs=None, outputs=None, depends=None):
     """
-      Creates a data object
-      candidate to go to base class
-      @ In, template, xml.etree.ElementTreeElement, DataObjects node
+      Creates a data object candidate to go to base class
+      @ In, dataobjects, xml.etree.ElementTreeElement, DataObjects node
       @ In, typ, str, type of data object
       @ In, name, str, name of data object
       @ In, inputs, list(str), optional, input variable names
@@ -520,7 +599,14 @@ class Template(TemplateBase):
     dataobjects.append(new)
 
   def _iostep_load_rom(self, template, case, components, source):
-    """ for INNER, creates new IOStep for loading a ROM """
+    """
+      for INNER, creates new IOStep for loading a ROM
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ In, components, list, list of HERON Component instances for this run
+      @ In, sources, list, list of HERON Placeholder instances for this run
+      @ Out, None
+    """
     rom_name = source.name
     rom_source = source._source
     # add the step itself
@@ -540,7 +626,7 @@ class Template(TemplateBase):
     econ_global_params = case.get_econ(econ_comps)
     econ_global_settings = CashFlows.GlobalSettings()
     econ_global_settings.setParams(econ_global_params)
-    project_life = getProjectLength(econ_global_settings, econ_comps) - 1 # skip construction year
+    #project_life = getProjectLength(econ_global_settings, econ_comps) - 1 # skip construction year
     #multiyear = xmlUtils.newNode('Multiyear')
     #multiyear.append(xmlUtils.newNode('years', text=project_life))
     # TODO FIXME XXX growth param ????
@@ -551,8 +637,13 @@ class Template(TemplateBase):
     template.find('Files').append(xmlUtils.newNode('Input', attrib={'name':rom_source}, text='../../'+rom_source))
     # done
 
-  def _iostep_rom_meta(self, template, case, compoents, source):
-    """ for INNER, create an IOStep for printing the ROM meta """
+  def _iostep_rom_meta(self, template, source):
+    """
+      for INNER, create an IOStep for printing the ROM meta
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, source, HERON Placeholder, instance to add rom meta use for
+      @ Out, None
+    """
     rom_name = source.name
     # create the output data object
     objs = template.find('DataObjects')

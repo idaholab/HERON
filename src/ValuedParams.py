@@ -283,7 +283,7 @@ class ValuedParam:
       if 'opt_bounds' in given:
         return 'value', item.subparts[given.index('opt_bounds')], None, None
       else:
-        raise IOError('For "{}" in "{}", no <opt_bounds> given but in sweep mode! '.format(head_name, comp_name) +\
+        raise IOError('For "{}" in "{}", no <opt_bounds> given but in "opt" mode! '.format(head_name, comp_name) +\
                       '\nPlease provide either <fixed_value> or <opt_bounds>.')
     ## if we got here, then the rights nodes were not given!
     raise RuntimeError(err_msg)

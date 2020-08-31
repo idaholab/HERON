@@ -43,11 +43,11 @@ class Case(Base):
     input_specs.addParam('name', param_type=InputTypes.StringType, required=True,
         descr=r"""the name by which this analysis should be referred within HERON.""")
 
-    mode_options = InputTypes.makeEnumType('ModeOptions', 'ModeOptionsType', ['opt', 'sweep'])
-    desc_mode_options = r"""determines whether the outer RAVEN should perform optimization,
-                         or a parametric (``sweep'') study. \default{sweep}"""
-    input_specs.addSub(InputData.parameterInputFactory('mode', contentType=mode_options,
-    strictMode=True, descr=desc_mode_options))
+    #mode_options = InputTypes.makeEnumType('ModeOptions', 'ModeOptionsType', ['opt', 'sweep'])
+    #desc_mode_options = r"""determines whether the outer RAVEN should perform optimization,
+    #                     or a parametric (``sweep'') study. \default{sweep}"""
+    #input_specs.addSub(InputData.parameterInputFactory('mode', contentType=mode_options,
+    #                     strictMode=True, descr=desc_mode_options))
 
     # not yet implemented TODO
     #econ_metrics = InputTypes.makeEnumType('EconMetrics', 'EconMetricsTypes', ['NPV', 'lcoe'])

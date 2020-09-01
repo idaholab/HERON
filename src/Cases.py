@@ -43,18 +43,21 @@ class Case(Base):
     input_specs.addParam('name', param_type=InputTypes.StringType, required=True,
         descr=r"""the name by which this analysis should be referred within HERON.""")
 
-    mode_options = InputTypes.makeEnumType('ModeOptions', 'ModeOptionsType', ['min', 'max', 'sweep'])
-    desc_mode_options = r"""determines whether the ``outer'' RAVEN should perform minimization,
-                        maximization, or a parametric study."""
-    econ_metrics = InputTypes.makeEnumType('EconMetrics', 'EconMetricsTypes', ['NPV', 'lcoe'])
-    desc_econ_metrics = r"""indicates the economic metric that should be used for the HERON analysis. For most cases, this
-                        should be NPV."""
+    #mode_options = InputTypes.makeEnumType('ModeOptions', 'ModeOptionsType', ['opt', 'sweep'])
+    #desc_mode_options = r"""determines whether the outer RAVEN should perform optimization,
+    #                     or a parametric (``sweep'') study. \default{sweep}"""
+    #input_specs.addSub(InputData.parameterInputFactory('mode', contentType=mode_options,
+    #                     strictMode=True, descr=desc_mode_options))
 
     # not yet implemented TODO
-    # input_specs.addSub(InputData.parameterInputFactory('mode', contentType=mode_options, strictMode=True, descr=desc_mode_options))
+    #econ_metrics = InputTypes.makeEnumType('EconMetrics', 'EconMetricsTypes', ['NPV', 'lcoe'])
+    #desc_econ_metrics = r"""indicates the economic metric that should be used for the HERON analysis. For most cases, this
+    #                    should be NPV."""
     # input_specs.addSub(InputData.parameterInputFactory('metric', contentType=econ_metrics, descr=desc_econ_metrics))
     # input_specs.addSub(InputData.parameterInputFactory('differential', contentType=InputTypes.BoolType, strictMode=True,
-    #     descr=r"""(not implemented) allows differentiation between two HERON runs as a desired economic metric."""
+    # descr=r"""(not implemented) allows differentiation between two HERON runs as a desired
+    # economic metric."""
+
     input_specs.addSub(InputData.parameterInputFactory('num_arma_samples', contentType=InputTypes.IntegerType,
         descr=r"""provides the number of synthetic histories that should be considered per system configuration
               in order to obtain a reasonable representation of the economic metric. Sometimes referred to as
@@ -407,7 +410,7 @@ class Case(Base):
     module = importlib.import_module('templates.{}'.format(template_name))
     # load template, perform actions
     template_class = module.Template()
-    template_class.loadTemplate(None, template_dir)
+    template_class.loadTemplate(template_dir)
     return template_class
 
   def _modify(self, templates, components, sources):

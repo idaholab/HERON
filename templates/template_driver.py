@@ -373,7 +373,7 @@ class Template(TemplateBase):
         # add a step to load the model
         self._iostep_load_rom(template, case, components, source)
         # add a step to print the rom meta
-        self._iostep_rom_meta(template, case, components, source)
+        self._iostep_rom_meta(template, source)
         # add the source to the arma-and-dispatch ensemble
         self._add_arma_to_ensemble(template, source)
         # NOTE assuming input to all ARMAs is "scaling" constant = 1.0, already in MonteCarlo sampler

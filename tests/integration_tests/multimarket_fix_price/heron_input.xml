@@ -12,9 +12,9 @@
 
   <Case name="Sweep_Runs">
     <!--
-    <mode>sweep</mode>
     <metric>NPV</metric>
     -->
+    <mode>sweep</mode>
     <num_arma_samples>2</num_arma_samples>
     <time_discretization>
       <time_variable>Time</time_variable>

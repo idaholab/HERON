@@ -64,10 +64,9 @@
     </Grid>
   </Samplers>
 
-  <Optimizers>
+  <!-- <Optimizers>
     <GradientDescent name="cap_opt">
       <objective>mean_NPV</objective>
-      <!-- <variable> nodes filled by HERON -->
       <variable name="x">
         <distribution>beale_dist</distribution>
         <initial>-2</initial>
@@ -96,7 +95,7 @@
         <gradient>1e-2</gradient>
       </convergence>
     </GradientDescent>
-  </Optimizers>
+  </Optimizers> -->
 
   <Files>
     <Input name="inner_workflow" type='raven'>inner.xml</Input>

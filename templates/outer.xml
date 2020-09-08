@@ -108,7 +108,6 @@
       <convergence>
         <gradient>1e-2</gradient>
         <objective>1e-2</objective>
-        <persistence>3</persistence>
       </convergence>
     </GradientDescent>
   </Optimizers>

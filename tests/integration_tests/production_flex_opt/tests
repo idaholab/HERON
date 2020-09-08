@@ -1,11 +1,12 @@
 [Tests]
- [./ProductionFlex]
+ [./ProductionFlexOpt]
   type = HeronIntegration
   input = heron_input.xml
+  heavy = true
   # prereq = SineArma
   [./csv]
     type = UnorderedCSV
-    output = 'Sweep_Runs_o/sweep.csv'
+    output = 'Opt_Runs_o/opt_soln.csv Opt_Runs_o/opt_soln_0.csv'
     zero_threshold = 1e-6
   [../]
  [../]

@@ -85,7 +85,7 @@
   <Optimizers>
     <GradientDescent name="cap_opt">
       <objective>mean_NPV</objective>
-      <!-- <variable> nodes filled by HERON -->
+        <!-- <variable> nodes filled by HERON -->
         <constant name='denoises'>1</constant>
       <TargetEvaluation class="DataObjects" type="PointSet">opt_eval</TargetEvaluation>
       <samplerInit>

@@ -181,6 +181,7 @@ class Template(TemplateBase):
       @ In, sources, list, list of HERON Placeholder instances for this run
       @ Out, template, xml.etree.ElementTree.Element, modified template
     """
+    self._modify_outer_mode(template, case)
     self._modify_outer_runinfo(template, case)
     self._modify_outer_vargroups(template, components)
     self._modify_outer_files(template, sources)
@@ -189,6 +190,44 @@ class Template(TemplateBase):
     # TODO copy needed model/ARMA/etc files to Outer Working Dir so they're known
     # TODO including the heron library file
     return template
+
+  def _modify_outer_mode(self, template, case):
+    """
+      Defines modifications throughout outer.xml RAVEN input file due to "sweep" or "opt" mode.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ Out, None
+    """
+    if case._mode == 'opt':
+      # RunInfo
+      template.find('RunInfo').find('Sequence').text = 'optimize'
+      # Steps
+      sweep = template.find('Steps').findall('MultiRun')[0]
+      template.find('Steps').remove(sweep)
+      # DataObjects
+      grid = template.find('DataObjects').findall('PointSet')[0]
+      template.find('DataObjects').remove(grid)
+      # Samplers
+      template.remove(template.find('Samplers'))
+      # OutStreams
+      sweep = template.find('OutStreams').findall('Print')[0]
+      template.find('OutStreams').remove(sweep)
+    else: # mode is 'sweep'
+      # RunInfo
+      template.find('RunInfo').find('Sequence').text = 'sweep'
+      # Steps
+      opt = template.find('Steps').findall('MultiRun')[1]
+      template.find('Steps').remove(opt)
+      # DataObjects
+      opt_eval = template.find('DataObjects').findall('PointSet')[1]
+      opt_soln = template.find('DataObjects').findall('PointSet')[2]
+      template.find('DataObjects').remove(opt_eval)
+      template.find('DataObjects').remove(opt_soln)
+      # Optimizers
+      template.remove(template.find('Optimizers'))
+      # OutStreams
+      opt_soln = template.find('OutStreams').findall('Print')[1]
+      template.find('OutStreams').remove(opt_soln)
 
   def _modify_outer_runinfo(self, template, case):
     """
@@ -265,7 +304,10 @@ class Template(TemplateBase):
     """
     """ TODO """
     dists_node = template.find('Distributions')
-    samps_node = template.find('Samplers').find('Grid')
+    if case._mode == 'sweep':
+      samps_node = template.find('Samplers').find('Grid')
+    else:
+      samps_node = template.find('Optimizers').find('GradientDescent')
     # number of denoisings
     ## assumption: first node is the denoises node
     samps_node.find('constant').text = str(case._num_samples)
@@ -285,9 +327,12 @@ class Template(TemplateBase):
         # is the capacity variable being swept over?
         if isinstance(vals, list):
           # make new Distribution, Sampler.Grid.variable
-          dist, samp = self._create_new_sweep_capacity(name, var_name, vals)
+          dist, for_grid, for_opt = self._create_new_sweep_capacity(name, var_name, vals)
           dists_node.append(dist)
-          samps_node.append(samp)
+          if case._mode == 'sweep':
+            samps_node.append(for_grid)
+          else:
+            samps_node.append(for_opt)
           # NOTE assumption (input checked): only one interaction per component
         # if not being swept, then it's just a fixed value.
         else:
@@ -303,7 +348,8 @@ class Template(TemplateBase):
       @ In, var_name, str, name of capacity variable
       @ In, capacities, list, float list of capacities to sweep/opt over
       @ Out, dist, xml.etree.ElementTree,Element, XML for distribution
-      @ Out, samp, xml.etree.ElementTree,Element, XML for sampler variable
+      @ Out, grid, xml.etree.ElementTree,Element, XML for grid sampler variable
+      @ Out, opt, xml.etree.ElementTree,Element, XML for optimizer variable
     """
     # distribution
     dist_name = self.namingTemplates['distribution'].format(unit=comp_name, feature='capacity')
@@ -311,12 +357,17 @@ class Template(TemplateBase):
     dist.attrib['name'] = dist_name
     dist.find('lowerBound').text = str(min(capacities))
     dist.find('upperBound').text = str(max(capacities))
-    # sampler variable
-    samp = copy.deepcopy(self.var_template)
-    samp.attrib['name'] = var_name
-    samp.find('distribution').text = dist_name
-    samp.find('grid').text = ' '.join(str(x) for x in sorted(capacities))
-    return dist, samp
+    # sampler variable, for Grid case
+    grid = copy.deepcopy(self.var_template)
+    grid.attrib['name'] = var_name
+    grid.find('distribution').text = dist_name
+    grid.find('grid').text = ' '.join(str(x) for x in sorted(capacities))
+    # optimizer variable, for opt case
+    opt = copy.deepcopy(grid)
+    opt.remove(opt.find('grid'))
+    initial = np.average(capacities)
+    opt.append(xmlUtils.newNode('initial', text=initial))
+    return dist, grid, opt
 
   ##### INNER #####
   def _modify_inner(self, template, case, components, sources):

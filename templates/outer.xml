@@ -2,7 +2,8 @@
   <RunInfo>
     <JobName>EX19_Outer</JobName>
     <WorkingDir>.</WorkingDir>
-    <Sequence>sweep</Sequence>
+    <Sequence></Sequence>
+    <batchSize>3</batchSize>
     <!--<batchSize>20</batchSize>
     <mode>mpi<runqsub/></mode>
     <internalParallel>False</internalParallel>
@@ -15,11 +16,20 @@
       <Input          class='Files'       type='raven'   >inner_workflow</Input>
       <Input          class='Files'       type=''        >heron_lib</Input>
       <Input          class='Files'       type=''        >transfers</Input>
-      <!-- TODO model files for inner -->
       <Model          class='Models'      type='Code'    >raven</Model>
       <Sampler        class='Samplers'    type='Grid'    >grid</Sampler>
       <Output         class='DataObjects' type='PointSet'>grid</Output>
-      <Output class='OutStreams'  type='Print'   >sweep</Output>
+      <Output         class='OutStreams'  type='Print'   >sweep</Output>
+    </MultiRun>
+    <MultiRun name="optimize">
+      <Input          class='Files'       type='raven'           >inner_workflow</Input>
+      <Input          class='Files'       type=''                >heron_lib</Input>
+      <Input          class='Files'       type=''                >transfers</Input>
+      <Model          class='Models'      type='Code'            >raven</Model>
+      <Optimizer      class='Optimizers'  type='FiniteDifference'>cap_opt</Optimizer>
+      <Output         class='DataObjects' type='PointSet'        >opt_eval</Output>
+      <SolutionExport class='DataObjects' type='PointSet'        >opt_soln</SolutionExport>
+      <Output         class='OutStreams'  type='Print'           >opt_soln</Output>
     </MultiRun>
   </Steps>
 
@@ -41,6 +51,14 @@
     <PointSet name='grid'>
       <Input>GRO_capacities</Input>
       <Output>GRO_outer_results</Output>
+    </PointSet>
+    <PointSet name='opt_eval'>
+      <Input>GRO_capacities</Input>
+      <Output>mean_NPV</Output>
+    </PointSet>
+    <PointSet name='opt_soln'>
+      <Input>trajID</Input>
+      <Output>iteration, accepted, GRO_capacities, mean_NPV</Output>
     </PointSet>
   </DataObjects>
 
@@ -64,28 +82,24 @@
     </Grid>
   </Samplers>
 
-  <!-- <Optimizers>
+  <Optimizers>
     <GradientDescent name="cap_opt">
       <objective>mean_NPV</objective>
-      <variable name="x">
-        <distribution>beale_dist</distribution>
-        <initial>-2</initial>
-      </variable>
-      <variable name="y">
-        <distribution>beale_dist</distribution>
-        <initial>-2</initial>
-      </variable>
-      <TargetEvaluation class="DataObjects" type="PointSet">cap_opt_eval</TargetEvaluation>
+        <!-- <variable> nodes filled by HERON -->
+        <constant name='denoises'>1</constant>
+      <TargetEvaluation class="DataObjects" type="PointSet">opt_eval</TargetEvaluation>
       <samplerInit>
+        <limit>2000</limit>
         <writeSteps>every</writeSteps>
+        <type>max</type>
       </samplerInit>
       <gradient>
         <FiniteDifference/>
       </gradient>
       <stepSize>
         <GradientHistory>
-          <growthFactor>1.25</growthFactor>
-          <shrinkFactor>1.5</shrinkFactor>
+          <growthFactor>2</growthFactor>
+          <shrinkFactor>2</shrinkFactor>
         </GradientHistory>
       </stepSize>
       <acceptance>
@@ -93,9 +107,10 @@
       </acceptance>
       <convergence>
         <gradient>1e-2</gradient>
+        <objective>1e-2</objective>
       </convergence>
     </GradientDescent>
-  </Optimizers> -->
+  </Optimizers>
 
   <Files>
     <Input name="inner_workflow" type='raven'>inner.xml</Input>
@@ -107,6 +122,11 @@
     <Print name='sweep'>
       <type>csv</type>
       <source>grid</source>
+    </Print>
+    <Print name='opt_soln'>
+      <type>csv</type>
+      <source>opt_soln</source>
+      <clusterLabel>trajID</clusterLabel>
     </Print>
   </OutStreams>
 </Simulation>

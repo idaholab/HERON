@@ -43,11 +43,11 @@ class Case(Base):
     input_specs.addParam('name', param_type=InputTypes.StringType, required=True,
         descr=r"""the name by which this analysis should be referred within HERON.""")
 
-    #mode_options = InputTypes.makeEnumType('ModeOptions', 'ModeOptionsType', ['opt', 'sweep'])
-    #desc_mode_options = r"""determines whether the outer RAVEN should perform optimization,
-    #                     or a parametric (``sweep'') study. \default{sweep}"""
-    #input_specs.addSub(InputData.parameterInputFactory('mode', contentType=mode_options,
-    #                     strictMode=True, descr=desc_mode_options))
+    mode_options = InputTypes.makeEnumType('ModeOptions', 'ModeOptionsType', ['opt', 'sweep'])
+    desc_mode_options = r"""determines whether the outer RAVEN should perform optimization,
+                         or a parametric (``sweep'') study. \default{sweep}"""
+    input_specs.addSub(InputData.parameterInputFactory('mode', contentType=mode_options,
+                         strictMode=True, descr=desc_mode_options))
 
     # not yet implemented TODO
     #econ_metrics = InputTypes.makeEnumType('EconMetrics', 'EconMetricsTypes', ['NPV', 'lcoe'])
@@ -130,11 +130,11 @@ class Case(Base):
     """
     Base.__init__(self, **kwargs)
     self.name = None           # case name
-    self._mode = 'sweep'       # extrema to find: min, max, sweep
-    self._metric = 'NPV'       # economic metric to focus on: lcoe, profit, cost
+    self._mode = None          # extrema to find: min, max, sweep
+    self._metric = 'NPV'       # UNUSED (future work); economic metric to focus on: lcoe, profit, cost
 
     self.dispatch_name = None  # type of dispatcher to use
-    self.dispatcher = None    # type of dispatcher to use
+    self.dispatcher = None     # type of dispatcher to use
 
     self._diff_study = None    # is this only a differential study?
     self._num_samples = 1      # number of ARMA stochastic samples to use ("denoises")
@@ -186,6 +186,8 @@ class Case(Base):
             self._increments[item.parameterValues['resource']] = item.value
 
     # checks
+    if self._mode is None:
+      self.raiseAnError('No <mode> node was provided in the <Case> node!')
     if self.dispatcher is None:
       self.raiseAnError('No <dispatch> node was provided in the <Case> node!')
     if self._time_discretization is None:

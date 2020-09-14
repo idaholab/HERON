@@ -1,6 +1,4 @@
-"""
-  pyomo-based dispatch strategy
-"""
+
 import os
 import sys
 import time as time_mod

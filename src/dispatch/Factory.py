@@ -2,13 +2,13 @@
 # Copyright 2020, Battelle Energy Alliance, LLC
 # ALL RIGHTS RESERVED
 # from generic import Generic
-# from marginal import marginal
+from .Marginal import MARGINAL
 # from custom import Custom
 from .pyomo_dispatch import Pyomo
 
 known = {
     #'generic': Generic,
-    #'marginal': Marginal,
+    'marginal': MARGINAL,
     #'custom': Custom,
     'pyomo': Pyomo,
 }

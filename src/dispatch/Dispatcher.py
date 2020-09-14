@@ -110,6 +110,7 @@ class Dispatcher:
         specific_activity = {}
         for resource, r in resource_indexer[comp].items():
           specific_activity[resource] = activity.get_activity(comp, resource, time)
+          print("This is specific_activity", specific_activity)
         specific_meta['HERON']['time_index'] = t
         specific_meta['HERON']['time_value'] = time
         cfs = comp.get_state_cost(specific_activity, specific_meta)

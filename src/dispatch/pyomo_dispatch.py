@@ -85,6 +85,8 @@ class Pyomo(Dispatcher):
       @ In, meta, dict, additional variables passed through
       @ Out, disp, DispatchScenario, resulting dispatch
     """
+    print("This is META", meta['HERON'].keys())
+    #aaa
     t_start, t_end, t_num = self.get_time_discr()
     time = np.linspace(t_start, t_end, t_num) # Note we don't care about segment/cluster here
     resources = sorted(list(hutils.get_all_resources(components))) # list of all active resources
@@ -129,6 +131,8 @@ class Pyomo(Dispatcher):
       @ In, meta, dict, additional variables passed through
       @ Out, result, dict, results of window dispatch
     """
+    print("This is META-2", meta['HERON'].keys())
+    #aaa
     # build the Pyomo model
     # TODO abstract this model as much as possible BEFORE, then concrete initialization per window
     m = pyo.ConcreteModel()
@@ -175,6 +179,9 @@ class Pyomo(Dispatcher):
     self._debug_print_soln(m) # DEBUGG
     # return dict of numpy arrays
     result = self._retrieve_solution(m)
+    aaa
+    #print("This is META-3", meta['HERON'].keys())
+    #aaa
     return result
 
   ### PYOMO Element Constructors
@@ -340,9 +347,17 @@ class Pyomo(Dispatcher):
     result = {} # {component: {resource: production}}
     for comp in m.Components:
       prod = getattr(m, '{n}_production'.format(n=comp.name))
+      #print("This is prod", prod, type(prod))
+      #aaa
       result[comp.name] = {}
       for res, comp_r in m.resource_index_map[comp].items():
+        #print("This is prod", prod, prod[comp_r,0], comp_r)
+        #aaa
+        print("This is the data",np.fromiter((prod[comp_r, t].value for t in m.T),float), m.T)
+        #print("This is data list", [prod[comp_r, t].value for t in m.T])
+        #aaa
         result[comp.name][res] = np.fromiter((prod[comp_r, t].value for t in m.T), dtype=float, count=len(m.T))
+      #print("This is the form", result)
     return result
 
   ### RULES for partial function calls

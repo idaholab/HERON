@@ -1,0 +1,10 @@
+<DataObjectMetadata name="metrics_avg">
+  <DataSet type="Static">
+    <general>
+      <outputs>mean_NPV,std_NPV,med_NPV,max_NPV,min_NPV,perc_5_NPV,perc_95_NPV,samp_NPV,var_NPV</outputs>
+      <pointwise_meta>mean_ste_NPV,med_ste_NPV,std_ste_NPV,var_ste_NPV</pointwise_meta>
+      <sampleTag>RAVEN_sample_ID</sampleTag>
+    </general>
+  </DataSet>
+  
+</DataObjectMetadata>

@@ -1,0 +1,4 @@
+RAVEN_sample_ID,scaling,time_delta,steamer_capacity,generator_capacity,electr_market_capacity,electr_flex_capacity,NPV,PointProbability,prefix,ProbabilityWeight
+0,1.0,0,4.0681087681,-100.0,-2.0,-2024.99558058,60.3999531716,1.0,1,1.0
+1,1.0,0,4.0681087681,-100.0,-2.0,-2024.99558058,60.3999531659,1.0,2,1.0
+2,1.0,0,4.0681087681,-100.0,-2.0,-2024.99558058,60.3999531501,1.0,3,1.0

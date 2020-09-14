@@ -1,0 +1,11 @@
+<DataObjectMetadata name="arma_samples">
+  <DataSet type="Static">
+    <general>
+      <inputs>scaling,time_delta,steamer_capacity,generator_capacity,electr_market_capacity,electr_flex_capacity</inputs>
+      <outputs>NPV</outputs>
+      <pointwise_meta>PointProbability,ProbabilityWeight,prefix</pointwise_meta>
+      <sampleTag>RAVEN_sample_ID</sampleTag>
+    </general>
+  </DataSet>
+  
+</DataObjectMetadata>

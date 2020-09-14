@@ -1,0 +1,45 @@
+<DataObjectMetadata name="Price_meta">
+  <Price type="Static">
+    <ROM>
+      <type>Interp. Cluster ROM</type>
+    </ROM>
+    <InterpolatedMultiyearROM type="Static">
+      <MacroParameterID>Year</MacroParameterID>
+      <MacroSteps>1</MacroSteps>
+      <MacroFirstStep>10</MacroFirstStep>
+      <MacroLastStep>10</MacroLastStep>
+    </InterpolatedMultiyearROM>
+    <MacroStepROM Year="10" type="Static">
+      <GlobalROM segment="all" type="Static">
+        <Signal>
+          <Fourier>
+            <SignalIntercept>2.541608035e-10</SignalIntercept>
+            <period>1.000000000e+01
+              <frequency>1.000000000e-01</frequency>
+              <amplitude>9.999999996e-01</amplitude>
+              <phase>-2.297587746e-12</phase>
+            </period>
+          </Fourier>
+        </Signal>
+      </GlobalROM>
+      <ClusterROM cluster="0" type="Static">
+        <Signal>
+          <Fourier>
+            <SignalIntercept>2.541608035e-10</SignalIntercept>
+            <period>1.000000000e+01
+              <frequency>1.000000000e-01</frequency>
+              <amplitude>9.999999996e-01</amplitude>
+              <phase>-2.297587746e-12</phase>
+            </period>
+          </Fourier>
+          <ARMA_params>
+            <std>2.62529072171</std>
+          </ARMA_params>
+        </Signal>
+        <segments_represented>0</segments_represented>
+        <indices>0, 21</indices>
+      </ClusterROM>
+    </MacroStepROM>
+  </Price>
+  
+</DataObjectMetadata>

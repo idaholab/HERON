@@ -1,0 +1,10 @@
+<DataObjectMetadata name="opt_soln">
+  <DataSet type="Static">
+    <general>
+      <inputs>trajID</inputs>
+      <outputs>iteration,accepted,steamer_capacity,generator_capacity,electr_market_capacity,electr_flex_capacity,mean_NPV</outputs>
+      <sampleTag>RAVEN_sample_ID</sampleTag>
+    </general>
+  </DataSet>
+  
+</DataObjectMetadata>

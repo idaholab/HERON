@@ -106,8 +106,6 @@ class DispatchState:
         data[template.format(comp=comp.name, res=res)] = result
     return data
 
-
-
 # NumpyState is the nominal DispatchState implementation
 class NumpyState(DispatchState):
   """ implemenatation of DispatchState using Numpy. A good nominal choice if additional functionality isn't needed. """

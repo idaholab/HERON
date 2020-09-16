@@ -199,10 +199,8 @@ class DispatchRunner:
         # active_index['division_obj'] = seg
         meta['HERON']['active_index'] = active_index
         # truncate signals to appropriate Year, Cluster
-        meta['HERON']['RAVEN_vars'] = self._slice_signals(all_structure, meta['HERON'])
-        ## TODO create "time" variable?
         ## -> chop up raven_vars for sources to corresponding segment/cluster, year, and time
-        # FIXME XXX WORKING
+        meta['HERON']['RAVEN_vars'] = self._slice_signals(all_structure, meta['HERON'])
         dispatch = self._dispatcher.dispatch(self._case,
                                              self._components,
                                              self._sources,

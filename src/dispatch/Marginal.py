@@ -4,9 +4,10 @@ import sys
 import time as time_mod
 from functools import partial
 from collections import defaultdict
-from utils import InputData, InputTypes
+from utils import InputData, InputTypes, graphStructure
 import numpy as np
 import pandas as pd
+from collections import defaultdict
 #import pyomo.environ as pyo
 #from pyomo.opt import SolverStatus, TerminationCondition
 import pyutilib.subprocess.GlobalData
@@ -68,6 +69,12 @@ class MARGINAL(Dispatcher):
       @ In, components, list, HERON components available to the dispatch
       @ Out, dispatch
     """
+      
+    #Path = self.graph_maker_extracter(components)
+    self.add_source_sinks(components)
+    
+    #print("This is unique path", Path)
+    #aa
     ### This function is the same as implemented in pyomo_dispatch
     print(meta['HERON'].keys())
     print("These are the keys",meta['HERON']['RAVEN_vars'])
@@ -193,6 +200,203 @@ class MARGINAL(Dispatcher):
     result = self._retrieve_solution(Component_produce_consume, resource_index_map)
     #aaaa
     return result #Cashflow_Perturbed
+  
+  def graph_maker_extracter(self, components):
+    
+    graph = self.construct_graph(components)
+    print("This is the original", graph)
+    key = list(graph.keys())
+    Graph_Shape = {}
+    Graph_Shape_2 = {}
+    for ke in key:
+      temp = list(graph[ke].keys())
+      #print("this is temp", temp)
+      for ke2 in temp:
+        #print("This is ke",ke2)
+        if ke2 == 'produced by':
+          temp_key = ke2
+          #print("This is produced",graph[ke][ke2])
+          #for i in range(0,len(graph[ke][ke2])):
+            #print("This is it",graph[ke][ke2][i])
+        if ke2 == 'consumed by':
+          s#elf.True_False(graph,temp_key,ke,ke2)
+          #Temp_list = [True if temp_key.get_inputs() == graph[ke][ke2][m].get_outputs()]
+          for j in range(0,len(graph[ke][temp_key])):
+            #### True and False ##
+            
+            Graph_Shape[graph[ke][temp_key][j].name] = [graph[ke][ke2][m].name for m in range(0,len(graph[ke][ke2]))]
+            Graph_Shape_2[graph[ke][temp_key][j]] = [graph[ke][ke2][m] for m in range(0,len(graph[ke][ke2]))]
+    #graphobj = graphStructure.graphObject()
+    #graphobj.__init__(Graph_Shape)
+    #unique_path = graphobj.findAllUniquePaths()
+    #print("This is the constructed graph", Graph_Shape)
+    #print("It is connected", graphobj.isConnectedNet())
+    return Graph_Shape, Graph_Shape_2
+  
+  def construct_graph(self,components):
+    """ construct dict of resources to what components either consume or produce that resource """
+    res_info = {}
+    # add components
+    print('DEBUGG comps:', components)
+    for comp in components:
+      ins = comp.get_inputs()
+      outs = comp.get_outputs()
+      #print("These are the outs", outs, ins)
+      for res in ins:
+        if res not in res_info:
+          res_info[res] = {'produced by': [], 'consumed by': [comp]}
+        else:
+          res_info[res]['consumed by'].append(comp)
+        #if outs == set():
+        #  res_info[res] = {'Sink' : [comp]}
+          
+      for res in outs:
+        if res not in res_info:
+          res_info[res] = {'produced by': [comp], 'consumed by': []}
+        else:
+          res_info[res]['produced by'].append(comp)
+    # add sources --> no, because they should be made available through a component
+    #self.get_sources_sinks(components)
+    #self.add_source_sinks(components)
+    # DEBUGG
+    for res, info in res_info.items():
+      print('RESOURCE "{}":'.format(res))
+      print('    produced by:', list(x.name for x in info['produced by']))
+      print('    consumed by:', list(x.name for x in info['consumed by']))
+    # sanity checking
+    for res, info in res_info.items():
+      if not info['produced by']:
+        raise IOError('Resource "{}" is not produced by any component or source!'.format(res))
+      if not info['consumed by']:
+        print('WARNING: resource "{}" is not consumed by any components!'.format(res))
+    #print("This is the graph in function", res_info)
+    #aaa
+    return res_info
+  
+  def get_sources_sinks(self,components):
+    
+    source_sinks={}
+    counter_source = 0
+    counter_sink = 0
+    for comp in components:
+      ins = comp.get_inputs()
+      outs = comp.get_outputs()
+      
+      if outs == set():
+        source_sinks['sink'+str(counter_sink)] = comp.name
+        counter_sink += 1
+      if ins == set():
+        source_sinks['source'+str(counter_source)] = comp.name
+        counter_source += 1
+    print("These are the source_sinks", source_sinks)
+    return source_sinks
+  
+# def add_source_sinks(self, components):
+#   graph = self.construct_graph(components)
+#   source_sinks = self.get_sources_sinks(components)
+  
+  def add_source_sinks(self, components):
+    graph2, graph4 = self.graph_maker_extracter(components)
+    list_of_dict=[]
+    list_of_dict.append(graph2)
+    graph3 = graph2.copy()
+    print("These are the unique", graph2)
+    source_sinks = self.get_sources_sinks(components) 
+    startnode = []
+    stopnode = []
+    for key, values in source_sinks.items():
+      print("These are the key",key,values)  
+      if key.startswith('sink'):
+        stopnode.append(values)
+        ### These sink values should be present in the list "items"
+        for ke, vals in graph2.items():
+          list_of_dict.append(self.getkeybyvalues(ke,vals, values, graph2,graph4))
+      elif key.startswith('source'):
+        startnode.append(values)
+
+    print("This is startnode, stopnode", startnode, stopnode)
+    dd = defaultdict(list)
+    for d in list_of_dict:
+      for key, value in d.items():
+        print("This is the key", key)
+        dd[key].append(value)
+    print("This is the default dict", dd['electr_market'])
+    
+  
+    dd2 = {}
+    for key, value in dd.items():
+      
+      flat_list = [item for sublist in value for item in sublist]
+      flat_list = self.unique(flat_list)
+      
+      dd2[key] = flat_list
+    print("This is dd2",dd2)
+    print("This is graph2, graph4",graph2, graph4)
+  
+  
+      
+    graphobj = graphStructure.graphObject()
+    graphobj2 = graphStructure.graphObject()
+    graphobj2.__init__(graph2)
+    graphobj.__init__(dd2)
+    unique_path = graphobj.findAllPaths(startnode[0],stopnode[1])
+    unique_path_2 = graphobj.findAllUniquePaths()
+    #findAllUniquePaths()
+    print("This is unique_path", unique_path)
+    print("This is unique_path_2",unique_path_2)
+    print("This is a loop", graphobj.isALoop())
+    print("This is a loop", graphobj2.isALoop())
+    #final = {k: v for d in list_of_dict for k, v in d.items()}
+    #print("This is the final", final)
+        
+        #for kes, vals in graph2.items():
+          #if values == kes:
+        #print("Found", values)
+      #elif key.startswith('sink'):
+        #print("Found", values)
+ 
+    
+
+  #  key = list(graph.keys())
+    #aaa
+    #print("It is connected", graphobj.isConnectedNet())
+
+  def True_False(self,Dict,ke,Key, Value):
+    print("This is the Dict, Key, Value", Dict, ke,Key, Value)
+    aaa
+    
+  def unique(self,list1):
+    unique_list = []
+    
+    for x in list1:
+      if x not in unique_list:
+        unique_list.append(x)
+    return unique_list
+  
+
+  def getkeybyvalues(self,key_2, list_2, value,graph_2,graph_4) :
+    
+    y = list_2.copy()
+    #list_of_dict = []
+    graph_x = graph_2.copy()
+    graph_y = graph_2.copy()
+    #print("This is list", list_2, value)
+    keys = list(graph_4.keys())
+    
+    for i,item in enumerate(list_2):
+    
+      if value == item:
+        #print("This is item", item, value, key_2) #keys)
+        y[y.index(value)] = key_2
+        graph_x[value] = y
+        #list_of_dict.append(graph_x)
+        #graph_y.update(graph_x)
+        #print("Inside", graph_x)
+    
+    #rint("This is graph_2", graph_2, graph_x, list_2)
+    return graph_x
+    
+        
 
   def _retrieve_solution(self, components, resource_index_map):
     """

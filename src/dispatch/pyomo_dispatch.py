@@ -28,7 +28,7 @@ except (ModuleNotFoundError, ImportError):
   import _utils as hutils
 
 # Choose solver; CBC is a great choice unless we're on Windows
-if platform.system == 'Windows':
+if platform.system() == 'Windows':
   SOLVER = 'glpk'
 else:
   SOLVER = 'cbc'

@@ -176,7 +176,6 @@ class Pyomo(Dispatcher):
       attempts += 1
       print(f'DEBUGG solve attempt {attempts} ...:')
       # solve
-      self._debug_pyomo_print(m)
       soln = pyo.SolverFactory(SOLVER).solve(m)
       # check solve status
       if soln.solver.status == SolverStatus.ok and soln.solver.termination_condition == TerminationCondition.optimal:

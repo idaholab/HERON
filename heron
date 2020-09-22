@@ -2,18 +2,18 @@
 echo "Starting HERON ..."
 
 # identify HERON location
-SCRIPT_NAME=`readlink $0`
+SCRIPT_NAME=$(readlink $0)
 if test -x "$SCRIPT_NAME";
 then
-    HERON_DIRNAME=`dirname $SCRIPT_NAME`
+    HERON_DIRNAME=$(dirname $SCRIPT_NAME)
 else
-    HERON_DIRNAME=`dirname $0`
+    HERON_DIRNAME=$(dirname $0)
 fi
-HERON_DIR=`(cd $HERON_DIRNAME; pwd)`
+HERON_DIR=$(cd $HERON_DIRNAME; pwd)
 
 # identify RAVEN location
-RAVENFW_DIR=`(cd $HERON_DIRNAME/src; python _utils.py get_raven_loc)`
-RAVEN_DIR=`(cd $RAVENFW_DIR/../; pwd)`
+RAVENFW_DIR=$(python $HERON_DIRNAME/src/_utils.py get_raven_loc)
+RAVEN_DIR=$(cd $RAVENFW_DIR/../; pwd)
 echo " ... RAVEN located at \"${RAVEN_DIR}\""
 # activate conda environment
 echo " ... Activating CONDA environment ..."

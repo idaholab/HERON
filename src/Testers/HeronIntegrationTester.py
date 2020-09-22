@@ -35,7 +35,7 @@ class HeronIntegration(RavenTester):
       @ Out, None
     """
     RavenTester.__init__(self, name, param)
-    self.heron_driver = os.path.join(HERON_LOC, 'main.py')
+    self.heron_driver = os.path.join(HERON_LOC,'..', 'heron')
     # NOTE: self.driver is RAVEN driver (e.g. /path/to/Driver.py)
 
   def get_command(self):
@@ -54,9 +54,8 @@ class HeronIntegration(RavenTester):
     cmd += ' rm -rf Sweep_Runs_o/ ||: && '
     # run HERON first
     heron_inp = os.path.join(test_loc, self.specs['input'])
-    cmd += ' {py} {heron} {input}'.format(py=python,
-                                          heron=self.heron_driver,
-                                          input=heron_inp)
+    cmd += ' {heron} {input}'.format(heron=self.heron_driver,
+                                     input=heron_inp)
     # then run "outer.xml"
     ## TODO raven flags? So far I can't see it, but lets leave a spot
     raven_inp = os.path.abspath(os.path.join(os.path.dirname(heron_inp), 'outer.xml'))

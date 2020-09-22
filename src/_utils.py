@@ -73,7 +73,10 @@ def get_project_lifetime(case, components):
   return getProjectLength(econ_settings, econ_comps)
 
 if __name__ == '__main__':
-  action = sys.argv[1]
+  try:
+    action = sys.argv[1]
+  except IndexError:
+    print('Please provide the method to run as the first argument.')
   if action == 'get_raven_loc':
     print(get_raven_loc())
   elif action == 'get_cashflow_loc':

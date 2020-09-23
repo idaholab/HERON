@@ -1,0 +1,51 @@
+#!/bin/bash
+echo "Starting HERON ..."
+
+# identify HERON location
+SCRIPT_NAME=$(readlink $0)
+if test -x "$SCRIPT_NAME";
+then
+    HERON_DIRNAME=$(dirname $SCRIPT_NAME)
+else
+    HERON_DIRNAME=$(dirname $0)
+fi
+HERON_DIR=$(cd $HERON_DIRNAME; pwd)
+
+# identify RAVEN location
+RAVENFW_DIR=$(python $HERON_DIRNAME/src/_utils.py get_raven_loc)
+RAVEN_DIR=$(cd $RAVENFW_DIR/../; pwd)
+echo " ... RAVEN located at \"${RAVEN_DIR}\""
+# activate conda environment
+echo " ... Activating CONDA environment ..."
+source $RAVEN_DIR/scripts/establish_conda_env.sh --quiet
+
+# set up run keywords
+# "ARGS" stores command line arguments not treated in this file (passed through)
+declare -a ARGS
+while test $# -gt 0
+do
+  # right now we don't have any keyword arguments for this script, but leave this for now
+  case "$1" in
+    *)
+      # otherwise, pass through arguments to main.py
+      ARGS[${#ARGS[@]}]="$1"
+  esac
+  shift
+done
+
+# establish python command
+PYTHON_COMMAND=${PYTHON_COMMAND:=python}
+
+# call heron using python
+echo 'Running HERON ...'
+$PYTHON_COMMAND $HERON_DIR/src/main.py "${ARGS[@]}"
+SUCCESS=$?
+
+# check exit status
+if [[ $SUCCESS == 0 ]];
+then
+  echo ' ... HERON completed successfully.'
+else
+  echo ' ... Errors were encountered while running HERON.'
+fi
+exit $SUCCESS

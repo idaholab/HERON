@@ -4,18 +4,18 @@
     <author>talbpaul</author>
     <created>2020-06-15</created>
     <description>
-      Tests including a consume-and-produce unit, and the pyomo dispatcher.
-      Uses an ARMA for ``electr_flex'' pricing.
-      May be able to serve as a timing test in the future.
-      ``steamer'' produces steam which is consumed by ``generator'' to produce electricity. This electricity
-      can then be sold at the ``electr_market'' at a profit or ``electr_flex'' at a variable profit/cost.
+      Demonstrates using an optimization strategy on a simple system, instead of a sweep strategy.
+      A steam source feeds a generator, which then sells electricity to a low-capacity high-value
+      market and a high-capacity negative-value market. The size of the steam source and high-capacity
+      market are optimized. The market size is irrelevant; the optimal steam source size is equal
+      to the high-value market size.
     </description>
     <classesTested>HERON</classesTested>
   </TestInfo>
 
-  <Case name="Sweep_Runs">
-    <mode>sweep</mode>
-    <num_arma_samples>10</num_arma_samples>
+  <Case name="Opt_Runs">
+    <mode>opt</mode>
+    <num_arma_samples>3</num_arma_samples>
     <time_discretization>
       <time_variable>Time</time_variable>
       <end_time>2</end_time>
@@ -37,7 +37,7 @@
     <Component name="steamer">
       <produces resource="steam" dispatch="fixed">
         <capacity resource="steam">
-          <sweep_values>1, 100</sweep_values>
+          <opt_bounds>1, 10</opt_bounds>
         </capacity>
       </produces>
       <economics>
@@ -116,7 +116,7 @@
     <Component name="electr_flex">
       <demands resource="electricity" dispatch="dependent">
         <capacity>
-          <fixed_value>-1e200</fixed_value>
+          <opt_bounds>-2e3, -2.05e3</opt_bounds>
         </capacity>
       </demands>
       <economics>

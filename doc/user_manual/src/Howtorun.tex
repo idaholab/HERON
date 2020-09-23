@@ -7,5 +7,21 @@ plugin installation in its documentation
 installation}.
 
 \subsection{How to run}
-Directly running HERON through RAVEN has not finished implementation. To run HERON, use Python to
-run the script in \texttt{heron/src/main.py} with the HERON XML input as argument.
+Directly running HERON through RAVEN has not finished implementation. To run HERON, use bash to
+run the executable:
+\begin{lstlisting}
+  /path/to/HERON/heron my_heron_input.xml
+\end{lstlisting}
+replacing
+\begin{itemize}
+  \item \texttt{/path/to/HERON} with your path to the HERON repository; and
+  \item \texttt{my\_heron\_input.xml} with your HERON XML input.
+\end{itemize}
+For example, if my HERON is located as a submodule of RAVEN in \texttt{~/projects/raven}, and I
+wanted to run the integration test \texttt{production\_flex}, I could do the following:
+\begin{lstlisting}[basicstyle=\footnotesize]
+  cd ~/projects/raven/plugins/HERON/tests/integration_tests/production_flex
+  ~/projects/raven/plugins/HERON/heron heron_input.xml
+\end{lstlisting}
+Alternatively, you can use Python to run \texttt{HERON/src/main.py} with the HERON XML input as
+argument; however, this will bypass loading the \texttt{raven\_libraries} and other initialization.

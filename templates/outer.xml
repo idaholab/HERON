@@ -3,7 +3,7 @@
     <JobName>EX19_Outer</JobName>
     <WorkingDir>.</WorkingDir>
     <Sequence></Sequence>
-    <batchSize>3</batchSize>
+    <batchSize>1</batchSize>
     <!--<batchSize>20</batchSize>
     <mode>mpi<runqsub/></mode>
     <internalParallel>False</internalParallel>

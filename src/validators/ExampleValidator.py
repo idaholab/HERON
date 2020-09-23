@@ -36,6 +36,7 @@ class Example(Validator):
     """
     self.name = 'BaseValidator'
     self._allowable = 0.2
+    self._tolerance = 1e-10
 
   def read_input(self, inputs):
     """
@@ -64,8 +65,8 @@ class Example(Validator):
             previous = dispatch.get_activity(comp, res, times[t-1])
             delta = current - previous
             sign = np.sign(delta)
-            if abs(delta) > self._allowable: # TODO not percent
-              errs.append({'msg': f'Exceeded ramp of {self._allowable} with {delta}',
+            if abs(delta) - self._allowable > self._tolerance:
+              errs.append({'msg': f'Exceeded ramp of {self._allowable} with {delta:1.8e}',
                            'limit': previous + (sign * self._allowable),
                            'limit_type': 'lower' if (sign < 0) else 'upper',
                            'component': comp,

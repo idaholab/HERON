@@ -1,7 +1,7 @@
 <dependencies>
   <main>
     <dill/>
-    <pyomo source='forge'>5.7.0</pyomo>
+    <pyomo source='forge'>5.7</pyomo>
     <glpk source='forge' skip_check='True'/>
     <ipopt source='forge' skip_check='True'/>
     <!-- Windows doesn't have a reasonably-accessible installer for coincbc -->

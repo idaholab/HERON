@@ -1,0 +1,6 @@
+[Tests]
+ [./component]
+  type = HeronPython
+  input = 'testComponent.py'
+ [../]
+[]

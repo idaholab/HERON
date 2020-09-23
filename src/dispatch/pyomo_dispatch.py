@@ -112,15 +112,6 @@ class Pyomo(Dispatcher):
       for comp in components:
         for res, values in subdisp[comp.name].items():
           dispatch.set_activity_vector(comp, res, start_index, end_index, values)
-      # try validating
-      ## XXX move to window dispatch
-      # validation_errs = self.validate(components, dispatch, specific_time)
-      # if validation_errs:
-      #   print('Validation')
-      #   for e in validation_errs:
-      #     print(e)
-      #   raise NotImplementedError('Validation failed, but idk how to handle that yet')
-      #   # TODO now what?
       start_index = end_index
     return dispatch
 
@@ -423,12 +414,6 @@ class Pyomo(Dispatcher):
     """
     kind = 'lower' if cap < 0 else 'upper'
     return self._prod_limit_rule(prod_name, r, cap, kind, t, m)
-    # prod = getattr(m, prod_name)
-    # # note that a negative capacity means a CONSUMPTION capacity instead of PRODUCTION
-    # if cap > 0:
-    #   return prod[r, t] <= cap
-    # else:
-    #   return prod[r, t] >= cap
 
   def _prod_limit_rule(self, prod_name, r, limit, kind, t, m):
     """
@@ -585,7 +570,6 @@ class PyomoState(DispatchState):
       @ Out, activity, float, amount of resource "res" produced/consumed by "comp" at time "time";
                               note positive is producting, negative is consuming
     """
-    # var = getattr(self._model, f'{comp.name}_production')
     prod = getattr(self._model, f'{comp.name}_production')[r, t]
     if valued:
       return prod()

@@ -1,3 +1,7 @@
+'''
+Test that meta does not get nested when producing with a transfer function
+'''
+
 import os
 import sys
 import xml.etree.ElementTree as ET
@@ -17,7 +21,12 @@ from utils import InputData, xmlUtils,InputTypes
 import MessageHandler
 sys.path.pop()
 
-# Set up the messageHandler
+# Set up the dummy transfer function
+def transfer_function(method, requests, inputs):
+    # Return the given request and the given meta (inputs)
+    return {'electricity': 0}, inputs
+
+# Set up the component
 producer = Components.Producer()
 producer.messageHandler = MessageHandler.MessageHandler()
 producer.messageHandler.verbosity = 'debug'
@@ -26,15 +35,21 @@ producer.messageHandler.verbosity = 'debug'
 producer._capacity_var = 'electricity'
 producer._capacity = ValuedParams.ValuedParam('generator_capacity')
 producer.set_capacity(500)
+producer._transfer = ValuedParams.ValuedParam('transfer_function')
+producer._transfer.type = 'Function'
+producer._transfer._obj = ValuedParams.ValuedParam('transfer_function_obj')
+producer._transfer._obj.evaluate = transfer_function
 
+# Make the production request
 request = {'electricity': 0}
 meta = {'stuff': 'things'}
 raven_vars = {}
 dispatch = {}
 t = 0
+print('Meta before production:', meta)
 stuff, meta = producer.produce(request, meta, raven_vars, dispatch, t)
+print('Meta after production:', meta)
 
-print(stuff, meta)
 
 if 'meta' in meta:
     print('Error: meta came back nested.')

@@ -1,5 +1,5 @@
 '''
-Test that meta does not get nested when producing with a transfer function
+Test specific aspects of HERON Components
 '''
 
 import os
@@ -21,6 +21,13 @@ from utils import InputData, xmlUtils,InputTypes
 import MessageHandler
 sys.path.pop()
 
+results = {"pass":0,"fail":0}
+
+# Test 1 - Check to ensure that the 'meta' object does not get nested
+# Added as a regression test. This was previously happening when the
+# produce method was called on a component where the production made
+# use of a transfer function.
+
 # Set up the dummy transfer function
 def transfer_function(method, requests, inputs):
     # Return the given request and the given meta (inputs)
@@ -30,8 +37,6 @@ def transfer_function(method, requests, inputs):
 producer = Components.Producer()
 producer.messageHandler = MessageHandler.MessageHandler()
 producer.messageHandler.verbosity = 'debug'
-# producer.messageHandler.callerLength = 0
-# producer.messageHandler.tagLength = 0
 producer._capacity_var = 'electricity'
 producer._capacity = ValuedParams.ValuedParam('generator_capacity')
 producer.set_capacity(500)
@@ -50,8 +55,11 @@ print('Meta before production:', meta)
 stuff, meta = producer.produce(request, meta, raven_vars, dispatch, t)
 print('Meta after production:', meta)
 
-
 if 'meta' in meta:
     print('Error: meta came back nested.')
-    sys.exit(1)
-sys.exit(0)
+    results['fail'] += 1
+else:
+    results['pass'] += 1
+
+print(results)
+sys.exit(results['fail'])

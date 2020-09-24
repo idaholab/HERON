@@ -8,9 +8,11 @@ from __future__ import unicode_literals, print_function
 import os
 import sys
 import abc
+
 from base import Base
 from scipy import interpolate
 import _utils as hutils
+
 framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)
 from utils import InputData, utils, InputTypes
@@ -55,7 +57,10 @@ class Placeholder(Base):
     self.name = specs.parameterValues['name']
     self._source = specs.value
     # check source exists
-    self._target_file = os.path.abspath(self._source)
+    ## -> check it against the input file location, not based on cwd
+    self._target_file = os.path.abspath(os.path.join(self._workingDir, self._source))
+    if not os.path.isfile(self._target_file):
+      self.raiseAnError(IOError, f'File not found for <DataGenerator><{self._type}> named "{self.name}": "{self._target_file}"')
     return specs
 
   def print_me(self, tabs=0, tab='  '):

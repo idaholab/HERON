@@ -19,6 +19,9 @@ import Placeholders
 from dispatch.Factory import known as known_dispatchers
 from dispatch.Factory import get_class as get_dispatcher
 
+from validators.Factory import known as known_validators
+from validators.Factory import get_class as get_validator
+
 import _utils as hutils
 framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)
@@ -103,10 +106,9 @@ class Case(Base):
               module.""")) # is this actually CashFlow verbosity or is it really HERON verbosity?
     input_specs.addSub(econ)
 
-    # increments for resources
+    # dispatcher
     dispatch = InputData.parameterInputFactory('dispatcher', ordered=False,
         descr=r"""This node defines the dispatch strategy and options to use in the ``inner'' run.""")
-    # TODO get types directly from Factory!
     dispatch_options = InputTypes.makeEnumType('DispatchOptions', 'DispatchOptionsType', [d for d in known_dispatchers])
     dispatch.addSub(InputData.parameterInputFactory('type', contentType=dispatch_options,
         descr=r"""the name of the ``inner'' dispatch strategy to use."""))
@@ -119,6 +121,15 @@ class Case(Base):
         descr=r"""indicates the resource for which this increment is being defined.""")
     dispatch.addSub(incr)
     input_specs.addSub(dispatch)
+
+    # validator
+    validator = InputData.parameterInputFactory('validator', ordered=False,
+        descr=r"""This node defines the dispatch validation strategy and options to use in the
+        ``inner'' run.""")
+    validator_options = InputTypes.makeEnumType('ValidatorOptions', 'ValidatorOptionsType', [d for d in known_validators])
+    validator.addSub(InputData.parameterInputFactory('type', contentType=validator_options,
+        descr=r"""the name of the ``inner'' dispatch validation strategy to use."""))
+    input_specs.addSub(validator)
 
     return input_specs
 
@@ -133,8 +144,10 @@ class Case(Base):
     self._mode = None          # extrema to find: min, max, sweep
     self._metric = 'NPV'       # UNUSED (future work); economic metric to focus on: lcoe, profit, cost
 
-    self.dispatch_name = None  # type of dispatcher to use
+    self.dispatch_name = None  # name of dispatcher to use
     self.dispatcher = None     # type of dispatcher to use
+    self.validator_name = None # name of dispatch validation to use
+    self.validator = None      # type of dispatch validation to use
 
     self._diff_study = None    # is this only a differential study?
     self._num_samples = 1      # number of ARMA stochastic samples to use ("denoises")
@@ -176,14 +189,19 @@ class Case(Base):
           self._global_econ[sub.getName()] = sub.value
       elif item.getName() == 'dispatcher':
         # instantiate a dispatcher object.
-        dispatch_name = item.findFirst('type').value
-        dispatcher_type = get_dispatcher(dispatch_name)
-        self.dispatcher = dispatcher_type()
+        name = item.findFirst('type').value
+        typ = get_dispatcher(name)
+        self.dispatcher = typ()
         self.dispatcher.read_input(item)
         # XXX Remove -> send to dispatcher instead
         for sub in item.subparts:
           if item.getName() == 'increment':
             self._increments[item.parameterValues['resource']] = item.value
+      elif item.getName() == 'validator':
+        name = item.findFirst('type').value
+        typ = get_validator(name)
+        self.validator = typ()
+        self.validator.read_input(item)
 
     # checks
     if self._mode is None:
@@ -195,6 +213,7 @@ class Case(Base):
 
     # TODO what if time discretization not provided yet?
     self.dispatcher.set_time_discr(self._time_discretization)
+    self.dispatcher.set_validator(self.validator)
 
     # derivative calculations
     # OLD self._num_hist = self._hist_len // self._hist_interval # TODO what if it isn't even?

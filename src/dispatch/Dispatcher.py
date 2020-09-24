@@ -31,6 +31,7 @@ class Dispatcher:
     """
     self.name = 'BaseDispatcher'
     self._time_discretization = None # (start, end, num_steps) to build time discretization
+    self._validator = None           # can be used to validate activity
 
   def read_input(self, inputs):
     """
@@ -72,6 +73,14 @@ class Dispatcher:
     # don't expand into linspace right now, just store the pieces
     self._time_discretization = info
 
+  def set_validator(self, validator):
+    """
+      Sets the dispatch validation instance to use in dispatching.
+      @ In, validator, HERON Validator, instance of validator
+      @ Out, None
+    """
+    self._validator = validator
+
   # ---------------------------------------------
   # API
   # TODO make this a virtual method?
@@ -85,17 +94,35 @@ class Dispatcher:
     """
     raise NotImplementedError # must be implemented by inheriting classes
 
+  def validate(self, components, activity, times):
+    """
+      Method to validate a dispatch activity.
+      @ In, components, list, HERON components whose cashflows should be evaluated
+      @ In, activity, DispatchState instance, activity by component/resources/time
+      @ In, times, np.array(float), time values to evaluate; may be length 1 or longer
+      @ Out, validation, dict, information about validation
+    """
+    # default implementation
+    if self._validator is not None:
+      return self._validator.validate(components, activity, times)
+    else:
+      # no validator, nothing needs to be changed
+      return {}
+
   # ---------------------------------------------
   # UTILITY METHODS
-  def _compute_cashflows(self, components, activity, times, meta):
+  def _compute_cashflows(self, components, activity, times, meta, state_args=None):
     """
       Method to compute CashFlow evaluations given components and their activity.
       @ In, components, list, HERON components whose cashflows should be evaluated
       @ In, activity, DispatchState instance, activity by component/resources/time
       @ In, times, np.array(float), time values to evaluate; may be length 1 or longer
       @ In, meta, dict, additional info to be passed through to functional evaluations
+      @ In, state_args, dict, optional, additional arguments to pass while getting activity state
       @ Out, total, float, total cashflows for given components
     """
+    if state_args is None:
+      state_args = {}
     total = 0
     specific_meta = dict(meta) # TODO what level of copying do we need here?
     resource_indexer = meta['HERON']['resource_indexer']
@@ -108,8 +135,8 @@ class Dispatcher:
         #print(f'DEBUGG ... ... time {t}')
         # NOTE care here to assure that pyomo-indexed variables work here too
         specific_activity = {}
-        for resource, r in resource_indexer[comp].items():
-          specific_activity[resource] = activity.get_activity(comp, resource, time)
+        for resource in resource_indexer[comp]:
+          specific_activity[resource] = activity.get_activity(comp, resource, time, **state_args)
         specific_meta['HERON']['time_index'] = t
         specific_meta['HERON']['time_value'] = time
         cfs = comp.get_state_cost(specific_activity, specific_meta)

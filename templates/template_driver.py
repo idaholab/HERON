@@ -659,7 +659,7 @@ class Template(TemplateBase):
       @ Out, None
     """
     rom_name = source.name
-    rom_source = source._source
+    rom_source = source._target_file
     # add the step itself
     step_name = self.namingTemplates['stepname'].format(action='read', subject=rom_name)
     new_step = xmlUtils.newNode('IOStep', attrib={'name': step_name})
@@ -685,7 +685,8 @@ class Template(TemplateBase):
     template.find('Models').append(model)
     # add a file
     ## NOTE: the '..' assumes there is a working dir that is not ".", which should always be true.
-    template.find('Files').append(xmlUtils.newNode('Input', attrib={'name':rom_source}, text='../../'+rom_source))
+    ## ALSO NOTE: the path to the ARMA file should now be absolute, so no directory fiddling necessary?
+    template.find('Files').append(xmlUtils.newNode('Input', attrib={'name':rom_source}, text=rom_source)) # '../../'+rom_source
     # done
 
   def _iostep_rom_meta(self, template, source):

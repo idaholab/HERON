@@ -28,7 +28,7 @@ except (ModuleNotFoundError, ImportError):
   import _utils as hutils
 
 # Choose solver; CBC is a great choice unless we're on Windows
-if platform.system == 'Windows':
+if platform.system() == 'Windows':
   SOLVER = 'glpk'
 else:
   SOLVER = 'cbc'
@@ -160,17 +160,43 @@ class Pyomo(Dispatcher):
       # ramp rates TODO ## INCLUDING previous-time boundary condition TODO
     self._create_conservation(m, resources) # conservation of resources (e.g. production == consumption)
     self._create_objective(meta, m) # objective
-    # solve
-    #self._debug_pyomo_print(m)
-    soln = pyo.SolverFactory(SOLVER).solve(m)
-    # check solve status
-    if soln.solver.status == SolverStatus.ok and soln.solver.termination_condition == TerminationCondition.optimal:
-      print('DEBUGG solve was successful!')
-    else:
-      print('DEBUGG solve was unsuccessful!')
-      print('DEBUGG status:', soln.solver.status)
-      print('DEBUGG termination:', soln.solver.termination_condition)
-      raise RuntimeError
+    # start a solution search
+    done_and_checked = False
+    attempts = 0
+    while not done_and_checked:
+      attempts += 1
+      print(f'DEBUGG solve attempt {attempts} ...:')
+      # solve
+      soln = pyo.SolverFactory(SOLVER).solve(m)
+      # check solve status
+      if soln.solver.status == SolverStatus.ok and soln.solver.termination_condition == TerminationCondition.optimal:
+        print('DEBUGG ... solve was successful!')
+      else:
+        print('DEBUGG ... solve was unsuccessful!')
+        print('DEBUGG ... status:', soln.solver.status)
+        print('DEBUGG ... termination:', soln.solver.termination_condition)
+        raise RuntimeError
+      # try validating
+      print('DEBUGG ... validating ...')
+      validation_errs = self.validate(m.Components, m.Activity, m.Times)
+      if validation_errs:
+        done_and_checked = False
+        print('DEBUGG ... validation concerns raised:')
+        for e in validation_errs:
+          print('DEBUGG ... ... Time {t} ({time}) Component "{c}" Resource "{r}": {m}'
+                .format(t=e['time_index'],
+                        time=e['time'],
+                        c=e['component'].name,
+                        r=e['resource'],
+                        m=e['msg']))
+          self._create_production_limit(m, e)
+        # go back and solve again
+        # raise NotImplementedError('Validation failed, but idk how to handle that yet')
+      else:
+        print('DEBUGG Solve successful and no validation concerns raised.')
+        done_and_checked = True
+      if attempts > 100:
+        raise RuntimeError('Exceeded validation attempt limit!')
     #soln.write() # DEBUGG
     self._debug_print_soln(m) # DEBUGG
     # return dict of numpy arrays
@@ -178,6 +204,35 @@ class Pyomo(Dispatcher):
     return result
 
   ### PYOMO Element Constructors
+  def _create_production_limit(self, m, validation):
+    """
+      Creates pyomo production constraint given validation errors
+      @ In, m, pyo.ConcreteModel, associated model
+      @ In, validation, dict, information from Validator about limit violation
+      @ Out, None
+    """
+    # TODO could validator write a symbolic expression on request? That'd be sweet.
+    comp = validation['component']
+    resource = validation['resource']
+    r = m.resource_index_map[comp][resource]
+    t = validation['time_index']
+    limit = validation['limit']
+    limit_type = validation['limit_type']
+    prod_name = f'{comp.name}_production'
+    rule = partial(self._prod_limit_rule, prod_name, r, limit, limit_type, t)
+    constr = pyo.Constraint(rule=rule)
+    counter = 1
+    name_template = '{c}_{r}_{t}_vld_limit_constr_{{i}}'.format(c=comp.name,
+                                                                r=resource,
+                                                                t=t)
+    # make sure we get a unique name for this constraint
+    name = name_template.format(i=counter)
+    while getattr(m, name, None) is not None:
+      counter += 1
+      name = name_template.format(i=counter)
+    setattr(m, name, constr)
+    print(f'DEBUGG added validation constraint "{name}"')
+
   def _create_production(self, m, comp):
     """
       Creates production pyomo variable object for a component
@@ -347,6 +402,7 @@ class Pyomo(Dispatcher):
 
   ### RULES for partial function calls
   # these get called using "functools.partial" to make Pyomo constraints, vars, objectives, etc
+
   def _capacity_rule(self, prod_name, r, cap, m, t):
     """
       Constructs pyomo capacity constraints.
@@ -356,12 +412,27 @@ class Pyomo(Dispatcher):
       @ In, m, pyo.ConcreteModel, associated model
       @ In, t, int, time index for capacity rule
     """
+    kind = 'lower' if cap < 0 else 'upper'
+    return self._prod_limit_rule(prod_name, r, cap, kind, t, m)
+
+  def _prod_limit_rule(self, prod_name, r, limit, kind, t, m):
+    """
+      Constructs pyomo production constraints.
+      @ In, prod_name, str, name of production variable
+      @ In, r, int, index of resource for capacity constraining
+      @ In, limit, float, value at which to constrain resource production
+      @ In, kind, str, either 'upper' or 'lower' for limiting production
+      @ In, t, int, time index for production rule (NOTE not pyomo index, rather fixed index)
+      @ In, m, pyo.ConcreteModel, associated model
+    """
     prod = getattr(m, prod_name)
-    # note that a negative capacity means a CONSUMPTION capacity instead of PRODUCTION
-    if cap > 0:
-      return prod[r, t] <= cap
+    if kind == 'lower':
+      # production must exceed value
+      return prod[r, t] >= limit
+    elif kind == 'upper':
+      return prod[r, t] <= limit
     else:
-      return prod[r, t] >= cap
+      raise TypeError('Unrecognized production limit "kind":', kind)
 
   def _cashflow_rule(self, meta, m):
     """
@@ -371,7 +442,8 @@ class Pyomo(Dispatcher):
       @ Out, total, float, evaluation of cost
     """
     activity = m.Activity # dict((comp, getattr(m, f"{comp.name}_production")) for comp in m.Components)
-    total = self._compute_cashflows(m.Components, activity, m.Times, meta)
+    state_args = {'valued': False}
+    total = self._compute_cashflows(m.Components, activity, m.Times, meta, state_args=state_args)
     return total
 
   def _conservation_rule(self, res, m, t):
@@ -467,15 +539,37 @@ class Pyomo(Dispatcher):
 # DispatchState for Pyomo dispatcher
 class PyomoState(DispatchState):
   def __init__(self):
+    """
+      Constructor.
+      @ In, None
+      @ Out, None
+    """
     DispatchState.__init__(self)
     self._model = None # Pyomo model object
 
   def initialize(self, components, resources_map, times, model):
+    """
+      Connect information about this State to other objects
+      @ In, components, list, HERON components
+      @ In, resources_map, dict, map of component names to resources used
+      @ In, times, np.array, values of "time" this state represents
+      @ In, model, pyomo.Model, associated model for this state
+      @ Out, None
+    """
     DispatchState.initialize(self, components, resources_map, times)
     self._model = model
 
-  def get_activity_indexed(self, comp, r, t, valued=False):
-    var = getattr(self._model, f'{comp.name}_production')
+  def get_activity_indexed(self, comp, r, t, valued=True, **kwargs):
+    """
+      Getter for activity level.
+      @ In, comp, HERON Component, component whose information should be retrieved
+      @ In, r, int, index of resource to retrieve (as given by meta[HERON][resource_indexer])
+      @ In, t, int, index of time at which activity should be provided
+      @ In, valued, bool, optional, if True then get float value instead of pyomo expression
+      @ In, kwargs, dict, additional pass-through keyword arguments
+      @ Out, activity, float, amount of resource "res" produced/consumed by "comp" at time "time";
+                              note positive is producting, negative is consuming
+    """
     prod = getattr(self._model, f'{comp.name}_production')[r, t]
     if valued:
       return prod()

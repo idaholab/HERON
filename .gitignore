@@ -39,4 +39,4 @@ __pycache__
 *cash.xml
 /tests/integration_tests/ARMA/Sine/synthetic.*
 *Sweep_Runs_o*
-
+*write_inner.py

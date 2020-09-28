@@ -1058,7 +1058,7 @@ class Demand(Interaction):
       @ Out, input_specs, InputData, specs
     """
     specs = super(Demand, cls).get_input_specs()
-    specs.addSub(ValuedParam.get_input_specs('penalty'))
+    # specs.addSub(ValuedParam.get_input_specs('penalty'))
     return specs
 
   def __init__(self, **kwargs):

@@ -150,6 +150,7 @@ class Pyomo(Dispatcher):
     m.Activity.initialize(m.Components, m.resource_index_map, m.Times, m)
     # constraints and variables
     for comp in components:
+      print('DEBUGG comp:', comp.name, comp)
       # NOTE: "fixed" components could hypothetically be treated differently
       ## however, in order for the "production" variable for components to be treatable as the
       ## same as other production variables, we create components with limitation
@@ -457,8 +458,26 @@ class Pyomo(Dispatcher):
     balance = 0
     for comp, res_dict in m.resource_index_map.items():
       if res in res_dict:
-        # TODO move to this? balance += m._activity.get_activity(comp, res, t)
-        balance += getattr(m, f'{comp.name}_production')[res_dict[res], t]
+        # activity information depends on if storage or component
+        var = getattr(m, f'{comp.name}_production')
+        r = res_dict[res]
+        if comp.get_interaction().is_type('Storage'):
+          # Storages store LEVELS not ACTIVITIES, so calculate activity
+          if t > 0:
+            previous = var[r, t-1]
+            dt = m.Times[1] - m.Times[0] # TODO is this always true? What if dt(t)?
+          else:
+            FIXME # FIXME
+            previous = 0 # initial_level
+            dt = m.Times[t] - m.Times[t-1]
+          new = var[r, t]
+          dt = m.Times[t] - m.Times[t-1] # something on m?
+          contrib = (new - previous) / dt
+        else:
+          # TODO move to this? balance += m._activity.get_activity(comp, res, t)
+          contrib = var[r, t]
+        balance += contrib
+        # balance += getattr(m, f'{comp.name}_production')[res_dict[res], t]
     return balance == 0 # TODO tol?
 
   def _min_prod_rule(self, prod_name, r, cap, minimum, m, t):

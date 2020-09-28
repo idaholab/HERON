@@ -1,6 +1,6 @@
 [Tests]
  [./component]
-  type = HeronPython
+  type = RavenPython
   input = 'testComponent.py'
  [../]
 []

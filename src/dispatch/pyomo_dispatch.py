@@ -150,7 +150,6 @@ class Pyomo(Dispatcher):
     m.Activity.initialize(m.Components, m.resource_index_map, m.Times, m)
     # constraints and variables
     for comp in components:
-      print('DEBUGG comp:', comp.name, comp)
       # NOTE: "fixed" components could hypothetically be treated differently
       ## however, in order for the "production" variable for components to be treatable as the
       ## same as other production variables, we create components with limitation
@@ -200,7 +199,7 @@ class Pyomo(Dispatcher):
         done_and_checked = True
       if attempts > 100:
         raise RuntimeError('Exceeded validation attempt limit!')
-    soln.write() # DEBUGG
+    # soln.write() # DEBUGG
     self._debug_print_soln(m) # DEBUGG
     # return dict of numpy arrays
     result = self._retrieve_solution(m)
@@ -481,7 +480,6 @@ class Pyomo(Dispatcher):
           # TODO move to this? balance += m._activity.get_activity(comp, res, t)
           production = var[r, t]
         balance += production
-        # balance += getattr(m, f'{comp.name}_production')[res_dict[res], t]
     return balance == 0 # TODO tol?
 
   def _min_prod_rule(self, prod_name, r, cap, minimum, m, t):

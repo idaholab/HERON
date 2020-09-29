@@ -853,7 +853,7 @@ class Storage(Interaction):
     """
     specs = super(Storage, cls).get_input_specs()
     specs.addSub(ValuedParam.get_input_specs('rate'))
-    specs.addSub(ValuedParam.get_input_specs('initial_stored'))
+    specs.addSub(ValuedParam.get_input_specs('initial_stored', disallowed='ARMA'))
     return specs
 
   def __init__(self, **kwargs):

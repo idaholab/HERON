@@ -1,0 +1,3 @@
+steamer_capacity,steam_storage_capacity,generator_capacity,electr_market_capacity,electr_flex_capacity,mean_NPV,std_NPV,med_NPV,max_NPV,min_NPV,perc_5_NPV,perc_95_NPV,samp_NPV,var_NPV,prefix,PointProbability,ProbabilityWeight,ProbabilityWeight-steamer_capacity
+1.0,100.0,-99.0,-2.0,-1e+200,28.0280044015,1.63813697062e-08,28.0280043909,28.0280044203,28.0280043909,28.0280043909,28.0280043932,3.0,2.68349273452e-16,1,0.010101010101,0.5,0.5
+100.0,100.0,-99.0,-2.0,-1e+200,595.529477388,4.2779215532e-07,595.529476912,595.529477741,595.529476912,595.529476912,595.529477511,3.0,1.83006128153e-13,2,0.010101010101,0.5,0.5

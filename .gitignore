@@ -31,7 +31,6 @@ __pycache__
 /doc/user_manual/pdf
 /doc/version.tex
 
-
 # test files
 *arma.pk
 *heron.lib

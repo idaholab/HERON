@@ -6,22 +6,27 @@
 """
 
 def electric_consume(data, meta):
-  ## works with generic?
-  # activity = meta['raven_vars']['HERON_pyomo_model']
-  # t = meta['t']
-  # flip sign because we consume the electricity
-  # E = -1.0 * activity['electricity'][t]
-
-  ## works with pyomo
-  # model = meta['HERON']['pyomo_model']
-  # component = meta['HERON']['component']
+  """
+    Swaps the sign for electricity consumption to yield positive cash values.
+    @ In, data, dict, information to be filled before return
+    @ In, meta, dict, additional information from HERON state
+    @ Out, data, dict, information filled
+    @ Out, meta, dict, additional information from HERON state
+  """
   activity = meta['HERON']['activity']
-  # TODO a get_activity method for the dispatcher -> returns object-safe activity (expression or value)?
   amount = -1 * activity['electricity']
   data = {'driver': amount}
   return data, meta
 
 def flex_price(data, meta):
+  """
+    Gathers and modifies the ARMA signal to produce a price history ranging
+    from -1 to 1 instead of 0 to 1.
+    @ In, data, dict, information to be filled before return
+    @ In, meta, dict, additional information from HERON state
+    @ Out, data, dict, information filled
+    @ Out, meta, dict, additional information from HERON state
+  """
   sine = meta['HERON']['RAVEN_vars']['Signal']
   t = meta['HERON']['time_index']
   # DispatchManager

@@ -852,7 +852,7 @@ class Storage(Interaction):
     """
     specs = super(Storage, cls).get_input_specs()
     specs.addSub(ValuedParam.get_input_specs('rate'))
-    specs.addSub(ValuedParam.get_input_specs('initial_stored'))
+    specs.addSub(ValuedParam.get_input_specs('initial_stored', disallowed='ARMA'))
     return specs
 
   def __init__(self, **kwargs):
@@ -1057,7 +1057,7 @@ class Demand(Interaction):
       @ Out, input_specs, InputData, specs
     """
     specs = super(Demand, cls).get_input_specs()
-    specs.addSub(ValuedParam.get_input_specs('penalty'))
+    # specs.addSub(ValuedParam.get_input_specs('penalty'))
     return specs
 
   def __init__(self, **kwargs):

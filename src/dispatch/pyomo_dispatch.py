@@ -158,11 +158,13 @@ class Pyomo(Dispatcher):
       self._create_capacity(m, comp, prod_name)    # capacity constraints
       self._create_transfer(m, comp, prod_name)    # transfer functions (constraints)
       # ramp rates TODO ## INCLUDING previous-time boundary condition TODO
-    self._create_conservation(m, resources) # conservation of resources (e.g. production == consumption)
+    self._create_conservation(m, resources, meta) # conservation of resources (e.g. production == consumption)
     self._create_objective(meta, m) # objective
     # start a solution search
     done_and_checked = False
     attempts = 0
+    # DEBUGG show variables, bounds
+    # self._debug_pyomo_print(m)
     while not done_and_checked:
       attempts += 1
       print(f'DEBUGG solve attempt {attempts} ...:')
@@ -197,7 +199,7 @@ class Pyomo(Dispatcher):
         done_and_checked = True
       if attempts > 100:
         raise RuntimeError('Exceeded validation attempt limit!')
-    #soln.write() # DEBUGG
+    # soln.write() # DEBUGG
     self._debug_print_soln(m) # DEBUGG
     # return dict of numpy arrays
     result = self._retrieve_solution(m)
@@ -314,15 +316,16 @@ class Pyomo(Dispatcher):
       constr = pyo.Constraint(m.T, rule=rule)
       setattr(m, rule_name, constr)
 
-  def _create_conservation(self, m, resources):
+  def _create_conservation(self, m, resources, meta):
     """
       Creates pyomo conservation constraints
       @ In, m, pyo.ConcreteModel, associated model
       @ In, resources, list, list of resources in problem
+      @ In, meta, dict, dictionary of state variables
       @ Out, None
     """
     for res, resource in enumerate(resources):
-      rule = partial(self._conservation_rule, resource) #lambda m, c, t: abs(np.sum(m.Production[c, res, t])) <=1e-14 # TODO zero tolerance value?
+      rule = partial(self._conservation_rule, meta, resource)
       constr = pyo.Constraint(m.T, rule=rule)
       setattr(m, '{r}_conservation'.format(r=resource), constr)
 
@@ -446,19 +449,37 @@ class Pyomo(Dispatcher):
     total = self._compute_cashflows(m.Components, activity, m.Times, meta, state_args=state_args)
     return total
 
-  def _conservation_rule(self, res, m, t):
+  def _conservation_rule(self, meta, res, m, t):
     """
       Constructs conservation constraints.
+      @ In, meta, dict, dictionary of state variables
       @ In, res, str, name of resource
       @ In, m, pyo.ConcreteModel, associated model
       @ In, t, int, index of time variable
       @ Out, conservation, bool, balance check
     """
-    balance = 0
+    balance = 0 # sum of production rates, which needs to be zero
     for comp, res_dict in m.resource_index_map.items():
       if res in res_dict:
-        # TODO move to this? balance += m._activity.get_activity(comp, res, t)
-        balance += getattr(m, f'{comp.name}_production')[res_dict[res], t]
+        # activity information depends on if storage or component
+        var = getattr(m, f'{comp.name}_production')
+        r = res_dict[res]
+        if comp.get_interaction().is_type('Storage'):
+          # Storages store LEVELS not ACTIVITIES, so calculate activity
+          # Production rate for storage defined as R_k = (L_{k+1} - L_k) / dt
+          if t > 0:
+            previous = var[r, t-1]
+            dt = m.Times[t] - m.Times[t-1]
+          else:
+            # FIXME check this with a variety of ValuedParams
+            previous = comp.get_interaction().get_initial_level(meta, None, None, None)
+            dt = m.Times[1] - m.Times[0]
+          new = var[r, t]
+          production = -1 * (new - previous) / dt # swap sign b/c negative is absorbing, positive is emitting
+        else:
+          # TODO move to this? balance += m._activity.get_activity(comp, res, t)
+          production = var[r, t]
+        balance += production
     return balance == 0 # TODO tol?
 
   def _min_prod_rule(self, prod_name, r, cap, minimum, m, t):

@@ -29,7 +29,9 @@
       <type>pyomo</type>
     </dispatcher>
     <validator>
-      <type>Example</type>
+      <Example>
+        <delta>0.2</delta>
+      </Example>
     </validator>
   </Case>
 

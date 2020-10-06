@@ -126,9 +126,9 @@ class Case(Base):
     validator = InputData.parameterInputFactory('validator', ordered=False,
         descr=r"""This node defines the dispatch validation strategy and options to use in the
         ``inner'' run.""")
-    validator_options = InputTypes.makeEnumType('ValidatorOptions', 'ValidatorOptionsType', [d for d in known_validators])
-    validator.addSub(InputData.parameterInputFactory('type', contentType=validator_options,
-        descr=r"""the name of the ``inner'' dispatch validation strategy to use."""))
+    for d in known_validators:
+      vld_spec = get_validator(d).get_input_specs()
+      validator.addSub(vld_spec)
     input_specs.addSub(validator)
 
     return input_specs
@@ -198,10 +198,11 @@ class Case(Base):
           if item.getName() == 'increment':
             self._increments[item.parameterValues['resource']] = item.value
       elif item.getName() == 'validator':
-        name = item.findFirst('type').value
+        vld = item.subparts[0]
+        name = vld.getName()
         typ = get_validator(name)
         self.validator = typ()
-        self.validator.read_input(item)
+        self.validator.read_input(vld)
 
     # checks
     if self._mode is None:

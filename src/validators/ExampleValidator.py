@@ -25,7 +25,14 @@ class Example(Validator):
       @ Out, specs, InputData, specs
     """
     specs = Validator.get_input_specs()
-    # TODO left for convenience
+    specs.name = 'Example'
+    specs.description = r"""Uses a demonstration-only validator that constrains the change
+          for any resource to a constant ``delta''."""
+    specs.addSub(InputData.parameterInputFactory('delta', contentType=InputTypes.FloatType,
+        descr=r"""the maximum absolute change in any resource between successive time steps."""))
+    specs.addSub(InputData.parameterInputFactory('tolerance', contentType=InputTypes.FloatType,
+        descr=r"""the strictness with which the constraint should be enforced. Note that some small
+              numerical exception is expected."""))
     return specs
 
   def __init__(self):
@@ -35,8 +42,8 @@ class Example(Validator):
       @ Out, None
     """
     self.name = 'BaseValidator'
-    self._allowable = 0.2
-    self._tolerance = 1e-10
+    self._allowable = 0.5
+    self._tolerance = 1e-14
 
   def read_input(self, inputs):
     """
@@ -44,7 +51,12 @@ class Example(Validator):
       @ In, inputs, InputData.InputSpecs, input specifications
       @ Out, None
     """
-    pass
+    delta = inputs.findFirst('delta')
+    if delta:
+      self._allowable = delta.value
+    tol = inputs.findFirst('tolerance')
+    if tol:
+      self._tolerance = tol.value
 
   # ---------------------------------------------
   # API

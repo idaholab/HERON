@@ -127,7 +127,6 @@ class Case(Base):
         descr=r"""This node defines the dispatch validation strategy and options to use in the
         ``inner'' run.""")
     for d in known_validators:
-      print('DEBUGG adding:', d)
       vld_spec = get_validator(d).get_input_specs()
       validator.addSub(vld_spec)
     input_specs.addSub(validator)

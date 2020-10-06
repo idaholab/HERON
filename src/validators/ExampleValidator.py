@@ -57,7 +57,6 @@ class Example(Validator):
     tol = inputs.findFirst('tolerance')
     if tol:
       self._tolerance = tol.value
-    print('DEBUGG done.')
 
   # ---------------------------------------------
   # API

@@ -130,9 +130,6 @@ class Case(Base):
       print('DEBUGG adding:', d)
       vld_spec = get_validator(d).get_input_specs()
       validator.addSub(vld_spec)
-    # validator_options = InputTypes.makeEnumType('ValidatorOptions', 'ValidatorOptionsType', [d for d in known_validators])
-    # validator.addSub(InputData.parameterInputFactory('type', contentType=validator_options,
-    #    descr=r"""the name of the ``inner'' dispatch validation strategy to use."""))
     input_specs.addSub(validator)
 
     return input_specs

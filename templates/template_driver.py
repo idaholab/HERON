@@ -183,7 +183,7 @@ class Template(TemplateBase):
     """
     self._modify_outer_mode(template, case)
     self._modify_outer_runinfo(template, case)
-    self._modify_outer_vargroups(template, components)
+    self._modify_outer_vargroups(template, case, components)
     self._modify_outer_files(template, sources)
     self._modify_outer_models(template, components)
     self._modify_outer_samplers(template, case, components)
@@ -241,7 +241,7 @@ class Template(TemplateBase):
     run_info.find('JobName').text = case_name
     run_info.find('WorkingDir').text = case_name
 
-  def _modify_outer_vargroups(self, template, components):
+  def _modify_outer_vargroups(self, template, case, components):
     """
       Defines modifications to the VariableGroups of outer.xml RAVEN input file.
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
@@ -252,6 +252,13 @@ class Template(TemplateBase):
     # capacities
     caps = var_groups[0]
     caps.text = ', '.join('{}_capacity'.format(x.name) for x in components)
+    if case.get_labels():
+      case_labels = ET.SubElement(var_groups, 'Group', attrib={'name': 'GRO_case_labels'})
+      case_labels.text = ', '.join([f'{key}_label' for key in case.get_labels().keys()])
+      for node in template.find('DataObjects'):
+        if node.get('name') == 'grid':
+          input_node = node.find('Input')
+          input_node.text += ', GRO_case_labels'
 
   def _modify_outer_files(self, template, sources):
     """
@@ -294,6 +301,13 @@ class Template(TemplateBase):
       new = xmlUtils.newNode('alias', text=text.format(name), attrib=attribs)
       raven.append(new)
 
+    # label aliases placed inside models
+    text = 'Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:{}_label'
+    for var, _ in self.__case.get_labels().items():
+      attribs = {'variable': '{}_label'.format(var), 'type':'input'}
+      new = xmlUtils.newNode('alias', text=text.format(var), attrib=attribs)
+      raven.append(new)
+
   def _modify_outer_samplers(self, template, case, components):
     """
       Defines modifications to the Samplers/Optimizers of outer.xml RAVEN input file.
@@ -312,6 +326,12 @@ class Template(TemplateBase):
     ## assumption: first node is the denoises node
     samps_node.find('constant').text = str(case._num_samples)
     # add sweep variables to input
+
+    ## TODO: Refactor this portion with the below portion to handle
+    ## all general cases instead of only two.
+    for key, value in case.get_labels().items():
+        var_name = self.namingTemplates['variable'].format(unit=key, feature='label')
+        samps_node.append(xmlUtils.newNode('constant', text=value, attrib={'name': var_name}))
 
     for component in components:
       interaction = component.get_interaction()
@@ -388,10 +408,35 @@ class Template(TemplateBase):
     # NOTE: this HAS to come before modify_inner_denoisings,
     #       because we'll be copy-pasting these for each denoising --> or wait, maybe that's for the Outer to do!
     self._modify_inner_components(template, case, components)
+    self._modify_inner_caselabels(template, case)
     # TODO modify based on resources ... should only need if units produce multiple things, right?
     # TODO modify CashFlow input ... this will be a big undertaking with changes to the inner.
     ## Maybe let the user change them? but then we don't control the variable names. We probably have to do it.
     return template
+
+  def _modify_inner_caselabels(self, template, case):
+    """
+      Create GRO_case_labels VariableGroup if labels have been provided.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ Out, None
+    """
+    if case.get_labels():
+      var_groups = template.find('VariableGroups')
+      case_labels = ET.SubElement(var_groups, 'Group', attrib={'name': 'GRO_case_labels'})
+      case_labels.text = ', '.join([f'{key}_label' for key in case.get_labels().keys()])
+      ## Since <label> is optional, we don't want to hard-code it into
+      ## the template files. So we will create it as needed and then
+      ## modify GRO_armasamples_in_scalar to contain the group.
+      for node in var_groups:
+        if node.get('name') in ['GRO_armasamples_in_scalar', 'GRO_dispatch_in_scalar']:
+          node.text += ', GRO_case_labels'
+      # Add case labels to Sampler node as well.
+      mc = template.find('Samplers').find('MonteCarlo')
+      for key, value in case.get_labels().items():
+        label_name = self.namingTemplates['variable'].format(unit=key, feature='label')
+        case_labels = ET.SubElement(mc, 'constant', attrib={'name': label_name})
+        case_labels.text = value
 
   def _modify_inner_runinfo(self, template, case):
     """

@@ -626,7 +626,7 @@ class Interaction(Base):
       @ Out, balance, dict, new results of requested action, possibly modified if capacity hit
       @ Out, meta, dict, additional variable passthrough
     """
-    cap = self.get_capacity(meta, raven_vars, dispatch, t)[0][self._capacity_var]
+    cap = self.get_capacity(meta)[0][self._capacity_var]
     try:
       if abs(balance[self._capacity_var]) > abs(cap):
         #ttttt

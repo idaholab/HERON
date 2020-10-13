@@ -157,7 +157,7 @@ class Pyomo(Dispatcher):
       ## same as other production variables, we create components with limitation
       ## lowerbound == upperbound == capacity (just for "fixed" dispatch components)
       prod_name = self._create_production(m, comp) # variables
-      self._create_capacity(m, comp, prod_name)    # capacity constraints
+      self._create_capacity(m, comp, prod_name, meta)    # capacity constraints
       self._create_transfer(m, comp, prod_name)    # transfer functions (constraints)
       # ramp rates TODO ## INCLUDING previous-time boundary condition TODO
     self._create_conservation(m, resources, meta) # conservation of resources (e.g. production == consumption)
@@ -259,7 +259,7 @@ class Pyomo(Dispatcher):
     setattr(m, prod_name, prod)
     return prod_name
 
-  def _create_capacity(self, m, comp, prod_name):
+  def _create_capacity(self, m, comp, prod_name, meta):
     """
       Creates pyomo capacity constraints
       @ In, m, pyo.ConcreteModel, associated model
@@ -274,7 +274,7 @@ class Pyomo(Dispatcher):
     ## NOTE get_capacity returns (data, meta) and data is dict
     ## TODO does this work with, e.g., ARMA-based capacities?
     ### -> "time" is stored on "m" and could be used to correctly evaluate the capacity
-    cap = comp.get_capacity(None, None, None, None)[0][cap_res] # value of capacity limit (units of governing resource)
+    cap = comp.get_capacity(meta)[0][cap_res] # value of capacity limit (units of governing resource)
     rule = partial(self._capacity_rule, prod_name, r, cap)
     constr = pyo.Constraint(m.T, rule=rule)
     setattr(m, '{c}_{r}_capacity_constr'.format(c=name, r=cap_res), constr)

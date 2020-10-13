@@ -1,16 +1,12 @@
 
 # Copyright 2020, Battelle Energy Alliance, LLC
 # ALL RIGHTS RESERVED
-# from generic import Generic
-# from marginal import marginal
-# from custom import Custom
 from .pyomo_dispatch import Pyomo
+from .CustomDispatcher import Custom
 
 known = {
-    #'generic': Generic,
-    #'marginal': Marginal,
-    #'custom': Custom,
     'pyomo': Pyomo,
+    'custom': Custom,
 }
 
 def get_class(typ):

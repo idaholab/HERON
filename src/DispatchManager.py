@@ -100,12 +100,14 @@ class DispatchRunner:
 
     # TODO magic keywords (e.g. verbosity, MAX_TIMES, MAX_YEARS, ONLY_DISPATCH, etc)
     # TODO other arbitrary constants, such as sampled values from Outer needed in Inner?
+
     # component capacities
     for comp in self._components:
       name = self.naming_template['comp capacity'].format(comp=comp.name)
       update_capacity = raven_dict.get(name) # TODO is this ever not provided?
       comp.set_capacity(update_capacity)
     # TODO other case, component properties
+
     # load ARMA signals
     for source in self._sources:
       if source.is_type('ARMA'):

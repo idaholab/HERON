@@ -360,11 +360,11 @@ class ValuedParam:
     if variable in aliases:
       variable = aliases[variable]
     try:
-      val = inputs['raven_vars'][variable]
+      val = inputs['HERON']['RAVEN_vars'][variable]
     except KeyError as e:
       print('ERROR: requested variable "{}" not found among RAVEN variables!'.format(variable))
       print('  -> Available:')
-      for vn in inputs['raven_vars'].keys():
+      for vn in inputs['HERON']['RAVEN_vars'].keys():
         print('      ', vn)
       raise e
     return {key: float(val)}

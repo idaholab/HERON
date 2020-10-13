@@ -15,6 +15,8 @@ import numpy as np
 import pyomo.environ as pyo
 from pyomo.opt import SolverStatus, TerminationCondition
 
+from utils import InputData, InputTypes
+
 # allows pyomo to solve on threaded processes
 import pyutilib.subprocess.GlobalData
 pyutilib.subprocess.GlobalData.DEFINE_SIGNAL_HANDLERS_DEFAULT = False
@@ -54,7 +56,7 @@ class Pyomo(Dispatcher):
       @ In, None
       @ Out, specs, InputData, specs
     """
-    specs = InputData.parameterInputFactory('Dispatcher', ordered=False, baseNode=None)
+    specs = InputData.parameterInputFactory('pyomo', ordered=False, baseNode=None)
     # TODO specific for pyomo dispatcher
     return specs
 

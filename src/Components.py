@@ -212,7 +212,7 @@ class Component(Base, CashFlowUser):
     res.update(self.get_outputs())
     return res
 
-  def get_capacity(self, meta, raven_vars, dispatch, t, raw=False):
+  def get_capacity(self, meta, raw=False):
     """
       returns the capacity of the interaction of this component
       @ In, meta, dict, arbitrary metadata from EGRET
@@ -222,7 +222,7 @@ class Component(Base, CashFlowUser):
       @ In, raw, bool, optional, if True then return the ValuedParam instance for capacity, instead of the evaluation
       @ Out, capacity, float (or ValuedParam), the capacity of this component's interaction
     """
-    return self.get_interaction().get_capacity(meta, raven_vars, dispatch, t, raw=raw)
+    return self.get_interaction().get_capacity(meta, raw=raw)
 
   def get_capacity_var(self):
     """
@@ -444,7 +444,7 @@ class Interaction(Base):
     self._crossrefs[name] = vp
     setattr(self, name, vp)
 
-  def get_capacity(self, meta, raven_vars, dispatch, t, raw=False):
+  def get_capacity(self, meta, raw=False):
     """
       Returns the capacity of this interaction.
       Returns an evaluated value unless "raw" is True, then gives ValuedParam
@@ -459,12 +459,13 @@ class Interaction(Base):
     if raw:
       return self._capacity
     request = {self._capacity_var: None}
-    inputs = {'request': request,
-              'meta': meta,
-              'raven_vars': raven_vars,
-              'dispatch': dispatch,
-              't': t}
-    evaluated, meta = self._capacity.evaluate(inputs, target_var=self._capacity_var)
+    meta['request'] = request
+    # inputs = {'request': request,
+    #           'meta': meta,
+    #           'raven_vars': raven_vars,
+    #           'dispatch': dispatch,
+    #           't': t}
+    evaluated, meta = self._capacity.evaluate(meta, target_var=self._capacity_var)
     return evaluated, meta
 
   def get_capacity_var(self):

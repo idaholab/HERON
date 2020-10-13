@@ -29,7 +29,7 @@
       <verbosity>50</verbosity>
     </economics>
     <dispatcher>
-      <type>pyomo</type>
+      <pyomo/>
     </dispatcher>
   </Case>
 

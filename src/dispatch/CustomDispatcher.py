@@ -5,6 +5,7 @@
   Interface for user-provided dispatching strategies.
 """
 import os
+import inspect
 import numpy as np
 
 from utils import utils, InputData, InputTypes
@@ -73,8 +74,13 @@ class Custom(Dispatcher):
       raise IOError(f'Custom dispatcher not found at "{file_loc}"! (input dir "{start_loc}", provided path "{self._usr_loc}"')
     self._file = file_loc
     print(f'Loading custom dispatch at "{self._file}"')
+    # load user module
+    load_string, _ = utils.identifyIfExternalModelExists(self, self._file, '')
+    module = utils.importFromPath(load_string, True)
     # check it works as intended
-    # TODO XXX
+    if not 'dispatch' in dir(module):
+      raise IOError(f'Custom Dispatch at "{self._file}" does not have a "dispatch" method!')
+    # TODO other checks?
 
   def dispatch(self, case, components, sources, meta):
     """

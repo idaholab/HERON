@@ -9,17 +9,29 @@ w_price = 0.05 # $/water/s
 w_per_e = 10  # 10 water / elec
 w_eff_price = w_price * w_per_e # $/MW, when e is used to make water
 
-def dispatch(meta):
+def dispatch(info):
+  """
+    Dispatches the components based on user-defined algorithms.
+    The expected return object is a dict of components, mapped to a dict of
+      resources that component uses, mapped to the amount consumed/produced
+      as a numpy array.
+    Note:
+     - Negative values mean the component consumes that resource
+     - Positive values mean the component produces that resource
+     - The activity doesn't necessarily have to be as long as "time", but it usually should be
+    @ In, info, dict, information about the state of the system
+    @ Out, activity, dict, activity of components as described above
+  """
   # find price
-  e_price_hist = meta['HERON']['RAVEN_vars']['Signal']
+  e_price_hist = info['HERON']['RAVEN_vars']['Signal']
   T = len(e_price_hist)
   # find out how much electricity we're producing
   ## same as the capacity of the power plant
-  for comp in meta['HERON']['Components']:
+  for comp in info['HERON']['Components']:
     if comp.name == 'power_plant':
       power_plant = comp
       break
-  electricity_avail = power_plant.get_capacity(meta)[0]['electricity']
+  electricity_avail = power_plant.get_capacity(info)[0]['electricity']
   # choose how to dispatch units (define their activity)
   ## activity is: per component, per resource, vector of activity in time
   activity = {

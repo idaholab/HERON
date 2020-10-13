@@ -265,6 +265,7 @@ class Pyomo(Dispatcher):
       @ In, m, pyo.ConcreteModel, associated model
       @ In, comp, HERON Component, component to make variables for
       @ In, prod_name, str, name of production variable
+      @ In, meta, dict, additional state information
       @ Out, None
     """
     name = comp.name

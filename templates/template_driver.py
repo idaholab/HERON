@@ -340,7 +340,7 @@ class Template(TemplateBase):
       ## --> this really needs to be made generic for all kinds of valued params!
       name = component.name
       var_name = self.namingTemplates['variable'].format(unit=name, feature='capacity')
-      cap = interaction.get_capacity(None, None, None, None, raw=True)
+      cap = interaction.get_capacity(None, raw=True)
       # do we already know the capacity values?
       if cap.type == 'value':
         vals = cap.get_values()
@@ -499,8 +499,8 @@ class Template(TemplateBase):
       ## For each interaction of each component, that means making sure the Function, ARMA, or constant makes it.
       ## Constants from outer (namely sweep/opt capacities) are set in the MC Sampler from the outer
       ## The Dispatch needs info from the Outer to know which capacity to use, so we can't pass it from here.
+      capacity = component.get_capacity(None, raw=True)
       interaction = component.get_interaction()
-      capacity = interaction.get_capacity(None, None, None, None, raw=True)
       values = capacity.get_values()
       #cap_name = self.namingTemplates['variable'].format(unit=name, feature='capacity')
       if isinstance(values, (list, float)):

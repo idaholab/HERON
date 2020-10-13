@@ -28,8 +28,7 @@
       <verbosity>50</verbosity>
     </economics>
     <dispatcher>
-      <type>pyomo</type>
-      <increment resource="electricity">1e6</increment> <!-- MW -->
+      <pyomo/>
     </dispatcher>
   </Case>
 

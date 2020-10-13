@@ -212,17 +212,14 @@ class Component(Base, CashFlowUser):
     res.update(self.get_outputs())
     return res
 
-  def get_capacity(self, meta, raven_vars, dispatch, t, raw=False):
+  def get_capacity(self, meta, raw=False):
     """
       returns the capacity of the interaction of this component
       @ In, meta, dict, arbitrary metadata from EGRET
-      @ In, raven_vars, dict, evaluated RAVEN variables
-      @ In, dispatch, DispatchScenario.DispatchRecord, current dispatch situation
-      @ In, t, int, current time step
       @ In, raw, bool, optional, if True then return the ValuedParam instance for capacity, instead of the evaluation
       @ Out, capacity, float (or ValuedParam), the capacity of this component's interaction
     """
-    return self.get_interaction().get_capacity(meta, raven_vars, dispatch, t, raw=raw)
+    return self.get_interaction().get_capacity(meta, raw=raw)
 
   def get_capacity_var(self):
     """
@@ -444,14 +441,11 @@ class Interaction(Base):
     self._crossrefs[name] = vp
     setattr(self, name, vp)
 
-  def get_capacity(self, meta, raven_vars, dispatch, t, raw=False):
+  def get_capacity(self, meta, raw=False):
     """
       Returns the capacity of this interaction.
       Returns an evaluated value unless "raw" is True, then gives ValuedParam
       @ In, meta, dict, additional variables to pass through
-      @ In, raven_vars, dict, TODO part of meta! consolidate!
-      @ In, dispatch, dict, TODO part of meta! consolidate!
-      @ In, t, int, TODO part of meta! consolidate!
       @ In, raw, bool, optional, if True then provide ValuedParam instead of evaluation
       @ Out, evaluated, float or ValuedParam, requested value
       @ Out, meta, dict, additional variable passthrough
@@ -459,12 +453,8 @@ class Interaction(Base):
     if raw:
       return self._capacity
     request = {self._capacity_var: None}
-    inputs = {'request': request,
-              'meta': meta,
-              'raven_vars': raven_vars,
-              'dispatch': dispatch,
-              't': t}
-    evaluated, meta = self._capacity.evaluate(inputs, target_var=self._capacity_var)
+    meta['request'] = request
+    evaluated, meta = self._capacity.evaluate(meta, target_var=self._capacity_var)
     return evaluated, meta
 
   def get_capacity_var(self):
@@ -625,7 +615,7 @@ class Interaction(Base):
       @ Out, balance, dict, new results of requested action, possibly modified if capacity hit
       @ Out, meta, dict, additional variable passthrough
     """
-    cap = self.get_capacity(meta, raven_vars, dispatch, t)[0][self._capacity_var]
+    cap = self.get_capacity(meta)[0][self._capacity_var]
     try:
       if abs(balance[self._capacity_var]) > abs(cap):
         #ttttt

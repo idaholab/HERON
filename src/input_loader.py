@@ -44,7 +44,7 @@ def parse(xml, loc, messageHandler):
 
   # intentionally read case first
   case_node = xml.find('Case')
-  case = Cases.Case(messageHandler=messageHandler)
+  case = Cases.Case(loc, messageHandler=messageHandler)
   case.read_input(case_node)
 
   # read everything else

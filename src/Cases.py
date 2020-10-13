@@ -126,18 +126,11 @@ class Case(Base):
 
     # dispatcher
     dispatch = InputData.parameterInputFactory('dispatcher', ordered=False,
-        descr=r"""This node defines the dispatch strategy and options to use in the ``inner'' run.""")
-    dispatch_options = InputTypes.makeEnumType('DispatchOptions', 'DispatchOptionsType', [d for d in known_dispatchers])
-    dispatch.addSub(InputData.parameterInputFactory('type', contentType=dispatch_options,
-        descr=r"""the name of the ``inner'' dispatch strategy to use."""))
-    incr = InputData.parameterInputFactory('increment', contentType=InputTypes.FloatType,
-        descr=r"""When performing an incremental resource balance as part of a dispatch solve, this
-              determines the size of incremental adjustments to make for the given resource. If this
-              value is large, then the solve is accelerated, but may miss critical inflection points
-              in economical tradeoff. If this value is small, the solve may take much longer.""")
-    incr.addParam('resource', param_type=InputTypes.StringType, required=True,
-        descr=r"""indicates the resource for which this increment is being defined.""")
-    dispatch.addSub(incr)
+        descr=r"""This node defines the dispatch strategy and options to use in the ``inner''
+        run.""")
+    for d in known_dispatchers:
+      vld_spec = get_dispatcher(d).get_input_specs()
+      dispatch.addSub(vld_spec)
     input_specs.addSub(dispatch)
 
     # validator
@@ -151,7 +144,7 @@ class Case(Base):
 
     return input_specs
 
-  def __init__(self, **kwargs):
+  def __init__(self, run_dir, **kwargs):
     """
       Constructor
       @ In, None
@@ -161,6 +154,7 @@ class Case(Base):
     self.name = None           # case name
     self._mode = None          # extrema to find: min, max, sweep
     self._metric = 'NPV'       # UNUSED (future work); economic metric to focus on: lcoe, profit, cost
+    self.run_dir = run_dir     # location of HERON input file
 
     self.dispatch_name = None  # name of dispatcher to use
     self.dispatcher = None     # type of dispatcher to use
@@ -179,6 +173,9 @@ class Case(Base):
 
     self._time_discretization = None # (start, end, number) for constructing time discretization, same as argument to np.linspace
     self._Resample_T = None    # user-set increments for resources
+
+    # clean up location
+    self.run_dir = os.path.abspath(os.path.expanduser(self.run_dir))
 
   def read_input(self, xml):
     """
@@ -209,14 +206,11 @@ class Case(Base):
           self._global_econ[sub.getName()] = sub.value
       elif item.getName() == 'dispatcher':
         # instantiate a dispatcher object.
-        name = item.findFirst('type').value
+        inp = item.subparts[0]
+        name = inp.getName()
         typ = get_dispatcher(name)
         self.dispatcher = typ()
-        self.dispatcher.read_input(item)
-        # XXX Remove -> send to dispatcher instead
-        for sub in item.subparts:
-          if item.getName() == 'increment':
-            self._increments[item.parameterValues['resource']] = item.value
+        self.dispatcher.read_input(inp)
       elif item.getName() == 'validator':
         vld = item.subparts[0]
         name = vld.getName()

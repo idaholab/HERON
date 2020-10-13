@@ -4,9 +4,10 @@
   input = heron_input.xml
   # prereq = SineArma
   [./csv]
-    type = UnorderedCSV
+    type = OrderedCSV
     output = 'Sweep_Runs_o/sweep.csv'
     zero_threshold = 1e-6
+    rel_err = 1e-6
   [../]
  [../]
 

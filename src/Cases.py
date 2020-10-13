@@ -46,6 +46,24 @@ class Case(Base):
     input_specs.addParam('name', param_type=InputTypes.StringType, required=True,
         descr=r"""the name by which this analysis should be referred within HERON.""")
 
+    # Optional Identifier Nodes
+    label_specs = InputData.parameterInputFactory(
+        name='label',
+        ordered=False,
+        descr=r"""provides static label information to the model;
+        unused in computation. These data will be passed along through
+        the meta class and output in the simulation result files.
+        These data can also be accessed within user-defined transfer
+        functions by using \texttt{meta['HERON']['Case'].get_labels()}."""
+    )
+    label_specs.addParam(
+        name='name',
+        param_type=InputTypes.StringType,
+        descr=r"""the generalized name of the identifier.
+               Example: ``<label name="state">Idaho</label>''"""
+    )
+    input_specs.addSub(label_specs)
+
     mode_options = InputTypes.makeEnumType('ModeOptions', 'ModeOptionsType', ['opt', 'sweep'])
     desc_mode_options = r"""determines whether the outer RAVEN should perform optimization,
                          or a parametric (``sweep'') study. \default{sweep}"""
@@ -151,6 +169,7 @@ class Case(Base):
     self._global_econ = {}     # global economics settings, as a pass-through
     self._increments = {}      # stepwise increments for resource balancing
     self._time_varname = 'time' # name of the variable throughout simulation
+    self._labels = {}       # extra information pertaining to current case
 
     self._time_discretization = None # (start, end, number) for constructing time discretization, same as argument to np.linspace
     self._Resample_T = None    # user-set increments for resources
@@ -170,6 +189,8 @@ class Case(Base):
     self.name = specs.parameterValues['name']
     for item in specs.subparts:
       # TODO move from iterative list to seeking list, at least for required nodes
+      if item.getName() == 'label':
+        self._labels[item.parameterValues['name']] = item.value
       if item.getName() == 'mode':
         self._mode = item.value
       elif item.getName() == 'metric':
@@ -180,7 +201,6 @@ class Case(Base):
         self._num_samples = item.value
       elif item.getName() == 'time_discretization':
         self._time_discretization = self._read_time_discr(item)
-
       elif item.getName() == 'economics':
         for sub in item.subparts:
           self._global_econ[sub.getName()] = sub.value
@@ -331,6 +351,14 @@ class Case(Base):
       self._global_econ['Indicator'] = indic
     return self._global_econ
 
+  def get_labels(self):
+    """
+      Accessor
+      @ In, None
+      @ Out, _labels, dict, labels for this case
+    """
+    return self._labels
+
   def get_metric(self):
     """
       Accessor
@@ -454,7 +482,6 @@ class Case(Base):
     ###################
     run_info = template.find('RunInfo')
     case_name = self.get_working_dir('outer') #self.string_templates['jobname'].format(case=self.name, io='o')
-    ooooooooo # I don't think this gets run!
     # job name
     run_info.find('JobName').text = case_name
     # working dir

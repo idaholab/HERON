@@ -275,23 +275,31 @@ class Pyomo(Dispatcher):
     ## NOTE get_capacity returns (data, meta) and data is dict
     ## TODO does this work with, e.g., ARMA-based capacities?
     ### -> "time" is stored on "m" and could be used to correctly evaluate the capacity
-    cap = comp.get_capacity(meta)[0][cap_res] # value of capacity limit (units of governing resource)
-    rule = partial(self._capacity_rule, prod_name, r, cap)
+    caps = []
+    mins = []
+    for t, time in enumerate(m.Times):
+      meta['HERON']['time_index'] = t
+      cap = comp.get_capacity(meta)[0][cap_res] # value of capacity limit (units of governing resource)
+      caps.append(cap)
+      # minimum production
+      if comp.is_dispatchable() == 'fixed':
+        minimum = cap
+        # initialize values so there's no boundary errors
+        var = getattr(m, prod_name)
+        values = var.get_values()
+        for k in values:
+          values[k] = cap
+        var.set_values(values)
+      else:
+        #minimum = 0 #  -> for now just use 0, but fix this! XXX
+        minimum = comp.get_minimum(meta)[0][cap_res]
+      mins.append(minimum)
+    # capacity
+    rule = partial(self._capacity_rule, prod_name, r, caps)
     constr = pyo.Constraint(m.T, rule=rule)
     setattr(m, '{c}_{r}_capacity_constr'.format(c=name, r=cap_res), constr)
-    # minimum production
-    if comp.is_dispatchable() == 'fixed':
-      minimum = cap
-      var = getattr(m, prod_name)
-      values = var.get_values()
-      for k in values:
-        values[k] = cap
-      var.set_values(values)
-    else:
-      #minimum = 0 #  -> for now just use 0, but fix this! XXX
-      minimum = comp.get_minimum(meta)[0][cap_res]
-    print('DEBUGG ... min:', minimum)
-    rule = partial(self._min_prod_rule, prod_name, r, cap, minimum)
+    # minimum
+    rule = partial(self._min_prod_rule, prod_name, r, caps, mins)
     constr = pyo.Constraint(m.T, rule=rule)
     setattr(m, '{c}_{r}_minprod_constr'.format(c=name, r=cap_res), constr)
 
@@ -409,24 +417,24 @@ class Pyomo(Dispatcher):
   ### RULES for partial function calls
   # these get called using "functools.partial" to make Pyomo constraints, vars, objectives, etc
 
-  def _capacity_rule(self, prod_name, r, cap, m, t):
+  def _capacity_rule(self, prod_name, r, caps, m, t):
     """
       Constructs pyomo capacity constraints.
       @ In, prod_name, str, name of production variable
       @ In, r, int, index of resource for capacity constraining
-      @ In, cap, float, value to constrain resource at
+      @ In, caps, list(float), value to constrain resource at in time
       @ In, m, pyo.ConcreteModel, associated model
       @ In, t, int, time index for capacity rule
     """
-    kind = 'lower' if cap < 0 else 'upper'
-    return self._prod_limit_rule(prod_name, r, cap, kind, t, m)
+    kind = 'lower' if min(caps) < 0 else 'upper'
+    return self._prod_limit_rule(prod_name, r, caps, kind, t, m)
 
-  def _prod_limit_rule(self, prod_name, r, limit, kind, t, m):
+  def _prod_limit_rule(self, prod_name, r, limits, kind, t, m):
     """
       Constructs pyomo production constraints.
       @ In, prod_name, str, name of production variable
       @ In, r, int, index of resource for capacity constraining
-      @ In, limit, float, value at which to constrain resource production
+      @ In, limits, list(float), values in time at which to constrain resource production
       @ In, kind, str, either 'upper' or 'lower' for limiting production
       @ In, t, int, time index for production rule (NOTE not pyomo index, rather fixed index)
       @ In, m, pyo.ConcreteModel, associated model
@@ -434,9 +442,9 @@ class Pyomo(Dispatcher):
     prod = getattr(m, prod_name)
     if kind == 'lower':
       # production must exceed value
-      return prod[r, t] >= limit
+      return prod[r, t] >= limits[t]
     elif kind == 'upper':
-      return prod[r, t] <= limit
+      return prod[r, t] <= limits[t]
     else:
       raise TypeError('Unrecognized production limit "kind":', kind)
 
@@ -485,23 +493,23 @@ class Pyomo(Dispatcher):
         balance += production
     return balance == 0 # TODO tol?
 
-  def _min_prod_rule(self, prod_name, r, cap, minimum, m, t):
+  def _min_prod_rule(self, prod_name, r, caps, minimums, m, t):
     """
       Constructs minimum production constraint
       @ In, prod_name, str, name of production variable
       @ In, r, int, index of resource for capacity constraining
-      @ In, cap, float, capacity value for component
-      @ In, minimum, float, minimum allowable production
+      @ In, caps, list(float), capacity(t) value for component
+      @ In, minimums, list(float), minimum allowable production in time
       @ In, m, pyo.ConcreteModel, associated model
       @ In, t, int, index of time variable
       @ Out, minimum, bool, min check
     """
     prod = getattr(m, prod_name)
     # negative capacity means consuming instead of producing
-    if cap > 0:
-      return prod[r, t] >= minimum
+    if max(caps) > 0:
+      return prod[r, t] >= minimums[t]
     else:
-      return prod[r, t] <= minimum
+      return prod[r, t] <= minimums[t]
 
   def _transfer_rule(self, ratio, r, ref_r, prod_name, m, t):
     """

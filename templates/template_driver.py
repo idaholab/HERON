@@ -86,6 +86,9 @@ class Template(TemplateBase):
     self._template_cash = None
     self._template_inner = None
     self._template_outer = None
+    self.__case = None
+    self.__components = None
+    self.__sources = None
 
   def loadTemplate(self, path):
     """
@@ -116,11 +119,12 @@ class Template(TemplateBase):
     self.__case = case
     self.__components = components
     self.__sources = sources
+    # initialize case economics
+    case.load_econ(components)
     # load a copy of the template
     inner = copy.deepcopy(self._template_inner)
     outer = copy.deepcopy(self._template_outer)
     cash = copy.deepcopy(self._template_cash)
-
     # modify the templates
     inner = self._modify_inner(inner, case, components, sources)
     outer = self._modify_outer(outer, case, components, sources)

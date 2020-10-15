@@ -280,7 +280,6 @@ class Pyomo(Dispatcher):
     constr = pyo.Constraint(m.T, rule=rule)
     setattr(m, '{c}_{r}_capacity_constr'.format(c=name, r=cap_res), constr)
     # minimum production
-    print('DEBUGG dispatchable?', comp.name, comp.is_dispatchable())
     if comp.is_dispatchable() == 'fixed':
       minimum = cap
       var = getattr(m, prod_name)
@@ -289,7 +288,8 @@ class Pyomo(Dispatcher):
         values[k] = cap
       var.set_values(values)
     else:
-      minimum = 0 #  -> for now just use 0, but fix this! XXX
+      #minimum = 0 #  -> for now just use 0, but fix this! XXX
+      minimum = comp.get_minimum(meta)[0][cap_res]
     print('DEBUGG ... min:', minimum)
     rule = partial(self._min_prod_rule, prod_name, r, cap, minimum)
     constr = pyo.Constraint(m.T, rule=rule)

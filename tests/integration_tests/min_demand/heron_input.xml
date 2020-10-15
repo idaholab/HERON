@@ -1,0 +1,112 @@
+<HERON>
+  <TestInfo>
+    <name>MinDemand</name>
+    <author>E. Worsham</author>
+    <created>2020-10-15</created>
+    <description>
+      Tests having a minimum level for a demand component.
+    </description>
+    <classesTested>HERON</classesTested>
+  </TestInfo>
+
+    <Case name="Sizing">
+      <mode>sweep</mode>
+      <num_arma_samples>3</num_arma_samples>
+      <time_discretization>
+        <time_variable>Time</time_variable>
+        <end_time>2</end_time>
+        <num_steps>21</num_steps>
+      </time_discretization>
+      <economics>
+        <ProjectTime>3</ProjectTime>
+        <DiscountRate>0.08</DiscountRate>
+        <tax>0.0</tax>
+        <inflation>0.0</inflation>
+        <verbosity>50</verbosity>
+      </economics>
+      <dispatcher>
+        <pyomo/>
+      </dispatcher>
+    </Case>
+
+    <Components>
+      <Component name="AR">
+        <produces resource="electricity" dispatch="fixed">
+          <capacity resource="electricity">
+            <fixed_value>1000</fixed_value>
+          </capacity>
+        </produces>
+        <economics>
+          <lifetime>1</lifetime>
+        </economics>
+      </Component>
+
+      <Component name="Coal">
+        <produces resource="electricity" dispatch="fixed">
+          <capacity resource="electricity">
+            <sweep_values>2000,1750</sweep_values>
+          </capacity>
+        </produces>
+        <economics>
+          <lifetime>1</lifetime>
+        </economics>
+      </Component>
+
+      <Component name="e_grid">
+        <demands resource="electricity" dispatch="dependent">
+          <capacity>
+            <fixed_value>-2500</fixed_value>
+          </capacity>
+          <minimum>
+            <!-- <fixed_value>-100</fixed_value> -->
+            <ARMA variable="Signal">flex</ARMA>
+            <multiplier>-100</multiplier>
+          </minimum>
+        </demands>
+        <economics>
+          <lifetime>1</lifetime>
+          <CashFlow name="e_sales" type="repeating" taxable="False" inflation="none" mult_target="False">
+            <driver>
+              <Function method="electric_source">transfers</Function>
+            </driver>
+            <reference_price>
+              <fixed_value>1.0</fixed_value>
+            </reference_price>
+            <reference_driver>
+              <fixed_value>1</fixed_value>
+            </reference_driver>
+            <scaling_factor_x>
+              <fixed_value>1</fixed_value>
+            </scaling_factor_x>
+          </CashFlow>
+        </economics>
+      </Component>
+
+      <Component name="sink">
+        <demands resource="electricity" dispatch="independent">
+          <capacity>
+            <fixed_value>-1e6</fixed_value>
+          </capacity>
+        </demands>
+        <economics>
+          <lifetime>3</lifetime>
+          <CashFlow name="e_sales" type="repeating" taxable="False" inflation="none" mult_target="False">
+            <driver>
+              <Function method="electric_source">transfers</Function>
+            </driver>
+            <reference_price>
+              <fixed_value>10.0</fixed_value>
+            </reference_price>
+          </CashFlow>
+        </economics>
+      </Component>
+    </Components>
+
+    <DataGenerators>
+      <ARMA name='flex' variable="Signal">../ARMA/Sine/arma.pk</ARMA>
+      <Function name="transfers">transfers.py</Function>
+    </DataGenerators>
+</HERON>
+
+
+

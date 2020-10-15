@@ -221,6 +221,15 @@ class Component(Base, CashFlowUser):
     """
     return self.get_interaction().get_capacity(meta, raw=raw)
 
+  def get_minimum(self, meta, raw=False):
+    """
+      returns the minimum of the interaction of this component
+      @ In, meta, dict, arbitrary metadata from EGRET
+      @ In, raw, bool, optional, if True then return the ValuedParam instance for capacity, instead of the evaluation
+      @ Out, capacity, float (or ValuedParam), the capacity of this component's interaction
+    """
+    return self.get_interaction().get_minimum(meta, raw=raw)
+
   def get_capacity_var(self):
     """
       Returns the variable that is used to define this component's capacity.
@@ -452,8 +461,7 @@ class Interaction(Base):
     """
     if raw:
       return self._capacity
-    request = {self._capacity_var: None}
-    meta['request'] = request
+    meta['request'] = {self._capacity_var: None}
     evaluated, meta = self._capacity.evaluate(meta, target_var=self._capacity_var)
     return evaluated, meta
 
@@ -475,27 +483,22 @@ class Interaction(Base):
     self._capacity.type = 'value'
     self._capacity._value = float(cap) # TODO getter/setter
 
-  def get_minimum(self, meta, raven_vars, dispatch, t, raw=False):
+  def get_minimum(self, meta, raw=False):
     """
       Returns the minimum level of this interaction.
       Returns an evaluated value unless "raw" is True, then gives ValuedParam
       @ In, meta, dict, additional variables to pass through
-      @ In, raven_vars, dict, TODO part of meta! consolidate!
-      @ In, dispatch, dict, TODO part of meta! consolidate!
-      @ In, t, int, TODO part of meta! consolidate!
       @ In, raw, bool, optional, if True then provide ValuedParam instead of evaluation
       @ Out, evaluated, float or ValuedParam, requested value
       @ Out, meta, dict, additional variable passthrough
     """
     if raw:
       return self._minimum
-    request = {self._minimum_var: None}
-    inputs = {'request': request,
-              'meta': meta,
-              'raven_vars': raven_vars,
-              'dispatch': dispatch,
-              't': t}
-    evaluated, meta = self._minimum.evaluate(inputs, target_var=self._minimum_var)
+    meta['request'] = {self._minimum_var: None}
+    if self._minimum is None:
+      evaluated = {self._capacity_var: 0.0}
+    else:
+      evaluated, meta = self._minimum.evaluate(meta, target_var=self._minimum_var)
     return evaluated, meta
 
   def get_crossrefs(self):

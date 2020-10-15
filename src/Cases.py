@@ -230,9 +230,6 @@ class Case(Base):
     self.dispatcher.set_time_discr(self._time_discretization)
     self.dispatcher.set_validator(self.validator)
 
-    # derivative calculations
-    # OLD self._num_hist = self._hist_len // self._hist_interval # TODO what if it isn't even?
-
     self.raiseADebug('Successfully initialized Case {}.'.format(self.name))
 
   def _read_time_discr(self, node):
@@ -331,15 +328,14 @@ class Case(Base):
       raise NotImplementedError('Unrecognized working dir request: "{}"'.format(which))
     return '{case}_{io}'.format(case=self.name, io=io)
 
-  def get_econ(self, components):
+  def load_econ(self, components):
     """
-      Accessor for economic settings for this case
+      Loads active component cashflows
       @ In, components, list, list of HERON components
-      @ Out, get_econ, dict, dictionary of global economic settings
+      @ Out, None
     """
-    # only add additional params the first time this is called
     if 'active' not in self._global_econ:
-      # NOTE self._metric can only be NPV right now! XXX TODO FIXME
+      # NOTE self._metric can only be NPV right now!
       ## so no need for the "target" in the indicator
       indic = {'name': [self._metric]}
       indic['active'] = []
@@ -349,6 +345,14 @@ class Case(Base):
           cf_name = cf.name
           indic['active'].append('{}|{}'.format(comp_name, cf_name))
       self._global_econ['Indicator'] = indic
+
+  def get_econ(self, components):
+    """
+      Accessor for economic settings for this case
+      @ In, components, list, list of HERON components
+      @ Out, get_econ, dict, dictionary of global economic settings
+    """
+    self.load_econ(components)
     return self._global_econ
 
   def get_labels(self):

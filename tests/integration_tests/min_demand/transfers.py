@@ -1,4 +1,3 @@
-
 # Copyright 2020, Battelle Energy Alliance, LLC
 # ALL RIGHTS RESERVED
 """
@@ -12,3 +11,4 @@ def electric_source(data, meta):
   E = -1.0 * meta['HERON']['activity']['electricity']
   data = {'driver': E}
   return data, meta
+

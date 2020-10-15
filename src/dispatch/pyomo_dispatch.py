@@ -221,9 +221,11 @@ class Pyomo(Dispatcher):
     r = m.resource_index_map[comp][resource]
     t = validation['time_index']
     limit = validation['limit']
+    limits = np.zeros(len(m.Times))
+    limits[t] = limit
     limit_type = validation['limit_type']
     prod_name = f'{comp.name}_production'
-    rule = partial(self._prod_limit_rule, prod_name, r, limit, limit_type, t)
+    rule = partial(self._prod_limit_rule, prod_name, r, limits, limit_type, t)
     constr = pyo.Constraint(rule=rule)
     counter = 1
     name_template = '{c}_{r}_{t}_vld_limit_constr_{{i}}'.format(c=comp.name,

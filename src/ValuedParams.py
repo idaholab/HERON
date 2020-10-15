@@ -36,6 +36,8 @@ class ValuedParam:
       disallowed = []
     spec = InputData.parameterInputFactory(name,
         descr=r"""This value can be taken from any \emph{one} of the sources described below.""")
+    spec.addSub(InputData.parameterInputFactory('multiplier', contentType=InputTypes.FloatType,
+        descr=r"""Multiplies any value obtained by this parameter by the given value. \default{1}"""))
     # for when the value is fixed (takes precedence over "sweep" and "opt") ...
     spec.addSub(InputData.parameterInputFactory('fixed_value', contentType=InputTypes.FloatType,
         descr=r"""indicates this value is a fixed value, given by the value of this node."""))
@@ -100,6 +102,7 @@ class ValuedParam:
     self._value = None       # used for fixed values
     self._growth_val = None  # used to grow the value year-by-year
     self._growth_mode = None # mode for growth (e.g. exponenetial, linear)
+    self._scalar = None      # scaling for values obtained
     self._coefficients = {}  # for (linear) coefficents, resource: coefficient
 
   def get_growth(self):
@@ -173,7 +176,6 @@ class ValuedParam:
     """
     if aliases is None:
       aliases = {}
-    ret = None
     if self.type == 'value':
       value = {target_var: self._value}
     elif self.type == 'ARMA':
@@ -184,13 +186,14 @@ class ValuedParam:
       value = self._evaluate_linear(inputs, target_var, aliases)
     elif self.type == 'Function':
       # directly set the return, unlike the other types
-      ret = self._evaluate_function(inputs, aliases)
+      value, inputs = self._evaluate_function(inputs, aliases)
     else:
       raise RuntimeError('Unrecognized data source:', self.type)
-    # if the return dict wasn't auto-created, create it now
-    if ret is None:
-      ret = (value, inputs)
-    return ret
+    # apply scaling factor
+    if self._scalar is not None:
+      for key in value:
+        value[key] *= self._scalar
+    return (value, inputs)
 
   def _load(self, comp_name, item, mode, alias_dict):
     """
@@ -215,8 +218,13 @@ class ValuedParam:
       self._growth_val = growth.value
       self._growth_mode = growth.parameterValues['mode']
 
+    # handle scaling factor
+    scalar = item.findFirst('multiplier')
+    if scalar is not None:
+      self._scalar = scalar.value
+
     # find type of contents provided
-    given = list(x.getName() for x in item.subparts if x.getName() != 'growth')
+    given = list(x.getName() for x in item.subparts if x.getName() not in ['growth', 'multiplier'])
 
     has_vals = any(g in self.valued_methods for g in given)
     has_arma = any(g == 'ARMA' for g in given)

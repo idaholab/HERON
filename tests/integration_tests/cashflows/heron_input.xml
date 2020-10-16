@@ -1,0 +1,111 @@
+<HERON>
+  <TestInfo>
+    <name>Cashflows</name>
+    <author>talbpaul</author>
+    <created>2020-10-16</created>
+    <description>
+      Tests various kinds of cashflows
+    </description>
+    <classesTested>HERON</classesTested>
+  </TestInfo>
+
+    <Case name="Runs">
+      <mode>sweep</mode>
+      <num_arma_samples>3</num_arma_samples>
+      <time_discretization>
+        <time_variable>Time</time_variable>
+        <end_time>2</end_time>
+        <num_steps>21</num_steps>
+      </time_discretization>
+      <economics>
+        <ProjectTime>30</ProjectTime>
+        <DiscountRate>0.08</DiscountRate>
+        <tax>0.0</tax>
+        <inflation>0.03</inflation>
+        <verbosity>50</verbosity>
+      </economics>
+      <dispatcher>
+        <pyomo/>
+      </dispatcher>
+    </Case>
+
+    <Components>
+      <Component name="source">
+        <produces resource="a" dispatch="fixed">
+          <capacity resource="a">
+            <sweep_values>1, 2</sweep_values>
+          </capacity>
+        </produces>
+        <economics>
+          <lifetime>10</lifetime>
+          <CashFlow name="capex" type="one-time" taxable="False" inflation="none" mult_target="False">
+            <driver>
+              <Function method="capacity">functions</Function>
+            </driver>
+            <reference_price>
+              <fixed_value>10000.0</fixed_value>
+              <multiplier>-1</multiplier>
+            </reference_price>
+            <reference_driver>
+              <fixed_value>10.0</fixed_value>
+            </reference_driver>
+            <scaling_factor_x>
+              <fixed_value>0.999</fixed_value>
+            </scaling_factor_x>
+            <depreciate>5</depreciate>
+          </CashFlow>
+          <CashFlow name="FOM" type="repeating" period='year' taxable="False" inflation="none" mult_target="False">
+            <driver>
+              <Function method="capacity">functions</Function>
+            </driver>
+            <reference_price>
+              <fixed_value>100.0</fixed_value>
+              <multiplier>-1</multiplier>
+            </reference_price>
+            <reference_driver>
+              <fixed_value>10.0</fixed_value>
+            </reference_driver>
+            <scaling_factor_x>
+              <fixed_value>0.999</fixed_value>
+            </scaling_factor_x>
+          </CashFlow>
+          <CashFlow name="VOM" type="repeating" taxable="False" inflation="none" mult_target="False">
+            <driver>
+              <Function method="activity">functions</Function>
+            </driver>
+            <reference_price>
+              <fixed_value>-1</fixed_value>
+            </reference_price>
+          </CashFlow>
+        </economics>
+      </Component>
+
+      <Component name="sink">
+        <demands resource="a" dispatch="independent">
+          <capacity>
+            <fixed_value>-2</fixed_value>
+          </capacity>
+        </demands>
+        <economics>
+          <lifetime>30</lifetime>
+          <CashFlow name="sales" type="repeating" taxable="False" inflation="none" mult_target="False">
+            <driver>
+              <Function method="activity">functions</Function>
+            </driver>
+            <reference_price>
+              <fixed_value>10.0</fixed_value>
+              <multiplier>-3.14</multiplier>
+            </reference_price>
+          </CashFlow>
+        </economics>
+      </Component>
+    </Components>
+
+    <DataGenerators>
+      <ARMA name='flex' variable="Signal">../ARMA/Sine/arma.pk</ARMA>
+      <Function name="functions">functions.py</Function>
+    </DataGenerators>
+</HERON>
+
+
+

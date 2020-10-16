@@ -28,7 +28,7 @@
   </Steps>
 
   <VariableGroups>
-    <Group name='GRO_dispatch'           >GRO_dispatch_in, GRO_dispatch_out, Time, ClusterTime, Year, Cluster</Group>
+    <Group name='GRO_dispatch'           >GRO_dispatch_in, GRO_dispatch_out, ClusterTime, Year, Cluster</Group>
     <Group name='GRO_dispatch_in'        >GRO_dispatch_in_scalar, GRO_dispatch_in_Time</Group>
     <Group name='GRO_dispatch_out'       >GRO_dispatch_out_Time</Group>
     <Group name='GRO_dispatch_in_scalar' >GRO_capacities, scaling</Group>

@@ -413,8 +413,7 @@ class Template(TemplateBase):
     #       because we'll be copy-pasting these for each denoising --> or wait, maybe that's for the Outer to do!
     self._modify_inner_components(template, case, components)
     self._modify_inner_caselabels(template, case)
-    if case.get_time_name() is not 'Time':
-      self._modify_inner_time_vars(template, case)
+    self._modify_inner_time_vars(template, case)
     # TODO modify based on resources ... should only need if units produce multiple things, right?
     # TODO modify CashFlow input ... this will be a big undertaking with changes to the inner.
     ## Maybe let the user change them? but then we don't control the variable names. We probably have to do it.
@@ -667,7 +666,6 @@ class Template(TemplateBase):
 
     # create the data objects
     self._create_dataobject(data_objs, 'PointSet', inp_name, inputs=['scaling'])
-    print("CREATING DATASET")
     self._create_dataobject(data_objs, 'DataSet', eval_name,
                             inputs=['scaling'],
                             outputs=out_vars,

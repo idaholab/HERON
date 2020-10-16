@@ -16,7 +16,7 @@
     <mode>sweep</mode>
     <num_arma_samples>10</num_arma_samples>
     <time_discretization>
-      <time_variable>Time</time_variable>
+      <time_variable>Hour</time_variable>
       <end_time>2</end_time>
       <num_steps>21</num_steps>
     </time_discretization>
@@ -28,7 +28,7 @@
       <verbosity>50</verbosity>
     </economics>
     <dispatcher>
-      <type>pyomo</type>
+      <pyomo/>
     </dispatcher>
   </Case>
 
@@ -134,7 +134,7 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='Price' variable="Signal">../ARMA/Sine/arma.pk</ARMA>
+    <ARMA name='Price' variable="Signal">../ARMA/Sine_Hour/arma.pk</ARMA>
     <Function name="transfers">transfers.py</Function>
   </DataGenerators>
 

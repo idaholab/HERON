@@ -264,7 +264,8 @@ class DispatchRunner:
                                         }
         # truncate RAVEN variables to the active space
         meta['HERON']['RAVEN_vars'] = self._slice_signals(all_structure, meta['HERON'])
-        times = meta['HERON']['RAVEN_vars']['Time'] # XXX FIXME TODO how do I know what pivot var?
+        pivot_var = meta['HERON']['Case'].get_time_name() # TODO: Better way to get pivotParameterID?
+        times = meta['HERON']['RAVEN_vars'][pivot_var]
         specific_meta = dict(meta) # TODO more deepcopy needed?
         resource_indexer = meta['HERON']['resource_indexer']
         print('DEBUGG ... ... intradivision run data isolated ...')

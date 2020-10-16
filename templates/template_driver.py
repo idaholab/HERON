@@ -517,6 +517,8 @@ class Template(TemplateBase):
         else:
           cap_val = values
         mc.append(xmlUtils.newNode('constant', attrib={'name': cap_name}, text=cap_val))
+        # add component to applicable variable groups
+        self._updateCommaSeperatedList(groups['capacities'], cap_name)
       elif values is None and capacity.type in ['ARMA', 'Function', 'variable']:
         # capacity is limited by a signal, so it has to be handled in the dispatch; don't include it here.
         # OR capacity is limited by a function, and we also can't handle it here, but in the dispatch.
@@ -524,8 +526,6 @@ class Template(TemplateBase):
       else:
         raise NotImplementedError('Capacity from "{}" not implemented yet. Component: {}'.format(capacity, cap_name))
 
-      # add component to applicable variable groups
-      self._updateCommaSeperatedList(groups['capacities'], cap_name)
       for resource in interaction.get_resources():
         var_name = self.namingTemplates['dispatch'].format(component=name, resource=resource)
         self._updateCommaSeperatedList(groups['init_disp'], var_name)

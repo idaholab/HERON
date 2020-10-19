@@ -1,0 +1,3 @@
+steamer_capacity,generator_capacity,electr_market_capacity,electr_flex_capacity,state_label,strategy_label,tax_label,mean_NPV,std_NPV,med_NPV,max_NPV,min_NPV,perc_5_NPV,perc_95_NPV,samp_NPV,var_NPV,PointProbability,prefix,ProbabilityWeight,ProbabilityWeight-steamer_capacity
+1.0,-100.0,-2.0,-1e+200,Idaho,LNHR,CarbonTax,17.6756202413,1.12180756962,17.7055519034,19.3786840838,15.9994474743,15.9994474743,19.3786840838,10.0,1.25845222326,0.010101010101,1,0.5,0.5
+100.0,-100.0,-2.0,-1e+200,Idaho,LNHR,CarbonTax,-300.935574368,542.539421139,-424.030878415,667.151859114,-955.353054477,-955.353054477,667.151859114,10.0,294349.02349,0.010101010101,2,0.5,0.5

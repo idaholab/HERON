@@ -19,6 +19,8 @@ def flex_price(data, meta):
   # scale electricity consumed to flex between -1 and 1
   amount = - 2 * (sine[t] - 0.5)
   labels = meta['HERON']['Case'].get_labels()
+  pivot_id = meta['HERON']['Case'].get_time_name()
   data = {'reference_price': amount,
-          'case_labels': labels}
+          'case_labels': labels,
+          'pivot_id': pivot_id}
   return data, meta

@@ -413,6 +413,7 @@ class Template(TemplateBase):
     #       because we'll be copy-pasting these for each denoising --> or wait, maybe that's for the Outer to do!
     self._modify_inner_components(template, case, components)
     self._modify_inner_caselabels(template, case)
+    self._modify_inner_time_vars(template, case)
     # TODO modify based on resources ... should only need if units produce multiple things, right?
     # TODO modify CashFlow input ... this will be a big undertaking with changes to the inner.
     ## Maybe let the user change them? but then we don't control the variable names. We probably have to do it.
@@ -441,6 +442,23 @@ class Template(TemplateBase):
         label_name = self.namingTemplates['variable'].format(unit=key, feature='label')
         case_labels = ET.SubElement(mc, 'constant', attrib={'name': label_name})
         case_labels.text = value
+
+  def _modify_inner_time_vars(self, template, case):
+    """
+      Modify Index var attributes of DataObjects if case._time_varname is not 'Time.'
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ Out, None
+    """
+    # Modify GRO_dispatch to contain correct 'Time' variable.
+    var_group = template.find("VariableGroups/Group")
+    var_group.text += f", {case.get_time_name()}"
+    # Modify Data Objects to contain correct index var.
+    data_objs = template.find('DataObjects')
+    for index in data_objs.findall("DataSet/Index"):
+      if index.get('var') == 'Time':
+        index.set('var', case.get_time_name())
+
 
   def _modify_inner_runinfo(self, template, case):
     """
@@ -651,7 +669,7 @@ class Template(TemplateBase):
     self._create_dataobject(data_objs, 'DataSet', eval_name,
                             inputs=['scaling'],
                             outputs=out_vars,
-                            depends={'Time': out_vars, 'Year': out_vars}) # TODO user-defined?
+                            depends={self.__case.get_time_name(): out_vars, 'Year': out_vars}) # TODO user-defined?
 
     # add variables to dispatch input requirements
     ## before all else fails, use variable groups

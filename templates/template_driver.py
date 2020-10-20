@@ -450,14 +450,16 @@ class Template(TemplateBase):
       @ In, case, HERON Case, defining Case instance
       @ Out, None
     """
-    # Modify GRO_dispatch to contain correct 'Time' variable.
+    # Modify GRO_dispatch to contain correct 'Time' and 'Year' variable.
     var_group = template.find("VariableGroups/Group")
-    var_group.text += f", {case.get_time_name()}"
+    var_group.text += f", {case.get_time_name()}, {case.get_year_name()}"
     # Modify Data Objects to contain correct index var.
     data_objs = template.find('DataObjects')
     for index in data_objs.findall("DataSet/Index"):
       if index.get('var') == 'Time':
         index.set('var', case.get_time_name())
+      if index.get('var') == 'Year':
+        index.set('var', case.get_year_name())
 
 
   def _modify_inner_runinfo(self, template, case):
@@ -669,7 +671,7 @@ class Template(TemplateBase):
     self._create_dataobject(data_objs, 'DataSet', eval_name,
                             inputs=['scaling'],
                             outputs=out_vars,
-                            depends={self.__case.get_time_name(): out_vars, 'Year': out_vars}) # TODO user-defined?
+                            depends={self.__case.get_time_name(): out_vars, self.__case.get_year_name(): out_vars}) # TODO user-defined?
 
     # add variables to dispatch input requirements
     ## before all else fails, use variable groups

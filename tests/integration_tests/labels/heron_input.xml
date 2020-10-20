@@ -17,6 +17,7 @@
     <num_arma_samples>10</num_arma_samples>
     <time_discretization>
       <time_variable>Hour</time_variable>
+      <year_variable>YEAR</year_variable>
       <end_time>2</end_time>
       <num_steps>21</num_steps>
     </time_discretization>

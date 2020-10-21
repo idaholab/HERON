@@ -53,7 +53,7 @@
       <Output>OutputPlaceHolder</Output>
     </PointSet>
     <HistorySet name="input">
-      <Input>scaling, Year</Input>
+      <Input>scaling, YEAR</Input>
       <Output>Signal, Hour</Output>
       <options>
         <pivotParameter>Hour</pivotParameter>
@@ -63,7 +63,7 @@
       <Input>scaling</Input>
       <Output>Signal</Output>
       <Index var="Hour">Signal</Index>
-      <Index var="Year">Signal</Index>
+      <Index var="YEAR">Signal</Index>
     </DataSet>
     <DataSet name="meta"/>
   </DataObjects>
@@ -76,7 +76,7 @@
       <P>0</P>
       <Q>0</Q>
       <Segment grouping='interpolate'>
-        <macroParameter>Year</macroParameter>
+        <macroParameter>YEAR</macroParameter>
         <Classifier class='Models' type='PostProcessor'>classifier</Classifier>
         <subspace divisions='1'>Hour</subspace>
       </Segment>

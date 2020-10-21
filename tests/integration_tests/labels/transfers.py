@@ -20,7 +20,9 @@ def flex_price(data, meta):
   amount = - 2 * (sine[t] - 0.5)
   labels = meta['HERON']['Case'].get_labels()
   pivot_id = meta['HERON']['Case'].get_time_name()
+  year_id = meta['HERON']['Case'].get_year_name()
   data = {'reference_price': amount,
           'case_labels': labels,
-          'pivot_id': pivot_id}
+          'pivot_id': pivot_id,
+          'year_id': year_id}
   return data, meta

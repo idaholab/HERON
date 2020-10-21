@@ -472,7 +472,7 @@ class DispatchRunner:
             shape = (len(dispatch), len(year_data), len(data))
             setattr(raven, var_name, np.empty(shape)) # FIXME could use np.zeros, but slower?
           getattr(raven, var_name)[y, c] = data
-          getattr(raven, '_indexMap')[0][var_name] = ['Year', 'Cluster', 'ClusterTime']
+          getattr(raven, '_indexMap')[0][var_name] = [self._case.get_year_name(), 'Cluster', 'ClusterTime']
         #for component in self._components:
           # TODO cheating using the numpy state
         #  dispatch = cluster_data['dispatch']
@@ -653,8 +653,8 @@ class DispatchRunner:
           cluster_index = index_order.index('Cluster')
           slicer[cluster_index] = division
         # macro time (e.g. cycle, year)
-        if 'Year' in index_order:
-          macro_index = index_order.index('Year') # FIXME Macro ID!
+        if self._case.get_year_name() in index_order:
+          macro_index = index_order.index(self._case.get_year_name())
           slicer[macro_index] = macro
         truncated[entry] = raven[entry][slicer]
         truncated['_indexMap'][entry] = [time_var] # the only index left should be "time"

@@ -459,7 +459,6 @@ class Template(TemplateBase):
       if index.get('var') == 'Time':
         index.set('var', case.get_time_name())
 
-
   def _modify_inner_runinfo(self, template, case):
     """
       Defines modifications to the RunInfo of inner.xml RAVEN input file.
@@ -749,6 +748,9 @@ class Template(TemplateBase):
     #multiyear.append(xmlUtils.newNode('years', text=project_life))
     # TODO FIXME XXX growth param ????
     #model.append(multiyear)
+    ## update the ARMA model to use clustered eval mode
+    # FIXME this isn't always desired; what if it isn't clustered?
+    model.append(xmlUtils.newNode('clusterEvalMode', text='clustered'))
     template.find('Models').append(model)
     # add a file
     ## NOTE: the '..' assumes there is a working dir that is not ".", which should always be true.

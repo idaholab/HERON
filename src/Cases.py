@@ -90,6 +90,8 @@ class Case(Base):
         solving the dispatch.""")
     time_discr.addSub(InputData.parameterInputFactory('time_variable', contentType=InputTypes.StringType,
         descr=r"""name for the \texttt{time} variable used in this simulation. \default{time}"""))
+    time_discr.addSub(InputData.parameterInputFactory('year_variable', contentType=InputTypes.StringType,
+        descr=r"""name for the \texttt{year} or \texttt{macro} variable used in this simulation. \default{Year}"""))
     time_discr.addSub(InputData.parameterInputFactory('start_time', contentType=InputTypes.FloatType,
         descr=r"""value for \texttt{time} variable at which the inner dispatch should begin. \default{0}"""))
     time_discr.addSub(InputData.parameterInputFactory('end_time', contentType=InputTypes.FloatType,
@@ -168,7 +170,8 @@ class Case(Base):
     self._num_hist = None      # number of history steps, hist_len / hist_interval
     self._global_econ = {}     # global economics settings, as a pass-through
     self._increments = {}      # stepwise increments for resource balancing
-    self._time_varname = 'time' # name of the variable throughout simulation
+    self._time_varname = 'time' # name of the time-variable throughout simulation
+    self._year_varname = 'Year' # name of the year-variable throughout simulation
     self._labels = {}       # extra information pertaining to current case
 
     self._time_discretization = None # (start, end, number) for constructing time discretization, same as argument to np.linspace
@@ -242,6 +245,10 @@ class Case(Base):
     var_name = node.findFirst('time_variable')
     if var_name is not None:
       self._time_varname = var_name.value
+    # name of year variable
+    year_name = node.findFirst('year_variable')
+    if year_name is not None:
+      self._year_varname = year_name.value
     # start
     start_node = node.findFirst('start_time')
     if start_node is None:
@@ -402,6 +409,14 @@ class Case(Base):
       @ Out, time name, string, name of time variable
     """
     return self._time_varname
+
+  def get_year_name(self):
+    """
+      Provides the name of the time variable.
+      @ In, None
+      @ Out, time name, string, name of time variable
+    """
+    return self._year_varname
 
   def get_Resample_T(self):
     """

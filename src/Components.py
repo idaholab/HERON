@@ -1025,7 +1025,7 @@ class Storage(Interaction):
     res = self.get_resource()
     request = {res: None}
     meta['request'] = request
-    return self._initial_stored.evaluate(inputs, target_var=res)[0][res]
+    return self._initial_stored.evaluate(meta, target_var=res)[0][res]
 
 
 

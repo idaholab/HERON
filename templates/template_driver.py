@@ -255,7 +255,7 @@ class Template(TemplateBase):
     var_groups = template.find('VariableGroups')
     # capacities
     caps = var_groups[0]
-    caps.text = ', '.join('{}_capacity'.format(x.name) for x in components)
+    caps.text = ', '.join(f'{x.name}_capacity' for x in components if (x.get_capacity(None, raw=True).type not in ['Function', 'ARMA']))
     if case.get_labels():
       case_labels = ET.SubElement(var_groups, 'Group', attrib={'name': 'GRO_case_labels'})
       case_labels.text = ', '.join([f'{key}_label' for key in case.get_labels().keys()])
@@ -495,7 +495,29 @@ class Template(TemplateBase):
         self._iostep_rom_meta(template, source)
         # add the source to the arma-and-dispatch ensemble
         self._add_arma_to_ensemble(template, source)
-        # NOTE assuming input to all ARMAs is "scaling" constant = 1.0, already in MonteCarlo sampler
+        # NOTE assuming input to all ARMAs is "scaling" constant = 1.0, already in MC sampler
+        if source.eval_mode == 'clustered':
+          # add _ROM_cluster to the variable group if it isn't there already
+          var_group = template.find("VariableGroups/Group")
+          if '_ROM_Cluster' not in var_group.text:
+            var_group.text += f", _ROM_Cluster"
+          # make sure _ROM_Cluster is part of dispatch targetevaluation
+          found = False
+          for dataObj in template.find('DataObjects').findall('DataSet'):
+            if dataObj.attrib['name'] == 'dispatch_eval':
+              dispatch_eval = dataObj
+              for idx in dataObj.findall('Index'):
+                if idx.attrib['var'] == '_ROM_Cluster':
+                  found = True
+                  break
+              break
+          else:
+            raise RuntimeError
+          if not found:
+            dispatch_eval.append(xmlUtils.newNode('Index',
+                                                  attrib={'var': '_ROM_Cluster'},
+                                                  text='GRO_dispatch_in_Time'))
+
       elif source.is_type('Function'):
         # nothing to do ... ?
         pass
@@ -666,11 +688,16 @@ class Template(TemplateBase):
     ens.append(new_model)
 
     # create the data objects
+    deps = {self.__case.get_time_name(): out_vars,
+            self.__case.get_year_name(): out_vars}
+    if source.eval_mode == 'clustered':
+      deps['_ROM_Cluster'] = out_vars
+
     self._create_dataobject(data_objs, 'PointSet', inp_name, inputs=['scaling'])
     self._create_dataobject(data_objs, 'DataSet', eval_name,
                             inputs=['scaling'],
                             outputs=out_vars,
-                            depends={self.__case.get_time_name(): out_vars, self.__case.get_year_name(): out_vars}) # TODO user-defined?
+                            depends=deps)
 
     # add variables to dispatch input requirements
     ## before all else fails, use variable groups
@@ -678,6 +705,8 @@ class Template(TemplateBase):
     for group in template.find('VariableGroups'):
       if group.attrib['name'] == 'GRO_dispatch_in_Time':
         break
+    else:
+      raise RuntimeError
     for var in out_vars:
       self._updateCommaSeperatedList(group, var)
 
@@ -752,7 +781,8 @@ class Template(TemplateBase):
     #model.append(multiyear)
     ## update the ARMA model to use clustered eval mode
     # FIXME this isn't always desired; what if it isn't clustered?
-    model.append(xmlUtils.newNode('clusterEvalMode', text='clustered'))
+    if source.eval_mode == 'clustered':
+      model.append(xmlUtils.newNode('clusterEvalMode', text='clustered'))
     template.find('Models').append(model)
     # add a file
     ## NOTE: the '..' assumes there is a working dir that is not ".", which should always be true.

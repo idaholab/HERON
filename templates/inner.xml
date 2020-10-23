@@ -28,7 +28,7 @@
   </Steps>
 
   <VariableGroups>
-    <Group name='GRO_dispatch'           >GRO_dispatch_in, GRO_dispatch_out, ClusterTime, Cluster</Group>
+    <Group name='GRO_dispatch'           >GRO_dispatch_in, GRO_dispatch_out, ClusterTime</Group>
     <Group name='GRO_dispatch_in'        >GRO_dispatch_in_scalar, GRO_dispatch_in_Time</Group>
     <Group name='GRO_dispatch_out'       >GRO_dispatch_out_Time</Group>
     <Group name='GRO_dispatch_in_scalar' >GRO_capacities, scaling</Group>
@@ -70,9 +70,6 @@
     <DataSet name="arma_samples">
       <Input>GRO_armasamples_in</Input>
       <Output>GRO_armasamples_out</Output>
-      <!-- <Index var="ClusterTime">GRO_armasamples_out_Time</Index>
-      <Index var="Year">GRO_armasamples_out_Time</Index>
-      <Index var="Cluster">GRO_armasamples_out_Time</Index> -->
     </DataSet>
     <PointSet name="arma_metrics">
       <Output>NPV</Output>
@@ -91,7 +88,6 @@
       <Input>GRO_dispatch_in</Input>
       <!-- <Output>GRO_dispatch_out</Output> -->
       <Index var="Time">GRO_dispatch_in_Time</Index>
-      <!-- <Index var="ClusterTime">GRO_dispatch_out_Time</Index> -->
       <Index var="Year">GRO_dispatch_in_Time</Index>
       <!-- <Index var="Year">GRO_dispatch_in_Time, GRO_dispatch_out_Time</Index> -->
       <!-- <Index var="Cluster">GRO_dispatch_out_Time</Index> -->

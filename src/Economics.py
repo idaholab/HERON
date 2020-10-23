@@ -481,6 +481,7 @@ class CashFlow:
     params = self.calculate_params(values_dict)
     return params['cost']
 
+  @profile
   def calculate_params(self, values_dict):
     """
       Calculates the value of the cash flow parameters.

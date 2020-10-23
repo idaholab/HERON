@@ -8,6 +8,7 @@
 import os
 import sys
 import pickle as pk
+from time import time as run_clock
 
 import numpy as np
 
@@ -105,8 +106,9 @@ class DispatchRunner:
     for comp in self._components:
       name = self.naming_template['comp capacity'].format(comp=comp.name)
       update_capacity = raven_dict.get(name) # TODO is this ever not provided?
-      comp.set_capacity(update_capacity)
-      pass_vars[f'{comp.name}_capacity'] = update_capacity
+      if update_capacity is not None:
+        comp.set_capacity(update_capacity)
+        pass_vars[f'{comp.name}_capacity'] = update_capacity
     # TODO other case, component properties
 
     # load ARMA signals
@@ -168,8 +170,13 @@ class DispatchRunner:
       raise IOError(f'An interpolated ARMA ROM was used, but there are less interpolated years ({list(range(*structure["interpolated"]))}) ' +
                     f'than requested project years ({project_life})!')
 
+    pre_dispatch_time = run_clock()
     all_dispatch = self._do_dispatch(meta, all_structure, project_life, interp_years, segs, seg_type)
+    post_dispatch_time = run_clock()
+    print('DispatchManager: Time for dispatch:', post_dispatch_time - pre_dispatch_time)
     metrics = self._do_cashflow(meta, all_dispatch, all_structure, project_life, interp_years, segs, seg_type)
+    post_cashflow_time = run_clock()
+    print('DispatchManager: Time for cashflow:', post_cashflow_time - post_dispatch_time)
     return all_dispatch, metrics
 
   def _do_dispatch(self, meta, all_structure, project_life, interp_years, segs, seg_type):
@@ -278,7 +285,7 @@ class DispatchRunner:
           # sanity check
           if comp.name != cf_comp.name: raise RuntimeError
           specific_meta['HERON']['component'] = comp
-          specific_meta['HERON']['activity'] = dispatch
+          specific_meta['HERON']['all_activity'] = dispatch
           specific_activity = {}
           final_cashflows = final_comp.getCashflows()
           for f, heron_cf in enumerate(comp.get_cashflows()):
@@ -297,7 +304,7 @@ class DispatchRunner:
             if cf_cf.type == 'Capex':
               # Capex cfs should only be constructed in the first year of the project life
               # FIXME is this doing capex once per segment, or once per life?
-              if year == 0:
+              if year == 0 and s == 0:
                 params = heron_cf.calculate_params(specific_meta) # a, D, Dp, x, cost
                 cf_params = {'name': cf_cf.name,
                               'mult_target': heron_cf._mult_target,
@@ -315,7 +322,7 @@ class DispatchRunner:
                 final_comp._cashFlows[f] = cf_cf
                 # depreciators
                 # FIXME do we need to know alpha, drivers first??
-                if heron_cf._depreciate:
+                if heron_cf._depreciate and cf_cf.getAmortization() is None:
                   cf_cf.setAmortization('MACRS', heron_cf._depreciate)
                   deprs = cf_comp._createDepreciation(cf_cf)
                   final_comp._cashFlows.extend(deprs)
@@ -325,10 +332,11 @@ class DispatchRunner:
             elif cf_cf.type == 'Recurring':
               # yearly recurring only need setting up once per year
               if heron_cf.get_period() == 'year':
-                params = heron_cf.calculate_params(specific_meta) # a, D, Dp, x, cost
-                contrib = params['cost'] # cf_cf._yearlyCashflow
-                print(f'DEBUGG ... ... ... ... ... yearly contribution: {contrib: 1.9e} ...')
-                final_cf._yearlyCashflow[year + 1] += contrib # FIXME multiplicity? -> should not apply to Recurring.Yearly
+                if s == 0:
+                  params = heron_cf.calculate_params(specific_meta) # a, D, Dp, x, cost
+                  contrib = params['cost'] # cf_cf._yearlyCashflow
+                  print(f'DEBUGG ... ... ... ... ... yearly contribution: {contrib: 1.9e} ...')
+                  final_cf._yearlyCashflow[year + 1] += contrib # FIXME multiplicity? -> should not apply to Recurring.Yearly
               # hourly recurring need iteration over time
               elif heron_cf.get_period() == 'hour':
                 for t, time in enumerate(times):
@@ -462,7 +470,8 @@ class DispatchRunner:
         if y == c == 0:
           # TODO custom names?
           raven.ClusterTime = np.asarray(cluster_data['dispatch']._times) # TODO assuming same across clusters!
-          raven.Cluster = np.arange(len(year_data))
+          #raven.Cluster =
+          raven._ROM_Cluster = np.arange(len(year_data))
           raven.Years = np.asarray(dispatch.keys())
           if not getattr(raven, '_indexMap', None):
             raven._indexMap = np.atleast_1d({})
@@ -472,7 +481,7 @@ class DispatchRunner:
             shape = (len(dispatch), len(year_data), len(data))
             setattr(raven, var_name, np.empty(shape)) # FIXME could use np.zeros, but slower?
           getattr(raven, var_name)[y, c] = data
-          getattr(raven, '_indexMap')[0][var_name] = [self._case.get_year_name(), 'Cluster', 'ClusterTime']
+          getattr(raven, '_indexMap')[0][var_name] = [self._case.get_year_name(), '_ROM_Cluster', 'ClusterTime']
         #for component in self._components:
           # TODO cheating using the numpy state
         #  dispatch = cluster_data['dispatch']
@@ -487,6 +496,12 @@ class DispatchRunner:
     #     # TODO indexMap?
     for metric, value in metrics.items():
       setattr(raven, metric, np.atleast_1d(value))
+    # if component capacities weren't given by Outer, save them as part of Inner
+    for comp in self._components:
+      cap_name = self.naming_template['comp capacity'].format(comp=comp.name)
+      if cap_name not in dir(raven):
+        # TODO what value should actually be used?
+        setattr(raven, cap_name, -42)
 
   def _get_structure(self, raven_vars):
     """
@@ -599,7 +614,7 @@ class DispatchRunner:
                        f'first value ({time_vals[0]})!')
       # check end time
       if req_end > time_vals[-1]:
-        raise IOError(f'Requested end time ({req_start}) is greater than time variable "{time_var}" ' +
+        raise IOError(f'Requested end time ({req_end}) is greater than time variable "{time_var}" ' +
                        f'last value ({time_vals[-1]})!')
       # check number of entries
       ## TODO this shouldn't be necessary; we can interpolate!
@@ -638,8 +653,8 @@ class DispatchRunner:
       slicer_len += 1 # add one if clustered
     elif summary['segments'] > 1:
       slicer_len += 1 # add one if segmented
-    elif summary['interpolated']:
-      slicer_len += 1
+    if summary['interpolated']:
+      slicer_len += 1 # also add one for years if interpolated # TODO always right?
     slicer = [np.s_[:]] * slicer_len # by default, take everything
     # TODO am I overwriting this slicer in a bad way?
 
@@ -649,8 +664,8 @@ class DispatchRunner:
         # time -> take it all, no action needed
         # time_index = index_order.index(time_var)
         # cluster
-        if 'Cluster' in index_order:
-          cluster_index = index_order.index('Cluster')
+        if '_ROM_Cluster' in index_order: # TODO Cluster or _ROM_Cluster?
+          cluster_index = index_order.index('_ROM_Cluster')
           slicer[cluster_index] = division
         # macro time (e.g. cycle, year)
         if self._case.get_year_name() in index_order:

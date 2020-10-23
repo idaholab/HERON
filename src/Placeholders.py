@@ -118,6 +118,9 @@ class ARMA(Placeholder):
     specs.addParam('variable', param_type=InputTypes.StringListType, required=True,
         descr=r"""provides the names of the variables from the synthetic history generators that will
               be used in this analysis.""")
+    # TODO someday read this directly off the model instead of asking the user!
+    specs.addParam('evalMode', param_type=InputTypes.StringType, required=False,
+        descr=r"""desired sampling mode for the ARMA. See the RAVEN manual for options. \default{clustered}""")
     return specs
 
   def __init__(self, **kwargs):
@@ -128,6 +131,8 @@ class ARMA(Placeholder):
     """
     Placeholder.__init__(self, **kwargs)
     self._type = 'ARMA'
+    self._var_names = None # variables from the ARMA to use
+    self.eval_mode = None # ARMA evaluation style (clustered, full, truncated)
 
   def read_input(self, xml):
     """
@@ -137,6 +142,7 @@ class ARMA(Placeholder):
     """
     specs = Placeholder.read_input(self, xml)
     self._var_names = specs.parameterValues['variable']
+    self.eval_mode = specs.parameterValues.get('evalMode', 'clustered')
     # check that the source ARMA exists
 
   def interpolation(self, x, y):
@@ -194,7 +200,8 @@ class Function(Placeholder):
     load_string, _ = utils.identifyIfExternalModelExists(self, self._source, self._workingDir)
     module = utils.importFromPath(load_string, True)
     if not module:
-      raise IOError('Module "{}" for function "{}" was not found!'.format(self._source, self.name))
+      raise IOError(f'Module "{self._source}" for function "{self.name}" was not found!')
+    self._module = module
     # TODO do we need to set the var_names? self._var_names = _var_names
     self._set_callables(module)
 

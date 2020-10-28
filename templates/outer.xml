@@ -3,12 +3,13 @@
     <JobName>EX19_Outer</JobName>
     <WorkingDir>.</WorkingDir>
     <Sequence></Sequence>
-    <batchSize>1</batchSize>
-    <!--<batchSize>20</batchSize>
+    <!--<batchSize>1</batchSize>-->
+    <batchSize>4</batchSize>
+    <NumMPI>100</NumMPI>
     <mode>mpi<runqsub/></mode>
     <internalParallel>False</internalParallel>
-    <expectedTime>72:0:0</expectedTime>
-    <clusterParameters>-P nst -j oe</clusterParameters>-->
+    <expectedTime>10:0:0</expectedTime>
+    <clusterParameters>-P nst -j oe</clusterParameters>
   </RunInfo>
 
   <Steps>

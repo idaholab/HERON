@@ -178,8 +178,7 @@ class DispatchRunner:
                     f'than requested project years ({project_life})!')
 
     pre_dispatch_time = run_clock()
-    metrics = self._do_dispatch(meta, all_structure, project_life, interp_years, segs, seg_type)
-    all_dispatch = {}
+    all_dispatch, metrics = self._do_dispatch(meta, all_structure, project_life, interp_years, segs, seg_type)
     return all_dispatch, metrics
 
   def _do_dispatch(self, meta, all_structure, project_life, interp_years, segs, seg_type):
@@ -329,7 +328,7 @@ class DispatchRunner:
 
     raven_vars = meta['HERON']['RAVEN_vars_full']
     cf_metrics = CashFlow_run(final_settings, list(final_components.values()), raven_vars)
-    return cf_metrics
+    return dispatch_results, cf_metrics
 
   def _do_cashflow(self, meta, all_dispatch, all_structure, project_life, interp_years, segs, seg_type):
     """

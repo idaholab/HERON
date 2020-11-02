@@ -136,6 +136,7 @@ class DispatchRunner:
     ## TODO move as much of this as possible to "intialize" instead of "run"!
     # build meta variable
     ## this will be passed to external functions
+    print("RUNNING HERON RUN")
     heron_meta = {}
     heron_meta['Case'] = self._case
     heron_meta['Components'] = self._components
@@ -177,6 +178,7 @@ class DispatchRunner:
       raise IOError(f'An interpolated ARMA ROM was used, but there are less interpolated years ({list(range(*structure["interpolated"]))}) ' +
                     f'than requested project years ({project_life})!')
 
+    print("RUNNING DISPATCH")
     pre_dispatch_time = run_clock()
     all_dispatch, metrics = self._do_dispatch(meta, all_structure, project_life, interp_years, segs, seg_type)
     return all_dispatch, metrics
@@ -202,6 +204,7 @@ class DispatchRunner:
     yearly_cluster_data = next(iter(all_structure['details'].values()))['clusters']
 
     for year in range(project_life):
+      print(f"RUNNING DISPATCH ON YEAR {year}")
       interp_year = interp_years[year] if len(interp_years) > 1 else (interp_years[0] + year)
       dispatch_results[interp_year] = []
       # If the ARMA is interpolated, we need to track which year we're in.
@@ -209,6 +212,7 @@ class DispatchRunner:
       active_index['year'] = year if len(range(*structure['interpolated'])) > 1 else 0 # FIXME MacroID not year
 
       for s, seg in enumerate(segs):
+        print(f"RUNNING DISPATCH ON SEGMENT {seg}")
         active_index['division'] = seg
         meta['HERON']['active_index'] = active_index
         # Truncate signals to appropriate Year, Cluster
@@ -220,12 +224,14 @@ class DispatchRunner:
         # Assumes all clustering is aligned!
         # Find the info for this cluster -> FIXME this should be restructured so searching isn't necessary!
         clusters_info = yearly_cluster_data[interp_year] if interp_year in yearly_cluster_data else yearly_cluster_data[interp_years[0]]
+        print("LOOKING FOR CL_INFO")
         for cl_info in clusters_info:
           if cl_info['id'] == seg:
             break
         else:
           raise RuntimeError
         # how many clusters does this one represent?
+        print("COMPUTING MULTIPLICITY")
         multiplicity = len(cl_info['represents'])
         # build evaluation cash flows
         # LOCAL component cashflows are SPECIFIC TO A DIVISION
@@ -238,7 +244,9 @@ class DispatchRunner:
         times = meta['HERON']['RAVEN_vars'][pivot_var]
         specific_meta = dict(meta) # TODO more deepcopy needed?
         resource_indexer = meta['HERON']['resource_indexer']
+        print("LOOPING COMPONENTS")
         for comp in self._components:
+          print(f"COMPONENT {comp}")
           # get corresponding current and final CashFlow.Component
           cf_comp = local_comps[comp.name]
           final_comp = final_components[comp.name]
@@ -249,6 +257,7 @@ class DispatchRunner:
           specific_activity = {}
           final_cashflows = final_comp.getCashflows()
           for f, heron_cf in enumerate(comp.get_cashflows()):
+            print(f"CASHFLOW {heron_cf}")
             # get the corresponding CashFlow.CashFlow
             cf_cf = cf_comp.getCashflows()[f]
             final_cf = final_cashflows[f]
@@ -266,11 +275,15 @@ class DispatchRunner:
             ## TODO we assume Capex and Recurring Year do not depend
             ## on the Activity
 
+
             if cf_cf.type == 'Capex':
+              print("WE ARE CAPEX!")
               ## Capex cfs should only be constructed in the first year
               ## of the project life
               # FIXME is this doing capex once per segment, or once per life?
+              print("ARE WE YEAR 0?")
               if year == 0 and s == 0:
+                print("YES WE ARE!")
                 params = heron_cf.calculate_params(specific_meta) # a, D, Dp, x, cost
                 cf_params = {
                   'name': cf_cf.name,
@@ -298,16 +311,22 @@ class DispatchRunner:
                   cf_cf.setAmortization('MACRS', heron_cf._depreciate)
                   deprs = cf_comp._createDepreciation(cf_cf)
                   final_comp._cashFlows.extend(deprs)
+              else:
+                  print("DOING NOTHING")
             elif cf_cf.type == 'Recurring':
+              print("WE ARE RECURRING!")
               # yearly recurring only need setting up once per year
               if heron_cf.get_period() == 'year':
+                print("GET_PERIOD() == YEAR")
                 if s == 0:
+                  print("S == 0")
                   params = heron_cf.calculate_params(specific_meta) # a, D, Dp, x, cost
                   contrib = params['cost']
                   # FIXME multiplicity? -> should not apply to Recurring.Yearly
                   final_cf._yearlyCashflow[year + 1] += contrib
               # hourly recurring need iteration over time
               elif heron_cf.get_period() == 'hour':
+                print("GET_PERIOD == HOUR")
                 for t, time in enumerate(times):
                   # fill in the specific activity for this time stamp
                   for resource, r in resource_indexer[comp].items():
@@ -317,9 +336,11 @@ class DispatchRunner:
                   specific_meta['HERON']['activity'] = specific_activity # TODO does the rest need to be available?
                   # contribute to cashflow (using sum as discrete integral)
                   # NOTE that intrayear depreciation is NOT being considered here
+                  print("CALCULATING PARAMS")
                   params = heron_cf.calculate_params(specific_meta) # a, D, Dp, x, cost
+                  print("GOT PARAMS")
                   contrib = params['cost'] * multiplicity
-                  print(f'DEBUGG ... ... ... ... ... time {t:4d} ({time:1.9e}) contribution: {contrib: 1.9e} ...')
+                  # print(f'DEBUGG ... ... ... ... ... time {t:4d} ({time:1.9e}) contribution: {contrib: 1.9e} ...')
                   final_cf._yearlyCashflow[year+1] += contrib
               else:
                 raise NotImplementedError(f'Unrecognized Recurring period for "{comp.name}" cashflow "{heron_cf.name}": {heron_cf.get_period()}')
@@ -327,6 +348,8 @@ class DispatchRunner:
                 raise NotImplementedError(f'Unrecognized CashFlow type for "{comp.name}" cashflow "{heron_cf.name}": {cf_cf.type}')
 
     raven_vars = meta['HERON']['RAVEN_vars_full']
+    print(f"RAVEN VARS {raven_vars}")
+    print("RUNNING CASHFLOW")
     cf_metrics = CashFlow_run(final_settings, list(final_components.values()), raven_vars)
     return dispatch_results, cf_metrics
 
@@ -798,13 +821,14 @@ def _readMoreXML(raven, xml):
     Reads additional inputs for DispatchManager
     @ In, raven, object, variable-storing object
   """
-  respec = xml.findFirst('respecTime')
-  if respec is not None:
-    stats = [int(x) for x in respec.values]
-    try:
-      raven._override_time = np.linspace(*stats)
-    except Exception:
-      raise IOError('DispatchManager xml: respec values should be arguments for np.linspace!')
+  pass
+  # respec = xml.findFirst('respecTime')
+  # if respec is not None:
+  #   stats = [int(x) for x in respec.values]
+  #   try:
+  #     raven._override_time = np.linspace(*stats)
+  #   except Exception:
+  #     raise IOError('DispatchManager xml: respec values should be arguments for np.linspace!')
 
 def run(raven, raven_dict):
   """

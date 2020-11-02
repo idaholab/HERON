@@ -488,10 +488,15 @@ class CashFlow:
       @ Out, params, dict, dictionary of parameters mapped to values including the cost
     """
     # TODO maybe don't cast these as floats, as they could be symbolic expressions (seems unlikely)
+    print("COMPUTING Dp")
     Dp = float(self._reference.evaluate(values_dict, target_var='reference_driver')[0]['reference_driver'])
+    print("COMPUTING x")
     x = float(self._scale.evaluate(values_dict, target_var='scaling_factor_x')[0]['scaling_factor_x'])
+    print("COMPUTING a")
     a = self._alpha.evaluate(values_dict, target_var='reference_price')[0]['reference_price']
+    print("COMPUTING D")
     D = self._driver.evaluate(values_dict, target_var='driver')[0]['driver']
+    print("COMPUTING COST")
     cost = a * (D / Dp) ** x
     params = {'alpha': a, 'driver': D, 'ref_driver': Dp, 'scaling': x, 'cost': cost} # TODO float(cost) except in pyomo it's not a float
     return params

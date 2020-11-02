@@ -382,7 +382,7 @@ class Template(TemplateBase):
     adds = ['NPP_bid_adjust']
     for add in adds:
       # add to outer opt
-      samps_node = outer.find('Optimizers').find('GradientDescent') if case._mode == 'opt' else template.find('Samplers').find('Grid')
+      samps_node = outer.find('Optimizers').find('GradientDescent') if case._mode == 'opt' else outer.find('Samplers').find('Grid')
       # nominal NPP bid is (marginal) 9000 $/GW, so we want to explore in the 1e4 range
       dist, for_grid, for_opt = self._create_new_sweep_capacity(add, add, [0, 1e5]) # $/GW
       outer.find('Distributions').append(dist)

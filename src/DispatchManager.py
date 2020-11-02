@@ -48,6 +48,10 @@ class DispatchRunner:
     self._sources = None           # HERON sources (placeholders) list
     self._override_time = None     # override for micro parameter
 
+  def override_time(self, new):
+    """ TODO """
+    self._override_time = new
+
   def load_heron_lib(self, path):
     """
       Loads HERON objects from library file.
@@ -613,6 +617,13 @@ class DispatchRunner:
     """
     time_var = self._case.get_time_name()
     time_vals = raven_vars.get(time_var, None)
+    if self._override_time:
+      self._dispatcher.set_time_discr(self._override_time)
+      index_map = raven_vars['_indexMap']
+      for entry, vals in raven_vars.items():
+        if time_var in index_map.get(entry, []):
+        pass
+
     if time_vals is not None:
       req_start, req_end, req_steps = self._dispatcher.get_time_discr()
       # check start time
@@ -645,6 +656,7 @@ class DispatchRunner:
     raven = data['RAVEN_vars_full']
     index_map = raven['_indexMap']
     time_var = self._case.get_time_name()
+    macro_var = self._case.get_year_name()
 
     # are we dealing with time, interpolation, clusters, segments?
     req_indices = data['active_index']
@@ -662,23 +674,26 @@ class DispatchRunner:
       slicer_len += 1 # add one if segmented
     if summary['interpolated']:
       slicer_len += 1 # also add one for years if interpolated # TODO always right?
-    slicer = [np.s_[:]] * slicer_len # by default, take everything
+    general_slicer = [np.s_[:]] * slicer_len # by default, take everything
     # TODO am I overwriting this slicer in a bad way?
 
     for entry in raven:
       if entry in index_map:
         index_order = list(index_map[entry])
+        # TODO this is an awkward fix for histories that are missing some of the indexes
+        slicer = general_slicer[:]
+        if len(index_order) < len(slicer):
+          slicer = slicer[:len(index_order)]
         # time -> take it all, no action needed
-        # time_index = index_order.index(time_var)
         # cluster
-        if '_ROM_Cluster' in index_order: # TODO Cluster or _ROM_Cluster?
+        if '_ROM_Cluster' in index_order:
           cluster_index = index_order.index('_ROM_Cluster')
           slicer[cluster_index] = division
         # macro time (e.g. cycle, year)
         if self._case.get_year_name() in index_order:
           macro_index = index_order.index(self._case.get_year_name())
           slicer[macro_index] = macro
-        truncated[entry] = raven[entry][slicer]
+        truncated[entry] = raven[entry][tuple(slicer)]
         truncated['_indexMap'][entry] = [time_var] # the only index left should be "time"
       else:
         # entry doesn't depend on year/cluster, so keep it as is
@@ -695,13 +710,14 @@ def _readMoreXML(raven, xml):
     Reads additional inputs for DispatchManager
     @ In, raven, object, variable-storing object
   """
-  respec = xml.findFirst('respecTime')
+  respec = xml.find('respecTime')
   if respec is not None:
-    stats = [int(x) for x in respec.values]
     try:
-      raven._override_time = np.linspace(*stats)
+      stats = [int(x) for x in respec.text.split(',')]
+      raven._override_time = stats
+      np.linspace(*stats) # test it out
     except Exception:
-      raise IOError('DispatchManager xml: respec values should be arguments for np.linspace!')
+      raise IOError('DispatchManager xml: respec values should be arguments for np.linspace! Got', respec.text)
 
 def run(raven, raven_dict):
   """
@@ -723,7 +739,7 @@ def run(raven, raven_dict):
   # add settings from readMoreXML
   override_time = getattr(raven, '_override_time', None)
   if override_time is not None:
-    runner._override_time = override_time # TODO setter
+    runner.override_time(override_time) # TODO setter
   dispatch, metrics = runner.run(raven_vars)
   runner.save_variables(raven, dispatch, metrics)
   # TODO these are extraneous, remove from template!

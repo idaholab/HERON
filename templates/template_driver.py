@@ -129,7 +129,7 @@ class Template(TemplateBase):
     inner = self._modify_inner(inner, case, components, sources)
     outer = self._modify_outer(outer, case, components, sources)
     cash = self._modify_cash(cash, case, components, sources)
-    # TODO write other files, like cashflow inputs?
+    outer, inner = self._just_for_202012_EPRI_case(outer, inner, case)
     return inner, outer, cash
 
   def writeWorkflow(self, templates, destination, run=False):
@@ -320,7 +320,6 @@ class Template(TemplateBase):
       @ In, components, list, list of HERON Component instances for this run
       @ Out, None
     """
-    """ TODO """
     dists_node = template.find('Distributions')
     if case._mode == 'sweep':
       samps_node = template.find('Samplers').find('Grid')
@@ -364,6 +363,46 @@ class Template(TemplateBase):
       else:
         # this capacity will be evaluated by ARMA/Function, and doesn't need to be added here.
         pass
+
+  def _just_for_202012_EPRI_case(self, outer, inner, case):
+    """ DO NOT MERGE """
+    # XXX FIXME find a way to do each of these through the user input!
+    # add constraints
+    if case._mode == 'opt':
+      samps_node = outer.find('Optimizers').find('GradientDescent')
+      # add constraint to optimizer
+      samps_node.append(xmlUtils.newNode('Constraint', attrib={'class': 'Functions', 'type': 'External'}, text='h2_sizing'))
+      # add functions block
+      fcs = xmlUtils.newNode('Functions')
+      outer.append(fcs)
+      fx = xmlUtils.newNode('External', attrib={'file': '../../functions', 'name':'h2_sizing'})
+      fcs.append(fx)
+      fx.append(xmlUtils.newNode('variables', text='HTSE_capacity, H2_market_capacity'))
+    # add additional optimization variables
+    adds = ['NPP_bid_adjust']
+    for add in adds:
+      # add to outer opt
+      samps_node = outer.find('Optimizers').find('GradientDescent') if case._mode == 'opt' else template.find('Samplers').find('Grid')
+      # nominal NPP bid is (marginal) 9000 $/GW, so we want to explore in the 1e4 range
+      dist, for_grid, for_opt = self._create_new_sweep_capacity(add, add, [0, 1e5]) # $/GW
+      outer.find('Distributions').append(dist)
+      if case._mode == 'sweep':
+        samps_node.append(for_grid)
+      else:
+        samps_node.append(for_opt)
+      # add to outer groups
+      self._updateCommaSeperatedList(outer.find('VariableGroups').find('Group'), add)
+      # add to outer model
+      text = f'Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:{add}'
+      new = xmlUtils.newNode('alias', attrib={'type': 'input', 'variable': add}, text=text)
+      outer.find('Models').find('Code').append(new)
+      # add to inner groups
+      vg = inner.find('VariableGroups')
+      for g in vg:
+        if g.tag == 'Group' and g.attrib['name'] == 'GRO_capacities':
+          self._updateCommaSeperatedList(g, add)
+          break
+    return outer, inner
 
   def _create_new_sweep_capacity(self, comp_name, var_name, capacities):
     """

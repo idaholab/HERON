@@ -46,6 +46,7 @@ class DispatchRunner:
     self._case = None              # HERON case
     self._components = None        # HERON components list
     self._sources = None           # HERON sources (placeholders) list
+    self._override_time = None     # override for micro parameter
 
   def load_heron_lib(self, path):
     """
@@ -101,6 +102,12 @@ class DispatchRunner:
 
     # TODO magic keywords (e.g. verbosity, MAX_TIMES, MAX_YEARS, ONLY_DISPATCH, etc)
     # TODO other arbitrary constants, such as sampled values from Outer needed in Inner?
+    magics = ['NPP_bid_adjust'] # XXX DO NOT MERGE FIXME TODO
+    # XXX get "other opt vars" off the CASE itself, rather than hard coding.
+    for magic in magics:
+      val = getattr(raven, magic, None)
+      if val is not None:
+        pass_vars[magic] = val
 
     # component capacities
     for comp in self._components:
@@ -680,6 +687,22 @@ class DispatchRunner:
     return truncated
 
 
+################
+# RAVEN methods
+################
+def _readMoreXML(raven, xml):
+  """
+    Reads additional inputs for DispatchManager
+    @ In, raven, object, variable-storing object
+  """
+  respec = xml.findFirst('respecTime')
+  if respec is not None:
+    stats = [int(x) for x in respec.values]
+    try:
+      raven._override_time = np.linspace(*stats)
+    except Exception:
+      raise IOError('DispatchManager xml: respec values should be arguments for np.linspace!')
+
 def run(raven, raven_dict):
   """
     # TODO split into dispatch manager class and dispatch runner external model
@@ -697,6 +720,10 @@ def run(raven, raven_dict):
   # load data from RAVEN
   raven_vars = runner.extract_variables(raven, raven_dict)
   # TODO clustering, multiyear, etc?
+  # add settings from readMoreXML
+  override_time = getattr(raven, '_override_time', None)
+  if override_time is not None:
+    runner._override_time = override_time # TODO setter
   dispatch, metrics = runner.run(raven_vars)
   runner.save_variables(raven, dispatch, metrics)
   # TODO these are extraneous, remove from template!

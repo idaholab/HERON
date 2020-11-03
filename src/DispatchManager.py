@@ -607,6 +607,7 @@ class DispatchRunner:
         if y == c == 0:
           # TODO custom names?
           raven.ClusterTime = np.asarray(cluster_data['dispatch']._times) # TODO assuming same across clusters!
+
           #raven.Cluster =
           raven._ROM_Cluster = np.arange(len(year_data))
           raven.Years = np.asarray(dispatch.keys())
@@ -617,6 +618,7 @@ class DispatchRunner:
           if y == c == 0:
             shape = (len(dispatch), len(year_data), len(data))
             setattr(raven, var_name, np.empty(shape)) # FIXME could use np.zeros, but slower?
+          print(f'DEBUGG saving year {y} cluster {c} var {var_name}')
           getattr(raven, var_name)[y, c] = data
           getattr(raven, '_indexMap')[0][var_name] = [self._case.get_year_name(), '_ROM_Cluster', 'ClusterTime']
         #for component in self._components:
@@ -870,4 +872,5 @@ def run(raven, raven_dict):
   runner.save_variables(raven, dispatch, metrics)
   # TODO these are extraneous, remove from template!
   raven.time_delta = 0
+
 

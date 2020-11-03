@@ -9,7 +9,7 @@
     <NumMPI>100</NumMPI>
     -->
     <!--
-    <mode>mpi<runqsub/></mode>
+    <mode>mpi<runqsub/><memory>4gb</memory></mode>
     <internalParallel>False</internalParallel>
     <expectedTime>10:0:0</expectedTime>
     <clusterParameters>-P nst -j oe</clusterParameters>
@@ -94,7 +94,7 @@
         <constant name='denoises'>1</constant>
       <TargetEvaluation class="DataObjects" type="PointSet">opt_eval</TargetEvaluation>
       <samplerInit>
-        <limit>2000</limit>
+        <limit>200</limit>
         <writeSteps>every</writeSteps>
         <type>max</type>
       </samplerInit>

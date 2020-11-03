@@ -741,7 +741,7 @@ class Template(TemplateBase):
     # add variables to dispatch input requirements
     ## before all else fails, use variable groups
     # find dispatch_in_time group
-    for group in template.find('VariableGroups'):
+    for group in (g for g in template.find('VariableGroups') if (g.tag == 'Group')):
       if group.attrib['name'] == 'GRO_dispatch_in_Time':
         break
     else:

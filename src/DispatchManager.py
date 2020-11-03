@@ -748,7 +748,7 @@ class DispatchRunner:
       index_map = raven_vars['_indexMap']
       for entry, vals in raven_vars.items():
         if time_var in index_map.get(entry, []):
-        pass
+          pass
 
     if time_vals is not None:
       req_start, req_end, req_steps = self._dispatcher.get_time_discr()

@@ -3,7 +3,9 @@
     <JobName></JobName>
     <WorkingDir>.</WorkingDir>
     <Sequence>arma_sampling, summarize</Sequence>
-    <!--<internalParallel>True</internalParallel> NOTE this was hanging on lemhi ... a lot-->
+    <internalParallel>True</internalParallel>
+    <!--
+    -->
   </RunInfo>
 
   <Steps>

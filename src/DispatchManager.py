@@ -20,13 +20,18 @@ import SerializationManager
 raven_path = hutils.get_raven_loc()
 sys.path.append(raven_path)
 from utils import xmlUtils
+from utils import utils as rutils
 sys.path.pop()
 
-cashflow_path = hutils.get_cashflow_loc(raven_path=raven_path)
+cashflow_path = os.path.abspath(os.path.join(hutils.get_cashflow_loc(raven_path=raven_path), '..'))
+#rutils.add_path(os.path.abspath(cashflow_path))
 sys.path.append(cashflow_path)
+import TEAL
 from TEAL.src import CashFlows
 from TEAL.src.main import run as CashFlow_run
-sys.path.pop()
+
+# make functions findable
+sys.path.append(os.getcwd())
 
 class DispatchRunner:
   """

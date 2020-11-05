@@ -8,6 +8,7 @@ from __future__ import unicode_literals, print_function
 import os
 import sys
 import abc
+import copy
 
 from base import Base
 from scipy import interpolate
@@ -188,6 +189,31 @@ class Function(Placeholder):
     self._type = 'Function'
     self._module = None
     self._module_methods = {}
+
+  def __getstate__(self):
+    """
+      Serialization.
+      @ In, None
+      @ Out, d, dict, object contents
+    """
+    # d = super(self, __getstate__) TODO only if super has one ...
+    d = self.__dict__
+    d.pop('_module', None)
+    return d
+
+  def __setstate__(self, d):
+    """
+      Deserialization.
+      @ In, d, dict, object contents
+      @ Out, None
+    """
+    self.__dict__ = d
+    load_string, _ = utils.identifyIfExternalModelExists(self, self._target_file, '')
+    module = utils.importFromPath(load_string, True)
+    if not module:
+      raise IOError(f'Module "{self._source}" for function "{self.name}" was not found!')
+    self._module = module
+    self._set_callables(module)
 
   def read_input(self, xml):
     """

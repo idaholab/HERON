@@ -2,7 +2,7 @@
   <RunInfo>
     <JobName></JobName>
     <WorkingDir>.</WorkingDir>
-    <Sequence>arma_sampling, summarize, debug_print</Sequence>
+    <Sequence>arma_sampling, summarize</Sequence>
     <!--<internalParallel>True</internalParallel> NOTE this was hanging on lemhi ... a lot-->
   </RunInfo>
 
@@ -12,7 +12,7 @@
       <Input class='DataObjects' type='PointSet'>dispatch_placeholder</Input>
       <Model class='Models' type='EnsembleModel'>sample_and_dispatch</Model>
       <Sampler class='Samplers' type='MonteCarlo'>mc_arma_dispatch</Sampler>
-      <Output class='DataObjects' type='DataSet'>arma_samples</Output>
+      <!-- <Output class='DataObjects' type='DataSet'>arma_samples</Output> -->
       <Output class='DataObjects' type='DataSet'>arma_metrics</Output>
     </MultiRun>
     <PostProcess name='summarize'>
@@ -21,10 +21,10 @@
       <Output class='DataObjects' type='PointSet'>metrics_avg</Output>
       <Output class='OutStreams' type='Print'>disp_results</Output>
     </PostProcess>
-    <IOStep name="debug_print">
+    <!-- <IOStep name="debug_print">
       <Input class='DataObjects' type='PointSet'>arma_samples</Input>
       <Output class='OutStreams' type='Print'>disp_debug</Output>
-    </IOStep>
+    </IOStep> -->
   </Steps>
 
   <VariableGroups>

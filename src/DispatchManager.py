@@ -600,6 +600,7 @@ class DispatchRunner:
     #   for res, r in indexer[comp].items():
     #     name = template.format(c=comp.name, r=res)
     #     setattr(raven, name, np.zeros(shape)) # FIXME need time!
+    ##### FIXME year_data is now empty, so none of the following gets run!
     for y, (year, year_data) in enumerate(dispatch.items()):
       for c, cluster_data in enumerate(year_data):
         dispatches = cluster_data['dispatch'].create_raven_vars(template)
@@ -792,26 +793,26 @@ class DispatchRunner:
     division = req_indices['division']
     # we keep all of Time, no divider necessary
 
-    # build a list to hold slicing information; this will eventually be converted into a slice object
-    # TODO assuming all vars have the same index structure
-    summary = all_structure['summary']
-    slicer_len = 1 # always time
-    if len(summary['clusters']) > 1:
-      slicer_len += 1 # add one if clustered
-    elif summary['segments'] > 1:
-      slicer_len += 1 # add one if segmented
-    if summary['interpolated']:
-      slicer_len += 1 # also add one for years if interpolated # TODO always right?
-    general_slicer = [np.s_[:]] * slicer_len # by default, take everything
-    # TODO am I overwriting this slicer in a bad way?
+    # # build a list to hold slicing information; this will eventually be converted into a slice object
+    # # TODO assuming all vars have the same index structure
+    # summary = all_structure['summary']
+    # slicer_len = 1 # always time
+    # if len(summary['clusters']) > 1:
+    #   slicer_len += 1 # add one if clustered
+    # elif summary['segments'] > 1:
+    #   slicer_len += 1 # add one if segmented
+    # if summary['interpolated']:
+    #   slicer_len += 1 # also add one for years if interpolated # TODO always right?
+    # general_slicer = [np.s_[:]] * slicer_len # by default, take everything
+    # # TODO am I overwriting this slicer in a bad way?
 
     for entry in raven:
       if entry in index_map:
         index_order = list(index_map[entry])
         # TODO this is an awkward fix for histories that are missing some of the indexes
-        slicer = general_slicer[:]
-        if len(index_order) < len(slicer):
-          slicer = slicer[:len(index_order)]
+        slicer = [np.s_[:]] * len(index_order)
+        # if len(index_order) < len(slicer):
+        #   slicer = slicer[:len(index_order)]
         # time -> take it all, no action needed
         # cluster
         if '_ROM_Cluster' in index_order:

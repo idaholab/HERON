@@ -129,7 +129,11 @@ class Template(TemplateBase):
     inner = self._modify_inner(inner, case, components, sources)
     outer = self._modify_outer(outer, case, components, sources)
     cash = self._modify_cash(cash, case, components, sources)
-    outer, inner = self._just_for_202012_EPRI_case(outer, inner, case)
+    ### FIXME HACK for milestone case
+    labels = case.get_labels()
+    if labels.get('state', None) == 'IL':
+      outer, inner = self._just_for_202012_EPRI_case(outer, inner, case)
+    ### END HACK
     return inner, outer, cash
 
   def writeWorkflow(self, templates, destination, run=False):

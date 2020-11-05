@@ -329,7 +329,6 @@ class DispatchRunner:
                   # contribute to cashflow (using sum as discrete integral)
                   # NOTE that intrayear depreciation is NOT being considered here
                   params = heron_cf.calculate_params(specific_meta) # a, D, Dp, x, cost
-                  print("GOT PARAMS")
                   contrib = params['cost'] * multiplicity
                   # print(f'DEBUGG ... ... ... ... ... time {t:4d} ({time:1.9e}) contribution: {contrib: 1.9e} ...')
                   final_cf._yearlyCashflow[year+1] += contrib

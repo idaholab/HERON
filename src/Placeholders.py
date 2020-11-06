@@ -197,8 +197,7 @@ class Function(Placeholder):
       @ Out, d, dict, object contents
     """
     # d = super(self, __getstate__) TODO only if super has one ...
-    d = self.__dict__
-    d.pop('_module', None)
+    d = copy.deepcopy(dict((k, v) for k, v in self.__dict__.items() if k not in ['_module']))
     return d
 
   def __setstate__(self, d):
@@ -209,7 +208,6 @@ class Function(Placeholder):
     """
     self.__dict__ = d
     print(f'DEBUGG target: "{self._target_file}"')
-    xxxx
     load_string, _ = utils.identifyIfExternalModelExists(self, self._target_file, '')
     module = utils.importFromPath(load_string, True)
     if not module:
@@ -225,7 +223,7 @@ class Function(Placeholder):
     """
     Placeholder.read_input(self, xml)
     # load module
-    load_string, _ = utils.identifyIfExternalModelExists(self, self._source, self._workingDir)
+    load_string, _ = utils.identifyIfExternalModelExists(self, self._target_file, '')
     module = utils.importFromPath(load_string, True)
     if not module:
       raise IOError(f'Module "{self._source}" for function "{self.name}" was not found!')

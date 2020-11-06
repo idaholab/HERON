@@ -209,7 +209,6 @@ class Function(Placeholder):
     """
     self.__dict__ = d
     print(f'DEBUGG target: "{self._target_file}"')
-    xxxx
     load_string, _ = utils.identifyIfExternalModelExists(self, self._target_file, '')
     module = utils.importFromPath(load_string, True)
     if not module:
@@ -225,7 +224,7 @@ class Function(Placeholder):
     """
     Placeholder.read_input(self, xml)
     # load module
-    load_string, _ = utils.identifyIfExternalModelExists(self, self._source, self._workingDir)
+    load_string, _ = utils.identifyIfExternalModelExists(self, self._target_file, '')
     module = utils.importFromPath(load_string, True)
     if not module:
       raise IOError(f'Module "{self._source}" for function "{self.name}" was not found!')

@@ -110,8 +110,8 @@
         <Strict/>
       </acceptance>
       <convergence>
-        <gradient>1e-2</gradient>
-        <objective>1e-2</objective>
+        <gradient>1e-8</gradient>
+        <objective>1e-8</objective>
       </convergence>
     </GradientDescent>
   </Optimizers>

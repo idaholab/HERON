@@ -3,16 +3,12 @@
     <JobName></JobName>
     <WorkingDir>.</WorkingDir>
     <Sequence></Sequence>
-    <batchSize>2</batchSize>
-    <NumMPI>2</NumMPI>
-    <!--
-    -->
-    <!--
+    <batchSize>5</batchSize>
+    <NumMPI>100</NumMPI>
     <mode>mpi<runqsub/><memory>10gb</memory></mode>
     <internalParallel>False</internalParallel>
     <expectedTime>10:0:0</expectedTime>
-    <clusterParameters>-P nst</clusterParameters>
-    -->
+    <clusterParameters>-P lwrs</clusterParameters>
   </RunInfo>
 
   <Steps>

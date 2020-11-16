@@ -387,12 +387,6 @@ class Template(TemplateBase):
       if stepper is None:
         stepper = samps_node.find('stepSize').find('ConjugateGradient')
       stepper.append(xmlUtils.newNode('initialStepScale', text=0.2))
-      for entry in samps_node.findall('variable'):
-        if entry.attrib['name'] == 'HTSE_capacity':
-          htse = entry
-        elif entry.attrib['name'] == 'H2_market_capacity':
-          market = entry
-      htse.find('initial').text = str(- float(market.find('initial').text) + 0.1)
     # add additional optimization variables
     adds = {} #['NPP_bid_adjust'] if case.get_labels()['Reulated'] == 'No' else ['HTSE_built_capacity']
     regulated = case.get_labels()['regulated']
@@ -422,6 +416,15 @@ class Template(TemplateBase):
         if g.tag == 'Group' and g.attrib['name'] == 'GRO_capacities':
           self._updateCommaSeperatedList(g, add)
           break
+    # reasonable HTSE size
+    for entry in samps_node.findall('variable'):
+      if entry.attrib['name'] == 'HTSE_capacity':
+        htse = entry
+      elif entry.attrib['name'] == 'HTSE_built_capacity':
+        htse = entry
+      elif entry.attrib['name'] == 'H2_market_capacity':
+        market = entry
+    htse.find('initial').text = str(- float(market.find('initial').text) + 0.1)
     return outer, inner
 
   def _create_new_sweep_capacity(self, comp_name, var_name, capacities):

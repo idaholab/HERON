@@ -179,6 +179,7 @@ class Pyomo(Dispatcher):
         print('DEBUGG ... solve was unsuccessful!')
         print('DEBUGG ... status:', soln.solver.status)
         print('DEBUGG ... termination:', soln.solver.termination_condition)
+        self._debug_pyomo_print(m)
         raise RuntimeError
       # try validating
       print('DEBUGG ... validating ...')
@@ -202,7 +203,7 @@ class Pyomo(Dispatcher):
       if attempts > 100:
         raise RuntimeError('Exceeded validation attempt limit!')
     # soln.write() # DEBUGG
-    self._debug_print_soln(m) # DEBUGG
+    # self._debug_print_soln(m) # DEBUGG
     # return dict of numpy arrays
     result = self._retrieve_solution(m)
     return result

@@ -383,10 +383,16 @@ class Template(TemplateBase):
       fcs.append(fx)
       fx.append(xmlUtils.newNode('variables', text='HTSE_capacity, H2_market_capacity'))
       # initial step size
-      grad = samps_node.find('stepSize').find('GradientHistory')
-      if grad is None:
-        grad = samps_node.find('stepSize').find('ConjugateGradient')
-      grad.append(xmlUtils.newNode('initialStepScale', text=0.2))
+      stepper = samps_node.find('stepSize').find('GradientHistory')
+      if stepper is None:
+        stepper = samps_node.find('stepSize').find('ConjugateGradient')
+      stepper.append(xmlUtils.newNode('initialStepScale', text=0.2))
+      for entry in samps_node.findall('variable'):
+        if entry.attrib['name'] == 'HTSE_capacity':
+          htse = entry
+        elif entry.attrib['name'] == 'H2_market_capacity':
+          market = entry
+      htse.find('initial').text = str(- float(market.find('initial').text) + 0.1)
     # add additional optimization variables
     adds = {} #['NPP_bid_adjust'] if case.get_labels()['Reulated'] == 'No' else ['HTSE_built_capacity']
     regulated = case.get_labels()['regulated']

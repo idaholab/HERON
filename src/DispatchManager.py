@@ -111,12 +111,12 @@ class DispatchRunner:
 
     # TODO magic keywords (e.g. verbosity, MAX_TIMES, MAX_YEARS, ONLY_DISPATCH, etc)
     # TODO other arbitrary constants, such as sampled values from Outer needed in Inner?
-    magics = ['NPP_bid_adjust'] # XXX DO NOT MERGE FIXME TODO
+    magics = ['NPP_bid_adjust', 'HTSE_built_capacity'] # XXX DO NOT MERGE FIXME TODO
     # XXX get "other opt vars" off the CASE itself, rather than hard coding.
     for magic in magics:
       val = getattr(raven, magic, None)
       if val is not None:
-        pass_vars[magic] = val
+        pass_vars[magic] = float(val)
 
     # component capacities
     for comp in self._components:

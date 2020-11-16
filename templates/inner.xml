@@ -4,6 +4,7 @@
     <WorkingDir>.</WorkingDir>
     <Sequence>arma_sampling, summarize</Sequence>
     <internalParallel>True</internalParallel>
+    <RemoteRunCommand>raven_sawtooth_qsub.sh</RemoteRunCommand>
     <!--
     -->
   </RunInfo>

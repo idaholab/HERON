@@ -383,12 +383,17 @@ class Template(TemplateBase):
       fcs.append(fx)
       fx.append(xmlUtils.newNode('variables', text='HTSE_capacity, H2_market_capacity'))
     # add additional optimization variables
-    adds = ['NPP_bid_adjust']
-    for add in adds:
+    adds = {} #['NPP_bid_adjust'] if case.get_labels()['Reulated'] == 'No' else ['HTSE_built_capacity']
+    regulated = case.get_labels()['regulated']
+    if regulated == 'Yes':
+      adds['HTSE_built_capacity'] = (1e-10, 20) # kgH2/s
+    elif regulated == 'No':
+      adds['NPP_bid_adjust'] = (0, 1e5) # $/GW
+    for add, spread in adds.items():
       # add to outer opt
       samps_node = outer.find('Optimizers').find('GradientDescent') if case._mode == 'opt' else outer.find('Samplers').find('Grid')
       # nominal NPP bid is (marginal) 9000 $/GW, so we want to explore in the 1e4 range
-      dist, for_grid, for_opt = self._create_new_sweep_capacity(add, add, [0, 1e5]) # $/GW
+      dist, for_grid, for_opt = self._create_new_sweep_capacity(add, add, spread) # $/GW
       outer.find('Distributions').append(dist)
       if case._mode == 'sweep':
         samps_node.append(for_grid)
@@ -432,7 +437,7 @@ class Template(TemplateBase):
     # optimizer variable, for opt case
     opt = copy.deepcopy(grid)
     opt.remove(opt.find('grid'))
-    initial = np.average(capacities)
+    initial = capacities[np.argmin(abs(np.asarray(capacities)))]
     opt.append(xmlUtils.newNode('initial', text=initial))
     return dist, grid, opt
 

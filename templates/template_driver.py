@@ -387,6 +387,9 @@ class Template(TemplateBase):
       if stepper is None:
         stepper = samps_node.find('stepSize').find('ConjugateGradient')
       stepper.append(xmlUtils.newNode('initialStepScale', text=0.2))
+      # grad eval distance
+      gradder = samps_node.find('gradient').find('FiniteDifference')
+      gradder.append(xmlUtils.newNode('gradDistanceScalar', text=0.005))
     # add additional optimization variables
     adds = {} #['NPP_bid_adjust'] if case.get_labels()['Reulated'] == 'No' else ['HTSE_built_capacity']
     regulated = case.get_labels()['regulated']

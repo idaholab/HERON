@@ -96,7 +96,7 @@
         <constant name='denoises'>1</constant>
       <TargetEvaluation class="DataObjects" type="PointSet">opt_eval</TargetEvaluation>
       <samplerInit>
-        <limit>200</limit>
+        <limit>800</limit>
         <writeSteps>every</writeSteps>
         <type>max</type>
       </samplerInit>

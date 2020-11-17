@@ -382,14 +382,20 @@ class Template(TemplateBase):
       fx = xmlUtils.newNode('External', attrib={'file': '../../functions', 'name':'h2_sizing'})
       fcs.append(fx)
       fx.append(xmlUtils.newNode('variables', text='HTSE_capacity, H2_market_capacity'))
-      # initial step size
+      # initial step size, growth rate, cut rate
       stepper = samps_node.find('stepSize').find('GradientHistory')
       if stepper is None:
         stepper = samps_node.find('stepSize').find('ConjugateGradient')
-      stepper.append(xmlUtils.newNode('initialStepScale', text=0.2))
+      stepper.append(xmlUtils.newNode('initialStepScale', text=0.3))
+      stepper.find('growthFactor').text = str(1.25)
+      stepper.find('shrinkFactor').text = str(1.1)
       # grad eval distance
       gradder = samps_node.find('gradient').find('FiniteDifference')
       gradder.append(xmlUtils.newNode('gradDistanceScalar', text=0.005))
+      # min step size
+      conv = samps_node.find('convergence')
+      conv.append(xmlUtils.newNode('stepSize', text=1e-2))
+
     # add additional optimization variables
     adds = {} #['NPP_bid_adjust'] if case.get_labels()['Reulated'] == 'No' else ['HTSE_built_capacity']
     regulated = case.get_labels()['regulated']

@@ -381,7 +381,8 @@ class Template(TemplateBase):
       outer.append(fcs)
       fx = xmlUtils.newNode('External', attrib={'file': '../../functions', 'name':'h2_sizing'})
       fcs.append(fx)
-      fx.append(xmlUtils.newNode('variables', text='HTSE_capacity, H2_market_capacity'))
+      htse_name = 'HTSE_capacity' if case.get_labels()['regulated'] == 'No' else 'HTSE_built_capacity'
+      fx.append(xmlUtils.newNode('variables', text=f'{htse_name}, H2_market_capacity'))
       # initial step size, growth rate, cut rate
       stepper = samps_node.find('stepSize').find('GradientHistory')
       if stepper is None:
@@ -460,6 +461,8 @@ class Template(TemplateBase):
     # optimizer variable, for opt case
     opt = copy.deepcopy(grid)
     opt.remove(opt.find('grid'))
+    # initial value
+    delta = capacities[0]
     initial = np.average(capacities) # capacities[np.argmin(abs(np.asarray(capacities)))]
     opt.append(xmlUtils.newNode('initial', text=initial))
     return dist, grid, opt

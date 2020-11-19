@@ -383,7 +383,10 @@ class Template(TemplateBase):
       outer.append(fcs)
       fx = xmlUtils.newNode('External', attrib={'file': '../../functions', 'name':'h2_sizing'})
       fcs.append(fx)
-      htse_name = 'HTSE_capacity' if case.get_labels()['regulated'] == 'No' else 'HTSE_built_capacity'
+      if rotated == 'Yes':
+        htse_name = 'IES_delta_cap'
+      else:
+        htse_name = 'HTSE_capacity' if regulated == 'No' else 'HTSE_built_capacity'
       fx.append(xmlUtils.newNode('variables', text=f'{htse_name}, H2_market_capacity'))
       # initial step size, growth rate, cut rate
       stepper = samps_node.find('stepSize').find('GradientHistory')

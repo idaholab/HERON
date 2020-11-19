@@ -451,8 +451,10 @@ class Template(TemplateBase):
     dist_name = self.namingTemplates['distribution'].format(unit=comp_name, feature='capacity')
     dist = copy.deepcopy(self.dist_template)
     dist.attrib['name'] = dist_name
-    dist.find('lowerBound').text = str(min(capacities))
-    dist.find('upperBound').text = str(max(capacities))
+    min_cap = min(capacities)
+    max_cap = max(capacities)
+    dist.find('lowerBound').text = str(min_cap)
+    dist.find('upperBound').text = str(max_cap)
     # sampler variable, for Grid case
     grid = copy.deepcopy(self.var_template)
     grid.attrib['name'] = var_name
@@ -462,8 +464,9 @@ class Template(TemplateBase):
     opt = copy.deepcopy(grid)
     opt.remove(opt.find('grid'))
     # initial value
-    delta = capacities[0]
-    initial = np.average(capacities) # capacities[np.argmin(abs(np.asarray(capacities)))]
+    delta = max_cap - min_cap
+    # start at 5%
+    initial = min_cap + 0.05 * delta # 0.5*(min_cap + max_cap) # capacities[np.argmin(abs(np.asarray(capacities)))]
     opt.append(xmlUtils.newNode('initial', text=initial))
     return dist, grid, opt
 

@@ -471,8 +471,12 @@ class Template(TemplateBase):
     opt.remove(opt.find('grid'))
     # initial value
     delta = max_cap - min_cap
-    # start at 5%
-    initial = min_cap + 0.05 * delta # 0.5*(min_cap + max_cap) # capacities[np.argmin(abs(np.asarray(capacities)))]
+    # start at 5% away from 0
+    if max_cap > 0:
+      initial = min_cap + 0.05 * delta # 0.5*(min_cap + max_cap) # capacities[np.argmin(abs(np.asarray(capacities)))]
+    else:
+      initial = max_cap - 0.05 * delta
+    print(f'DEBUGG {comp_name} max {max_cap}, min {min_cap}, delta {delta}, initial {initial}.')
     opt.append(xmlUtils.newNode('initial', text=initial))
     return dist, grid, opt
 

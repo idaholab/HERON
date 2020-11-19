@@ -377,15 +377,14 @@ class Template(TemplateBase):
     if case._mode == 'opt':
       samps_node = outer.find('Optimizers').find('GradientDescent')
       # add constraint to optimizer
-      if rotated == 'No':
-        samps_node.append(xmlUtils.newNode('Constraint', attrib={'class': 'Functions', 'type': 'External'}, text='h2_sizing'))
-        # add functions block
-        fcs = xmlUtils.newNode('Functions')
-        outer.append(fcs)
-        fx = xmlUtils.newNode('External', attrib={'file': '../../functions', 'name':'h2_sizing'})
-        fcs.append(fx)
-        htse_name = 'HTSE_capacity' if case.get_labels()['regulated'] == 'No' else 'HTSE_built_capacity'
-        fx.append(xmlUtils.newNode('variables', text=f'{htse_name}, H2_market_capacity'))
+      samps_node.append(xmlUtils.newNode('Constraint', attrib={'class': 'Functions', 'type': 'External'}, text='h2_sizing'))
+      # add functions block
+      fcs = xmlUtils.newNode('Functions')
+      outer.append(fcs)
+      fx = xmlUtils.newNode('External', attrib={'file': '../../functions', 'name':'h2_sizing'})
+      fcs.append(fx)
+      htse_name = 'HTSE_capacity' if case.get_labels()['regulated'] == 'No' else 'HTSE_built_capacity'
+      fx.append(xmlUtils.newNode('variables', text=f'{htse_name}, H2_market_capacity'))
       # initial step size, growth rate, cut rate
       stepper = samps_node.find('stepSize').find('GradientHistory')
       if stepper is None:

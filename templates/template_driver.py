@@ -371,18 +371,21 @@ class Template(TemplateBase):
   def _just_for_202012_EPRI_case(self, outer, inner, case):
     """ DO NOT MERGE """
     # XXX FIXME find a way to do each of these through the user input!
+    regulated = case.get_labels()['regulated']
+    rotated = case.get_labels().get('rotated', 'No')
     # add constraints
     if case._mode == 'opt':
       samps_node = outer.find('Optimizers').find('GradientDescent')
       # add constraint to optimizer
-      samps_node.append(xmlUtils.newNode('Constraint', attrib={'class': 'Functions', 'type': 'External'}, text='h2_sizing'))
-      # add functions block
-      fcs = xmlUtils.newNode('Functions')
-      outer.append(fcs)
-      fx = xmlUtils.newNode('External', attrib={'file': '../../functions', 'name':'h2_sizing'})
-      fcs.append(fx)
-      htse_name = 'HTSE_capacity' if case.get_labels()['regulated'] == 'No' else 'HTSE_built_capacity'
-      fx.append(xmlUtils.newNode('variables', text=f'{htse_name}, H2_market_capacity'))
+      if rotated == 'No':
+        samps_node.append(xmlUtils.newNode('Constraint', attrib={'class': 'Functions', 'type': 'External'}, text='h2_sizing'))
+        # add functions block
+        fcs = xmlUtils.newNode('Functions')
+        outer.append(fcs)
+        fx = xmlUtils.newNode('External', attrib={'file': '../../functions', 'name':'h2_sizing'})
+        fcs.append(fx)
+        htse_name = 'HTSE_capacity' if case.get_labels()['regulated'] == 'No' else 'HTSE_built_capacity'
+        fx.append(xmlUtils.newNode('variables', text=f'{htse_name}, H2_market_capacity'))
       # initial step size, growth rate, cut rate
       stepper = samps_node.find('stepSize').find('GradientHistory')
       if stepper is None:
@@ -399,10 +402,12 @@ class Template(TemplateBase):
 
     # add additional optimization variables
     adds = {} #['NPP_bid_adjust'] if case.get_labels()['Reulated'] == 'No' else ['HTSE_built_capacity']
-    regulated = case.get_labels()['regulated']
-    if regulated == 'Yes':
-      adds['HTSE_built_capacity'] = (1e-10, 20) # kgH2/s
-    elif regulated == 'No':
+    if rotated == 'No':
+      if regulated == 'Yes':
+        adds['HTSE_built_capacity'] = (1e-10, 20) # kgH2/s
+    else:
+      adds['IES_delta_cap'] = (0, 5)
+    if regulated == 'No':
       adds['NPP_bid_adjust'] = (0, 1e5) # $/GW
     for add, spread in adds.items():
       # add to outer opt
@@ -434,7 +439,8 @@ class Template(TemplateBase):
         htse = entry
       elif entry.attrib['name'] == 'H2_market_capacity':
         market = entry
-    htse.find('initial').text = str(- float(market.find('initial').text) + 0.1)
+    if rotated == 'No':
+      htse.find('initial').text = str(- float(market.find('initial').text) + 0.1)
     return outer, inner
 
   def _create_new_sweep_capacity(self, comp_name, var_name, capacities):

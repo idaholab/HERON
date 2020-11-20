@@ -373,6 +373,10 @@ class Template(TemplateBase):
     # XXX FIXME find a way to do each of these through the user input!
     regulated = case.get_labels()['regulated']
     rotated = case.get_labels().get('rotated', 'No')
+    # path to HERON
+    pypath = outer.find('RunInfo').find('PYTHONPATH')
+    src_loc = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
+    pypath.text = src_loc
     # add constraints
     if case._mode == 'opt':
       samps_node = outer.find('Optimizers').find('GradientDescent')
@@ -398,9 +402,10 @@ class Template(TemplateBase):
       # grad eval distance
       gradder = samps_node.find('gradient').find('FiniteDifference')
       gradder.append(xmlUtils.newNode('gradDistanceScalar', text=0.005))
-      # min step size
+      # min step size, persistence
       conv = samps_node.find('convergence')
       conv.append(xmlUtils.newNode('stepSize', text=1e-2))
+      conv.append(xmlUtils.newNode('persistence', text=10))
 
     # add additional optimization variables
     adds = {} #['NPP_bid_adjust'] if case.get_labels()['Reulated'] == 'No' else ['HTSE_built_capacity']

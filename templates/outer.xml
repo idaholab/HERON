@@ -5,12 +5,15 @@
     <Sequence></Sequence>
     <batchSize>5</batchSize>
     <RemoteRunCommand>raven_sawtooth_qsub.sh</RemoteRunCommand>
-    <NumMPI>96</NumMPI>
+    <NumMPI>-48</NumMPI>
+    <NumThreads>48</NumThreads>
     <mode>mpi
+      <NodeParameter>--hostfile</NodeParameter>
       <runQSUB/>
-      <memory>10gb</memory>
+      <place>excl</place>
+      <memory>194560000000b</memory>
     </mode>
-    <expectedTime>20:0:0</expectedTime>
+    <expectedTime>80:0:0</expectedTime>
     <clusterParameters>-P lwrs</clusterParameters>
     <internalParallel>True</internalParallel>
     <PYTHONPATH>/home/talbpaul/projects/HERON/src</PYTHONPATH>

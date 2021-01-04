@@ -129,11 +129,6 @@ class Template(TemplateBase):
     inner = self._modify_inner(inner, case, components, sources)
     outer = self._modify_outer(outer, case, components, sources)
     cash = self._modify_cash(cash, case, components, sources)
-    ### FIXME HACK for milestone case
-    labels = case.get_labels()
-    if labels.get('state', None) == 'IL':
-      outer, inner = self._just_for_202012_EPRI_case(outer, inner, case)
-    ### END HACK
     return inner, outer, cash
 
   def writeWorkflow(self, templates, destination, run=False):
@@ -367,88 +362,6 @@ class Template(TemplateBase):
       else:
         # this capacity will be evaluated by ARMA/Function, and doesn't need to be added here.
         pass
-
-  def _just_for_202012_EPRI_case(self, outer, inner, case):
-    """ DO NOT MERGE """
-    # XXX FIXME find a way to do each of these through the user input!
-    regulated = case.get_labels()['regulated']
-    rotated = case.get_labels().get('rotated', 'No')
-    # path to HERON
-    pypath = outer.find('RunInfo').find('PYTHONPATH')
-    src_loc = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
-    pypath.text = src_loc
-    # add constraints
-    if case._mode == 'opt':
-      samps_node = outer.find('Optimizers').find('GradientDescent')
-      # add constraint to optimizer
-      samps_node.append(xmlUtils.newNode('Constraint', attrib={'class': 'Functions', 'type': 'External'}, text='h2_sizing'))
-      # add functions block
-      fcs = xmlUtils.newNode('Functions')
-      outer.append(fcs)
-      fx = xmlUtils.newNode('External', attrib={'file': '../../functions', 'name':'h2_sizing'})
-      fcs.append(fx)
-      if rotated == 'Yes':
-        htse_name = 'IES_delta_cap'
-      else:
-        htse_name = 'HTSE_capacity' if regulated == 'No' else 'HTSE_built_capacity'
-      fx.append(xmlUtils.newNode('variables', text=f'{htse_name}, H2_market_capacity'))
-      # initial step size, growth rate, cut rate
-      stepper = samps_node.find('stepSize').find('GradientHistory')
-      if stepper is None:
-        stepper = samps_node.find('stepSize').find('ConjugateGradient')
-      stepper.append(xmlUtils.newNode('initialStepScale', text=0.3))
-      stepper.find('growthFactor').text = str(1.25)
-      stepper.find('shrinkFactor').text = str(1.1)
-      # grad eval distance
-      gradder = samps_node.find('gradient').find('FiniteDifference')
-      gradder.append(xmlUtils.newNode('gradDistanceScalar', text=0.005))
-      # min step size, persistence
-      conv = samps_node.find('convergence')
-      conv.append(xmlUtils.newNode('stepSize', text=1e-2))
-      conv.append(xmlUtils.newNode('persistence', text=10))
-
-    # add additional optimization variables
-    adds = {} #['NPP_bid_adjust'] if case.get_labels()['Reulated'] == 'No' else ['HTSE_built_capacity']
-    if rotated == 'No':
-      if regulated == 'Yes':
-        adds['HTSE_built_capacity'] = (1e-10, 20) # kgH2/s
-    else:
-      adds['IES_delta_cap'] = (0, 5)
-    if regulated == 'No':
-      adds['NPP_bid_adjust'] = (0, 1e5) # $/GW
-    for add, spread in adds.items():
-      # add to outer opt
-      samps_node = outer.find('Optimizers').find('GradientDescent') if case._mode == 'opt' else outer.find('Samplers').find('Grid')
-      # nominal NPP bid is (marginal) 9000 $/GW, so we want to explore in the 1e4 range
-      dist, for_grid, for_opt = self._create_new_sweep_capacity(add, add, spread) # $/GW
-      outer.find('Distributions').append(dist)
-      if case._mode == 'sweep':
-        samps_node.append(for_grid)
-      else:
-        samps_node.append(for_opt)
-      # add to outer groups
-      self._updateCommaSeperatedList(outer.find('VariableGroups').find('Group'), add)
-      # add to outer model
-      text = f'Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:{add}'
-      new = xmlUtils.newNode('alias', attrib={'type': 'input', 'variable': add}, text=text)
-      outer.find('Models').find('Code').append(new)
-      # add to inner groups
-      vg = inner.find('VariableGroups')
-      for g in vg:
-        if g.tag == 'Group' and g.attrib['name'] == 'GRO_capacities':
-          self._updateCommaSeperatedList(g, add)
-          break
-    # reasonable HTSE size
-    for entry in samps_node.findall('variable'):
-      if entry.attrib['name'] == 'HTSE_capacity':
-        htse = entry
-      elif entry.attrib['name'] == 'HTSE_built_capacity':
-        htse = entry
-      elif entry.attrib['name'] == 'H2_market_capacity':
-        market = entry
-    if rotated == 'No':
-      htse.find('initial').text = str(- float(market.find('initial').text) + 0.1)
-    return outer, inner
 
   def _create_new_sweep_capacity(self, comp_name, var_name, capacities):
     """

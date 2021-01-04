@@ -458,7 +458,8 @@ class Case(Base):
     template_class.writeWorkflow((inner, outer, cash), loc)
 
   #### UTILITIES ####
-  def _load_template(self):
+  @staticmethod
+  def _load_template():
     """
       Loads template files for modification
       @ In, None
@@ -584,11 +585,6 @@ class Case(Base):
         # elif the capacity is fixed, it becomes a constant
         else:
           samps_node.append(xmlUtils.newNode('constant', text=interaction._capacity, attrib={'name': var_name}))
-
-    ###################
-    # OUTSTREAMS      #
-    ###################
-    # no changes needed here!
 
     # TODO copy needed model/ARMA/etc files to Outer Working Dir so they're known
     return template

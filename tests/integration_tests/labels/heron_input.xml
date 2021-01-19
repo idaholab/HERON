@@ -1,6 +1,6 @@
 <HERON>
   <TestInfo>
-    <name>labels</name>
+    <name>Labels</name>
     <author>dylanjm</author>
     <created>2020-10-12</created>
     <description>
@@ -42,20 +42,6 @@
       </produces>
       <economics>
         <lifetime>27</lifetime>
-        <!--<CashFlow name="capex" type="one-time" taxable='True' inflation='none' mult_target='False'>
-          <driver>
-            <Function method="electric_consume">transfers</Function>
-          </driver>
-          <reference_price>
-            <fixed_value>1</fixed_value>
-          </reference_price>
-          <reference_driver>
-            <fixed_value>1</fixed_value>
-          </reference_driver>
-          <scaling_factor_x>
-            <fixed_value>1</fixed_value>
-          </scaling_factor_x>
-        </CashFlow>-->
       </economics>
     </Component>
 
@@ -87,9 +73,8 @@
     </Component>
 
     <Component name="electr_market">
-      <demands resource="electricity" dispatch="dependent"><!---->
+      <demands resource="electricity" dispatch="dependent">
         <capacity>
-          <!-- <fixed_value>-2</fixed_value> -->
           <fixed_value>-2</fixed_value>
         </capacity>
       </demands>
@@ -98,7 +83,7 @@
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
           <driver>
             <Function method="electric_consume">transfers</Function>
-            <!-- <resource multiplier="-1" absolute="True">electricity</resource> -->
+            <multiplier>-1</multiplier>
           </driver>
           <reference_price>
             <fixed_value>0.5</fixed_value>
@@ -107,10 +92,11 @@
       </economics>
     </Component>
 
-    <!-- design notes
-    add a <resource> node for at least CashFlow drivers
-    add multiplier and absolute value options for manipulating entries
-    maybe disallow <linear> and <resource> except for applicable ValuedParams?
+    <!--
+         design notes
+         add a <resource> node for at least CashFlow drivers
+         add multiplier and absolute value options for manipulating entries
+         maybe disallow <linear> and <resource> except for applicable ValuedParams?
     -->
 
     <Component name="electr_flex">
@@ -124,6 +110,7 @@
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
           <driver>
             <Function method="electric_consume">transfers</Function>
+            <multiplier>-1</multiplier>
           </driver>
           <reference_price>
             <Function method="flex_price">transfers</Function>

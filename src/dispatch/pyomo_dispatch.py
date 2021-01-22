@@ -294,9 +294,6 @@ class Pyomo(Dispatcher):
         for k in values:
           values[k] = cap
         var.set_values(values)
-      # else:
-      #   #minimum = 0 #  -> for now just use 0, but fix this! XXX
-      #   minimum = comp.get_minimum(meta)[0][cap_res]
       mins.append(minimum)
     # capacity
     rule = partial(self._capacity_rule, prod_name, r, caps)

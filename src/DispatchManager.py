@@ -24,7 +24,6 @@ from utils import utils as rutils
 sys.path.pop()
 
 cashflow_path = os.path.abspath(os.path.join(hutils.get_cashflow_loc(raven_path=raven_path), '..'))
-#rutils.add_path(os.path.abspath(cashflow_path))
 sys.path.append(cashflow_path)
 import TEAL
 from TEAL.src import CashFlows
@@ -220,13 +219,12 @@ class DispatchRunner:
       for s, seg in enumerate(segs):
         active_index['division'] = seg
         meta['HERON']['active_index'] = active_index
-        # Truncate signals to appropriate Year, Cluster
-        # Chop up raven_vars for sources to corresponding segment/cluster, year, and time
+        # truncate signals to appropriate Year, Cluster
+        ## -> chop up raven_vars for sources to corresponding segment/cluster, year, and time
         meta['HERON']['RAVEN_vars'] = self._slice_signals(all_structure, meta['HERON'])
         dispatch = self._dispatcher.dispatch(self._case, self._components, self._sources, meta)
-        # Get cluster info from the first source
-        # Assumes all clustering is aligned!
-        # Find the info for this cluster -> FIXME this should be restructured so searching isn't necessary!
+        # get cluster info from the first source -> assumes all clustering is aligned!
+        # -> find the info for this cluster -> FIXME this should be restructured so searching isn't necessary!
         clusters_info = yearly_cluster_data[interp_year] if interp_year in yearly_cluster_data else yearly_cluster_data[interp_years[0]]
         for cl_info in clusters_info:
           if cl_info['id'] == seg:
@@ -240,7 +238,6 @@ class DispatchRunner:
         _, local_comps = self._build_econ_objects(self._case, self._components, project_life)
         meta['HERON']['active_index'] = {'year': year if len(interp_years) > 1 else 0, 'division': seg,}
         meta['HERON']['RAVEN_vars'] = self._slice_signals(all_structure, meta['HERON'])
-        # TODO: Better way to get pivotParameterID?
         pivot_var = meta['HERON']['Case'].get_time_name()
         times = meta['HERON']['RAVEN_vars'][pivot_var]
         specific_meta = dict(meta) # TODO more deepcopy needed?
@@ -275,8 +272,7 @@ class DispatchRunner:
             ## on the Activity
 
             if cf_cf.type == 'Capex':
-              ## Capex cfs should only be constructed in the first year
-              ## of the project life
+              # Capex cfs should only be constructed in the first  of the project life
               # FIXME is this doing capex once per segment, or once per life?
               if year == 0 and s == 0:
                 params = heron_cf.calculate_params(specific_meta) # a, D, Dp, x, cost
@@ -449,7 +445,6 @@ class DispatchRunner:
           # TODO custom names?
           raven.ClusterTime = np.asarray(cluster_data['dispatch']._times) # TODO assuming same across clusters!
 
-          #raven.Cluster =
           raven._ROM_Cluster = np.arange(len(year_data))
           raven.Years = np.asarray(dispatch.keys())
           if not getattr(raven, '_indexMap', None):
@@ -459,7 +454,6 @@ class DispatchRunner:
           if y == c == 0:
             shape = (len(dispatch), len(year_data), len(data))
             setattr(raven, var_name, np.empty(shape)) # FIXME could use np.zeros, but slower?
-          print(f'DEBUGG saving year {y} cluster {c} var {var_name}')
           getattr(raven, var_name)[y, c] = data
           getattr(raven, '_indexMap')[0][var_name] = [self._case.get_year_name(), '_ROM_Cluster', 'ClusterTime']
         #for component in self._components:
@@ -625,26 +619,12 @@ class DispatchRunner:
     raven = data['RAVEN_vars_full']
     index_map = raven['_indexMap']
     time_var = self._case.get_time_name()
-    macro_var = self._case.get_year_name()
 
     # are we dealing with time, interpolation, clusters, segments?
     req_indices = data['active_index']
     macro = req_indices['year'] # FIXME Macro ID!
     division = req_indices['division']
     # we keep all of Time, no divider necessary
-
-    # # build a list to hold slicing information; this will eventually be converted into a slice object
-    # # TODO assuming all vars have the same index structure
-    # summary = all_structure['summary']
-    # slicer_len = 1 # always time
-    # if len(summary['clusters']) > 1:
-    #   slicer_len += 1 # add one if clustered
-    # elif summary['segments'] > 1:
-    #   slicer_len += 1 # add one if segmented
-    # if summary['interpolated']:
-    #   slicer_len += 1 # also add one for years if interpolated # TODO always right?
-    # general_slicer = [np.s_[:]] * slicer_len # by default, take everything
-    # # TODO am I overwriting this slicer in a bad way?
 
     for entry in raven:
       if entry in index_map:

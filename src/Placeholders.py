@@ -207,7 +207,6 @@ class Function(Placeholder):
       @ Out, None
     """
     self.__dict__ = d
-    print(f'DEBUGG target: "{self._target_file}"')
     load_string, _ = utils.identifyIfExternalModelExists(self, self._target_file, '')
     module = utils.importFromPath(load_string, True)
     if not module:

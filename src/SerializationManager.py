@@ -20,7 +20,6 @@ def load_heron_lib(path, retry=0):
     try:
       with open(path, 'rb') as lib:
         external_funcs = os.path.abspath(os.path.join(os.path.curdir, '..'))
-        print(external_funcs)
         sys.path.append(external_funcs)
         case, components, sources = pk.load(lib)
         found = True

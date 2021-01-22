@@ -70,7 +70,6 @@ class Example(Validator):
       @ Out, errs, list, information about validation failures
     """
     errs = [] # TODO best format for this?
-    init_level = dispatch.get_interaction().get_initial_level(meta, None, None, None)
     for comp, info in dispatch._resources.items():
       for res in info:
         for t, time in enumerate(times):
@@ -81,7 +80,6 @@ class Example(Validator):
             sign = np.sign(delta)
             if abs(delta) - self._allowable > self._tolerance:
               errs.append({'msg': f'Exceeded ramp of {self._allowable} with {delta:1.8e}',
-                           'initial': init_level,
                            'limit': previous + (sign * self._allowable),
                            'limit_type': 'lower' if (sign < 0) else 'upper',
                            'component': comp,

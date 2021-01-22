@@ -100,6 +100,7 @@ class Dispatcher:
       @ In, components, list, HERON components whose cashflows should be evaluated
       @ In, activity, DispatchState instance, activity by component/resources/time
       @ In, times, np.array(float), time values to evaluate; may be length 1 or longer
+      @ In, meta, dict, extra information needed for validation
       @ Out, validation, dict, information about validation
     """
     # default implementation

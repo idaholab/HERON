@@ -64,6 +64,7 @@ class Validator:
       @ In, components, list, HERON components
       @ In, sources, list, HERON sources
       @ In, dispatch, HERON DispatchState, proposed activity
+      @ In, meta, dict, extra information
       @ Out, results, list(dict), list of violations with info about each (see Validator base class)
     """
     # The return results should be a list of dictionaries

@@ -57,7 +57,7 @@ class Validator:
   # ---------------------------------------------
   # API
   # TODO make this a virtual method?
-  def validate(self, case, components, sources, dispatch):
+  def validate(self, case, components, sources, dispatch, meta):
     """
       Performs technoeconomic dispatch.
       @ In, case, Case, HERON case

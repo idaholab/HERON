@@ -94,7 +94,7 @@ class Dispatcher:
     """
     raise NotImplementedError # must be implemented by inheriting classes
 
-  def validate(self, components, activity, times):
+  def validate(self, components, activity, times, meta):
     """
       Method to validate a dispatch activity.
       @ In, components, list, HERON components whose cashflows should be evaluated
@@ -104,7 +104,7 @@ class Dispatcher:
     """
     # default implementation
     if self._validator is not None:
-      return self._validator.validate(components, activity, times)
+      return self._validator.validate(components, activity, times, meta)
     else:
       # no validator, nothing needs to be changed
       return {}

@@ -60,7 +60,7 @@ class Example(Validator):
 
   # ---------------------------------------------
   # API
-  def validate(self, components, dispatch, times):
+  def validate(self, components, dispatch, times, meta):
     """
       Method to validate a dispatch activity.
       @ In, components, list, HERON components whose cashflows should be evaluated

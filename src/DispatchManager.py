@@ -5,6 +5,7 @@
   Class for managing interactions with the Dispatchers.
 """
 
+
 import os
 import sys
 import pickle as pk
@@ -203,10 +204,8 @@ class DispatchRunner:
       @ Out, dispatch_results, list(DispatchState), results of dispatch for each segment/cluster and year
     """
     structure = all_structure['summary']
-    ## FINAL settings/components/cashflows use the multiplicity of
-    ## divisions for aggregated evaluation
+    ## FINAL settings/components/cashflows use the multiplicity of divisions for aggregated evaluation
     final_settings, final_components = self._build_econ_objects(self._case, self._components, project_life)
-
     active_index = {}
     dispatch_results = {}
     yearly_cluster_data = next(iter(all_structure['details'].values()))['clusters']
@@ -336,6 +335,11 @@ class DispatchRunner:
                 raise NotImplementedError(
                     f'Unrecognized CashFlow type for "{comp.name}" cashflow "{heron_cf.name}": {cf_cf.type}'
                 )
+            # end CashFlow type if
+          # end CashFlow per Component loop
+        # end Component loop
+      # end Division/segment/cluster loop
+    # end Year loop
 
     # CashFlow, take it away.
     print('****************************************')

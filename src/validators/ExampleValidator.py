@@ -74,6 +74,8 @@ class Example(Validator):
       for res in info:
         for t, time in enumerate(times):
           current = dispatch.get_activity(comp, res, time)
+          if comp.get_interaction().is_type('Storage'):
+            init_level = comp.get_interaction().get_initial_level(meta)
           if t > 0:
             previous = dispatch.get_activity(comp, res, times[t-1])
             delta = current - previous

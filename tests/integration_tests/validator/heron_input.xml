@@ -68,7 +68,6 @@
     <Component name="electr_market">
       <demands resource="electricity" dispatch="dependent"><!---->
         <capacity>
-          <!-- <fixed_value>-2</fixed_value> -->
           <fixed_value>-2</fixed_value>
         </capacity>
       </demands>
@@ -105,7 +104,8 @@
       </economics>
     </Component>
 
-  </Components>
+
+</Components>
 
   <DataGenerators>
     <ARMA name='Price' variable="Signal">../ARMA/Sine/arma.pk</ARMA>

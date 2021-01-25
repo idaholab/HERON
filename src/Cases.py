@@ -681,6 +681,11 @@ class Case(Base):
         else:
           samps_node.append(xmlUtils.newNode('constant', text=interaction._capacity, attrib={'name': var_name}))
 
+    ###################
+    # OUTSTREAMS      #
+    ###################
+    # no changes needed here!
+
     # TODO copy needed model/ARMA/etc files to Outer Working Dir so they're known
     return template
 

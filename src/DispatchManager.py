@@ -19,8 +19,6 @@ import SerializationManager
 
 raven_path = hutils.get_raven_loc()
 sys.path.append(raven_path)
-from utils import xmlUtils
-from utils import utils as rutils
 sys.path.pop()
 
 cashflow_path = os.path.abspath(os.path.join(hutils.get_cashflow_loc(raven_path=raven_path), '..'))
@@ -53,7 +51,10 @@ class DispatchRunner:
     self._override_time = None     # override for micro parameter
 
   def override_time(self, new):
-    """ TODO """
+    """
+      @ In, new,
+      @ Out, None
+    """
     self._override_time = new
 
   def load_heron_lib(self, path):
@@ -84,7 +85,7 @@ class DispatchRunner:
       if source.is_type('ARMA'):
         # get structure of ARMA
         vars_needed = source.get_variable()
-        for v in vars_needed:
+        for v in vaprs_needed:
           pass_vars[v] = getattr(raven, v)
 
     # get the key to mapping RAVEN multidimensional variables
@@ -183,7 +184,8 @@ class DispatchRunner:
     # if the ARMA is the same or greater number of years than the project_life, we can use the ARMA still
     # otherwise, there's a problem
     if 1 < len(interp_years) < project_life:
-      raise IOError(f'An interpolated ARMA ROM was used, but there are less interpolated years ({list(range(*structure["interpolated"]))}) ' +
+      raise IOError(f'An interpolated ARMA ROM was used, but there are less interpolated years ' +
+                    f'({list(range(*structure["interpolated"]))}) ' +
                     f'than requested project years ({project_life})!')
 
     pre_dispatch_time = run_clock()
@@ -225,7 +227,11 @@ class DispatchRunner:
         dispatch = self._dispatcher.dispatch(self._case, self._components, self._sources, meta)
         # get cluster info from the first source -> assumes all clustering is aligned!
         # -> find the info for this cluster -> FIXME this should be restructured so searching isn't necessary!
-        clusters_info = yearly_cluster_data[interp_year] if interp_year in yearly_cluster_data else yearly_cluster_data[interp_years[0]]
+        if interp_year in yearly_cluster_data:
+          clusters_info = yearly_cluster_data[interp_year]
+        else:
+          clusters_info = yearly_cluster_data[interp_years[0]]
+
         for cl_info in clusters_info:
           if cl_info['id'] == seg:
             break
@@ -287,13 +293,11 @@ class DispatchRunner:
                 }
                 cf_cf.setParams(cf_params)
 
-                ## Because alpha, driver, etc are only set once for
-                ## Capex cash flows, we can just hot swap this cashflow
-                ## into the final_comp, I think ...
+                ## Because alpha, driver, etc are only set once for capex cash flows,
+                ## we can just hot swap this cashflow into the final_comp, I think ...
 
-                ## I believe we can do this because Capex are
-                ## division-independent? Can we just do it once instead
-                ## of once per division?
+                ## I believe we can do this because Capex are division-independent?
+                ## Can we just do it once instead of once per division?
 
                 final_comp._cashFlows[f] = cf_cf
                 # depreciators
@@ -308,7 +312,6 @@ class DispatchRunner:
                 if s == 0:
                   params = heron_cf.calculate_params(specific_meta) # a, D, Dp, x, cost
                   contrib = params['cost']
-                  # FIXME multiplicity? -> should not apply to Recurring.Yearly
                   final_cf._yearlyCashflow[year + 1] += contrib
               # hourly recurring need iteration over time
               elif heron_cf.get_period() == 'hour':
@@ -519,13 +522,11 @@ class DispatchRunner:
         structure['clusters'][ma_id] = clusters_info
         cluster_nodes = macro.findall('ClusterROM')
         if cluster_nodes:
-          # structure['clusters'] = []
           for cl_node in cluster_nodes:
             cl_info = {'id': int(cl_node.attrib['cluster']),
                        'represents': cl_node.find('segments_represented').text.split(','),
                        'indices': list(int(x) for x in cl_node.find('indices').text.split(','))
                       }
-            # structure['clusters'].append(cl_info)
             clusters_info.append(cl_info)
 
       # TODO segments
@@ -537,14 +538,13 @@ class DispatchRunner:
     interpolated = (summary_info['macro']['first'], summary_info['macro']['last'] + 1) if 'macro' in summary_info else (0, 1)
     # further, also take cluster structure from the first year only
     first_year_clusters = next(iter(summary_info['clusters'].values())) if 'clusters' in summary_info else {}
-    clusters = list(cl['id'] for cl in first_year_clusters)# len(summary_info['clusters']) if 'clusters' in summary_info else 0
+    clusters = list(cl['id'] for cl in first_year_clusters)
     all_structure['summary'] = {'interpolated': interpolated,
                                 'clusters': clusters,
                                 'segments': 0, # FIXME XXX
                                 'macro_info': summary_info['macro'],
                                 'cluster_info': first_year_clusters,
-                                }
-                                # TODO need to add index/representivity references!
+                                } # TODO need to add index/representivity references!
     return all_structure
 
   def _check_signals(self, raven_vars):
@@ -582,10 +582,6 @@ class DispatchRunner:
     time_vals = raven_vars.get(time_var, None)
     if self._override_time:
       self._dispatcher.set_time_discr(self._override_time)
-      index_map = raven_vars['_indexMap']
-      for entry, vals in raven_vars.items():
-        if time_var in index_map.get(entry, []):
-          pass
 
     if time_vals is not None:
       req_start, req_end, req_steps = self._dispatcher.get_time_discr()

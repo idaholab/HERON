@@ -53,7 +53,8 @@ class DispatchRunner:
 
   def override_time(self, new):
     """
-      @ In, new,
+      Sets the micro time-like parameter for dispatch optimization.
+      @ In, new, list(int), arguments as for numpy linpace.
       @ Out, None
     """
     self._override_time = new
@@ -86,7 +87,7 @@ class DispatchRunner:
       if source.is_type('ARMA'):
         # get structure of ARMA
         vars_needed = source.get_variable()
-        for v in vaprs_needed:
+        for v in vars_needed:
           pass_vars[v] = getattr(raven, v)
 
     # get the key to mapping RAVEN multidimensional variables

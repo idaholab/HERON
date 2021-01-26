@@ -8,6 +8,7 @@ from __future__ import unicode_literals, print_function
 import os
 import sys
 import abc
+import copy
 
 from base import Base
 from scipy import interpolate
@@ -118,6 +119,9 @@ class ARMA(Placeholder):
     specs.addParam('variable', param_type=InputTypes.StringListType, required=True,
         descr=r"""provides the names of the variables from the synthetic history generators that will
               be used in this analysis.""")
+    # TODO someday read this directly off the model instead of asking the user!
+    specs.addParam('evalMode', param_type=InputTypes.StringType, required=False,
+        descr=r"""desired sampling mode for the ARMA. See the RAVEN manual for options. \default{clustered}""")
     return specs
 
   def __init__(self, **kwargs):
@@ -128,6 +132,8 @@ class ARMA(Placeholder):
     """
     Placeholder.__init__(self, **kwargs)
     self._type = 'ARMA'
+    self._var_names = None # variables from the ARMA to use
+    self.eval_mode = None # ARMA evaluation style (clustered, full, truncated)
 
   def read_input(self, xml):
     """
@@ -137,6 +143,7 @@ class ARMA(Placeholder):
     """
     specs = Placeholder.read_input(self, xml)
     self._var_names = specs.parameterValues['variable']
+    self.eval_mode = specs.parameterValues.get('evalMode', 'clustered')
     # check that the source ARMA exists
 
   def interpolation(self, x, y):
@@ -183,6 +190,30 @@ class Function(Placeholder):
     self._module = None
     self._module_methods = {}
 
+  def __getstate__(self):
+    """
+      Serialization.
+      @ In, None
+      @ Out, d, dict, object contents
+    """
+    # d = super(self, __getstate__) TODO only if super has one ...
+    d = copy.deepcopy(dict((k, v) for k, v in self.__dict__.items() if k not in ['_module']))
+    return d
+
+  def __setstate__(self, d):
+    """
+      Deserialization.
+      @ In, d, dict, object contents
+      @ Out, None
+    """
+    self.__dict__ = d
+    load_string, _ = utils.identifyIfExternalModelExists(self, self._target_file, '')
+    module = utils.importFromPath(load_string, True)
+    if not module:
+      raise IOError(f'Module "{self._source}" for function "{self.name}" was not found!')
+    self._module = module
+    self._set_callables(module)
+
   def read_input(self, xml):
     """
       Sets settings from input file
@@ -191,10 +222,11 @@ class Function(Placeholder):
     """
     Placeholder.read_input(self, xml)
     # load module
-    load_string, _ = utils.identifyIfExternalModelExists(self, self._source, self._workingDir)
+    load_string, _ = utils.identifyIfExternalModelExists(self, self._target_file, '')
     module = utils.importFromPath(load_string, True)
     if not module:
-      raise IOError('Module "{}" for function "{}" was not found!'.format(self._source, self.name))
+      raise IOError(f'Module "{self._source}" for function "{self.name}" was not found!')
+    self._module = module
     # TODO do we need to set the var_names? self._var_names = _var_names
     self._set_callables(module)
 

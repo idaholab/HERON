@@ -129,7 +129,6 @@ class Template(TemplateBase):
     inner = self._modify_inner(inner, case, components, sources)
     outer = self._modify_outer(outer, case, components, sources)
     cash = self._modify_cash(cash, case, components, sources)
-    # TODO write other files, like cashflow inputs?
     return inner, outer, cash
 
   def writeWorkflow(self, templates, destination, run=False):
@@ -255,7 +254,7 @@ class Template(TemplateBase):
     var_groups = template.find('VariableGroups')
     # capacities
     caps = var_groups[0]
-    caps.text = ', '.join('{}_capacity'.format(x.name) for x in components)
+    caps.text = ', '.join(f'{x.name}_capacity' for x in components if (x.get_capacity(None, raw=True).type not in ['Function', 'ARMA']))
     if case.get_labels():
       case_labels = ET.SubElement(var_groups, 'Group', attrib={'name': 'GRO_case_labels'})
       case_labels.text = ', '.join([f'{key}_label' for key in case.get_labels().keys()])
@@ -320,7 +319,6 @@ class Template(TemplateBase):
       @ In, components, list, list of HERON Component instances for this run
       @ Out, None
     """
-    """ TODO """
     dists_node = template.find('Distributions')
     if case._mode == 'sweep':
       samps_node = template.find('Samplers').find('Grid')
@@ -379,8 +377,10 @@ class Template(TemplateBase):
     dist_name = self.namingTemplates['distribution'].format(unit=comp_name, feature='capacity')
     dist = copy.deepcopy(self.dist_template)
     dist.attrib['name'] = dist_name
-    dist.find('lowerBound').text = str(min(capacities))
-    dist.find('upperBound').text = str(max(capacities))
+    min_cap = min(capacities)
+    max_cap = max(capacities)
+    dist.find('lowerBound').text = str(min_cap)
+    dist.find('upperBound').text = str(max_cap)
     # sampler variable, for Grid case
     grid = copy.deepcopy(self.var_template)
     grid.attrib['name'] = var_name
@@ -389,7 +389,13 @@ class Template(TemplateBase):
     # optimizer variable, for opt case
     opt = copy.deepcopy(grid)
     opt.remove(opt.find('grid'))
-    initial = np.average(capacities)
+    # initial value
+    delta = max_cap - min_cap
+    # start at 5% away from 0
+    if max_cap > 0:
+      initial = min_cap + 0.05 * delta # 0.5*(min_cap + max_cap) # capacities[np.argmin(abs(np.asarray(capacities)))]
+    else:
+      initial = max_cap - 0.05 * delta
     opt.append(xmlUtils.newNode('initial', text=initial))
     return dist, grid, opt
 
@@ -461,7 +467,6 @@ class Template(TemplateBase):
       if index.get('var') == 'Year':
         index.set('var', case.get_year_name())
 
-
   def _modify_inner_runinfo(self, template, case):
     """
       Defines modifications to the RunInfo of inner.xml RAVEN input file.
@@ -496,7 +501,29 @@ class Template(TemplateBase):
         self._iostep_rom_meta(template, source)
         # add the source to the arma-and-dispatch ensemble
         self._add_arma_to_ensemble(template, source)
-        # NOTE assuming input to all ARMAs is "scaling" constant = 1.0, already in MonteCarlo sampler
+        # NOTE assuming input to all ARMAs is "scaling" constant = 1.0, already in MC sampler
+        if source.eval_mode == 'clustered':
+          # add _ROM_cluster to the variable group if it isn't there already
+          var_group = template.find("VariableGroups/Group")
+          if '_ROM_Cluster' not in var_group.text:
+            var_group.text += f", _ROM_Cluster"
+          # make sure _ROM_Cluster is part of dispatch targetevaluation
+          found = False
+          for dataObj in template.find('DataObjects').findall('DataSet'):
+            if dataObj.attrib['name'] == 'dispatch_eval':
+              dispatch_eval = dataObj
+              for idx in dataObj.findall('Index'):
+                if idx.attrib['var'] == '_ROM_Cluster':
+                  found = True
+                  break
+              break
+          else:
+            raise RuntimeError
+          if not found:
+            dispatch_eval.append(xmlUtils.newNode('Index',
+                                                  attrib={'var': '_ROM_Cluster'},
+                                                  text='GRO_dispatch_in_Time'))
+
       elif source.is_type('Function'):
         # nothing to do ... ?
         pass
@@ -667,18 +694,25 @@ class Template(TemplateBase):
     ens.append(new_model)
 
     # create the data objects
+    deps = {self.__case.get_time_name(): out_vars,
+            self.__case.get_year_name(): out_vars}
+    if source.eval_mode == 'clustered':
+      deps['_ROM_Cluster'] = out_vars
+
     self._create_dataobject(data_objs, 'PointSet', inp_name, inputs=['scaling'])
     self._create_dataobject(data_objs, 'DataSet', eval_name,
                             inputs=['scaling'],
                             outputs=out_vars,
-                            depends={self.__case.get_time_name(): out_vars, self.__case.get_year_name(): out_vars}) # TODO user-defined?
+                            depends=deps)
 
     # add variables to dispatch input requirements
     ## before all else fails, use variable groups
     # find dispatch_in_time group
-    for group in template.find('VariableGroups'):
+    for group in (g for g in template.find('VariableGroups') if (g.tag == 'Group')):
       if group.attrib['name'] == 'GRO_dispatch_in_Time':
         break
+    else:
+      raise RuntimeError
     for var in out_vars:
       self._updateCommaSeperatedList(group, var)
 
@@ -751,6 +785,10 @@ class Template(TemplateBase):
     #multiyear.append(xmlUtils.newNode('years', text=project_life))
     # TODO FIXME XXX growth param ????
     #model.append(multiyear)
+    ## update the ARMA model to use clustered eval mode
+    # FIXME this isn't always desired; what if it isn't clustered?
+    if source.eval_mode == 'clustered':
+      model.append(xmlUtils.newNode('clusterEvalMode', text='clustered'))
     template.find('Models').append(model)
     # add a file
     ## NOTE: the '..' assumes there is a working dir that is not ".", which should always be true.

@@ -179,6 +179,7 @@ class Pyomo(Dispatcher):
         print('DEBUGG ... solve was unsuccessful!')
         print('DEBUGG ... status:', soln.solver.status)
         print('DEBUGG ... termination:', soln.solver.termination_condition)
+        self._debug_pyomo_print(m)
         raise RuntimeError
       # try validating
       print('DEBUGG ... validating ...')
@@ -202,7 +203,7 @@ class Pyomo(Dispatcher):
       if attempts > 100:
         raise RuntimeError('Exceeded validation attempt limit!')
     # soln.write() # DEBUGG
-    self._debug_print_soln(m) # DEBUGG
+    # self._debug_print_soln(m) # DEBUGG
     # return dict of numpy arrays
     result = self._retrieve_solution(m)
     return result
@@ -283,8 +284,9 @@ class Pyomo(Dispatcher):
       meta['HERON']['time_index'] = t
       cap = comp.get_capacity(meta)[0][cap_res] # value of capacity limit (units of governing resource)
       caps.append(cap)
+      minimum = comp.get_minimum(meta)[0][cap_res]
       # minimum production
-      if comp.is_dispatchable() == 'fixed':
+      if (comp.is_dispatchable() == 'fixed') or (minimum == cap):
         minimum = cap
         # initialize values so there's no boundary errors
         var = getattr(m, prod_name)
@@ -292,9 +294,6 @@ class Pyomo(Dispatcher):
         for k in values:
           values[k] = cap
         var.set_values(values)
-      else:
-        #minimum = 0 #  -> for now just use 0, but fix this! XXX
-        minimum = comp.get_minimum(meta)[0][cap_res]
       mins.append(minimum)
     # capacity
     rule = partial(self._capacity_rule, prod_name, r, caps)
@@ -485,7 +484,7 @@ class Pyomo(Dispatcher):
             dt = m.Times[t] - m.Times[t-1]
           else:
             # FIXME check this with a variety of ValuedParams
-            previous = comp.get_interaction().get_initial_level(meta, None, None, None)
+            previous = comp.get_interaction().get_initial_level(meta)
             dt = m.Times[1] - m.Times[0]
           new = var[r, t]
           production = -1 * (new - previous) / dt # swap sign b/c negative is absorbing, positive is emitting

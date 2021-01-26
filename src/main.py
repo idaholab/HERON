@@ -34,9 +34,9 @@ class HERON(Base):
 
     messageHandler = MessageHandler()
     messageHandler.initialize({'verbosity':'debug',
-                                'callerLength': 25,
-                                'tagLength': 15,
-                                'suppressErrs': False})
+                               'callerLength': 25,
+                               'tagLength': 15,
+                               'suppressErrs': False,})
     self.messageHandler = messageHandler
 
   def read_input(self, name):

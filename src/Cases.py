@@ -41,34 +41,29 @@ class Case(Base):
       @ Out, input_specs, InputData, specs
     """
     input_specs = InputData.parameterInputFactory('Case', ordered=False, baseNode=None,
-        descr=r"""The \xmlNode{Case} node contains the general physics and economics information
-                required for a HERON workflow to be created and solved.""")
+                                                  descr=r"""The \xmlNode{Case} node contains the general physics and
+                                                  economics information required for a HERON workflow to be created
+                                                  and solved.""")
     input_specs.addParam('name', param_type=InputTypes.StringType, required=True,
-        descr=r"""the name by which this analysis should be referred within HERON.""")
+                         descr=r"""the name by which this analysis should be referred within HERON.""")
 
     # Optional Identifier Nodes
-    label_specs = InputData.parameterInputFactory(
-        name='label',
-        ordered=False,
-        descr=r"""provides static label information to the model;
-        unused in computation. These data will be passed along through
-        the meta class and output in the simulation result files.
-        These data can also be accessed within user-defined transfer
-        functions by using \texttt{meta['HERON']['Case'].get_labels()}."""
-    )
-    label_specs.addParam(
-        name='name',
-        param_type=InputTypes.StringType,
-        descr=r"""the generalized name of the identifier.
-               Example: ``<label name="state">Idaho</label>''"""
-    )
+    label_specs = InputData.parameterInputFactory(name='label', ordered=False,
+                                                  descr=r"""provides static label information to the model;
+                                                  unused in computation. These data will be passed along through
+                                                  the meta class and output in the simulation result files.
+                                                  These data can also be accessed within user-defined transfer
+                                                  functions by using \texttt{meta['HERON']['Case'].get_labels()}.""")
+    label_specs.addParam(name='name',param_type=InputTypes.StringType,
+                         descr=r"""the generalized name of the identifier.
+                         Example: ``<label name="state">Idaho</label>''""")
     input_specs.addSub(label_specs)
 
     mode_options = InputTypes.makeEnumType('ModeOptions', 'ModeOptionsType', ['opt', 'sweep'])
-    desc_mode_options = r"""determines whether the outer RAVEN should perform optimization,
-                         or a parametric (``sweep'') study. \default{sweep}"""
-    input_specs.addSub(InputData.parameterInputFactory('mode', contentType=mode_options,
-                         strictMode=True, descr=desc_mode_options))
+    desc_mode_options = r"""determines whether the outer RAVEN should perform
+    optimization, or a parametric (``sweep'') study. \default{sweep}"""
+    input_specs.addSub(InputData.parameterInputFactory('mode', contentType=mode_options, strictMode=True,
+                                                       descr=desc_mode_options))
 
     # not yet implemented TODO
     #econ_metrics = InputTypes.makeEnumType('EconMetrics', 'EconMetricsTypes', ['NPV', 'lcoe'])
@@ -80,56 +75,67 @@ class Case(Base):
     # economic metric."""
 
     input_specs.addSub(InputData.parameterInputFactory('num_arma_samples', contentType=InputTypes.IntegerType,
-        descr=r"""provides the number of synthetic histories that should be considered per system configuration
-              in order to obtain a reasonable representation of the economic metric. Sometimes referred to as
-              ``inner samples'' or ``denoisings''."""))
+                                                       descr=r"""provides the number of synthetic histories that should
+                                                       be considered per system configuration in order to obtain a
+                                                       reasonable representation of the economic metric. Sometimes
+                                                       referred to as ``inner samples'' or ``denoisings''."""))
 
     # time discretization
     time_discr = InputData.parameterInputFactory('time_discretization',
-        descr=r"""node that defines how within-cycle time discretization should be handled for
-        solving the dispatch.""")
+                                                 descr=r"""node that defines how within-cycle time discretization should
+                                                 be handled for solving the dispatch.""")
     time_discr.addSub(InputData.parameterInputFactory('time_variable', contentType=InputTypes.StringType,
-        descr=r"""name for the \texttt{time} variable used in this simulation. \default{time}"""))
+                                                      descr=r"""name for the \texttt{time} variable used in this
+                                                      simulation. \default{time}"""))
     time_discr.addSub(InputData.parameterInputFactory('year_variable', contentType=InputTypes.StringType,
-        descr=r"""name for the \texttt{year} or \texttt{macro} variable used in this simulation. \default{Year}"""))
+                                                      descr=r"""name for the \texttt{year} or \texttt{macro} variable
+                                                      used in this simulation. \default{Year}"""))
     time_discr.addSub(InputData.parameterInputFactory('start_time', contentType=InputTypes.FloatType,
-        descr=r"""value for \texttt{time} variable at which the inner dispatch should begin. \default{0}"""))
+                                                      descr=r"""value for \texttt{time} variable at which the inner
+                                                      dispatch should begin. \default{0}"""))
     time_discr.addSub(InputData.parameterInputFactory('end_time', contentType=InputTypes.FloatType,
-        descr=r"""value for \texttt{time} variable at which the inner dispatch should end. If not specified,
-              both \xmlNode{time_interval} and \xmlNode{num_timesteps} must be defined."""))
+                                                      descr=r"""value for \texttt{time} variable at which the inner
+                                                      dispatch should end. If not specified, both \xmlNode{time_interval}
+                                                      and \xmlNode{num_timesteps} must be defined."""))
     time_discr.addSub(InputData.parameterInputFactory('num_steps', contentType=InputTypes.IntegerType,
-        descr=r"""number of discrete time steps for the inner dispatch.
-              Either this node or \xmlNode{time_interval} must be defined."""))
-    time_discr.addSub(InputData.parameterInputFactory('time_interval', contentType=InputTypes.FloatType,
-        descr=r"""length of a time step for the inner dispatch, in units of the time variable (not indices).
-              Either this node or \xmlNode{num_timesteps} must be defined. Note that if an integer number of
-              intervals do not fit between \xmlNode{start_time} and \xmlNode{end_time}, an error will be raised."""))
+                                                      descr=r"""number of discrete time steps for the inner dispatch.
+                                                      Either this node or \xmlNode{time_interval} must be defined."""))
+    time_discr.addSub(InputData.parameterInputFactory('time_interval',contentType=InputTypes.FloatType,
+                                                      descr=r"""length of a time step for the inner dispatch, in units of
+                                                      the time variable (not indices). Either this node or
+                                                      \xmlNode{num_timesteps} must be defined. Note that if an integer
+                                                      number of intervals do not fit between \xmlNode{start_time} and
+                                                      \xmlNode{end_time}, an error will be raised."""))
     input_specs.addSub(time_discr)
 
     # economics global settings
     econ = InputData.parameterInputFactory('economics', ordered=False,
-        descr= r"""node containing general economic setting in which to perform HERON analysis.""")
+                                           descr= r"""node containing general economic setting in which to perform
+                                           HERON analysis.""")
     econ.addSub(InputData.parameterInputFactory('ProjectTime', contentType=InputTypes.FloatType,
-        descr=r"""the number of cycles (usually years) for the HERON analysis to cover."""))
+                                                descr=r"""the number of cycles (usually years) for the HERON analysis
+                                                to cover."""))
     econ.addSub(InputData.parameterInputFactory('DiscountRate', contentType=InputTypes.FloatType,
-        descr=r"""rate representing the time value of money to the firm used to discount cash flows
-              in the multicycle economic analysis. Passed to the CashFlow module."""))
+                                                descr=r"""rate representing the time value of money to the firm used
+                                                to discount cash flows in the multicycle economic analysis. Passed to
+                                                the CashFlow module."""))
     econ.addSub(InputData.parameterInputFactory('tax', contentType=InputTypes.FloatType,
-        descr=r"""the taxation rate, a metric which represents the
-               rate at which the firm is taxed. Passed to the CashFlow module."""))
+                                                descr=r"""the taxation rate, a metric which represents the
+                                                rate at which the firm is taxed. Passed to the CashFlow module."""))
     econ.addSub(InputData.parameterInputFactory('inflation', contentType=InputTypes.FloatType,
-        descr=r"""a metric which represents the rate at which the average price of goods and
-              services in an economy increases over a cycle, usually a year.
-              Passed to the CashFlow module."""))
+                                                descr=r"""a metric which represents the rate at which the average
+                                                price of goods and services in an economy increases over a cycle,
+                                                usually a year. Passed to the CashFlow module."""))
     econ.addSub(InputData.parameterInputFactory('verbosity', contentType=InputTypes.IntegerType,
-        descr=r"""the level of output to print from the CashFlow calculations. Passed to the CashFlow
-              module.""")) # is this actually CashFlow verbosity or is it really HERON verbosity?
+                                                descr=r"""the level of output to print from the CashFlow calculations.
+                                                Passed to the CashFlow module."""))
+    # is this actually CashFlow verbosity or is it really HERON verbosity?
     input_specs.addSub(econ)
 
     # dispatcher
     dispatch = InputData.parameterInputFactory('dispatcher', ordered=False,
-        descr=r"""This node defines the dispatch strategy and options to use in the ``inner''
-        run.""")
+                                               descr=r"""This node defines the dispatch strategy and options to use in
+                                               the ``inner'' run.""")
     for d in known_dispatchers:
       vld_spec = get_dispatcher(d).get_input_specs()
       dispatch.addSub(vld_spec)
@@ -137,8 +143,8 @@ class Case(Base):
 
     # validator
     validator = InputData.parameterInputFactory('validator', ordered=False,
-        descr=r"""This node defines the dispatch validation strategy and options to use in the
-        ``inner'' run.""")
+                                                descr=r"""This node defines the dispatch validation strategy and options
+                                                to use in the ``inner'' run.""")
     for d in known_validators:
       vld_spec = get_validator(d).get_input_specs()
       validator.addSub(vld_spec)
@@ -458,7 +464,8 @@ class Case(Base):
     template_class.writeWorkflow((inner, outer, cash), loc)
 
   #### UTILITIES ####
-  def _load_template(self):
+  @staticmethod
+  def _load_template():
     """
       Loads template files for modification
       @ In, None

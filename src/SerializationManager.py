@@ -1,6 +1,8 @@
 
 # Copyright 2020, Battelle Energy Alliance, LLC
 # ALL RIGHTS RESERVED
+import os
+import sys
 import dill as pk
 
 def load_heron_lib(path, retry=0):
@@ -17,6 +19,8 @@ def load_heron_lib(path, retry=0):
     counter = 0
     try:
       with open(path, 'rb') as lib:
+        external_funcs = os.path.abspath(os.path.join(os.path.curdir, '..'))
+        sys.path.append(external_funcs)
         case, components, sources = pk.load(lib)
         found = True
     except FileNotFoundError:

@@ -1016,23 +1016,16 @@ class Storage(Interaction):
       return {res: delta}, meta
     return {res: amt}, meta
 
-  def get_initial_level(self, meta, raven_vars, dispatch, t):
+  def get_initial_level(self, meta):
     """
       Find initial level of the storage
       @ In, meta, dict, additional variable passthrough
-      @ In, raven_vars, dict, TODO part of meta! consolidate!
-      @ In, dispatch, dict, TODO part of meta! consolidate!
-      @ In, t, int, TODO part of meta! consolidate!
       @ Out, initial, float, initial level
     """
     res = self.get_resource()
     request = {res: None}
-    inputs = {'request': request,
-              'meta': meta,
-              'raven_vars': raven_vars,
-              'dispatch': dispatch,
-              't': t}
-    return self._initial_stored.evaluate(inputs, target_var=res)[0][res]
+    meta['request'] = request
+    return self._initial_stored.evaluate(meta, target_var=res)[0][res]
 
 
 

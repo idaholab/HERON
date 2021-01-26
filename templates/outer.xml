@@ -1,14 +1,9 @@
 <Simulation verbosity='debug'>
   <RunInfo>
-    <JobName>EX19_Outer</JobName>
+    <JobName></JobName>
     <WorkingDir>.</WorkingDir>
     <Sequence></Sequence>
     <batchSize>1</batchSize>
-    <!--<batchSize>20</batchSize>
-    <mode>mpi<runqsub/></mode>
-    <internalParallel>False</internalParallel>
-    <expectedTime>72:0:0</expectedTime>
-    <clusterParameters>-P nst -j oe</clusterParameters>-->
   </RunInfo>
 
   <Steps>
@@ -89,7 +84,7 @@
         <constant name='denoises'>1</constant>
       <TargetEvaluation class="DataObjects" type="PointSet">opt_eval</TargetEvaluation>
       <samplerInit>
-        <limit>2000</limit>
+        <limit>800</limit>
         <writeSteps>every</writeSteps>
         <type>max</type>
       </samplerInit>
@@ -106,8 +101,8 @@
         <Strict/>
       </acceptance>
       <convergence>
-        <gradient>1e-2</gradient>
-        <objective>1e-2</objective>
+        <gradient>1e-8</gradient>
+        <objective>1e-8</objective>
       </convergence>
     </GradientDescent>
   </Optimizers>

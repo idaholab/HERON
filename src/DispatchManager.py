@@ -282,15 +282,13 @@ class DispatchRunner:
               # FIXME is this doing capex once per segment, or once per life?
               if year == 0 and s == 0:
                 params = heron_cf.calculate_params(specific_meta) # a, D, Dp, x, cost
-                cf_params = {
-                  'name': cf_cf.name,
-                  'mult_target': heron_cf._mult_target,
-                  'depreciate': heron_cf._depreciate,
-                  'alpha': params['alpha'],
-                  'driver': params['driver'],
-                  'reference': params['ref_driver'],
-                  'X': params['scaling']
-                }
+                cf_params = {'name': cf_cf.name,
+                             'mult_target': heron_cf._mult_target,
+                             'depreciate': heron_cf._depreciate,
+                             'alpha': params['alpha'],
+                             'driver': params['driver'],
+                             'reference': params['ref_driver'],
+                             'X': params['scaling'],}
                 cf_cf.setParams(cf_params)
 
                 ## Because alpha, driver, etc are only set once for capex cash flows,

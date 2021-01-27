@@ -31,6 +31,9 @@
     <dispatcher>
       <pyomo/>
     </dispatcher>
+    <dispatch_var name="NPP_bid">
+      <sweep_values>1, 2</sweep_values>
+    </dispatch_var>
   </Case>
 
   <Components>
@@ -73,6 +76,9 @@
     </Component>
 
     <Component name="electr_market">
+      <dispatch_var name="NPP_bid">
+        <sweep_values>1, 2</sweep_values>
+      </dispatch_var>
       <demands resource="electricity" dispatch="dependent">
         <capacity>
           <fixed_value>-2</fixed_value>

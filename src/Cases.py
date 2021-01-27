@@ -21,6 +21,7 @@ from dispatch.Factory import get_class as get_dispatcher
 
 from validators.Factory import known as known_validators
 from validators.Factory import get_class as get_validator
+from ValuedParams import ValuedParam
 
 import _utils as hutils
 framework_path = hutils.get_raven_loc()
@@ -64,6 +65,12 @@ class Case(Base):
     optimization, or a parametric (``sweep'') study. \default{sweep}"""
     input_specs.addSub(InputData.parameterInputFactory('mode', contentType=mode_options, strictMode=True,
                                                        descr=desc_mode_options))
+
+    # Non-Capacity Variables
+    dispatch_vars = ValuedParam.get_input_specs('dispatch_var')
+    dispatch_vars.descr = "FILL THIS IN"
+    dispatch_vars.addParam('name', param_type=InputTypes.StringType, descr="FILL THIS IN")
+    input_specs.addSub(dispatch_vars)
 
     # not yet implemented TODO
     #econ_metrics = InputTypes.makeEnumType('EconMetrics', 'EconMetricsTypes', ['NPV', 'lcoe'])

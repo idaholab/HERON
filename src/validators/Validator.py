@@ -57,13 +57,14 @@ class Validator:
   # ---------------------------------------------
   # API
   # TODO make this a virtual method?
-  def validate(self, case, components, sources, dispatch):
+  def validate(self, case, components, sources, dispatch, meta):
     """
       Performs technoeconomic dispatch.
       @ In, case, Case, HERON case
       @ In, components, list, HERON components
       @ In, sources, list, HERON sources
       @ In, dispatch, HERON DispatchState, proposed activity
+      @ In, meta, dict, extra information
       @ Out, results, list(dict), list of violations with info about each (see Validator base class)
     """
     # The return results should be a list of dictionaries

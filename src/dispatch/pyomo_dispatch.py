@@ -183,7 +183,7 @@ class Pyomo(Dispatcher):
         raise RuntimeError
       # try validating
       print('DEBUGG ... validating ...')
-      validation_errs = self.validate(m.Components, m.Activity, m.Times)
+      validation_errs = self.validate(m.Components, m.Activity, m.Times, meta)
       if validation_errs:
         done_and_checked = False
         print('DEBUGG ... validation concerns raised:')

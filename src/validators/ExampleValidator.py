@@ -60,12 +60,13 @@ class Example(Validator):
 
   # ---------------------------------------------
   # API
-  def validate(self, components, dispatch, times):
+  def validate(self, components, dispatch, times, meta):
     """
       Method to validate a dispatch activity.
       @ In, components, list, HERON components whose cashflows should be evaluated
       @ In, activity, DispatchState instance, activity by component/resources/time
       @ In, times, np.array(float), time values to evaluate; may be length 1 or longer
+      @ In, meta, dict, extra information pertaining to validation
       @ Out, errs, list, information about validation failures
     """
     errs = [] # TODO best format for this?
@@ -73,6 +74,8 @@ class Example(Validator):
       for res in info:
         for t, time in enumerate(times):
           current = dispatch.get_activity(comp, res, time)
+          if comp.get_interaction().is_type('Storage') and t == 0:
+            init_level = comp.get_interaction().get_initial_level(meta)
           if t > 0:
             previous = dispatch.get_activity(comp, res, times[t-1])
             delta = current - previous

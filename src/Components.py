@@ -52,6 +52,12 @@ class Component(Base, CashFlowUser):
     input_specs.addParam('name', param_type=InputTypes.StringType, required=True,
         descr=r"""identifier for the component. This identifier will be used to generate variables
               and relate signals to this component throughout the HERON analysis.""")
+
+    # Non-Capacity Variables
+    dispatch_vars = ValuedParam.get_input_specs('dispatch_var')
+    dispatch_vars.descr = "FILL THIS IN"
+    dispatch_vars.addParam('name', param_type=InputTypes.StringType, descr="FILL THIS IN")
+    input_specs.addSub(dispatch_vars)
     # production
     ## this unit may be able to make stuff, possibly from other stuff
     input_specs.addSub(Producer.get_input_specs())
@@ -110,6 +116,9 @@ class Component(Base, CashFlowUser):
           self.raiseAWarning('Errors while reading component "{}"!'.format(self.name))
           raise e
         self._produces.append(prod)
+      # read in non-capacity vars
+      elif item.getName() == 'dispatch_var':
+        pass
       # read in storages
       elif item.getName() == 'stores':
         store = Storage(messageHandler=self.messageHandler)
@@ -653,7 +662,10 @@ class Producer(Interaction):
       @ Out, input_specs, InputData, specs
     """
     specs = super(Producer, cls).get_input_specs()
-    specs.addSub(InputData.parameterInputFactory('consumes', contentType=InputTypes.StringListType, descr=r"""The producer can either produce or consume a resource. If the producer is a consumer it must be accompnied with a transfer function to convert one source of energy to another. """))
+    specs.addSub(InputData.parameterInputFactory('consumes', contentType=InputTypes.StringListType,
+                                                 descr="The producer can either produce or consume a resource. "
+                                                 "If the producer is a consumer it must be accompnied with a transfer "
+                                                 "function to convert one source of energy to another."))
     specs.addSub(ValuedParam.get_input_specs('transfer'))
     return specs
 
@@ -688,7 +700,9 @@ class Producer(Interaction):
     ## if a transfer function not given, can't be consuming a resource
     if self._transfer is None:
       if self._consumes:
-        self.raiseAnError(IOError, 'Any component that consumes a resource must have a transfer function describing the production process!')
+        self.raiseAnError(IOError,
+                          'Any component that consumes a resource must have a '
+                          'transfer function describing the production process!')
     #else if transfer function is a float/ARMA, then there must be only one output, one input
     else:
       if self._transfer.type in ['value', 'ARMA']: #isinstance(self._transfer, float) or self._transfer['type'] == 'ARMA':

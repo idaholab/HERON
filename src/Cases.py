@@ -59,9 +59,13 @@ class Case(Base):
                          Example: ``<label name="state">Idaho</label>''""")
     input_specs.addSub(label_specs)
 
-    mode_options = InputTypes.makeEnumType('ModeOptions', 'ModeOptionsType', ['opt', 'sweep'])
-    desc_mode_options = r"""determines whether the outer RAVEN should perform
-    optimization, or a parametric (``sweep'') study. \default{sweep}"""
+    mode_options = InputTypes.makeEnumType('ModeOptions', 'ModeOptionsType', ['opt', 'sweep', 'debug'])
+    desc_mode_options = r"""determines the mode of operation for the outer/inner RAVEN.
+                        If ``sweep'' then parametrically sweep over distributed values.
+                        If ``opt'' then search distributed values for economic metric optima.
+                        If ``debug'' then run a simplified one-point outer, one-point inner to check
+                          dispatch behavior, cash flows, and simulation mechanics.
+                        """
     input_specs.addSub(InputData.parameterInputFactory('mode', contentType=mode_options, strictMode=True,
                                                        descr=desc_mode_options))
 
@@ -160,7 +164,7 @@ class Case(Base):
     """
     Base.__init__(self, **kwargs)
     self.name = None           # case name
-    self._mode = None          # extrema to find: min, max, sweep
+    self._mode = None          # extrema to find: opt, sweep, debug
     self._metric = 'NPV'       # UNUSED (future work); economic metric to focus on: lcoe, profit, cost
     self.run_dir = run_dir     # location of HERON input file
 

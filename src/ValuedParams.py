@@ -281,18 +281,29 @@ class ValuedParam:
     if 'fixed_value' in given:
       return 'value', item.subparts[given.index('fixed_value')], None, None
     # otherwise, it depends on the mode
+    # -> if we're in debug, then we pretend we're in whatever mode the data is given as
+    if mode == 'debug':
+      # whether swept or opt values given, just take the mean value for now.
+      if 'sweep_values' in given:
+        mode = 'sweep'
+      if 'opt_bounds' in given:
+        mode = 'opt'
     if mode == 'sweep':
+      # sweeping means the value is given by outer from swept values
       if 'sweep_values' in given:
         return 'value', item.subparts[given.index('sweep_values')], None, None
       else:
         raise IOError('For "{}" in "{}", no <sweep_values> given but in sweep mode! '.format(head_name, comp_name) +\
                       '\nPlease provide either <fixed_value> or <sweep_values>.')
     elif mode == 'opt':
+      # optimizing means the value is given by outer from opt values
       if 'opt_bounds' in given:
         return 'value', item.subparts[given.index('opt_bounds')], None, None
       else:
         raise IOError('For "{}" in "{}", no <opt_bounds> given but in "opt" mode! '.format(head_name, comp_name) +\
                       '\nPlease provide either <fixed_value> or <opt_bounds>.')
+      raise NotImplementedError # can we get here?
+      #
     ## if we got here, then the rights nodes were not given!
     raise RuntimeError(err_msg)
 

@@ -38,7 +38,7 @@
     <Group name='GRO_armasamples'          >GRO_armasamples_in, GRO_armasamples_out</Group>
     <Group name='GRO_armasamples_in'       >GRO_armasamples_in_scalar</Group>
     <Group name='GRO_armasamples_out'      >GRO_armasamples_out_scalar</Group>
-    <Group name='GRO_armasamples_in_scalar'>scaling, time_delta, GRO_capacities</Group>
+    <Group name='GRO_armasamples_in_scalar'>scaling, GRO_capacities</Group>
     <Group name='GRO_armasamples_out_scalar'>NPV</Group>
 
     <Group name='GRO_final_return'>

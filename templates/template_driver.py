@@ -15,7 +15,6 @@ import numpy as np
 import dill as pk
 
 # load utils
-## don't pop from path so we can use it later
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 import _utils as hutils
 sys.path.pop()
@@ -215,7 +214,7 @@ class Template(TemplateBase):
       # OutStreams
       sweep = template.find('OutStreams').findall('Print')[0]
       template.find('OutStreams').remove(sweep)
-    else: # mode is 'sweep'
+    elif case._mode == 'sweep': # mode is 'sweep'
       # RunInfo
       template.find('RunInfo').find('Sequence').text = 'sweep'
       # Steps
@@ -231,6 +230,34 @@ class Template(TemplateBase):
       # OutStreams
       opt_soln = template.find('OutStreams').findall('Print')[1]
       template.find('OutStreams').remove(opt_soln)
+    elif case.get_mode() == 'debug':
+      # RunInfo
+      template.find('RunInfo').find('Sequence').text = 'debug'
+      # Steps
+      # -> remove opt
+      opt = template.find('Steps').findall('MultiRun')[1]
+      template.find('Steps').remove(opt)
+      # -> repurpose the sweep multirun
+      sweep = template.find('Steps').findall('MultiRun')[0]
+      sweep.attrib['name'] = 'debug'
+      sweep.find('Sampler').attrib['type'] = 'MonteCarlo'
+      sweep.find('Sampler').text = 'mc'
+      sweep.findall('Output')[0].text = 'mc'
+      sweep.findall('Output')[1].text = 'debug'
+      # DataObjects
+      opt_eval = template.find('DataObjects').findall('PointSet')[1]
+      opt_soln = template.find('DataObjects').findall('PointSet')[2]
+      template.find('DataObjects').remove(opt_eval)
+      template.find('DataObjects').remove(opt_soln)
+      template.find('DataObjects').find('PointSet').attrib['name'] = 'mc'
+      # Optimizers
+      template.remove(template.find('Optimizers'))
+      # OutStreams
+      opt_soln = template.find('OutStreams').findall('Print')[1]
+      template.find('OutStreams').remove(opt_soln)
+      out = template.find('OutStreams').findall('Print')[0]
+      out.attrib['name'] = 'debug'
+      out.find('source').text = 'mc'
 
   def _modify_outer_runinfo(self, template, case):
     """
@@ -320,10 +347,16 @@ class Template(TemplateBase):
       @ Out, None
     """
     dists_node = template.find('Distributions')
-    if case._mode == 'sweep':
+    if case.get_mode() in ['sweep', 'debug']:
       samps_node = template.find('Samplers').find('Grid')
     else:
       samps_node = template.find('Optimizers').find('GradientDescent')
+    if case.get_mode() == 'debug':
+      samps_node.tag = 'MonteCarlo'
+      samps_node.attrib['name'] = 'mc'
+      init = xmlUtils.newNode('samplerInit')
+      init.append(xmlUtils.newNode('limit', text='1'))
+      samps_node.append(init)
     # number of denoisings
     ## assumption: first node is the denoises node
     samps_node.find('constant').text = str(case._num_samples)
@@ -332,12 +365,13 @@ class Template(TemplateBase):
     ## TODO: Refactor this portion with the below portion to handle
     ## all general cases instead of only two.
     for key, value in case.get_labels().items():
-        var_name = self.namingTemplates['variable'].format(unit=key, feature='label')
-        samps_node.append(xmlUtils.newNode('constant', text=value, attrib={'name': var_name}))
+      var_name = self.namingTemplates['variable'].format(unit=key, feature='label')
+      samps_node.append(xmlUtils.newNode('constant', text=value, attrib={'name': var_name}))
 
     for component in components:
       interaction = component.get_interaction()
       # NOTE this algorithm does not check for everthing to be swept! Future work could expand it.
+      # This is approached by the labels feature above
       ## Currently checked: Component.Interaction.Capacity
       ## --> this really needs to be made generic for all kinds of valued params!
       name = component.name
@@ -346,6 +380,9 @@ class Template(TemplateBase):
       # do we already know the capacity values?
       if cap.type == 'value':
         vals = cap.get_values()
+        # if we're debugging, take the average value and treat it as a constant
+        if case.get_mode() == 'debug':
+          vals = np.average(vals)
         # is the capacity variable being swept over?
         if isinstance(vals, list):
           # make new Distribution, Sampler.Grid.variable

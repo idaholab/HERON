@@ -457,6 +457,8 @@ class Template(TemplateBase):
     self._modify_inner_components(template, case, components)
     self._modify_inner_caselabels(template, case)
     self._modify_inner_time_vars(template, case)
+    if case.get_mode() == 'debug':
+      self._modify_inner_debug(template, case, components)
     # TODO modify based on resources ... should only need if units produce multiple things, right?
     # TODO modify CashFlow input ... this will be a big undertaking with changes to the inner.
     ## Maybe let the user change them? but then we don't control the variable names. We probably have to do it.
@@ -493,9 +495,10 @@ class Template(TemplateBase):
       @ In, case, HERON Case, defining Case instance
       @ Out, None
     """
-    # Modify GRO_dispatch to contain correct 'Time' and 'Year' variable.
-    var_group = template.find("VariableGroups/Group")
-    var_group.text += f", {case.get_time_name()}, {case.get_year_name()}"
+    # Modify dispatch groups to contain correct 'Time' and 'Year' variable.
+    for group in template.find('VariableGroups').findall('Group'):
+      if group.attrib['name'] in ['GRO_dispatch', 'GRO_full_dispatch']:
+        group.text += f", {case.get_time_name()}, {case.get_year_name()}"
     # Modify Data Objects to contain correct index var.
     data_objs = template.find('DataObjects')
     for index in data_objs.findall("DataSet/Index"):
@@ -577,7 +580,7 @@ class Template(TemplateBase):
     # find specific variable groups
     groups = {}
     var_groups = template.find('VariableGroups')
-    for tag in ['capacities', 'init_disp', 'means']:
+    for tag in ['capacities', 'init_disp', 'full_dispatch']:
       groups[tag] = var_groups.find(".//Group[@name='GRO_{}']".format(tag))
     # change inner input due to components requested
     for component in components:
@@ -590,7 +593,6 @@ class Template(TemplateBase):
       capacity = component.get_capacity(None, raw=True)
       interaction = component.get_interaction()
       values = capacity.get_values()
-      #cap_name = self.namingTemplates['variable'].format(unit=name, feature='capacity')
       if isinstance(values, (list, float)):
 
         # this capacity is being [swept or optimized in outer] (list) or is constant (float)
@@ -613,7 +615,33 @@ class Template(TemplateBase):
       for resource in interaction.get_resources():
         var_name = self.namingTemplates['dispatch'].format(component=name, resource=resource)
         self._updateCommaSeperatedList(groups['init_disp'], var_name)
-        self._updateCommaSeperatedList(groups['means'], var_name)
+        self._updateCommaSeperatedList(groups['full_dispatch'], var_name)
+
+  def _modify_inner_debug(self, template, case, components):
+    """
+      Modify template to work in a debug mode.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ In, components, list, list of HERON Component instances for this run
+      @ Out, None
+    """
+    # Steps
+    sampling = template.find('Steps').find('MultiRun')
+    sampling.append(self._assemblerNode('Output', 'DataObjects', 'DataSet', 'disp_full'))
+    sampling.append(self._assemblerNode('Output', 'OutStreams', 'Print', 'dispatch_full'))
+    # Model
+    extmod_vars = template.find('Models').find('ExternalModel').find('variables')
+    self._updateCommaSeperatedList(extmod_vars, 'GRO_full_dispatch')
+    # DataObject
+    datasets = template.find('DataObjects').findall('DataSet')
+    for ds in datasets:
+      if ds.attrib['name'] == 'dispatch_eval':
+        break
+    else:
+      raise RuntimeError
+    ds.append(xmlUtils.newNode('Output', text='GRO_full_dispatch'))
+    for idx in ds.findall('Index'):
+      self._updateCommaSeperatedList(idx, 'GRO_full_dispatch')
 
   ##### CASHFLOW #####
   def _modify_cash(self, template, case, components, sources):

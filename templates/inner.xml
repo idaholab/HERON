@@ -6,12 +6,10 @@
   </RunInfo>
 
   <Steps>
-    <!-- HERON fills in ARMA sampling -->
     <MultiRun name='arma_sampling'>
       <Input class='DataObjects' type='PointSet'>dispatch_placeholder</Input>
       <Model class='Models' type='EnsembleModel'>sample_and_dispatch</Model>
       <Sampler class='Samplers' type='MonteCarlo'>mc_arma_dispatch</Sampler>
-      <!-- <Output class='DataObjects' type='DataSet'>arma_samples</Output> -->
       <Output class='DataObjects' type='DataSet'>arma_metrics</Output>
     </MultiRun>
     <PostProcess name='summarize'>
@@ -20,21 +18,14 @@
       <Output class='DataObjects' type='PointSet'>metrics_avg</Output>
       <Output class='OutStreams' type='Print'>disp_results</Output>
     </PostProcess>
-    <!-- <IOStep name="debug_print">
-      <Input class='DataObjects' type='PointSet'>arma_samples</Input>
-      <Output class='OutStreams' type='Print'>disp_debug</Output>
-    </IOStep> -->
   </Steps>
 
   <VariableGroups>
     <Group name='GRO_dispatch'           >GRO_dispatch_in, GRO_dispatch_out</Group>
     <Group name='GRO_dispatch_in'        >GRO_dispatch_in_scalar, GRO_dispatch_in_Time</Group>
-    <!-- <Group name='GRO_dispatch_out'       >GRO_dispatch_out_Time</Group> -->
     <Group name='GRO_dispatch_out'       >NPV</Group>
     <Group name='GRO_dispatch_in_scalar' >GRO_capacities, scaling</Group>
     <Group name='GRO_dispatch_in_Time'   ></Group>
-    <!-- <Group name='GRO_dispatch_out_Time'  >GRO_init_disp</Group> -->
-
     <Group name='GRO_armasamples'          >GRO_armasamples_in, GRO_armasamples_out</Group>
     <Group name='GRO_armasamples_in'       >GRO_armasamples_in_scalar</Group>
     <Group name='GRO_armasamples_out'      >GRO_armasamples_out_scalar</Group>
@@ -46,7 +37,7 @@
       perc_5_NPV, perc_95_NPV, samp_NPV, var_NPV
     </Group>
 
-    <Group name="GRO_means"></Group>
+    <Group name="GRO_full_dispatch"></Group>
     <Group name='GRO_interp'>stepwise</Group>
 
     <Group name='GRO_capacities'></Group>
@@ -64,10 +55,11 @@
     <PointSet name="metrics_avg">
       <Output>GRO_final_return</Output>
     </PointSet>
-    <DataSet name="disp_avg">
-      <Output>GRO_means</Output>
-      <Index var="Time">GRO_means</Index>
-      <Index var="Year">GRO_means</Index>
+    <DataSet name="disp_full">
+      <Output>GRO_full_dispatch, GRO_dispatch</Output>
+      <Index var="Time">GRO_full_dispatch, GRO_dispatch_in_Time</Index>
+      <Index var="Year">GRO_full_dispatch, GRO_dispatch_in_Time</Index>
+      <Index var="_ROM_Cluster">GRO_full_dispatch, GRO_dispatch_in_Time</Index>
     </DataSet>
     <DataSet name="dispatch_eval">
       <Input>GRO_dispatch_in</Input>
@@ -100,16 +92,11 @@
       <percentile prefix="perc">NPV</percentile>
       <samples prefix="samp">NPV</samples>
       <variance prefix="var">NPV</variance>
-      <!-- additional optional metrics -->
-      <!--skewness prefix="skew">NPV</skewness>
-      <kurtosis prefix="kurt">NPV</kurtosis>
-      <variationCoefficient prefix="vc">NPV</variationCoefficient-->
     </PostProcessor>
   </Models>
 
   <Files>
     <Input name="libs">../../heron.lib</Input>
-    <!-- HERON -->
   </Files>
 
   <Samplers>
@@ -118,15 +105,14 @@
         <initialSeed>42</initialSeed>
         <limit>3</limit>
       </samplerInit>
-      <!-- HERON makes component capacities nodes, Outer fills them -->
       <constant name='scaling'>1.0</constant>
     </MonteCarlo>
   </Samplers>
 
   <OutStreams>
-    <Print name='disp_debug'>
+    <Print name='dispatch_full'>
       <type>csv</type>
-      <source>arma_samples</source>
+      <source>disp_full</source>
     </Print>
     <Print name='disp_results'>
       <type>csv</type>

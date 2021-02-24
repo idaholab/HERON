@@ -112,6 +112,8 @@ class DispatchRunner:
       #  pass_vars['time'] = time
 
     # variable for "time" discretization, if present
+    # -> if no ARMA, it might not be present
+    year_var = self._case.get_year_name()
     time_var = self._case.get_time_name()
     time_vals = getattr(raven, time_var, None)
     if time_vals is not None:
@@ -119,7 +121,7 @@ class DispatchRunner:
 
     # TODO magic keywords (e.g. verbosity, MAX_TIMES, MAX_YEARS, ONLY_DISPATCH, etc)
     # TODO other arbitrary constants, such as sampled values from Outer needed in Inner?
-    magics = ['NPP_bid_adjust', 'HTSE_built_capacity', 'IES_delta_cap'] # XXX DO NOT MERGE FIXME TODO
+    magics = ['NPP_bid_adjust', 'HTSE_built_capacity', 'IES_delta_cap'] # XXX FIXME TODO
     # XXX get "other opt vars" off the CASE itself, rather than hard coding.
     for magic in magics:
       val = getattr(raven, magic, None)
@@ -135,12 +137,25 @@ class DispatchRunner:
         pass_vars[f'{comp.name}_capacity'] = update_capacity
     # TODO other case, component properties
 
+    # check macro parameter -> TODO check this at compile time, not run time!
+    # TODO should this be an ARMA sample shape check?
+    if year_var in dir(raven):
+      year_vals = getattr(raven, year_var)
+      year_size = year_vals.size
+      project_life = hutils.get_project_lifetime(self._case, self._components) - 1 # 1 for construction year
+      if year_size != project_life:
+        raise RuntimeError(f'Provided macro variable "{year_var}" is length {year_size}, but expected project life is {project_life}! "{year_var}" values: {year_vals}')
+
     # load ARMA signals
     for source in self._sources:
       if source.is_type('ARMA'):
         vars_needed = source.get_variable()
         for v in vars_needed:
-          pass_vars[v] = getattr(raven, v)
+          vals = getattr(raven, v, None)
+          # checks
+          if vals is None:
+            raise RuntimeError(f'HERON: Expected ARMA variable "{v}" was not passed to DispatchManager!')
+          pass_vars[v] = vals
     return pass_vars
 
   def run(self, raven_vars):
@@ -197,12 +212,12 @@ class DispatchRunner:
     all_dispatch, metrics = self._do_dispatch(meta, all_structure, project_life, interp_years, segs, seg_type)
     return all_dispatch, metrics
 
-  def save_variables(self, raven, dispatch, metrics):
+  def save_variables(self, raven, all_dispatch, metrics):
     """
       generates RAVEN-acceptable variables
       Saves variables on "raven" object for returning
       @ In, raven, object, RAVEN object for setting values
-      @ In, dispatch, DispatchState, dispatch values (FIXME currently unused)
+      @ In, all_dispatch, dict, dispatch values
       @ In, metrics, dict, economic metrics
     """
     # TODO if debug mode...
@@ -215,25 +230,32 @@ class DispatchRunner:
     #     name = template.format(c=comp.name, r=res)
     #     setattr(raven, name, np.zeros(shape)) # FIXME need time!
     ##### FIXME year_data is now empty, so none of the following gets run!
-    for y, (year, year_data) in enumerate(dispatch.items()):
-      for c, cluster_data in enumerate(year_data):
-        dispatches = cluster_data['dispatch'].create_raven_vars(template)
+    for y, (year, year_data) in enumerate(all_dispatch.items()):
+      for c, (cluster, dispatch) in enumerate(year_data.items()):
+        dispatches = dispatch.create_raven_vars(template)
         # set up index map, first time only
         if y == c == 0:
-          # TODO custom names?
-          raven.ClusterTime = np.asarray(cluster_data['dispatch']._times) # TODO assuming same across clusters!
-
-          raven._ROM_Cluster = np.arange(len(year_data))
-          raven.Years = np.asarray(dispatch.keys())
+          # string names
+          year_name = self._case.get_year_name()
+          clst_name = '_ROM_Cluster'
+          time_name = self._case.get_time_name()
+          # number of entries for each dim
+          n_year = len(all_dispatch)
+          n_clst = len(year_data)
+          n_time = len(dispatch._times) # NOTE assuming same across clusters!
+          # set indices on raven
+          setattr(raven, time_name, np.asarray(dispatch._times))
+          setattr(raven, year_name, np.asarray(list(all_dispatch.keys())))
+          setattr(raven, clst_name, np.arange(n_clst))
           if not getattr(raven, '_indexMap', None):
             raven._indexMap = np.atleast_1d({})
         for var_name, data in dispatches.items():
           # if first time, initialize data structure
           if y == c == 0:
-            shape = (len(dispatch), len(year_data), len(data))
-            setattr(raven, var_name, np.empty(shape)) # FIXME could use np.zeros, but slower?
+            shape = (n_year, n_clst, n_time)
+            setattr(raven, var_name, np.empty(shape)) # NOTE could use np.zeros, but slower?
           getattr(raven, var_name)[y, c] = data
-          getattr(raven, '_indexMap')[0][var_name] = [self._case.get_year_name(), '_ROM_Cluster', 'ClusterTime']
+          getattr(raven, '_indexMap')[0][var_name] = [year_name, clst_name, time_name]
         #for component in self._components:
           # TODO cheating using the numpy state
         #  dispatch = cluster_data['dispatch']
@@ -287,7 +309,7 @@ class DispatchRunner:
         # perform dispatch
         dispatch = self._dispatcher.dispatch(self._case, self._components, self._sources, meta)
         if self._save_dispatch:
-          dispatch_results[seg] = dispatch
+          dispatch_results[interp_year][seg] = dispatch
         # build evaluation cash flows
         self._segment_cashflow(meta, s, seg, year, dispatch, multiplicity,
                                project_life, interp_years, all_structure, final_components)
@@ -735,7 +757,5 @@ def run(raven, raven_dict):
     runner.override_time(override_time) # TODO setter
   dispatch, metrics = runner.run(raven_vars)
   runner.save_variables(raven, dispatch, metrics)
-  # TODO these are extraneous, remove from template!
-  # raven.time_delta = 0
 
 

@@ -298,6 +298,10 @@ class Case(Base):
       @ In, sources, list, HERON sources (placeholders)
       @ Out, None
     """
+    # check sources
+    for src in sources:
+      src.checkValid(self, components, sources)
+    # dispatcher
     self.dispatcher.initialize(self, components, sources)
 
   def __repr__(self):

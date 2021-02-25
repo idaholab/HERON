@@ -16,7 +16,7 @@ import _utils as hutils
 
 framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)
-from utils import InputData, utils, InputTypes
+from utils import InputData, InputTypes, utils, xmlUtils
 
 class Placeholder(Base):
   """
@@ -58,11 +58,36 @@ class Placeholder(Base):
     self.name = specs.parameterValues['name']
     self._source = specs.value
     # check source exists
-    ## -> check it against the input file location, not based on cwd
-    self._target_file = os.path.abspath(os.path.join(self._workingDir, self._source))
+    if self._source.startswith('%HERON%'):
+      # magic word for "relative to HERON root"
+      heron_path = hutils.get_heron_loc()
+      self._target_file = os.path.abspath(self._source.replace('%HERON%', heron_path))
+    else:
+      # check absolute path
+      rel_interp = os.path.abspath(os.path.join(self._workingDir, self._source))
+      if os.path.isfile(rel_interp):
+        self._target_file = rel_interp
+      else:
+        # check absolute path
+        abs_interp = os.path.abspath(self._source)
+        if os.path.isfile(abs_interp):
+          self._target_file = abs_interp
+    # check source
     if not os.path.isfile(self._target_file):
-      self.raiseAnError(IOError, f'File not found for <DataGenerator><{self._type}> named "{self.name}": "{self._target_file}"')
+      self.raiseAnError(IOError, f'File not found for <DataGenerator><{self._type}> named "{self.name}".' +
+                        f'\nLooked in: "{self._target_file}"' +
+                        f'\nGiven location: "{self._source}"')
     return specs
+
+  def checkValid(self, case, components, sources):
+    """
+      Check validity of placeholder given rest of system
+      @ In, case, HERON.Case, case
+      @ In, case, list(HERON.Component), components
+      @ In, sources, list(HERON.Placeholder), sources
+      @ Out, None
+    """
+    pass # overwrite to check
 
   def print_me(self, tabs=0, tab='  '):
     """
@@ -113,7 +138,11 @@ class ARMA(Placeholder):
     """
     specs = InputData.parameterInputFactory('ARMA', contentType=InputTypes.StringType, ordered=False, baseNode=None,
         descr=r"""This data source is a source of synthetically-generated histories trained by RAVEN.
-              The RAVEN ARMA ROM should be trained and serialized before using it in HERON.""")
+              The RAVEN ARMA ROM should be trained and serialized before using it in HERON. The text
+              of this node indicates the location of the serialized ROM. This location is usually relative
+              with respect to the HERON XML input file; however, a full absolute path can be used,
+              or the path can be prepended with ``\%HERON\%'' to be relative to the installation
+              directory of HERON.""")
     specs.addParam('name', param_type=InputTypes.StringType, required=True,
         descr=r"""identifier for this data source in HERON and in the HERON input file. """)
     specs.addParam('variable', param_type=InputTypes.StringListType, required=True,
@@ -134,6 +163,8 @@ class ARMA(Placeholder):
     self._type = 'ARMA'
     self._var_names = None # variables from the ARMA to use
     self.eval_mode = None # ARMA evaluation style (clustered, full, truncated)
+    self.needs_multiyear = None # if not None, then this is a 1-year ARMA that needs multiyearing
+    self.limit_interp = None # if not None, gives the years to limit this interpolated ROM to
 
   def read_input(self, xml):
     """
@@ -146,15 +177,36 @@ class ARMA(Placeholder):
     self.eval_mode = specs.parameterValues.get('evalMode', 'clustered')
     # check that the source ARMA exists
 
-  def interpolation(self, x, y):
+  def checkValid(self, case, components, sources):
     """
-      Passthrough to numpy interpolation
-      @ In, x, np.array, original values
-      @ In, y, float, target input value
+      Check validity of placeholder given rest of system
+      @ In, case, HERON.Case, case
+      @ In, case, list(HERON.Component), components
+      @ In, sources, list(HERON.Placeholder), sources
+      @ Out, None
     """
-
-    return interpolate.interp1d(x, y)
-
+    print(f'Checking ROM at "{self._target_file}" ...')
+    structure = hutils.get_synthhist_structure(self._target_file)
+    interpolated = 'macro' in structure
+    clustered = bool(structure['clusters'])
+    # segmented = bool(structure['segments']) # TODO
+    print(f'For DataGenerator <{self._type}> "{self.name}", detected: ' +
+          f'{"" if interpolated else "NOT"} interpolated, ' +
+          f'{"" if clustered else "NOT"} clustered.')
+    # expect that project life == num macro years
+    project_life = hutils.get_project_lifetime(case, components) - 1 # one less for construction year
+    if interpolated:
+      # if interpolated, needs more checking
+      interp_years = structure['macro']['num']
+      if interp_years >= project_life:
+        print(f' -> "{self.name}" interpolates {interp_years} macro steps, and project life is {project_life}, so histories will be trunctated.')
+        self.limit_interp = project_life
+      else:
+        raise RuntimeError(f' -> "{self.name}" interpolates {interp_years} macro steps, but project life is {project_life}!')
+    else:
+      # if single year, we can use multiyear so np
+      print(f' -> "{self.name}" will be extended to project life ({project_life}) macro steps using <Multicycle>.')
+      self.needs_multiyear = project_life
 
 
 
@@ -174,7 +226,11 @@ class Function(Placeholder):
     specs = InputData.parameterInputFactory('Function', contentType=InputTypes.StringType,
         ordered=False, baseNode=None,
         descr=r"""This data source is a custom Python function to provide derived values.
-              Python functions have access to the variables within the dispatcher.""")
+              Python functions have access to the variables within the dispatcher. The text
+              of this node indicates the location of the python file. This location is usually relative
+              with respect to the HERON XML input file; however, a full absolute path can be used,
+              or the path can be prepended with ``\%HERON\%'' to be relative to the installation
+              directory of HERON.""")
     specs.addParam('name', param_type=InputTypes.StringType, required=True,
         descr=r"""identifier for this data source in HERON and in the HERON input file. """)
     return specs

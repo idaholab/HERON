@@ -106,13 +106,8 @@ class DispatchRunner:
     else:
       # NOTE this should ONLY BE POSSIBLE if no ARMAs are in use!
       pass
-      # FIXME index isn't always "time" ...
-      #time = getattr(raven, 'time', None)
-      #if time is not None:
-      #  pass_vars['time'] = time
 
     # variable for "time" discretization, if present
-    # -> if no ARMA, it might not be present
     year_var = self._case.get_year_name()
     time_var = self._case.get_time_name()
     time_vals = getattr(raven, time_var, None)
@@ -137,14 +132,24 @@ class DispatchRunner:
         pass_vars[f'{comp.name}_capacity'] = update_capacity
     # TODO other case, component properties
 
+<<<<<<< HEAD
     # check macro parameter -> TODO check this at compile time, not run time!
     # TODO should this be an ARMA sample shape check?
+=======
+    # check macro parameter
+>>>>>>> arma_macro_len
     if year_var in dir(raven):
       year_vals = getattr(raven, year_var)
       year_size = year_vals.size
       project_life = hutils.get_project_lifetime(self._case, self._components) - 1 # 1 for construction year
       if year_size != project_life:
+<<<<<<< HEAD
         raise RuntimeError(f'Provided macro variable "{year_var}" is length {year_size}, but expected project life is {project_life}! "{year_var}" values: {year_vals}')
+=======
+        raise RuntimeError(f'Provided macro variable "{year_var}" is length {year_size}, ' +
+                           f'but expected project life is {project_life}! ' +
+                           f'"{year_var}" values: {year_vals}')
+>>>>>>> arma_macro_len
 
     # load ARMA signals
     for source in self._sources:
@@ -561,46 +566,8 @@ class DispatchRunner:
       # only need ARMA information, not Functions
       if not source.is_type('ARMA'):
         continue
-      structure = {}
+      structure = hutils.get_synthhist_structure(source._target_file)
       all_structure['details'][source] = structure
-      name = source.name
-      obj = pk.load(open(source._target_file, 'rb'))
-      meta = obj.writeXML().getRoot()
-
-      # interpolation
-      itp_node = meta.find('InterpolatedMultiyearROM') # FIXME isn't this multicycle sometimes?
-      if itp_node:
-        # read macro parameters
-        macro_id = itp_node.find('MacroParameterID').text.strip()
-        structure['macro'] = {'id': macro_id,
-                              'num': int(itp_node.find('MacroSteps').text),
-                              'first': int(itp_node.find('MacroFirstStep').text),
-                              'last': int(itp_node.find('MacroLastStep').text),
-                             }
-        macro_nodes = meta.findall('MacroStepROM')
-      else:
-        macro_nodes = [meta]
-
-      # clusters
-      structure['clusters'] = {}
-      for macro in macro_nodes:
-        if itp_node:
-          ma_id = int(macro.attrib[structure['macro']['id']])
-        else:
-          ma_id = 0
-        clusters_info = []
-        structure['clusters'][ma_id] = clusters_info
-        cluster_nodes = macro.findall('ClusterROM')
-        if cluster_nodes:
-          for cl_node in cluster_nodes:
-            cl_info = {'id': int(cl_node.attrib['cluster']),
-                       'represents': cl_node.find('segments_represented').text.split(','),
-                       'indices': list(int(x) for x in cl_node.find('indices').text.split(','))
-                      }
-            clusters_info.append(cl_info)
-
-      # TODO segments
-      structure['segments'] = {}
 
     # TODO check consistency between ROMs?
     # for now, just summarize what we found -> take it from the first source

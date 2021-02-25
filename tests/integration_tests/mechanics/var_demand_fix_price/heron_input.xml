@@ -1,13 +1,13 @@
 <HERON>
   <TestInfo>
-    <name>MultiMarketFixedPrice</name>
+    <name>VarDemandFixedPrice</name>
     <author>gaira</author>
     <created>2019-12-12</created>
     <description>
-      Tests HERON creating workflows and running with a fixed deregulated market price.
+      Tests HERON creating workflows and running with a variable demand but fixed market price.
     </description>
     <classesTested>HERON</classesTested>
-    <requirements>H-EA-3</requirements>
+    <requirements>H-F-1 H-F-2 H-EA-1 H-SI-1</requirements>
   </TestInfo>
 
   <Case name="Sweep_Runs">
@@ -22,7 +22,7 @@
       <num_steps>21</num_steps>
     </time_discretization>
     <economics>
-      <ProjectTime>3</ProjectTime>
+      <ProjectTime>2</ProjectTime>
       <DiscountRate>0.08</DiscountRate>
       <tax>0.0</tax>
       <inflation>0.0</inflation>
@@ -34,7 +34,7 @@
   </Case>
 
   <Components>
-    <Component name="Generator">
+    <Component name="BOP">
       <produces resource="electricity" dispatch="fixed">
         <capacity resource="electricity">
           <sweep_values>1095,1098</sweep_values>
@@ -48,32 +48,7 @@
       </economics>
     </Component>
 
-    <Component name="Electric_Grid_1">
-      <demands resource="electricity" dispatch="dependent"><!---->
-        <capacity>
-          <fixed_value>-1e0</fixed_value>
-        </capacity>
-      </demands>
-      <economics>
-        <lifetime>3</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
-          <driver>
-            <Function method="electric_source">transfers</Function>
-          </driver>
-          <reference_price>
-            <fixed_value>10.0</fixed_value>
-          </reference_price>
-          <reference_driver>
-            <fixed_value>1</fixed_value>
-          </reference_driver>
-          <scaling_factor_x>
-            <fixed_value>1</fixed_value>
-          </scaling_factor_x>
-        </CashFlow>
-      </economics>
-    </Component>
-
-    <Component name="Electric_Grid_2">
+    <Component name="Electric_Grid">
       <demands resource="electricity" dispatch="independent">
         <capacity>
           <fixed_value>-1e200</fixed_value>
@@ -83,7 +58,7 @@
         <lifetime>3</lifetime>
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
           <driver>
-            <Function method="electric_source">transfers</Function>
+		        <Function method="electric_source">transfer</Function>
           </driver>
           <reference_price>
             <fixed_value>0.1</fixed_value>
@@ -101,8 +76,8 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='Speed' variable="Signal">../ARMA/Sine/arma.pk</ARMA>
-    <Function name="transfers">transfers.py</Function> <!-- TODO specify the variables needed? -->
+    <ARMA name='Speed' variable="Signal">%HERON%/tests/integration_tests/ARMA/Sine/arma.pk</ARMA>
+    <Function name="transfer">transfers.py</Function>
   </DataGenerators>
 
 </HERON>

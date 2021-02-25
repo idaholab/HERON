@@ -126,8 +126,7 @@ class DispatchRunner:
         pass_vars[f'{comp.name}_capacity'] = update_capacity
     # TODO other case, component properties
 
-    # check macro parameter -> TODO check this at compile time, not run time!
-    # TODO should this be an ARMA sample shape check?
+    # check macro parameter
     if year_var in dir(raven):
       year_vals = getattr(raven, year_var)
       year_size = year_vals.size
@@ -503,42 +502,6 @@ class DispatchRunner:
         continue
       structure = hutils.get_synthhist_structure(source._target_file)
       all_structure['details'][source] = structure
-
-    #   # interpolation
-    #   itp_node = meta.find('InterpolatedMultiyearROM') # FIXME isn't this multicycle sometimes?
-    #   if itp_node:
-    #     # read macro parameters
-    #     macro_id = itp_node.find('MacroParameterID').text.strip()
-    #     structure['macro'] = {'id': macro_id,
-    #                           'num': int(itp_node.find('MacroSteps').text),
-    #                           'first': int(itp_node.find('MacroFirstStep').text),
-    #                           'last': int(itp_node.find('MacroLastStep').text),
-    #                          }
-    #     macro_nodes = meta.findall('MacroStepROM')
-    #   else:
-    #     macro_nodes = [meta]
-
-    #   # clusters
-    #   structure['clusters'] = {}
-    #   for macro in macro_nodes:
-    #     if itp_node:
-    #       ma_id = int(macro.attrib[structure['macro']['id']])
-    #     else:
-    #       ma_id = 0
-    #     clusters_info = []
-    #     structure['clusters'][ma_id] = clusters_info
-    #     cluster_nodes = macro.findall('ClusterROM')
-    #     if cluster_nodes:
-    #       for cl_node in cluster_nodes:
-    #         cl_info = {'id': int(cl_node.attrib['cluster']),
-    #                    'represents': cl_node.find('segments_represented').text.split(','),
-    #                    'indices': list(int(x) for x in cl_node.find('indices').text.split(','))
-    #                   }
-    #         clusters_info.append(cl_info)
-
-    #   # TODO segments
-    #   structure['segments'] = {}
-    # ################ END OLD ##############
 
     # TODO check consistency between ROMs?
     # for now, just summarize what we found -> take it from the first source

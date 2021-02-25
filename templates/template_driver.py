@@ -773,20 +773,18 @@ class Template(TemplateBase):
     self._updateCommaSeperatedList(template.find('RunInfo').find('Sequence'), new_step.attrib['name'], position=0)
     # add the model
     model = xmlUtils.newNode('ROM', attrib={'name':rom_name, 'subType':'pickledROM'})
-    ## update the ARMA model to sample a number of years equal to the ProjectLife from CashFlow
-    #comp_lifes = list(comp.get_economics().get_lifetime() for comp in components)
-    #req_proj_life = case.get_econ().get('ProjectLife', None)
     econ_comps = list(comp.get_economics() for comp in components)
     econ_global_params = case.get_econ(econ_comps)
     econ_global_settings = CashFlows.GlobalSettings()
     econ_global_settings.setParams(econ_global_params)
-    #project_life = getProjectLength(econ_global_settings, econ_comps) - 1 # skip construction year
-    #multiyear = xmlUtils.newNode('Multiyear')
-    #multiyear.append(xmlUtils.newNode('years', text=project_life))
-    # TODO FIXME XXX growth param ????
-    #model.append(multiyear)
-    ## update the ARMA model to use clustered eval mode
-    # FIXME this isn't always desired; what if it isn't clustered?
+    ## update the ARMA model to sample a number of years equal to the ProjectLife from CashFlow
+    if source.needs_multiyear is not None:
+      multiyear = xmlUtils.newNode('Multicycle')
+      multiyear.append(xmlUtils.newNode('cycles', text=source.needs_multiyear))
+      model.append(multiyear)
+    if source.limit_interp is not None:
+      model.append(xmlUtils.newNode('maxCycles', text=source.limit_interp))
+    # change eval mode?
     if source.eval_mode == 'clustered':
       model.append(xmlUtils.newNode('clusterEvalMode', text='clustered'))
     template.find('Models').append(model)

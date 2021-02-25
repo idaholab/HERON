@@ -9,6 +9,14 @@ import sys
 import importlib
 import xml.etree.ElementTree as ET
 
+def get_heron_loc():
+  """
+    Return HERON location
+    @ In, None
+    @ Out, loc, string, absolute location of HERON
+  """
+  return os.path.abspath(os.path.join(__file__, '..', '..'))
+
 def get_raven_loc():
   """
     Return RAVEN location
@@ -71,6 +79,56 @@ def get_project_lifetime(case, components):
   econ_settings = CashFlows.GlobalSettings()
   econ_settings.setParams(econ_params)
   return getProjectLength(econ_settings, econ_comps)
+
+def get_synthhist_structure(fpath):
+  """
+    Extracts synthetic history info from ROM (currently ARMA ROM)
+    @ In, fpath, str, full absolute path to serialized ROM
+    @ Out, structure, dict, derived structure from reading ROM XML
+  """
+  # TODO could this be a function of the ROM itself?
+  # TODO or could we interrogate the ROM directly instead of the XML?
+  raven_loc = get_raven_loc()
+  scripts_path = os.path.join(raven_loc, '..', 'scripts')
+  sys.path.append(scripts_path)
+  from externalROMloader import ravenROMexternal as ravenROM
+  rom = ravenROM(fpath, raven_loc).rom
+  meta = rom.writeXML().getRoot()
+  structure = {}
+  # interpolation information
+  interp_node = meta.find('InterpolatedMultiyearROM')
+  if interp_node:
+    macro_id = interp_node.find('MacroParameterID').text.strip()
+    structure['macro'] = {'id': macro_id,
+                          'num': int(interp_node.find('MacroSteps').text),
+                          'first': int(interp_node.find('MacroFirstStep').text),
+                          'last': int(interp_node.find('MacroLastStep').text),
+                          }
+    macro_nodes = meta.findall('MacroStepROM')
+  else:
+    macro_nodes = [meta]
+  # cluster information
+  structure['clusters'] = {}
+  for macro in macro_nodes:
+    if interp_node:
+      macro_index = int(macro.attrib[macro_id])
+    else:
+      macro_index = 0
+    clusters_info = [] # data dict for each macro step
+    structure['clusters'][macro_index] = clusters_info
+    cluster_nodes = macro.findall('ClusterROM')
+    if cluster_nodes:
+      for node in cluster_nodes:
+        info = {'id': int(node.attrib['cluster']),
+                'represents': node.find('segments_represented').text.split(','),
+                'indices': list(int(x) for x in node.find('indices').text.split(','))
+               }
+        clusters_info.append(info)
+  # segment information
+  # -> TODO
+  structure['segments'] = {}
+  return structure
+
 
 if __name__ == '__main__':
   try:

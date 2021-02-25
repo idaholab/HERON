@@ -11,6 +11,7 @@ __pycache__
 
 # install stuff
 /.ravenconfig.xml
+*.ravenStatus
 
 # docs stuff
 *.aux

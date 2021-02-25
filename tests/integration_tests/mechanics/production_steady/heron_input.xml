@@ -134,7 +134,7 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='Speed' variable="Signal">../ARMA/Sine/arma.pk</ARMA>
+    <ARMA name='Speed' variable="Signal">%HERON%/tests/integration_tests/ARMA/Sine/arma.pk</ARMA>
     <Function name="transfers">transfers.py</Function> <!-- TODO specify the variables needed? -->
   </DataGenerators>
 

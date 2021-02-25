@@ -1,23 +1,20 @@
 <HERON>
   <TestInfo>
-    <name>Labels</name>
-    <author>dylanjm</author>
-    <created>2020-10-12</created>
+    <name>storage</name>
+    <author>talbpaul</author>
+    <created>2020-09-28</created>
     <description>
-      Tests including case-info user defined labels. Extends from production\_flex.
+      Tests including a storage unit as part of a flexible analysis case. Extends from
+      production\_flex case.
     </description>
     <classesTested>HERON</classesTested>
   </TestInfo>
 
   <Case name="Sweep_Runs">
-    <label name="state">Idaho</label>
-    <label name="strategy">LNHR</label>
-    <label name="tax">CarbonTax</label>
     <mode>sweep</mode>
-    <num_arma_samples>10</num_arma_samples>
+    <num_arma_samples>3</num_arma_samples>
     <time_discretization>
-      <time_variable>Hour</time_variable>
-      <year_variable>YEAR</year_variable>
+      <time_variable>Time</time_variable>
       <end_time>2</end_time>
       <num_steps>21</num_steps>
     </time_discretization>
@@ -45,11 +42,25 @@
       </economics>
     </Component>
 
+    <Component name="steam_storage">
+      <stores resource="steam" dispatch="independent">
+        <capacity resource="steam">
+          <fixed_value>100</fixed_value>
+        </capacity>
+        <initial_stored>
+          <fixed_value>1</fixed_value>
+        </initial_stored>
+      </stores>
+      <economics>
+        <lifetime>10</lifetime>
+      </economics>
+    </Component>
+
     <Component name="generator">
       <produces resource="electricity" dispatch="independent">
         <consumes>steam</consumes>
         <capacity resource="steam">
-          <fixed_value>-100</fixed_value>
+          <fixed_value>-99</fixed_value>
         </capacity>
         <transfer>
           <linear>
@@ -60,20 +71,11 @@
       </produces>
       <economics>
         <lifetime>27</lifetime>
-        <!--<CashFlow name="var_om" type="repeating" taxable='True' inflation='none' mult_target='False'>
-          <driver>
-            <resource>electricity</resource>
-            <Function method="steam_consume">transfers</Function>
-          </driver>
-          <reference_price>
-            <fixed_value>0.01</fixed_value>
-          </reference_price>
-        </CashFlow>-->
       </economics>
     </Component>
 
     <Component name="electr_market">
-      <demands resource="electricity" dispatch="dependent">
+      <demands resource="electricity" dispatch="dependent"><!---->
         <capacity>
           <fixed_value>-2</fixed_value>
         </capacity>
@@ -83,7 +85,7 @@
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
           <driver>
             <Function method="electric_consume">transfers</Function>
-            <multiplier>-1</multiplier>
+            <!-- <resource multiplier="-1" absolute="True">electricity</resource> -->
           </driver>
           <reference_price>
             <fixed_value>0.5</fixed_value>
@@ -92,12 +94,6 @@
       </economics>
     </Component>
 
-    <!--
-         design notes
-         add a <resource> node for at least CashFlow drivers
-         add multiplier and absolute value options for manipulating entries
-         maybe disallow <linear> and <resource> except for applicable ValuedParams?
-    -->
 
     <Component name="electr_flex">
       <demands resource="electricity" dispatch="dependent">
@@ -110,7 +106,6 @@
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
           <driver>
             <Function method="electric_consume">transfers</Function>
-            <multiplier>-1</multiplier>
           </driver>
           <reference_price>
             <Function method="flex_price">transfers</Function>
@@ -122,7 +117,7 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='Price' variable="Signal">../ARMA/Sine_Hour/arma.pk</ARMA>
+    <ARMA name='Price' variable="Signal">%HERON%/tests/integration_tests/ARMA/Sine/arma.pk</ARMA>
     <Function name="transfers">transfers.py</Function>
   </DataGenerators>
 

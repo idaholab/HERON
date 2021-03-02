@@ -76,7 +76,7 @@ class DispatchRunner:
     self._sources = sources        # HERON sources (placeholders) list
     # derivative
     self._dispatcher = self._case.dispatcher
-    if self._case.get_mode() == 'debug':
+    if self._case.debug['enabled']:
       self._save_dispatch = True
 
   def extract_variables(self, raven, raven_dict):
@@ -132,24 +132,15 @@ class DispatchRunner:
         pass_vars[f'{comp.name}_capacity'] = update_capacity
     # TODO other case, component properties
 
-<<<<<<< HEAD
-    # check macro parameter -> TODO check this at compile time, not run time!
-    # TODO should this be an ARMA sample shape check?
-=======
     # check macro parameter
->>>>>>> arma_macro_len
     if year_var in dir(raven):
       year_vals = getattr(raven, year_var)
       year_size = year_vals.size
       project_life = hutils.get_project_lifetime(self._case, self._components) - 1 # 1 for construction year
       if year_size != project_life:
-<<<<<<< HEAD
-        raise RuntimeError(f'Provided macro variable "{year_var}" is length {year_size}, but expected project life is {project_life}! "{year_var}" values: {year_vals}')
-=======
         raise RuntimeError(f'Provided macro variable "{year_var}" is length {year_size}, ' +
                            f'but expected project life is {project_life}! ' +
                            f'"{year_var}" values: {year_vals}')
->>>>>>> arma_macro_len
 
     # load ARMA signals
     for source in self._sources:

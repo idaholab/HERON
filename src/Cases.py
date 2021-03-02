@@ -78,6 +78,20 @@ class Case(Base):
     # descr=r"""(not implemented) allows differentiation between two HERON runs as a desired
     # economic metric."""
 
+    # debug mode, for checking dispatch and etc
+    debug = InputData.parameterInputFactory('debug', descr=r"""Including this node enables a reduced-size
+        run with increased outputs for checking how the sampling, dispatching, and cashflow mechanics
+        are working for a particular input. Various options for modifying how the debug mode operates
+        are included for convenience; however, just including this node will result in a minimal run.""")
+    debug.addSub(InputData.parameterInputFactory('inner_samples', contentType=InputTypes.IntegerType,
+        descr=r"""sets the number of inner realizations of the stochastic synthetic histories and dispatch
+              optimization to run per outer sample. Overrides the \xmlNode{num_arma_steps} option while
+              \xmlNode{debug} mode is enabled. \default{1}"""))
+    debug.addSub(InputData.parameterInputFactory('macro_steps', contentType=InputTypes.IntegerType,
+        descr=r"""sets the number of macro steps (e.g. years) the stochastic synthetic histories and dispatch
+              optimization should include. \default{1}"""))
+    input_specs.addSub(debug)
+
     input_specs.addSub(InputData.parameterInputFactory('num_arma_samples', contentType=InputTypes.IntegerType,
                                                        descr=r"""provides the number of synthetic histories that should
                                                        be considered per system configuration in order to obtain a
@@ -163,26 +177,31 @@ class Case(Base):
       @ Out, None
     """
     Base.__init__(self, **kwargs)
-    self.name = None           # case name
-    self._mode = None          # extrema to find: opt, sweep, debug
-    self._metric = 'NPV'       # UNUSED (future work); economic metric to focus on: lcoe, profit, cost
-    self.run_dir = run_dir     # location of HERON input file
+    self.name = None            # case name
+    self._mode = None           # extrema to find: opt, sweep
+    self._metric = 'NPV'        # UNUSED (future work); economic metric to focus on: lcoe, profit, cost
+    self.run_dir = run_dir      # location of HERON input file
 
-    self.dispatch_name = None  # name of dispatcher to use
-    self.dispatcher = None     # type of dispatcher to use
-    self.validator_name = None # name of dispatch validation to use
-    self.validator = None      # type of dispatch validation to use
+    self.dispatch_name = None   # name of dispatcher to use
+    self.dispatcher = None      # type of dispatcher to use
+    self.validator_name = None  # name of dispatch validation to use
+    self.validator = None       # type of dispatch validation to use
 
-    self._diff_study = None    # is this only a differential study?
-    self._num_samples = 1      # number of ARMA stochastic samples to use ("denoises")
-    self._hist_interval = None # time step interval, time between production points
-    self._hist_len = None      # total history length, in same units as _hist_interval
-    self._num_hist = None      # number of history steps, hist_len / hist_interval
-    self._global_econ = {}     # global economics settings, as a pass-through
-    self._increments = {}      # stepwise increments for resource balancing
+    self._diff_study = None     # is this only a differential study?
+    self._num_samples = 1       # number of ARMA stochastic samples to use ("denoises")
+    self._hist_interval = None  # time step interval, time between production points
+    self._hist_len = None       # total history length, in same units as _hist_interval
+    self._num_hist = None       # number of history steps, hist_len / hist_interval
+    self._global_econ = {}      # global economics settings, as a pass-through
+    self._increments = {}       # stepwise increments for resource balancing
     self._time_varname = 'time' # name of the time-variable throughout simulation
     self._year_varname = 'Year' # name of the year-variable throughout simulation
-    self._labels = {}       # extra information pertaining to current case
+    self._labels = {}           # extra information pertaining to current case
+    self.debug = {              # debug options, as enabled by the user (defaults included)
+        'enabled': False,         # whether to enable debug mode
+        'inner_samples': 1,       # how many inner realizations to sample
+        'macro_steps': 1,         # how many "years" for inner realizations
+    }
 
     self._time_discretization = None # (start, end, number) for constructing time discretization, same as argument to np.linspace
     self._Resample_T = None    # user-set increments for resources
@@ -201,7 +220,11 @@ class Case(Base):
     specs.parseNode(xml)
     self.name = specs.parameterValues['name']
     for item in specs.subparts:
-      # TODO move from iterative list to seeking list, at least for required nodes
+      # TODO move from iterative list to seeking list, at least for required nodes?
+      if item.getName() == 'debug':
+        self.debug['enabled'] = True
+        for node in item.subparts:
+          self.debug[node.getName()] = node.value
       if item.getName() == 'label':
         self._labels[item.parameterValues['name']] = item.value
       if item.getName() == 'mode':
@@ -406,7 +429,10 @@ class Case(Base):
       @ In, None
       @ Out, num_samples, int, number of dispatch realizations to consider
     """
-    return self._num_samples
+    if self.debug['enabled']:
+      return self.debug['inner_samples']
+    else:
+      return self._num_samples
 
   def get_num_timesteps(self):
     """
@@ -564,7 +590,7 @@ class Case(Base):
     samps_node = template.find('Samplers').find('Grid')
     # number of denoisings
     ## assumption: first node is the denoises node
-    samps_node.find('constant').text = str(self._num_samples)
+    samps_node.find('constant').text = str(self.get_num_samples())
     # add sweep variables to input
     dist_template = xmlUtils.newNode('Uniform')
     dist_template.append(xmlUtils.newNode('lowerBound'))

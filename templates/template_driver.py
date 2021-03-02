@@ -56,7 +56,8 @@ class Template(TemplateBase):
                                    'ARMA sampler'   : '{rom}_sampler',
                                    'lib file'       : 'heron.lib', # TODO use case name?
                                    'cashfname'      : '_{component}{cashname}',
-                                   're_cash'        : '_rec_{period}_{driverType}{driverName}'
+                                   're_cash'        : '_rec_{period}_{driverType}{driverName}',
+                                   'cluster_index'  : '_ROM_Cluster',
                                   })
 
   # template nodes
@@ -174,6 +175,7 @@ class Template(TemplateBase):
   # UTILS    #
   ############
   ##### OUTER #####
+  # Right now we modify outer by RAVEN structure, rather than HERON features
   def _modify_outer(self, template, case, components, sources):
     """
       Defines modifications to the outer.xml RAVEN input file.
@@ -183,24 +185,93 @@ class Template(TemplateBase):
       @ In, sources, list, list of HERON Placeholder instances for this run
       @ Out, template, xml.etree.ElementTree.Element, modified template
     """
-    self._modify_outer_mode(template, case)
+    self._modify_outer_mode(template, case, components, sources)
     self._modify_outer_runinfo(template, case)
     self._modify_outer_vargroups(template, case, components)
+    self._modify_outer_dataobjects(template, case, components)
     self._modify_outer_files(template, sources)
-    self._modify_outer_models(template, components)
+    self._modify_outer_models(template, case, components)
     self._modify_outer_samplers(template, case, components)
     # TODO copy needed model/ARMA/etc files to Outer Working Dir so they're known
     # TODO including the heron library file
     return template
 
-  def _modify_outer_mode(self, template, case):
+  def _modify_outer_mode(self, template, case, components, sources):
     """
       Defines modifications throughout outer.xml RAVEN input file due to "sweep" or "opt" mode.
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
       @ In, case, HERON Case, defining Case instance
+      @ In, components, list, list of HERON Component instances for this run
+      @ In, sources, list, list of HERON Placeholder instances for this run
       @ Out, None
     """
-    if case._mode == 'opt':
+    # debug mode overwrites other modes
+    if case.debug['enabled']:
+      # RunInfo
+      template.find('RunInfo').find('Sequence').text = 'debug'
+      # Steps
+      # -> remove opt
+      opt = template.find('Steps').findall('MultiRun')[1]
+      template.find('Steps').remove(opt)
+      # -> repurpose the sweep multirun
+      sweep = template.find('Steps').findall('MultiRun')[0]
+      sweep.attrib['name'] = 'debug'
+      sweep.find('Sampler').attrib['type'] = 'MonteCarlo'
+      sweep.find('Sampler').text = 'mc'
+      sweep.findall('Output')[0].text = 'mc'
+      sweep.findall('Output')[1].text = 'debug'
+      sweep.append(self._assemblerNode('Output', 'DataObjects', 'DataSet', 'dispatch'))
+      sweep.append(self._assemblerNode('Output', 'OutStreams', 'Print', 'dispatch'))
+      # Variable Groups
+      # -> expected dispatch, ARMA outputs
+      # -> -> dispatch results
+      group = template.find('VariableGroups').find(".//Group[@name='GRO_outer_debug_dispatch']")
+      for component in components:
+        name = component.name
+        interaction = component.get_interaction()
+        for resource in interaction.get_resources():
+          var_name = self.namingTemplates['dispatch'].format(component=name, resource=resource)
+          self._updateCommaSeperatedList(group, var_name)
+      # -> -> synthetic histories?
+      group = template.find('VariableGroups').find(".//Group[@name='GRO_outer_debug_synthetics']")
+      for source in sources:
+        if source.is_type('ARMA'):
+          synths = source.get_variable()
+          for synth in synths:
+            if not group.text or synth not in group.text.split(','):
+              self._updateCommaSeperatedList(group, synth)
+
+      # DataObjects
+      DOs = template.find('DataObjects')
+      # -> remove optimization entries
+      opt_eval = DOs.findall('PointSet')[1]
+      opt_soln = DOs.findall('PointSet')[2]
+      DOs.remove(opt_eval)
+      DOs.remove(opt_soln)
+      # -> rename output point set for clarity
+      DOs.find('PointSet').attrib['name'] = 'mc'
+      # -> add debug dispatch output dataset
+      debug_gro = ['GRO_outer_debug_dispatch', 'GRO_outer_debug_synthetics']
+      deps = {self.__case.get_time_name(): debug_gro,
+              self.namingTemplates['cluster_index']: debug_gro,
+              self.__case.get_year_name(): debug_gro}
+      self._create_dataobject(DOs, 'DataSet', 'dispatch',
+                              inputs=['scaling'],
+                              outputs=debug_gro,
+                              depends=deps)
+      # Optimizers
+      template.remove(template.find('Optimizers'))
+      # OutStreams
+      opt_soln = template.find('OutStreams').findall('Print')[1]
+      template.find('OutStreams').remove(opt_soln)
+      out = template.find('OutStreams').findall('Print')[0]
+      out.attrib['name'] = 'debug'
+      out.find('source').text = 'mc'
+      out = xmlUtils.newNode('Print', attrib={'name': 'dispatch'})
+      out.append(xmlUtils.newNode('type', text='csv'))
+      out.append(xmlUtils.newNode('source', text='dispatch'))
+      template.find('OutStreams').append(out)
+    elif case._mode == 'opt':
       # RunInfo
       template.find('RunInfo').find('Sequence').text = 'optimize'
       # Steps
@@ -230,34 +301,6 @@ class Template(TemplateBase):
       # OutStreams
       opt_soln = template.find('OutStreams').findall('Print')[1]
       template.find('OutStreams').remove(opt_soln)
-    elif case.get_mode() == 'debug':
-      # RunInfo
-      template.find('RunInfo').find('Sequence').text = 'debug'
-      # Steps
-      # -> remove opt
-      opt = template.find('Steps').findall('MultiRun')[1]
-      template.find('Steps').remove(opt)
-      # -> repurpose the sweep multirun
-      sweep = template.find('Steps').findall('MultiRun')[0]
-      sweep.attrib['name'] = 'debug'
-      sweep.find('Sampler').attrib['type'] = 'MonteCarlo'
-      sweep.find('Sampler').text = 'mc'
-      sweep.findall('Output')[0].text = 'mc'
-      sweep.findall('Output')[1].text = 'debug'
-      # DataObjects
-      opt_eval = template.find('DataObjects').findall('PointSet')[1]
-      opt_soln = template.find('DataObjects').findall('PointSet')[2]
-      template.find('DataObjects').remove(opt_eval)
-      template.find('DataObjects').remove(opt_soln)
-      template.find('DataObjects').find('PointSet').attrib['name'] = 'mc'
-      # Optimizers
-      template.remove(template.find('Optimizers'))
-      # OutStreams
-      opt_soln = template.find('OutStreams').findall('Print')[1]
-      template.find('OutStreams').remove(opt_soln)
-      out = template.find('OutStreams').findall('Print')[0]
-      out.attrib['name'] = 'debug'
-      out.find('source').text = 'mc'
 
   def _modify_outer_runinfo(self, template, case):
     """
@@ -282,9 +325,20 @@ class Template(TemplateBase):
     # capacities
     caps = var_groups[0]
     caps.text = ', '.join(f'{x.name}_capacity' for x in components if (x.get_capacity(None, raw=True).type not in ['Function', 'ARMA']))
+    # labels group
     if case.get_labels():
       case_labels = ET.SubElement(var_groups, 'Group', attrib={'name': 'GRO_case_labels'})
       case_labels.text = ', '.join([f'{key}_label' for key in case.get_labels().keys()])
+
+  def _modify_outer_dataobjects(self, template, case, components):
+    """
+      Defines modifications to the VariableGroups of outer.xml RAVEN input file.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, components, list, list of HERON Component instances for this run
+      @ Out, None
+    """
+    # labels pass to inner
+    if case.get_labels():
       for node in template.find('DataObjects'):
         if node.get('name') == 'grid':
           input_node = node.find('Input')
@@ -309,10 +363,11 @@ class Template(TemplateBase):
         src = xmlUtils.newNode('Input', attrib={'name': 'transfers'}, text='../'+source._source)
         files.append(src)
 
-  def _modify_outer_models(self, template, components):
+  def _modify_outer_models(self, template, case, components):
     """
       Defines modifications to the Models of outer.xml RAVEN input file.
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
       @ In, components, list, list of HERON Component instances for this run
       @ Out, None
     """
@@ -330,6 +385,10 @@ class Template(TemplateBase):
       attribs = {'variable':'{}_capacity'.format(name), 'type':'input'}
       new = xmlUtils.newNode('alias', text=text.format(name), attrib=attribs)
       raven.append(new)
+    # if debug, grab the dispatch output instead of the summary
+    if case.debug['enabled']:
+      raven.find('outputExportOutStreams').text = 'dispatch_full'
+
 
     # label aliases placed inside models
     text = 'Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:{}_label'
@@ -347,19 +406,19 @@ class Template(TemplateBase):
       @ Out, None
     """
     dists_node = template.find('Distributions')
-    if case.get_mode() in ['sweep', 'debug']:
+    if case.get_mode() == 'sweep':
       samps_node = template.find('Samplers').find('Grid')
     else:
       samps_node = template.find('Optimizers').find('GradientDescent')
-    if case.get_mode() == 'debug':
+    if case.debug['enabled']:
       samps_node.tag = 'MonteCarlo'
       samps_node.attrib['name'] = 'mc'
       init = xmlUtils.newNode('samplerInit')
-      init.append(xmlUtils.newNode('limit', text='1'))
+      init.append(xmlUtils.newNode('limit', text=1))
       samps_node.append(init)
     # number of denoisings
     ## assumption: first node is the denoises node
-    samps_node.find('constant').text = str(case._num_samples)
+    samps_node.find('constant').text = str(case.get_num_samples())
     # add sweep variables to input
 
     ## TODO: Refactor this portion with the below portion to handle
@@ -381,7 +440,7 @@ class Template(TemplateBase):
       if cap.type == 'value':
         vals = cap.get_values()
         # if we're debugging, take the average value and treat it as a constant
-        if case.get_mode() == 'debug':
+        if case.debug['enabled']:
           vals = np.average(vals)
         # is the capacity variable being swept over?
         if isinstance(vals, list):
@@ -437,6 +496,7 @@ class Template(TemplateBase):
     return dist, grid, opt
 
   ##### INNER #####
+  # Right now we modify inner by HERON features, rather than RAVEN structure
   def _modify_inner(self, template, case, components, sources):
     """
       Defines modifications to the inner.xml RAVEN input file.
@@ -457,7 +517,7 @@ class Template(TemplateBase):
     self._modify_inner_components(template, case, components)
     self._modify_inner_caselabels(template, case)
     self._modify_inner_time_vars(template, case)
-    if case.get_mode() == 'debug':
+    if case.debug['enabled']:
       self._modify_inner_debug(template, case, components)
     # TODO modify based on resources ... should only need if units produce multiple things, right?
     # TODO modify CashFlow input ... this will be a big undertaking with changes to the inner.
@@ -497,8 +557,9 @@ class Template(TemplateBase):
     """
     # Modify dispatch groups to contain correct 'Time' and 'Year' variable.
     for group in template.find('VariableGroups').findall('Group'):
-      if group.attrib['name'] in ['GRO_dispatch', 'GRO_full_dispatch']:
-        group.text += f", {case.get_time_name()}, {case.get_year_name()}"
+      if group.attrib['name'] in ['GRO_dispatch', 'GRO_full_dispatch_indices']:
+        self._updateCommaSeperatedList(group, case.get_time_name())
+        self._updateCommaSeperatedList(group, case.get_year_name())
     # Modify Data Objects to contain correct index var.
     data_objs = template.find('DataObjects')
     for index in data_objs.findall("DataSet/Index"):
@@ -543,17 +604,17 @@ class Template(TemplateBase):
         self._add_arma_to_ensemble(template, source)
         # NOTE assuming input to all ARMAs is "scaling" constant = 1.0, already in MC sampler
         if source.eval_mode == 'clustered':
-          # add _ROM_cluster to the variable group if it isn't there already
+          # add _ROM_Cluster to the variable group if it isn't there already
           var_group = template.find("VariableGroups/Group")
-          if '_ROM_Cluster' not in var_group.text:
-            var_group.text += f", _ROM_Cluster"
+          if self.namingTemplates['cluster_index'] not in var_group.text:
+            var_group.text += f",{self.namingTemplates['cluster_index']}"
           # make sure _ROM_Cluster is part of dispatch targetevaluation
           found = False
           for dataObj in template.find('DataObjects').findall('DataSet'):
             if dataObj.attrib['name'] == 'dispatch_eval':
               dispatch_eval = dataObj
               for idx in dataObj.findall('Index'):
-                if idx.attrib['var'] == '_ROM_Cluster':
+                if idx.attrib['var'] == self.namingTemplates['cluster_index']:
                   found = True
                   break
               break
@@ -561,7 +622,7 @@ class Template(TemplateBase):
             raise RuntimeError
           if not found:
             dispatch_eval.append(xmlUtils.newNode('Index',
-                                                  attrib={'var': '_ROM_Cluster'},
+                                                  attrib={'var': self.namingTemplates['cluster_index']},
                                                   text='GRO_dispatch_in_Time'))
 
       elif source.is_type('Function'):
@@ -594,7 +655,6 @@ class Template(TemplateBase):
       interaction = component.get_interaction()
       values = capacity.get_values()
       if isinstance(values, (list, float)):
-
         # this capacity is being [swept or optimized in outer] (list) or is constant (float)
         # -> so add a node, put either the const value or a dummy in place
         cap_name = self.namingTemplates['variable'].format(unit=name, feature='capacity')
@@ -632,6 +692,7 @@ class Template(TemplateBase):
     # Model
     extmod_vars = template.find('Models').find('ExternalModel').find('variables')
     self._updateCommaSeperatedList(extmod_vars, 'GRO_full_dispatch')
+    self._updateCommaSeperatedList(extmod_vars, 'GRO_full_dispatch_indices')
     # DataObject
     datasets = template.find('DataObjects').findall('DataSet')
     for ds in datasets:
@@ -762,7 +823,7 @@ class Template(TemplateBase):
     deps = {self.__case.get_time_name(): out_vars,
             self.__case.get_year_name(): out_vars}
     if source.eval_mode == 'clustered':
-      deps['_ROM_Cluster'] = out_vars
+      deps[self.namingTemplates['cluster_index']] = out_vars
 
     self._create_dataobject(data_objs, 'PointSet', inp_name, inputs=['scaling'])
     self._create_dataobject(data_objs, 'DataSet', eval_name,
@@ -848,7 +909,11 @@ class Template(TemplateBase):
       multiyear.append(xmlUtils.newNode('cycles', text=source.needs_multiyear))
       model.append(multiyear)
     if source.limit_interp is not None:
-      model.append(xmlUtils.newNode('maxCycles', text=source.limit_interp))
+      maxCycles = model.find('maxCycles')
+      if maxCycles is not None:
+        maxCycles.text = source.limit_interp
+      else:
+        model.append(xmlUtils.newNode('maxCycles', text=source.limit_interp))
     # change eval mode?
     if source.eval_mode == 'clustered':
       model.append(xmlUtils.newNode('clusterEvalMode', text='clustered'))

@@ -38,6 +38,7 @@
     </Group>
 
     <Group name="GRO_full_dispatch"></Group>
+    <Group name="GRO_full_dispatch_indices"></Group>
     <Group name='GRO_interp'>stepwise</Group>
 
     <Group name='GRO_capacities'></Group>

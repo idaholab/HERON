@@ -34,8 +34,8 @@
       mean_NPV, std_NPV, med_NPV, max_NPV, min_NPV,
       perc_5_NPV, perc_95_NPV, samp_NPV, var_NPV
     </Group>
-    <!-- <Group name='GRO_outer_debug_dispatch'></Group>
-    <Group name='GRO_outer_debug_synthetics'></Group> -->
+    <Group name='GRO_outer_debug_dispatch'></Group>
+    <Group name='GRO_outer_debug_synthetics'></Group>
   </VariableGroups>
 
   <DataObjects>

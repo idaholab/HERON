@@ -2,7 +2,7 @@
   <RunInfo>
     <JobName></JobName>
     <WorkingDir>.</WorkingDir>
-    <Sequence>arma_sampling, summarize</Sequence>
+    <Sequence>arma_sampling, summarize, write_summary</Sequence>
   </RunInfo>
 
   <Steps>
@@ -12,12 +12,19 @@
       <Sampler class='Samplers' type='MonteCarlo'>mc_arma_dispatch</Sampler>
       <Output class='DataObjects' type='DataSet'>arma_metrics</Output>
     </MultiRun>
+    <IOStep name="write_full">
+      <Input class='DataObjects' type='DataSet'>disp_full</Input>
+      <Output class='Databases' type='NetCDF'>disp_full</Output>
+    </IOStep>
     <PostProcess name='summarize'>
       <Input class='DataObjects' type='PointSet'>arma_metrics</Input>
       <Model class='Models' type='PostProcessor'>average</Model>
       <Output class='DataObjects' type='PointSet'>metrics_avg</Output>
-      <Output class='OutStreams' type='Print'>disp_results</Output>
     </PostProcess>
+    <IOStep name="write_summary">
+      <Input class='DataObjects' type='PointSet'>metrics_avg</Input>
+      <Output class='Databases' type='NetCDF'>disp_results</Output>
+    </IOStep>
   </Steps>
 
   <VariableGroups>
@@ -72,6 +79,11 @@
     </PointSet>
   </DataObjects>
 
+  <Databases>
+    <NetCDF name="disp_results" readMode="overwrite" directory=""/>
+    <NetCDF name="disp_full" readMode="overwrite" directory=""/>
+  </Databases>
+
   <Models>
     <ExternalModel name='dispatch' subType='' ModuleToLoad='../../../../src/dispatch'>
       <variables>GRO_dispatch, GRO_armasamples</variables>
@@ -110,14 +122,4 @@
     </MonteCarlo>
   </Samplers>
 
-  <OutStreams>
-    <Print name='dispatch_full'>
-      <type>csv</type>
-      <source>disp_full</source>
-    </Print>
-    <Print name='disp_results'>
-      <type>csv</type>
-      <source>metrics_avg</source>
-    </Print>
-  </OutStreams>
 </Simulation>

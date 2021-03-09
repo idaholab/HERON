@@ -939,6 +939,9 @@ class Template(TemplateBase):
     # create the output outstream
     os_name = obj_name
     streams = template.find('OutStreams')
+    if streams is None:
+      streams = xmlUtils.newNode('OutStreams')
+      template.append(streams)
     new = xmlUtils.newNode('Print', attrib={'name': os_name})
     new.append(xmlUtils.newNode('type', text='csv'))
     new.append(xmlUtils.newNode('source', text=obj_name))

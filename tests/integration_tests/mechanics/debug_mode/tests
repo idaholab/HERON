@@ -1,0 +1,13 @@
+[Tests]
+  [./DebugMode]
+    type = 'HeronIntegration'
+    input = heron_input.xml
+    [./dispatch]
+      type = NetCDF
+      output = 'Debug_Run_o/dispatch.nc'
+      gold_files = 'gold/dispatch.nc'
+    [../]
+  [../]
+[]
+
+

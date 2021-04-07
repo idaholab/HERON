@@ -60,7 +60,8 @@
   <Models>
     <Code name='raven' subType='RAVEN'>
       <executable>~/projects/raven/raven_framework</executable>
-      <outputExportOutStreams>disp_results</outputExportOutStreams>
+      <outputDatabase>disp_results</outputDatabase>
+      <!-- <outputExportOutStreams>disp_results</outputExportOutStreams> -->
       <conversion>
         <input source='write_inner.py'/>
       </conversion>

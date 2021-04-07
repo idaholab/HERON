@@ -10,20 +10,17 @@ import sys
 import _utils as hutils
 raven_path = hutils.get_raven_loc()
 sys.path.append(os.path.expanduser(raven_path))
-from MessageHandler import MessageUser
+from BaseClasses import MessageUser
 
 
 class Base(MessageUser):
-  def __init__(self, messageHandler=None, **kwargs):
+  def __init__(self, **kwargs):
     """
       Constructor.
-      @ In, messageHandler, MessageHandler, message handling object
       @ In, kwargs, dict, passthrough arguments
       @ Out, None
     """
-    self.messageHandler = messageHandler
-    #if self.messageHandler is not None:
-    #  self.raiseADebug('Set message handler for', self)
+    super().__init__()
 
   def __repr__(self):
     """

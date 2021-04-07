@@ -2,7 +2,7 @@
   <RunInfo>
     <JobName></JobName>
     <WorkingDir>.</WorkingDir>
-    <Sequence>arma_sampling, summarize</Sequence>
+    <Sequence>arma_sampling, summarize, database</Sequence>
   </RunInfo>
 
   <Steps>
@@ -18,8 +18,12 @@
       <Input class='DataObjects' type='PointSet'>arma_metrics</Input>
       <Model class='Models' type='PostProcessor'>average</Model>
       <Output class='DataObjects' type='PointSet'>metrics_avg</Output>
-      <Output class='OutStreams' type='Print'>disp_results</Output>
+      <!-- <Output class='OutStreams' type='Print'>disp_results</Output> -->
     </PostProcess>
+    <IOStep name="database">
+      <Input class='DataObjects' type='PointSet'>metrics_avg</Input>
+      <Output class='Databases' type='NetCDF'>disp_results</Output>
+    </IOStep>
     <!-- <IOStep name="debug_print">
       <Input class='DataObjects' type='PointSet'>arma_samples</Input>
       <Output class='OutStreams' type='Print'>disp_debug</Output>
@@ -122,6 +126,11 @@
       <constant name='scaling'>1.0</constant>
     </MonteCarlo>
   </Samplers>
+
+  <Databases>
+    <NetCDF name="disp_debug" readMode="overwrite" directory=""/>
+    <NetCDF name="disp_results" readMode="overwrite" directory=""/>
+  </Databases>
 
   <OutStreams>
     <Print name='disp_debug'>

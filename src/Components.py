@@ -18,9 +18,8 @@ import _utils as hutils
 framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)
 from utils import InputData, xmlUtils,InputTypes
-import MessageHandler
-mh = MessageHandler.MessageHandler()
 
+# TODO can we use EntityFactory from RAVEN?
 def factory(xml, method='sweep'):
   """
     Tool for constructing compnents without the input_loader
@@ -29,7 +28,7 @@ def factory(xml, method='sweep'):
     @ In, method, string, optional, operational mode for case
     @ Out, comp, Component instance, component constructed
   """
-  comp = Component(messageHandler=mh)
+  comp = Component()
   comp.read_input(xml, method)
   return comp
 

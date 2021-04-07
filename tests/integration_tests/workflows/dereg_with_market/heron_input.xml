@@ -1,0 +1,111 @@
+<HERON>
+  <TestInfo>
+    <name>ProductionFlex</name>
+    <author>talbpaul</author>
+    <created>2021-04-07</created>
+    <description>
+      Tests having a deregulated system with a blackbox market source that determines
+      electricity production prices; the marginal unit costs are unknown.
+    </description>
+    <classesTested>HERON</classesTested>
+  </TestInfo>
+
+  <Case name="Sweep_Runs">
+    <mode>sweep</mode>
+    <num_arma_samples>10</num_arma_samples>
+    <time_discretization>
+      <time_variable>Time</time_variable>
+      <end_time>2</end_time>
+      <num_steps>21</num_steps>
+    </time_discretization>
+    <economics>
+      <ProjectTime>3</ProjectTime>
+      <DiscountRate>0.08</DiscountRate>
+      <tax>0.0</tax>
+      <inflation>0.0</inflation>
+      <verbosity>50</verbosity>
+    </economics>
+    <dispatcher>
+      <pyomo/>
+    </dispatcher>
+  </Case>
+
+  <Components>
+    <Component name="homogeneous_source">
+      <produces resource="energy" dispatch="independent">
+        <capacity resource="energy">
+          <sweep_values>100, 200</sweep_values>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>5</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="auxiliary_producer">
+      <produces resource="commodity" dispatch="independent">
+        <consumes>energy</consumes>
+        <capacity resource="energy">
+          <fixed_value>-100</fixed_value>
+        </capacity>
+        <transfer>
+          <linear>
+            <rate resource="energy">-1</rate>
+            <rate resource="commodity">0.5</rate>
+          </linear>
+        </transfer>
+      </produces>
+      <economics>
+        <lifetime>5</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="energy_demand">
+      <demands resource="energy" dispatch="fixed">
+        <capacity>
+          <ARMA variable='Signal'>Demand</ARMA>
+          <multiplier>-1</multiplier>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>5</lifetime>
+        <CashFlow name="energy_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <Function method="energy_consume">transfers</Function>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <fixed_value>0.5</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="commodity_demand">
+      <demands resource="commodity" dispatch="fixed">
+        <capacity>
+          <fixed_value>-2</fixed_value>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>5</lifetime>
+        <CashFlow name="commodity_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <Function method="commodity_consume">transfers</Function>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <fixed_value>0.5</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+  </Components>
+
+  <DataGenerators>
+    <ARMA name='Demand' variable="Signal">%HERON%/tests/integration_tests/ARMA/Sine/arma.pk</ARMA>
+    <Function name="transfers">transfers.py</Function>
+  </DataGenerators>
+
+</HERON>

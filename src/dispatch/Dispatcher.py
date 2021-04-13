@@ -114,7 +114,7 @@ class Dispatcher(MessageUser, InputDataUser):
 
   # ---------------------------------------------
   # UTILITY METHODS
-  def _compute_cashflows(self, components, activity, times, meta, state_args=None):
+  def _compute_cashflows(self, components, activity, times, meta, state_args=None, time_offset=0):
     """
       Method to compute CashFlow evaluations given components and their activity.
       @ In, components, list, HERON components whose cashflows should be evaluated
@@ -122,6 +122,7 @@ class Dispatcher(MessageUser, InputDataUser):
       @ In, times, np.array(float), time values to evaluate; may be length 1 or longer
       @ In, meta, dict, additional info to be passed through to functional evaluations
       @ In, state_args, dict, optional, additional arguments to pass while getting activity state
+      @ In, time_offset, int, optional, increase time index tracker by this value if provided
       @ Out, total, float, total cashflows for given components
     """
     if state_args is None:
@@ -140,7 +141,7 @@ class Dispatcher(MessageUser, InputDataUser):
         specific_activity = {}
         for resource in resource_indexer[comp]:
           specific_activity[resource] = activity.get_activity(comp, resource, time, **state_args)
-        specific_meta['HERON']['time_index'] = t
+        specific_meta['HERON']['time_index'] = t + time_offset
         specific_meta['HERON']['time_value'] = time
         cfs = comp.get_state_cost(specific_activity, specific_meta)
         time_subtotal = sum(cfs.values())

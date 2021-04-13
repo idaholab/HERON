@@ -57,6 +57,16 @@ class Pyomo(Dispatcher):
       @ Out, specs, InputData, specs
     """
     specs = InputData.parameterInputFactory('pyomo', ordered=False, baseNode=None)
+    specs.addSub(InputData.parameterInputFactory('rolling_window_length', contentType=InputTypes.IntegerType,
+        descr=r"""Sets the length of the rolling window that the Pyomo optimization algorithm
+        uses to break down histories. Longer window lengths will minimize boundary effects, such as
+        nonoptimal storage dispatch, at the cost of slower optimization solves.
+        Note that if the rolling window results in a window of length 1 (such as at the end of a history),
+        this can cause problems for pyomo.
+        \default{24}"""))
+    specs.addSub(InputData.parameterInputFactory('debug_mode', contentType=InputTypes.BoolType,
+        descr=r"""Enables additional printing in the pyomo dispatcher. Highly discouraged for production runs.
+              \default{False}."""))
     # TODO specific for pyomo dispatcher
     return specs
 
@@ -67,6 +77,7 @@ class Pyomo(Dispatcher):
       @ Out, None
     """
     self.name = 'PyomoDispatcher' # identifying name
+    self.debug_mode = False       # whether to print additional information
     self._window_len = 24         # time window length to dispatch at a time # FIXME user input
 
   def read_input(self, specs):
@@ -75,7 +86,15 @@ class Pyomo(Dispatcher):
       @ In, specs, RAVEN InputData, specifications
       @ Out, None
     """
-    print('DEBUGG specs:', specs)
+    super().read_input(specs)
+
+    window_len_node = specs.findFirst('rolling_window_length')
+    if window_len_node is not None:
+      self._window_len = window_len_node.value
+
+    debug_node = specs.findFirst('debug_mode')
+    if debug_node is not None:
+      self.debug_mode = debug_node.value
 
   ### API
   def dispatch(self, case, components, sources, meta):
@@ -101,13 +120,26 @@ class Pyomo(Dispatcher):
     while start_index < final_index:
       end_index = start_index + self._window_len
       if end_index > final_index:
-        end_index = final_index # + 1?
+        end_index = final_index
+      if end_index - start_index == 1:
+        # TODO custom error raise for catching in DispatchManager?
+        raise IOError("A rolling window of length 1 was requested, but this causes crashes in pyomo. " +
+                      "Change the length of the rolling window to avoid length 1 histories.")
       specific_time = time[start_index:end_index]
       print('DEBUGG starting window {} to {}'.format(start_index, end_index))
       start = time_mod.time()
-      subdisp = self.dispatch_window(specific_time,
+      # set initial storage levels
+      initial_levels = {}
+      for comp in components:
+        if comp.get_interaction().is_type('Storage'):
+          if start_index == 0:
+            initial_levels[comp] = comp.get_interaction().get_initial_level(meta)
+          else:
+            initial_levels[comp] = subdisp[comp.name][comp.get_interaction().get_resource()][-1]
+      # dispatch
+      subdisp = self.dispatch_window(specific_time, start_index,
                                      case, components, sources, resources,
-                                     meta)
+                                     initial_levels, meta)
       end = time_mod.time()
       print('DEBUGG solve time: {} s'.format(end-start))
       # store result in corresponding part of dispatch
@@ -118,16 +150,18 @@ class Pyomo(Dispatcher):
     return dispatch
 
   ### INTERNAL
-  def dispatch_window(self, time,
+  def dispatch_window(self, time, time_offset,
                       case, components, sources, resources,
-                      meta):
+                      initial_storage, meta):
     """
       Dispatches one part of a rolling window.
       @ In, time, np.array, value of time to evaluate
+      @ In, time_offset, int, offset of the time index in the greater history
       @ In, case, HERON Case, Case that this dispatch is part of
       @ In, components, list, HERON components available to the dispatch
       @ In, sources, list, HERON source (placeholders) for signals
       @ In, resources, list, sorted list of all resources in problem
+      @ In, initial_storage, dict, initial storage levels if any
       @ In, meta, dict, additional variables passed through
       @ Out, result, dict, results of window dispatch
     """
@@ -135,6 +169,7 @@ class Pyomo(Dispatcher):
     # TODO abstract this model as much as possible BEFORE, then concrete initialization per window
     m = pyo.ConcreteModel()
     # indices
+    # XXX FIXME the time offset index is needed for the stuff coming from ARMAs!!!!
     C = np.arange(0, len(components), dtype=int) # indexes component
     R = np.arange(0, len(resources), dtype=int) # indexes resources
     # T = np.arange(start_index, end_index, dtype=int) # indexes resources
@@ -143,6 +178,7 @@ class Pyomo(Dispatcher):
     m.R = pyo.Set(initialize=R)
     m.T = pyo.Set(initialize=T)
     m.Times = time
+    m.time_offset = time_offset
     m.resource_index_map = meta['HERON']['resource_indexer'] # maps the resource to its index WITHIN APPLICABLE components (sparse matrix)
                                                              #   e.g. component: {resource: local index}, ... etc}
     # properties
@@ -160,13 +196,14 @@ class Pyomo(Dispatcher):
       self._create_capacity(m, comp, prod_name, meta)    # capacity constraints
       self._create_transfer(m, comp, prod_name)    # transfer functions (constraints)
       # ramp rates TODO ## INCLUDING previous-time boundary condition TODO
-    self._create_conservation(m, resources, meta) # conservation of resources (e.g. production == consumption)
+    self._create_conservation(m, resources, initial_storage, meta) # conservation of resources (e.g. production == consumption)
     self._create_objective(meta, m) # objective
     # start a solution search
     done_and_checked = False
     attempts = 0
     # DEBUGG show variables, bounds
-    # self._debug_pyomo_print(m)
+    if self.debug_mode:
+      self._debug_pyomo_print(m)
     while not done_and_checked:
       attempts += 1
       print(f'DEBUGG solve attempt {attempts} ...:')
@@ -202,8 +239,9 @@ class Pyomo(Dispatcher):
         done_and_checked = True
       if attempts > 100:
         raise RuntimeError('Exceeded validation attempt limit!')
-    # soln.write() # DEBUGG
-    # self._debug_print_soln(m) # DEBUGG
+    if self.debug_mode:
+      soln.write()
+      self._debug_print_soln(m)
     # return dict of numpy arrays
     result = self._retrieve_solution(m)
     return result
@@ -281,7 +319,7 @@ class Pyomo(Dispatcher):
     caps = []
     mins = []
     for t, time in enumerate(m.Times):
-      meta['HERON']['time_index'] = t
+      meta['HERON']['time_index'] = t + m.time_offset
       cap = comp.get_capacity(meta)[0][cap_res] # value of capacity limit (units of governing resource)
       caps.append(cap)
       minimum = comp.get_minimum(meta)[0][cap_res]
@@ -328,16 +366,17 @@ class Pyomo(Dispatcher):
       constr = pyo.Constraint(m.T, rule=rule)
       setattr(m, rule_name, constr)
 
-  def _create_conservation(self, m, resources, meta):
+  def _create_conservation(self, m, resources, initial_storage, meta):
     """
       Creates pyomo conservation constraints
       @ In, m, pyo.ConcreteModel, associated model
       @ In, resources, list, list of resources in problem
+      @ In, initial_storage, dict, initial storage levels
       @ In, meta, dict, dictionary of state variables
       @ Out, None
     """
     for res, resource in enumerate(resources):
-      rule = partial(self._conservation_rule, meta, resource)
+      rule = partial(self._conservation_rule, initial_storage, meta, resource)
       constr = pyo.Constraint(m.T, rule=rule)
       setattr(m, '{r}_conservation'.format(r=resource), constr)
 
@@ -458,12 +497,14 @@ class Pyomo(Dispatcher):
     """
     activity = m.Activity # dict((comp, getattr(m, f"{comp.name}_production")) for comp in m.Components)
     state_args = {'valued': False}
-    total = self._compute_cashflows(m.Components, activity, m.Times, meta, state_args=state_args)
+    total = self._compute_cashflows(m.Components, activity, m.Times, meta,
+                                    state_args=state_args, time_offset=m.time_offset)
     return total
 
-  def _conservation_rule(self, meta, res, m, t):
+  def _conservation_rule(self, initial_storage, meta, res, m, t):
     """
       Constructs conservation constraints.
+      @ In, initial_storage, dict, initial storage levels at t==0 (not t+offset==0)
       @ In, meta, dict, dictionary of state variables
       @ In, res, str, name of resource
       @ In, m, pyo.ConcreteModel, associated model
@@ -484,7 +525,7 @@ class Pyomo(Dispatcher):
             dt = m.Times[t] - m.Times[t-1]
           else:
             # FIXME check this with a variety of ValuedParams
-            previous = comp.get_interaction().get_initial_level(meta)
+            previous = initial_storage[comp] # comp.get_interaction().get_initial_level(meta)
             dt = m.Times[1] - m.Times[0]
           new = var[r, t]
           production = -1 * (new - previous) / dt # swap sign b/c negative is absorbing, positive is emitting
@@ -560,9 +601,9 @@ class Pyomo(Dispatcher):
       print('  component:', c, name)
       for res, r in m.resource_index_map[comp].items():
         print('    resource:', r, res)
-        for t, time_index in enumerate(m.T):
+        for t, time in enumerate(m.Times):
           prod = getattr(m, '{n}_production'.format(n=name))
-          print('      time:', t, time_index, prod[r, time_index].value)
+          print('      time:', t + m.time_offset, time, prod[r, t].value)
     print('*'*80)
 
 

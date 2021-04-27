@@ -6,3 +6,5 @@
   ranging from constants to synthetic histories to AI and others.
 """
 
+# provide easy name access to module
+from .Factory import factory

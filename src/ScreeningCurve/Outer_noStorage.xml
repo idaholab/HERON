@@ -1,6 +1,5 @@
 <Simulation verbosity="debug">
  
-
   <RunInfo>
       <JobName>SCM_Opt2</JobName>
       <WorkingDir>.</WorkingDir>

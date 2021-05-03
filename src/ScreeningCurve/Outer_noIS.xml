@@ -1,0 +1,74 @@
+<Simulation verbosity="debug">
+ 
+
+  <RunInfo>
+      <JobName>SCM_Opt2</JobName>
+      <WorkingDir>.</WorkingDir>
+    <Sequence>sample,print</Sequence>
+    <batchSize>7</batchSize>
+    <!--<NumMPI>10</NumMPI> -->
+    <!--<NumThreads>10</NumThreads>-->
+    <!--<mode>mpi
+      <runQSUB />
+    </mode>
+    <expectedTime>10:0:0</expectedTime>
+    <clusterParameters>-P ne_gen -j oe</clusterParameters> -->
+    <internalParallel>False</internalParallel>
+  </RunInfo>
+
+  <Steps>
+    <MultiRun name="sample">
+      <Input class="Files" type="raven">inner_input</Input>
+      <Model class="Models" type="Code">raven</Model>
+      <Sampler class="Samplers" type="Grid">grid</Sampler>
+      <Output class="DataObjects" type="PointSet">outer_samples</Output>
+    </MultiRun>
+    <IOStep name="print">
+      <Input class="DataObjects" type="PointSet">outer_samples</Input>
+      <Output class="OutStreams" type="Print">outer_out</Output>
+    </IOStep>
+  </Steps>
+
+  <Files>
+    <Input name="inner_input" type="raven" >SCMnoIS.xml</Input>
+  </Files>
+
+  <Models>
+    <Code name="raven" subType="RAVEN">
+        <executable>%FRAMEWORK_DIR%/../raven_framework</executable>
+        <outputExportOutStreams>opt_export2</outputExportOutStreams>
+        <alias variable="tax_rate" type="input">Optimizers|GradientDescent|@name:opter|constant|@name:TR</alias>
+    </Code>
+  </Models>
+
+  <Distributions>
+    <Uniform name="dist_tax">
+      <lowerBound>0</lowerBound>
+      <upperBound>50</upperBound>
+    </Uniform>
+  </Distributions>
+
+  <Samplers>
+    <Grid name="grid">
+      <variable name="tax_rate">
+        <distribution>dist_tax</distribution>
+        <grid type='CDF' construction='equal' steps='6'>0 1</grid>
+      </variable>
+    </Grid>
+  </Samplers>
+
+  <OutStreams>
+    <Print name="outer_out">
+      <type>csv</type>
+      <source>outer_samples</source>
+    </Print>
+  </OutStreams>
+
+  <DataObjects>
+    <PointSet name="outer_samples">
+      <Input>tax_rate</Input>
+      <Output>WC,SC,systemcost</Output>
+    </PointSet>
+  </DataObjects>
+
+</Simulation>

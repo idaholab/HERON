@@ -1,0 +1,346 @@
+<?xml version="1.0" ?>
+<Simulation verbosity="debug">
+
+  <!-- RUNINFO -->
+  <RunInfo>
+      <WorkingDir>.</WorkingDir>
+    <Sequence>sampleNetDemand,data_export</Sequence>
+    <batchSize>10</batchSize>
+    <internalParallel>False</internalParallel>
+ </RunInfo>
+
+  <!-- STEPS -->
+  <Steps>
+    
+    <MultiRun name="sampleNetDemand" re-seeding="25061978">
+      <Input class="DataObjects" type="PointSet">inputPlaceHolder</Input>
+      <Model class="Models" type="ExternalModel">netDemand</Model>
+      <!--<Sampler class="Samplers" type="MonteCarlo">MC_external</Sampler>-->
+      <Optimizer class="Optimizers" type="FiniteDifference">opter</Optimizer>
+      <Output class="DataObjects" type="HistorySet">testPrintHistorySet</Output>
+      <SolutionExport class="DataObjects" type="PointSet">opt_export</SolutionExport>
+      <Output class="OutStreams" type="Print">testPrintHistorySet_dump</Output>
+      <Output class="DataObjects" type="PointSet">testPointSet</Output>
+      <Output class="OutStreams" type="Print">testPointSet_dump</Output>
+      <Output         class="DataObjects"   type="PointSet">optOut</Output>
+      <Output class="OutStreams" type="Print">opt_export2</Output>
+      <Output class="DataObjects" type="PointSet">opt_export2</Output>
+    </MultiRun>
+    <!--<MultiRun name="sampleNetDemand" re-seeding="25061978">
+      <Input class="DataObjects" type="PointSet">inputPlaceHolder</Input>
+      <Model class="Models" type="ExternalModel">netDemand</Model>-->
+      <!--<Sampler class="Samplers" type="MonteCarlo">MC_external</Sampler>-->
+      <!--<Optimizer class="Optimizers" type="FiniteDifference">opter</Optimizer>
+      <Output class="DataObjects" type="HistorySet">testPrintHistorySet</Output>
+      <SolutionExport class="DataObjects" type="PointSet">opt_export</SolutionExport>
+      <Output class="OutStreams" type="Print">testPrintHistorySet_dump</Output>
+      <Output class="DataObjects" type="PointSet">testPointSet</Output>
+      <Output class="OutStreams" type="Print">testPointSet_dump</Output>
+      <Output         class="DataObjects"   type="PointSet">optOut</Output>
+      <Output class="OutStreams" type="Print">opt_export</Output>
+    </MultiRun>--> 
+    <!--<IOStep name="data_export">
+	<Input class="DataObjects" type="PointSet">opt_export</Input>
+	<Output class="OutStreams" type="Print">opt_export</Output>
+     </IOStep>-->
+    <IOStep name="data_export">
+    <Input class="DataObjects" type="PointSet">opt_export</Input>
+    <Output class="OutStreams" type="Print">opt_export</Output>
+     </IOStep>
+  </Steps>
+
+  <!-- MODELS -->
+  <Models>
+    <ExternalModel ModuleToLoad="SCMnoStorage" name="netDemand" subType="">
+      <variables>WC,SC,TR,gen_solar,cost_solar,
+                 normalizedSolar,normalizedWind,cost_wind,gen_wind,
+                 totalGen,netGen,VREcost,time, systemcost,carbonGenerated,
+                 NucHTSE_minLoad,NucHTSE_maxLoad,NucHTSE_capacity, NucHTSE_totalCarbon,CC221_minLoad,CC221_maxLoad,CC221_capacity, CC221_totalCarbon,
+                 Coal_minLoad,Coal_maxLoad,Coal_capacity,Coal_totalCarbon,Coal30_minLoad,Coal30_maxLoad,Coal30_capacity,Coal30_totalCarbon,
+                 Coal90_minLoad,Coal90_maxLoad,Coal90_capacity,Coal90_totalCarbon,Nuclear_minLoad,Nuclear_maxLoad,Nuclear_capacity,Nuclear_totalCarbon,
+                 CC111_minLoad, CC111_maxLoad, CC111_capacity,CC111_totalCarbon, CC111_90_minLoad,CC111_90_maxLoad,CC111_90_capacity,CC111_90_totalCarbon,
+                 IC_minLoad, IC_maxLoad, IC_capacity, IC_totalCarbon, CTLM_minLoad, CTLM_maxLoad, CTLM_capacity, CTLM_totalCarbon,  CTGE_minLoad,CTGE_maxLoad,CTGE_capacity,CTGE_totalCarbon
+      </variables>
+      <demandDataFile>~/Documents/SCM/Runs/NoStorage/Two/SWPP_Demand_and_Genearation_2020.xls</demandDataFile>
+      <solarID>Net Generation (MW) from Solar</solarID>
+      <windID>Net Generation (MW) from Wind</windID>
+      <demandID>Demand (MW)</demandID>
+    </ExternalModel>
+  </Models>
+
+  <!-- DISTRIBUTIONS -->
+  <Distributions>
+    <Uniform name="WC">
+      <lowerBound>1000</lowerBound>
+      <upperBound>100000</upperBound>
+    </Uniform>
+    <Uniform name="SC">
+      <lowerBound>1000</lowerBound>
+      <upperBound>100000</upperBound>
+    </Uniform>
+    <!--<Uniform name="C">
+      <lowerBound>0</lowerBound>
+      <upperBound>100000</upperBound>
+    </Uniform>
+     <Uniform name="HC">
+      <lowerBound>0</lowerBound>
+      <upperBound>1</upperBound>
+    </Uniform>
+    <Uniform name="HD">
+      <lowerBound>0</lowerBound>
+      <upperBound>23</upperBound>
+    </Uniform>-->
+    <!--<Uniform name="hstorage">
+      <lowerBound>0</lowerBound>
+      <upperBound>10000</upperBound>
+    </Uniform>
+    <Uniform name="FChrDischarge">
+      <lowerBound>0</lowerBound>
+      <upperBound>23</upperBound>
+    </Uniform>
+    <Uniform name="FChrCharge">
+      <lowerBound>0</lowerBound>
+      <upperBound>1</upperBound>
+    </Uniform>
+    <Uniform name="thresholdFC">
+      <lowerBound>0</lowerBound>
+      <upperBound>50000</upperBound>
+    </Uniform>
+    <Uniform name="synstorage">
+      <lowerBound>0</lowerBound>
+      <upperBound>10000</upperBound>
+    </Uniform>
+    <Uniform name="SynhrDischarge">
+      <lowerBound>0</lowerBound>
+      <upperBound>23</upperBound>
+    </Uniform>
+    <Uniform name="SynhrCharge">
+      <lowerBound>0</lowerBound>
+      <upperBound>1</upperBound>
+    </Uniform>
+    <Uniform name="thresholdSyn">
+      <lowerBound>0</lowerBound>
+      <upperBound>50000</upperBound>
+    </Uniform> -->
+  </Distributions>
+
+  <!-- SAMPLERS -->
+  <Samplers>
+    <MonteCarlo name="MC_external">
+      <samplerInit>
+        <limit>1</limit>
+      </samplerInit>
+      <variable name="WC">
+        <distribution>WC</distribution>
+      </variable>
+      <variable name="SC">
+        <distribution>SC</distribution>
+      </variable>
+      <!--<variable name="C">
+        <distribution>C</distribution>
+      </variable>
+      <variable name="HC">
+        <distribution>HC</distribution>
+      </variable>
+      <variable name="HD">
+        <distribution>HD</distribution>
+      </variable>-->
+      <constant name="TR">0
+      </constant>
+      <!--<variable name="hstorage">
+        <distribution>hstorage</distribution>
+      </variable>
+      <variable name="FChrDischarge">
+        <distribution>FChrDischarge</distribution>
+      </variable>
+      <variable name="FChrCharge">
+        <distribution>FChrCharge</distribution>
+      </variable>
+      <variable name="thresholdFC">
+        <distribution>thresholdFC</distribution>
+      </variable>
+      <variable name="synstorage">
+        <distribution>synstorage</distribution>
+      </variable>
+      <variable name="SynhrDischarge">
+        <distribution>SynhrDischarge</distribution>
+      </variable>
+      <variable name="SynhrCharge">
+        <distribution>SynhrCharge</distribution>
+      </variable>
+      <variable name="thresholdSyn">
+        <distribution>thresholdSyn</distribution>
+      </variable> -->
+    </MonteCarlo>
+  </Samplers>
+ 
+   <Optimizers>
+  	<GradientDescent name="opter">
+		<objective>systemcost</objective>
+		<variable name="WC">
+			<distribution>WC</distribution>
+			<initial>30000 1000</initial>
+		</variable>
+		<variable name="SC">
+			<distribution>SC</distribution>
+			<initial>10000 20000</initial>
+		</variable>
+		<!-- <variable name="C">
+			<distribution>C</distribution>
+			<initial>1000 3000</initial>
+		</variable>
+		<variable name="HC">
+			<distribution>HC</distribution>
+			<initial>0.5 0.1</initial>
+		</variable>
+		<variable name="HD">
+			<distribution>HD</distribution>
+			<initial>5 8</initial>
+		</variable> -->
+    <!--<variable name="hstorage">
+			<distribution>hstorage</distribution>
+			<initial>100 1000</initial>
+		</variable>
+    <variable name="FChrDischarge">
+			<distribution>FChrDischarge</distribution>
+			<initial>5 8</initial>
+		</variable>
+    <variable name="FChrCharge">
+			<distribution>FChrCharge</distribution>
+			<initial>0.5 0.1</initial>
+		</variable>
+    <variable name="thresholdFC">
+			<distribution>thresholdFC</distribution>
+			<initial>30000 40000</initial>
+		</variable>
+    <variable name="synstorage">
+			<distribution>synstorage</distribution>
+			<initial>100 1000</initial>
+		</variable>
+    <variable name="SynhrDischarge">
+			<distribution>SynhrDischarge</distribution>
+			<initial>5 8</initial>
+		</variable>
+    <variable name="SynhrCharge">
+			<distribution>SynhrCharge</distribution>
+			<initial>0.5 0.1</initial>
+		</variable>
+    <variable name="thresholdSyn">
+			<distribution>thresholdSyn</distribution>
+			<initial>30000 40000</initial>
+		</variable> -->           
+		<constant name="TR">0
+		</constant>
+		<TargetEvaluation class="DataObjects" type="PointSet">optOut</TargetEvaluation>
+		<samplerInit>
+			<limit>1000</limit>
+			<initialSeed>1234</initialSeed>
+			<type>min</type>
+		</samplerInit>
+		<gradient>
+			<CentralDifference />
+		</gradient>
+		<stepSize>
+			<GradientHistory>
+				<growthFactor>1.5</growthFactor>
+				<shrinkFactor>1.25</shrinkFactor>
+        <initialStepScale>0.1</initialStepScale>
+			</GradientHistory>
+			<!--<ConjugateGradient>
+				<initialStepScale>1.5</initialStepScale>
+				
+			</ConjugateGradient>-->
+		</stepSize>
+		<acceptance>
+			<Strict />
+		</acceptance>
+		<convergence>
+			<gradient>0.001</gradient>
+      <objective>1e-3</objective>
+			<!--<persistence>3</persistence>-->
+		</convergence>
+	</GradientDescent>
+  </Optimizers> 
+
+  <!-- OUTSTREAMS -->
+  <OutStreams>
+    <Print name="testPrintHistorySet_dump">
+      <type>csv</type>
+      <source>testPrintHistorySet</source>
+    </Print>
+    <Print name="testPointSet_dump">
+      <type>csv</type>
+      <source>testPointSet</source>
+    </Print>
+    <Print name="opt_export">
+      <type>csv</type>
+      <source>opt_export</source>
+      <!--<clusterLabel>trajID</clusterLabel>-->
+    </Print>
+    <Print name="opt_export2">
+      <type>csv</type>
+      <source>opt_export2</source>
+      <!--<clusterLabel>trajID</clusterLabel>-->
+    </Print>
+    
+  </OutStreams>
+
+  <!-- DATA OBJECTS -->
+  <DataObjects>
+    <PointSet name="inputPlaceHolder">
+      <Input>WC,SC</Input>
+      <Output>OutputPlaceHolder</Output>
+    </PointSet>
+    <PointSet name="optOut">
+    		<Input>In</Input>
+		<Output>Out</Output>
+    	</PointSet>
+    <PointSet name="testPointSet">
+      <Input>WC,SC,TR</Input>
+      <Output>gen_solar,cost_solar,
+      normalizedSolar,normalizedWind,cost_wind,gen_wind,
+      totalGen,netGen,VREcost,systemcost,carbonGenerated,NucHTSE_minLoad,NucHTSE_maxLoad,NucHTSE_capacity,
+      CC221_minLoad,CC221_maxLoad,CC221_capacity,  Coal_minLoad,Coal_maxLoad,Coal_capacity,Coal30_minLoad,Coal30_maxLoad,Coal30_capacity,
+      Coal90_minLoad,Coal90_maxLoad,Coal90_capacity,Nuclear_minLoad,Nuclear_maxLoad,Nuclear_capacity,
+      CC111_minLoad, CC111_maxLoad, CC111_capacity, CC111_90_minLoad,CC111_90_maxLoad,CC111_90_capacity,
+      IC_minLoad,IC_maxLoad,IC_capacity,CTLM_minLoad,CTLM_maxLoad,CTLM_capacity,CTGE_minLoad,CTGE_maxLoad,CTGE_capacity,
+      NucHTSE_totalCarbon,CC221_totalCarbon,Coal_totalCarbon,Coal30_totalCarbon,Coal90_totalCarbon,CC111_totalCarbon,CC111_90_totalCarbon,IC_totalCarbon, CTLM_totalCarbon, CTGE_totalCarbon
+     </Output>
+    </PointSet>
+    <HistorySet name="testPrintHistorySet">
+      <Input>WC,SC,TR</Input>
+      <Output>gen_solar,cost_solar,
+      normalizedSolar,normalizedWind,cost_wind,gen_wind,
+      totalGen,netGen,VREcost,systemcost,carbonGenerated,NucHTSE_minLoad,NucHTSE_maxLoad,NucHTSE_capacity,
+      CC221_minLoad,CC221_maxLoad,CC221_capacity, Coal_minLoad,Coal_maxLoad,Coal_capacity,Coal30_minLoad,Coal30_maxLoad,Coal30_capacity,
+       Coal90_minLoad,Coal90_maxLoad,Coal90_capacity,Nuclear_minLoad,Nuclear_maxLoad,Nuclear_capacity,
+       CC111_minLoad, CC111_maxLoad, CC111_capacity, CC111_90_minLoad,CC111_90_maxLoad,CC111_90_capacity,
+        IC_minLoad,IC_maxLoad,IC_capacity,CTLM_minLoad,CTLM_maxLoad,CTLM_capacity,CTGE_minLoad,CTGE_maxLoad,CTGE_capacity,
+        NucHTSE_totalCarbon,CC221_totalCarbon,Coal_totalCarbon,Coal30_totalCarbon,Coal90_totalCarbon,CC111_totalCarbon,CC111_90_totalCarbon,IC_totalCarbon, CTLM_totalCarbon, CTGE_totalCarbon
+      </Output>
+    </HistorySet>
+    <PointSet name="opt_export">
+      <Input>trajID</Input>
+      <Output>WC,SC,systemcost</Output>
+    </PointSet>
+    <PointSet name="opt_export2">
+      <Input>WC,SC,TR</Input>
+      <Output>systemcost,carbonGenerated,gen_solar,cost_solar,
+      normalizedSolar,normalizedWind,cost_wind,gen_wind,
+      totalGen,netGen,VREcost,NucHTSE_minLoad,NucHTSE_maxLoad,NucHTSE_capacity,
+      CC221_minLoad,CC221_maxLoad,CC221_capacity, Coal_minLoad,Coal_maxLoad,Coal_capacity,Coal30_minLoad,Coal30_maxLoad,Coal30_capacity,
+       Coal90_minLoad,Coal90_maxLoad,Coal90_capacity,Nuclear_minLoad,Nuclear_maxLoad,Nuclear_capacity,
+       CC111_minLoad, CC111_maxLoad, CC111_capacity, CC111_90_minLoad,CC111_90_maxLoad,CC111_90_capacity,
+        IC_minLoad,IC_maxLoad,IC_capacity,CTLM_minLoad,CTLM_maxLoad,CTLM_capacity,CTGE_minLoad,CTGE_maxLoad,CTGE_capacity,
+        NucHTSE_totalCarbon,CC221_totalCarbon,Coal_totalCarbon,Coal30_totalCarbon,Coal90_totalCarbon,CC111_totalCarbon,CC111_90_totalCarbon,IC_totalCarbon, CTLM_totalCarbon, CTGE_totalCarbon</Output>
+    </PointSet>
+  </DataObjects>
+
+ <VariableGroups>
+    <Group name="In">WC,SC</Group>
+    <Group name="Out">systemcost</Group>
+  </VariableGroups>
+</Simulation>
+
+
+

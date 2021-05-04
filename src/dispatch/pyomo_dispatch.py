@@ -466,7 +466,6 @@ class Pyomo(Dispatcher):
       @ In, m, pyo.ConcreteModel, associated model
       @ In, t, int, time index for capacity rule
     """
-    print('DEBUGG caps:', prod_name, caps)
     kind = 'lower' if min(caps) < 0 else 'upper'
     return self._prod_limit_rule(prod_name, r, caps, kind, t, m)
 

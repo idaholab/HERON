@@ -44,8 +44,6 @@ producer._capacity.set_const_VP(0)
 producer.set_capacity(500)
 producer._transfer = ValuedParamHandler('transfer_function')
 producer._transfer.set_transfer_VP(transfer_function)
-# producer._transfer._obj = ValuedParamHandler('transfer_function_obj')
-# producer._transfer._obj.evaluate = transfer_function
 
 # Make the production request
 request = {'electricity': 0}

@@ -429,7 +429,6 @@ class CashFlow:
     self._crossrefs[name] = vp
     # standard alias: redirect "capacity" variable
     if isinstance(vp, ValuedParams.factory.returnClass('variable')) and vp._raven_var == 'capacity':
-    # OLD if vp.type == 'variable' and vp._sub_name == 'capacity':
       vp = self._component.get_capacity_param()
     setattr(self, name, vp)
 

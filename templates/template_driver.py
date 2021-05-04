@@ -554,9 +554,7 @@ class Template(TemplateBase):
       interaction = component.get_interaction()
       parametric = capacity.is_parametric()
 
-      # OLD # values = capacity.get_values()
-      #cap_name = self.namingTemplates['variable'].format(unit=name, feature='capacity')
-      if capacity.is_parametric(): # OLD # isinstance(values, (list, float)):
+      if capacity.is_parametric():
         # this capacity is being [swept or optimized in outer] (list) or is constant (float)
         # -> so add a node, put either the const value or a dummy in place
         cap_name = self.namingTemplates['variable'].format(unit=name, feature='capacity')

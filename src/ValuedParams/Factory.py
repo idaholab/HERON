@@ -75,21 +75,3 @@ allowable = {
   # all
   'all': list(factory.knownTypes()),
 }
-
-
-
-# TODO move to ValuedParamHandler!
-# def get_valued_param_specs(name, disallowed=None):
-#   """
-#     Compiles ValuedParam specs, applying a custom-chosen name for the spec
-#     @ In, name, str, name to give specifications
-#     @ In, disallowed, list, optional, particular options to disallow (default none)
-#     @ Out, raven.utils.InputData, specs
-#   """
-#   if disallowed is None:
-#     disallowed = []
-#   ###### OLD #####
-#   specs = InputData.parameterInputFactory(name, descr=description)
-#   for name, option in known.items():
-#     if name not in disallowed:
-#       specs.addSub(option.get_input_specs())

@@ -54,6 +54,14 @@ class Linear(ValuedParam):
       self._coefficients[resource] = rate_node.value
     return []
 
+  def get_coefficients(self):
+    """
+      Returns linear coefficients.
+      @ In, None
+      @ Out, coeffs, dict, coefficient mapping
+    """
+    return self._coefficients
+
   def evaluate(self, inputs, target_var=None, aliases=None):
     """
       Evaluate this ValuedParam, wherever it gets its data from

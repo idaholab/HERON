@@ -477,7 +477,6 @@ class Interaction(Base):
       @ In, cap, float, capacity value
       @ Out, None
     """
-    self._capacity.type = 'value'
     self._capacity.set_value(float(cap))
 
   def get_minimum(self, meta, raw=False):

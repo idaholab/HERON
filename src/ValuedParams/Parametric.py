@@ -33,8 +33,8 @@ class Parametric(ValuedParam):
     """
     super().__init__()
     self._parametric = None # (low, high) for opt, sweep values for sweep, or fixed value for fixed
-    self._value = None      # value is uncertain in outer, but fixed in inner. Set during inner.
-    # NOTE I think "value" may only be set in the DispatchManager currently, and possibly
+    # NOTE that _parametric gets FIXED in the inner runs, becoming a constant
+    # NOTE I think "_parametric" may only be set in the DispatchManager currently, and possibly
     #  only for Capacities. Perhaps we need a registry for valued params that keeps track
     #  of them for setting purposes.
 
@@ -51,13 +51,22 @@ class Parametric(ValuedParam):
     self._parametric = spec.value
     return []
 
+  def get_value(self):
+    """
+      Get the value for this parametric source.
+      @ In, None
+      @ Out, value, None, value
+    """
+    return self._parametric
+
   def set_value(self, value):
     """
       Set the value for this parametric source.
+      Usually done in the Inner to fix a sampled property
       @ In, value, float, value
       @ Out, None
     """
-    self._value = value
+    self._parametric = value
 
   def evaluate(self, inputs, target_var=None, aliases=None):
     """
@@ -68,7 +77,7 @@ class Parametric(ValuedParam):
       @ Out, value, dict, dictionary of resulting evaluation as {vars: vals}
       @ Out, meta, dict, dictionary of meta (possibly changed during evaluation)
     """
-    data = {target_var: self._value}
+    data = {target_var: self._parametric}
     return data, inputs
 
 ######

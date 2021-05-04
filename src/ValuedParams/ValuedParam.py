@@ -37,10 +37,12 @@ class ValuedParam(MessageUser):
       @ Out, None
     """
     super().__init__()
+    self.type = self.__class__.__name__ # class type, for easy checking
     self._comp = None        # component who uses this valued param
     self._source_kind = None # if taken from a source, this is the string name of the source
     self._source_name = None # name of source object (HERON tracking name, given by user)
     self._target_obj = None  # Placeholder object for this VP, if needed
+    self._value = None       # None for most VP, for Parametric may be valued
 
   def read(self, comp_name, spec, mode, alias_dict=None):
     """
@@ -65,6 +67,14 @@ class ValuedParam(MessageUser):
       @ Out, name, str, name of the source
     """
     return self._source_kind, self._source_name
+
+  def get_fixed_value(self):
+    """
+      Get the value for this parametric source.
+      @ In, None
+      @ Out, value, None, value
+    """
+    return None
 
   def set_object(self, obj):
     """

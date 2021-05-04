@@ -12,6 +12,7 @@ framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)
 from utils import InputData, InputTypes
 from BaseClasses import MessageUser
+from ValuedParams import Parametric
 from ValuedParams import factory as VPFactory
 
 class ValuedParamHandler(MessageUser):
@@ -61,6 +62,15 @@ class ValuedParamHandler(MessageUser):
     self._growth_val = None  # used to grow the value year-by-year
     self._growth_mode = None # mode for growth (e.g. exponenetial, linear)
 
+  @property
+  def type(self):
+    """
+      Provides type of underlying vp
+      @ In, None
+      @ Out, type, str, string type (class name) of VP
+    """
+    return self._vp.type
+
   def read(self, comp_name: str, spec: InputData.ParameterInput, mode: str, alias_dict=None):
     """
       Used to read valued param from XML input
@@ -108,15 +118,61 @@ class ValuedParamHandler(MessageUser):
     """
     return self._vp.get_source()
 
+  def get_value(self):
+    """
+      Get fixed values, if any.
+      @ In, None
+      @ Out, value, object, VP's reported fixed value (may be None)
+    """
+    return self._vp.get_value()
+
+  def set_value(self, value):
+    """
+      Get fixed values, if any.
+      @ In, value, object, VP's new fixed value (may be None)
+      @ Out,
+    """
+    # should this be allowed if it's not parametric?
+    assert isinstance(self._vp, Parametric)
+    return self._vp.set_value(value)
+
+  def get_coefficients(self):
+    """
+      Provide coefficients for linear transformation
+      @ In, None
+      @ Out, coeffs, dict, coefficients
+    """
+    assert self.type == 'Linear'
+    return self._vp.get_coefficients()
+
+  def is_parametric(self):
+    """
+      Tell if VP is parametric type
+      @ In, None
+      @ Out, is, bool, True if parametric
+    """
+    return isinstance(self._vp, Parametric)
+
   def set_const_VP(self, value):
     """
       Force the Handler to set a ValuedParam without doing reading.
-      Not recommended.
+      Mostly for testing.
       @ In, value, float, fixed value
       @ Out, None
     """
     self._vp = VPFactory.returnInstance('fixed_value')
     self._vp.set_value(value)
+
+  def set_transfer_VP(self, func):
+    """
+      Force the Handler to set a transfer ValuedParam without doing reading.
+      Mostly for testing.
+      @ In, func, function, transfer function
+      @ Out, None
+    """
+    from Placeholders import Function
+    self._vp = VPFactory.returnInstance('Function')
+    self._vp.evaluate = func
 
   def set_object(self, obj):
     """
@@ -137,6 +193,6 @@ class ValuedParamHandler(MessageUser):
     data, meta = self._vp.evaluate(*args, **kwargs)
     if self._multiplier is not None:
       for key in data:
-        data[key] *= self._scalar
+        data[key] *= self._multiplier
     return data, meta
 

@@ -7,7 +7,7 @@ from EntityFactoryBase import EntityFactory
 
 from .SyntheticHistory import SyntheticHistory
 from .Function import Function
-from .Parametric import FixedValue, OptBounds, SweepValues
+from .Parametric import Parametric, FixedValue, OptBounds, SweepValues
 from .Linear import Linear
 from .Variable import Variable
 

@@ -421,7 +421,7 @@ class Pyomo(Dispatcher):
     transfer = comp.get_interaction().get_transfer()  # get the transfer ValuedParam, if any
     if transfer is None:
       return {}
-    coeffs = transfer._coefficients # linear transfer coefficients, dict as {resource: coeff}, SIGNS MATTER
+    coeffs = transfer.get_coefficients() # linear transfer coefficients, dict as {resource: coeff}, SIGNS MATTER
     # it's all about ratios -> store as ratio of resource / first resource (arbitrary)
     first_r = None
     first_name = None
@@ -466,6 +466,7 @@ class Pyomo(Dispatcher):
       @ In, m, pyo.ConcreteModel, associated model
       @ In, t, int, time index for capacity rule
     """
+    print('DEBUGG caps:', prod_name, caps)
     kind = 'lower' if min(caps) < 0 else 'upper'
     return self._prod_limit_rule(prod_name, r, caps, kind, t, m)
 

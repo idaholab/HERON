@@ -47,6 +47,8 @@ class ValuedParam(MessageUser):
   def read(self, comp_name, spec, mode, alias_dict=None):
     """
       Used to read valued param from XML input
+      Also determines what "needs" from external entities exist for this entity; these are returned
+      as a list so that the input handler can connect the requisite pieces.
       @ In, comp_name, str, name of component that this valued param will be attached to; only used for print messages
       @ In, spec, InputData params, input specifications
       @ In, mode, type of simulation calculation

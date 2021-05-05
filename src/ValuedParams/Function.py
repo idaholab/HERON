@@ -59,7 +59,7 @@ class Function(ValuedParam):
       @ In, inputs, dict, stuff from RAVEN, particularly including the keys 'meta' and 'raven_vars'
       @ In, target_var, str, optional, requested outgoing variable name if not None
       @ In, aliases, dict, optional, alternate variable names for searching in variables
-      @ Out, value, dict, dictionary of resulting evaluation as {vars: vals}
+      @ Out, data, dict, dictionary of resulting evaluation as {vars: vals}
       @ Out, meta, dict, dictionary of meta (possibly changed during evaluation)
     """
     if aliases is None:

@@ -299,24 +299,24 @@ class CashFlow:
 
     descr = r"""indicates the main driver for this CashFlow, such as the number of units sold
             or the size of the constructed unit. Corresponds to $D$ in the CashFlow equation."""
-    driver = ValuedParams.factory.make_input_specs('driver', descr=descr)
+    driver = ValuedParams.factory.make_input_specs('driver', descr=descr, kind='post-dispatch')
     cf.addSub(driver)
 
     descr = r"""indicates the cash value of the reference number of units sold.
             corresponds to $\alpha$ in the CashFlow equation. If \xmlNode{reference_driver}
             is 1, then this is the price-per-unit for the CashFlow."""
-    reference_price = ValuedParams.factory.make_input_specs('reference_price', descr=descr)
+    reference_price = ValuedParams.factory.make_input_specs('reference_price', descr=descr, kind='post-dispatch')
     cf.addSub(reference_price)
 
     descr = r"""determines the number of units sold to which the \xmlNode{reference_price}
             refers. Corresponds to $\prime D$ in the CashFlow equation. """
-    reference_driver = ValuedParams.factory.make_input_specs('reference_driver', descr=descr)
+    reference_driver = ValuedParams.factory.make_input_specs('reference_driver', descr=descr, kind='post-dispatch')
     cf.addSub(reference_driver)
 
     descr = r"""determines the scaling factor for this CashFlow. Corresponds to $x$ in the CashFlow
             equation. If $x$ is less than one, the per-unit price decreases as the units sold increases
             above the \xmlNode{reference_driver}, and vice versa."""
-    x = ValuedParams.factory.make_input_specs('scaling_factor_x', descr=descr)
+    x = ValuedParams.factory.make_input_specs('scaling_factor_x', descr=descr, kind='post-dispatch')
     cf.addSub(x)
 
     depreciate = InputData.parameterInputFactory('depreciate', contentType=InputTypes.IntegerType)

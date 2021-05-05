@@ -52,6 +52,7 @@ class Activity(ValuedParam):
     if alias_dict is None:
       alias_dict = {}
     self._resource = spec.value
+    # FIXME how to confirm this component actually produces/consumes/stores this resource??
     return []
 
   def evaluate(self, inputs, target_var=None, aliases=None):

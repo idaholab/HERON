@@ -5,8 +5,9 @@
   Base class for dispatchers.
 """
 from utils import InputData, InputTypes
+from BaseClasses import MessageUser, InputDataUser
 
-class Dispatcher:
+class Dispatcher(MessageUser, InputDataUser):
   """
     Base class for strategies for consecutive dispatching in a continuous period.
   """
@@ -29,6 +30,7 @@ class Dispatcher:
       @ In, None
       @ Out, None
     """
+    super().__init__()
     self.name = 'BaseDispatcher'
     self._time_discretization = None # (start, end, num_steps) to build time discretization
     self._validator = None           # can be used to validate activity

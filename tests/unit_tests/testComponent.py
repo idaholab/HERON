@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 HERON_LOC = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir,'src'))
 sys.path.append(HERON_LOC)
 import Components
-import ValuedParams
+from ValuedParamHandler import ValuedParamHandler
 import _utils as hutils
 sys.path.pop()
 
@@ -29,7 +29,8 @@ results = {"pass":0,"fail":0}
 # use of a transfer function.
 
 # Set up the dummy transfer function
-def transfer_function(method, requests, inputs):
+def transfer_function(inputs): #method, requests, inputs):
+    request = inputs.pop('request', None)
     # Return the given request and the given meta (inputs)
     return {'electricity': 0}, inputs
 
@@ -38,12 +39,11 @@ producer = Components.Producer()
 producer.messageHandler = MessageHandler.MessageHandler()
 producer.messageHandler.verbosity = 'debug'
 producer._capacity_var = 'electricity'
-producer._capacity = ValuedParams.ValuedParam('generator_capacity')
+producer._capacity = ValuedParamHandler('generator_capacity')
+producer._capacity.set_const_VP(0)
 producer.set_capacity(500)
-producer._transfer = ValuedParams.ValuedParam('transfer_function')
-producer._transfer.type = 'Function'
-producer._transfer._obj = ValuedParams.ValuedParam('transfer_function_obj')
-producer._transfer._obj.evaluate = transfer_function
+producer._transfer = ValuedParamHandler('transfer_function')
+producer._transfer.set_transfer_VP(transfer_function)
 
 # Make the production request
 request = {'electricity': 0}

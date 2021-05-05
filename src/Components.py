@@ -13,14 +13,14 @@ from base import Base
 import time
 import xml.etree.ElementTree as ET
 from Economics import CashFlowUser
-from ValuedParams import ValuedParam
+from ValuedParams import factory as vp_factory
+from ValuedParamHandler import ValuedParamHandler
 import _utils as hutils
 framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)
 from utils import InputData, xmlUtils,InputTypes
-import MessageHandler
-mh = MessageHandler.MessageHandler()
 
+# TODO can we use EntityFactory from RAVEN?
 def factory(xml, method='sweep'):
   """
     Tool for constructing compnents without the input_loader
@@ -29,7 +29,7 @@ def factory(xml, method='sweep'):
     @ In, method, string, optional, operational mode for case
     @ Out, comp, Component instance, component constructed
   """
-  comp = Component(messageHandler=mh)
+  comp = Component()
   comp.read_input(xml, method)
   return comp
 
@@ -362,11 +362,8 @@ class Interaction(Base):
               In response to the \texttt{independent} component adjustment, the \texttt{dependent} components
               may respond to balance the resource usage from the changing behavior of other components.""")
 
-    cap = ValuedParam.get_input_specs('capacity')
-    cap.descr = r"""provides the maximum value at which this component can act, in units of the indicated resource. """
-    #cap.removeSub('ARMA')
-    #cap.removeSub('Function')
-    #cap.removeSub('variable')
+    descr = r"""the maximum value at which this component can act, in units corresponding to the indicated resource. """
+    cap = vp_factory.make_input_specs('capacity', descr=descr)
     cap.addParam('resource', param_type=InputTypes.StringType,
         descr=r"""indicates the resource that defines the capacity of this component's operation. For example,
               if a component consumes steam and electricity to produce hydrogen, the capacity of the component
@@ -375,8 +372,8 @@ class Interaction(Base):
               of the value of this node.""")
     specs.addSub(cap)
 
-    minn = ValuedParam.get_input_specs('minimum')
-    minn.descr = r"""provides the minimum value at which this component can act, in units of the indicated resource. """
+    descr = r"""provides the minimum value at which this component can act, in units of the indicated resource. """
+    minn = vp_factory.make_input_specs('minimum', descr=descr)
     minn.addParam('resource', param_type=InputTypes.StringType,
         descr=r"""indicates the resource that defines the minimum activity level for this component,
               as with the component's capacity.""")
@@ -444,7 +441,7 @@ class Interaction(Base):
       @ In, mode, string, case mode to operate in (e.g. 'sweep' or 'opt')
       @ Out, None
     """
-    vp = ValuedParam(name)
+    vp = ValuedParamHandler(name)
     signal = vp.read(comp, spec, mode)
     self._signals.update(signal)
     self._crossrefs[name] = vp
@@ -480,8 +477,7 @@ class Interaction(Base):
       @ In, cap, float, capacity value
       @ Out, None
     """
-    self._capacity.type = 'value'
-    self._capacity._value = float(cap) # TODO getter/setter
+    self._capacity.set_value(float(cap))
 
   def get_minimum(self, meta, raw=False):
     """
@@ -652,9 +648,10 @@ class Producer(Interaction):
       @ In, None
       @ Out, input_specs, InputData, specs
     """
-    specs = super(Producer, cls).get_input_specs()
+    specs = super().get_input_specs()
     specs.addSub(InputData.parameterInputFactory('consumes', contentType=InputTypes.StringListType, descr=r"""The producer can either produce or consume a resource. If the producer is a consumer it must be accompnied with a transfer function to convert one source of energy to another. """))
-    specs.addSub(ValuedParam.get_input_specs('transfer'))
+    descr = r"""describes how input resources yield output resources for this component's transfer function."""
+    specs.addSub(vp_factory.make_input_specs('transfer', descr=descr, kind='transfer'))
     return specs
 
   def __init__(self, **kwargs):
@@ -689,14 +686,6 @@ class Producer(Interaction):
     if self._transfer is None:
       if self._consumes:
         self.raiseAnError(IOError, 'Any component that consumes a resource must have a transfer function describing the production process!')
-    #else if transfer function is a float/ARMA, then there must be only one output, one input
-    else:
-      if self._transfer.type in ['value', 'ARMA']: #isinstance(self._transfer, float) or self._transfer['type'] == 'ARMA':
-        if not (len(self.get_inputs()) == 1 and len(self.get_outputs() == 1)):
-          self.raiseAnError(IOError, 'Transfer function ("<transfer>") can be a float/ARMA only if the component '+\
-                                     'produces exactly one resource and consumes exactly one resource!\n' +\
-                                     '    Consumes: {}'.format(self.get_inputs()) +\
-                                     '    Produces: {}'.format(self.get_outputs()))
 
   def get_inputs(self):
     """
@@ -843,9 +832,13 @@ class Storage(Interaction):
       @ In, None
       @ Out, input_specs, InputData, specs
     """
-    specs = super(Storage, cls).get_input_specs()
-    specs.addSub(ValuedParam.get_input_specs('rate'))
-    specs.addSub(ValuedParam.get_input_specs('initial_stored', disallowed='ARMA'))
+    specs = super().get_input_specs()
+    # TODO unused, please implement ... :
+    # descr = r"""the limiting charge/discharge rate of this storage. """
+    # specs.addSub(ValuedParam.get_input_specs('rate'))
+    descr=r"""initial quantity of resource assumed to be present in the storage unit at the beginning
+          of a given calculation, in units of quantity (not rate). \default{0}. """
+    specs.addSub(vp_factory.make_input_specs('initial_stored', descr=descr))
     return specs
 
   def __init__(self, **kwargs):
@@ -881,9 +874,8 @@ class Storage(Interaction):
     if self._initial_stored is None:
       self.raiseAWarning('Initial storage level for "{}" was not provided! Defaulting to 0.'.format(comp_name))
       # make a fake reader node for a 0 value
-      vp = ValuedParam('initial_stored')
-      vp.type = 'value'
-      vp._value = 0.0 # TODO getter/setter, also a better default value setting?
+      vp = ValuedParamHandler('initial_stored')
+      vp.set_const_VP(0.0)
       self._initial_stored = vp
     # the capacity is limited by the stored resource.
     self._capacity_var = self._stores
@@ -1042,8 +1034,7 @@ class Demand(Interaction):
       @ In, None
       @ Out, input_specs, InputData, specs
     """
-    specs = super(Demand, cls).get_input_specs()
-    # specs.addSub(ValuedParam.get_input_specs('penalty'))
+    specs = super().get_input_specs()
     return specs
 
   def __init__(self, **kwargs):

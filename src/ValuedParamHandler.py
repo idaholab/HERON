@@ -118,6 +118,14 @@ class ValuedParamHandler(MessageUser):
                        f'to define its value source, but none was found! Options include: {knownVPs}')
     return signal
 
+  def crosscheck(self, interaction):
+    """
+      Perform checks to make sure VP is set up correctly.
+      @ In, interaction, Component.Interaction, HERON Interaction that "owns" this VP
+      @ Out, None (error raised if not correct)
+    """
+    self._vp.crosscheck(interaction)
+
   def get_source(self):
     """
       Access the source type and name of the VP

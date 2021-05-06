@@ -170,11 +170,16 @@ class CashFlowGroup:
       @ In, refs, dict, reference entities
       @ Out, None
     """
+    # set up pointers
     for cf in list(refs.keys()):
       for try_match in self._cash_flows:
         if try_match == cf:
           try_match.set_crossrefs(refs.pop(try_match))
           break
+      else:
+        cf.set_crossrefs({})
+    # perform checks
+
 
   #######
   # API #
@@ -352,7 +357,6 @@ class CashFlow:
     self._signals = set()     # variable values needed for this cash flow
     self._crossrefs = defaultdict(dict)
 
-
   def read_input(self, item):
     """
       Sets settings from input file
@@ -463,9 +467,13 @@ class CashFlow:
       @ In, refs, dict, cross referenced entities
       @ Out, None
     """
+    # set up pointers
     for attr, obj in refs.items():
       valued_param = self._crossrefs[attr]
       valued_param.set_object(obj)
+    # check on VP setup
+    for attr, vp in self._crossrefs.items():
+      vp.crosscheck(self._component.get_interaction())
 
   def evaluate_cost(self, activity, values_dict):
     """

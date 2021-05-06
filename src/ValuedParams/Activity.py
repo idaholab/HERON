@@ -35,8 +35,9 @@ class Activity(ValuedParam):
       @ Out, None
     """
     super().__init__()
-    self._var_name = None # name of the variable within the synth hist
     self._source_kind = 'activity'
+    self._var_name = None # name of the variable within the synth hist
+    self._resource = None # name of the resource whose activity should be used
 
   def read(self, comp_name, spec, mode, alias_dict=None):
     """
@@ -55,6 +56,20 @@ class Activity(ValuedParam):
     # FIXME how to confirm this component actually produces/consumes/stores this resource??
     return []
 
+  def crosscheck(self, interaction):
+    """
+      Allows for post-reading, post-crossref checking to make sure everything is in place.
+      @ In, interaction, HERON.Component.Interaction, interaction that "owns" this VP
+      @ Out, None
+    """
+    # check that the requested resource is actually used by this interaction
+    available = interaction.get_resources()
+    if self._resource not in available:
+      str_avail = ['"{}"'.format(a) for a in available]
+      self.raiseAnError(IOError, f'Requested <activity> value from resource "{self._resource}" but "{self._resource}" ' +
+      f'was not found among this Component\'s input/output resources; options are:' +
+      f'{", ".join(str_avail)}')
+
   def evaluate(self, inputs, target_var=None, aliases=None):
     """
       Evaluate this ValuedParam, wherever it gets its data from
@@ -68,8 +83,6 @@ class Activity(ValuedParam):
       aliases = {}
     # set the outgoing name for the evaluation results
     key = self._var_name if not target_var else target_var
-    # allow aliasing of complex variable names
-    var_name = aliases.get(self._var_name, self._var_name)
     try:
       value = inputs['HERON']['activity'][self._resource]
     except KeyError as e:

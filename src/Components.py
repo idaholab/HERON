@@ -511,9 +511,13 @@ class Interaction(Base):
       @ In, refs, dict, resource cross-reference objects
       @ Out, None
     """
+    # connect references to ValuedParams (Placeholder objects)
     for attr, obj in refs.items():
       valued_param = self._crossrefs[attr]
       valued_param.set_object(obj)
+    # perform crosscheck that VPs have what they need
+    for attr, vp in self.get_crossrefs().items():
+      vp.crosscheck(self)
 
   def get_inputs(self):
     """

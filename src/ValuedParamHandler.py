@@ -62,6 +62,15 @@ class ValuedParamHandler(MessageUser):
     self._growth_val = None  # used to grow the value year-by-year
     self._growth_mode = None # mode for growth (e.g. exponenetial, linear)
 
+  def __repr__(self):
+    """
+      String representation of this Handler and its VP
+      @ In, None
+      @ Out, repr, str, string representation
+    """
+    msg = f'<ValuedParam name: "{self.name}" type: "{self.type}">'
+    return msg
+
   @property
   def type(self):
     """
@@ -108,6 +117,14 @@ class ValuedParamHandler(MessageUser):
       self.raiseAnError(IOError, f'Component "{comp_name}" node <{spec.getName()}> expected a ValuedParam ' +
                        f'to define its value source, but none was found! Options include: {knownVPs}')
     return signal
+
+  def crosscheck(self, interaction):
+    """
+      Perform checks to make sure VP is set up correctly.
+      @ In, interaction, Component.Interaction, HERON Interaction that "owns" this VP
+      @ Out, None (error raised if not correct)
+    """
+    self._vp.crosscheck(interaction)
 
   def get_source(self):
     """

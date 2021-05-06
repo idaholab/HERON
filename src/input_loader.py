@@ -86,6 +86,7 @@ def parse(xml, loc, messageHandler):
       for attr, info in i_info.items():
         kind, name = info.get_source()
         # if not looking for a DataGenerator placeholder, then nothing more to do
+        # if using "activity", also nothing to do
         if kind not in ['Function', 'ARMA']:
           continue
         # find it
@@ -94,7 +95,7 @@ def parse(xml, loc, messageHandler):
             found[interaction][attr] = source
             break
         else:
-          raise IOError('Requested source "{}" for component "{}" was not found!'.format(name, comp.name))
+          raise IOError(f'Requested source "{name}" for component "{comp.name}" was not found!')
     comp.set_crossrefs(found)
 
   # then do pre-writing initialization

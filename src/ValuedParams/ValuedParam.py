@@ -61,6 +61,14 @@ class ValuedParam(MessageUser):
     # base implementation doesn't indicate any source/signal, so we return an empty list
     return []
 
+  def crosscheck(self, interaction):
+    """
+      Allows for post-reading, post-crossref checking to make sure everything is in place.
+      @ In, interaction, HERON.Component.Interaction, interaction that "owns" this VP
+      @ Out, None
+    """
+    pass # optional, use in subclasses as needed
+
   def get_source(self):
     """
       Accessor for the source type and name of this valued param

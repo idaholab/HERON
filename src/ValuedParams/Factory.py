@@ -10,6 +10,7 @@ from .Function import Function
 from .Parametric import Parametric, FixedValue, OptBounds, SweepValues
 from .Linear import Linear
 from .Variable import Variable
+from .Activity import Activity
 
 class ValuedParamFactory(EntityFactory):
   """
@@ -61,17 +62,22 @@ factory.registerType('variable', Variable)
 # frequent revaluation
 factory.registerType('ARMA', SyntheticHistory)
 factory.registerType('Function', Function)
+factory.registerType('activity', Activity)
 # ratios, transfers
 factory.registerType('linear', Linear)
+# TODO add: ROM
+
 # TODO are transfer functions and valued evaluations really the same creature?
-# TODO add: activity, ROM
 
 # map of "kinds" of ValuedParams to the default acceptable ValuedParam types
-allowable = {
-  # transfer functions, such as producing components' transfer functions
-  'transfer': ['linear', 'Function'],
-  # single evaluations, like cashflow prices and component capacities
-  'singular': ['fixed_value', 'sweep_values', 'opt_bounds', 'variable', 'ARMA', 'Function'],
-  # all
-  'all': list(factory.knownTypes()),
-}
+allowable = {}
+# transfer functions, such as producing components' transfer functions
+allowable['transfer'] = ['linear', 'Function']
+# single evaluations, like cashflow prices and component capacities
+allowable['singular'] = ['fixed_value', 'sweep_values', 'opt_bounds', 'variable',
+               'ARMA', 'Function']
+# evaluations available only after dispatch (e.g. for economics)
+## for example, we can't base a capacity on the dispatch activity ... right?
+allowable['post-dispatch'] = allowable['singular'] + ['activity']
+# all
+allowable['all'] = list(factory.knownTypes())

@@ -1,5 +1,5 @@
 '''
-Test specific aspects of HERON Components
+Test specific aspects of HERON Parametric ValuedParams
 '''
 
 import os
@@ -26,7 +26,7 @@ results = {"pass":0, "fail":0}
 
 # test retrieving classes
 for alias in ['fixed_value', 'sweep_values', 'opt_bounds']:
-  kls = factory.returnClass('fixed_value')
+  kls = factory.returnClass(alias)
   if issubclass(kls, ValuedParams.Parametric):
     results['pass'] += 1
   else:
@@ -37,7 +37,7 @@ for alias in ['fixed_value', 'sweep_values', 'opt_bounds']:
 #
 # Parametric
 #
-p= factory.returnInstance('fixed_value')
+p = factory.returnInstance('fixed_value')
 #
 # skip reading
 #

@@ -1,6 +1,6 @@
 [Tests]
- [./parametric]
-  type = RavenPython
-  input = 'testParametric.py'
- [../]
+  [./parametric]
+    type = RavenPython
+    input = 'testParametric.py'
+  [../]
 []

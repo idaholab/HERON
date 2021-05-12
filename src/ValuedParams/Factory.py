@@ -6,6 +6,7 @@ from utils import InputData, InputTypes
 from EntityFactoryBase import EntityFactory
 
 from .SyntheticHistory import SyntheticHistory
+from .ROM import ROM
 from .Function import Function
 from .Parametric import Parametric, FixedValue, OptBounds, SweepValues
 from .Linear import Linear
@@ -61,6 +62,7 @@ factory.registerType('opt_bounds', OptBounds)
 factory.registerType('variable', Variable)
 # frequent revaluation
 factory.registerType('ARMA', SyntheticHistory)
+factory.registerType('ROM', ROM)
 factory.registerType('Function', Function)
 factory.registerType('activity', Activity)
 # ratios, transfers
@@ -75,7 +77,7 @@ allowable = {}
 allowable['transfer'] = ['linear', 'Function']
 # single evaluations, like cashflow prices and component capacities
 allowable['singular'] = ['fixed_value', 'sweep_values', 'opt_bounds', 'variable',
-               'ARMA', 'Function']
+               'ARMA', 'Function', 'ROM']
 # evaluations available only after dispatch (e.g. for economics)
 ## for example, we can't base a capacity on the dispatch activity ... right?
 allowable['post-dispatch'] = allowable['singular'] + ['activity']

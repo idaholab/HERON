@@ -69,6 +69,8 @@ def parse(xml, loc, messageHandler):
           #print("THIS IS INPUT LOADER")
         elif typ == 'Function':
           new = Placeholders.Function(loc=loc, messageHandler=messageHandler)
+        elif typ == 'ROM':
+          new = Placeholders.ROM(loc=loc, messageHandler=messageHandler)
         else:
           raise IOError('Unrecognized DataGenerator: "{}"'.format(sub_xml.tag))
         new.read_input(sub_xml)
@@ -77,22 +79,23 @@ def parse(xml, loc, messageHandler):
   # now go back through and link up stuff
   # TODO move to case.initialize?
   need_source = (ValuedParams.factory.returnClass('Function'),
-                 ValuedParams.factory.returnClass('ARMA')
+                 ValuedParams.factory.returnClass('ARMA'),
+                 ValuedParams.factory.returnClass('ROM')
                  )
   for comp in components:
     found = {}
-    for interaction, i_info in comp.get_crossrefs().items():
-      found[interaction] = {}
-      for attr, info in i_info.items():
+    for obj, info in comp.get_crossrefs().items():
+      found[obj] = {}
+      for attr, info in info.items():
         kind, name = info.get_source()
         # if not looking for a DataGenerator placeholder, then nothing more to do
         # if using "activity", also nothing to do
-        if kind not in ['Function', 'ARMA']:
+        if kind not in ['Function', 'ARMA', 'ROM']:
           continue
         # find it
         for source in sources:
           if source.is_type(kind) and source.name == name:
-            found[interaction][attr] = source
+            found[obj][attr] = source
             break
         else:
           raise IOError(f'Requested source "{name}" for component "{comp.name}" was not found!')

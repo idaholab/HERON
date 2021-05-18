@@ -17,7 +17,7 @@ sys.path.append(framework_path)
 from utils import InputData, InputTypes, utils, xmlUtils
 sys.path.pop()
 
-sys.path.append(os.path.join(hutils.get_raven_loc(), os.pardir, 'scripts'))
+sys.path.append(os.path.join(framework_path, os.pardir, 'scripts'))
 from externalROMloader import ravenROMexternal
 sys.path.pop()
 

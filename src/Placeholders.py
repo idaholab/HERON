@@ -12,12 +12,12 @@ import copy
 import _utils as hutils
 from base import Base
 
-framework_path = hutils.get_raven_loc()
-sys.path.append(framework_path)
+FRAMEWORK_PATH = hutils.get_raven_loc()
+sys.path.append(FRAMEWORK_PATH)
 from utils import InputData, InputTypes, utils, xmlUtils
 sys.path.pop()
 
-sys.path.append(os.path.join(framework_path, os.pardir, 'scripts'))
+sys.path.append(os.path.join(FRAMEWORK_PATH, os.pardir, 'scripts'))
 from externalROMloader import ravenROMexternal
 sys.path.pop()
 
@@ -359,7 +359,7 @@ class ROM(Placeholder):
       @ Out, None
     """
     super().read_input(xml)
-    self._runner = ravenROMexternal(self._target_file, framework_path)
+    self._runner = ravenROMexternal(self._target_file, FRAMEWORK_PATH)
     # TODO is this serializable? or get/set state for this?
 
   def evaluate(self, rlz):

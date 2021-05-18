@@ -1,6 +1,8 @@
-'''
+# Copyright 2020, Battelle Energy Alliance, LLC
+# ALL RIGHTS RESERVED
+"""
 Test specific aspects of HERON Parametric ValuedParams
-'''
+"""
 
 import os
 import sys

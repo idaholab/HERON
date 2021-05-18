@@ -171,7 +171,6 @@ class Pyomo(Dispatcher):
     # TODO abstract this model as much as possible BEFORE, then concrete initialization per window
     m = pyo.ConcreteModel()
     # indices
-    # XXX FIXME the time offset index is needed for the stuff coming from ARMAs!!!!
     C = np.arange(0, len(components), dtype=int) # indexes component
     R = np.arange(0, len(resources), dtype=int) # indexes resources
     # T = np.arange(start_index, end_index, dtype=int) # indexes resources
@@ -188,7 +187,6 @@ class Pyomo(Dispatcher):
     m.Components = components
     m.Activity = PyomoState()
     m.Activity.initialize(m.Components, m.resource_index_map, m.Times, m)
-    ## DEBUGG XXX can we pre-valuate some of the ValuedParams, like ROMs?
     # constraints and variables
     for comp in components:
       # NOTE: "fixed" components could hypothetically be treated differently

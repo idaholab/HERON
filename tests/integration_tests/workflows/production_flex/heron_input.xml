@@ -29,9 +29,7 @@
       <verbosity>50</verbosity>
     </economics>
     <dispatcher>
-      <pyomo>
-        <debug_mode>True</debug_mode>
-      </pyomo>
+      <pyomo/>
     </dispatcher>
   </Case>
 

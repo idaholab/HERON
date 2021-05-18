@@ -20,8 +20,6 @@ class ValuedParamHandler(MessageUser):
     This class enables the identification of runtime-evaluated variables
     with a variety of sources (fixed values, parametric values, data histories, function
     evaluations, etc).
-
-    # REFACTOR This should be split into the various ValuedParam types: value, sweep/opt, linear, function, ARMA
   """
   @classmethod
   def get_input_specs(cls, name, descr=""):

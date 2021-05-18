@@ -271,6 +271,7 @@ class Template(TemplateBase):
       @ Out, None
     """
     files = template.find('Files')
+    step = template.find('Steps').find('MultiRun') # NOTE assuming MultiRun for sampling is the first one
     # modify path to inner
     inner = files.find('Input') # NOTE assuming it's the first file in the template
     inner.text = '../inner.xml'
@@ -281,6 +282,9 @@ class Template(TemplateBase):
         files = template.find('Files')
         src = xmlUtils.newNode('Input', attrib={'name': 'transfers'}, text='../'+source._source)
         files.append(src)
+        # add it to the Step inputs so it gets carried along
+        inp = self._assemblerNode('Input', 'Files', '', 'transfers')
+        step.insert(0, inp)
 
   def _modify_outer_models(self, template, components):
     """

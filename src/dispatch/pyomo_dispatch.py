@@ -56,7 +56,9 @@ class Pyomo(Dispatcher):
       @ In, None
       @ Out, specs, InputData, specs
     """
-    specs = InputData.parameterInputFactory('pyomo', ordered=False, baseNode=None)
+    specs = InputData.parameterInputFactory('pyomo', ordered=False, baseNode=None,
+        descr=r"""The \texttt{pyomo} dispatcher uses analytic modeling and rolling windows to
+        solve dispatch optimization with perfect information via the pyomo optimization library.""")
     specs.addSub(InputData.parameterInputFactory('rolling_window_length', contentType=InputTypes.IntegerType,
         descr=r"""Sets the length of the rolling window that the Pyomo optimization algorithm
         uses to break down histories. Longer window lengths will minimize boundary effects, such as
@@ -169,7 +171,6 @@ class Pyomo(Dispatcher):
     # TODO abstract this model as much as possible BEFORE, then concrete initialization per window
     m = pyo.ConcreteModel()
     # indices
-    # XXX FIXME the time offset index is needed for the stuff coming from ARMAs!!!!
     C = np.arange(0, len(components), dtype=int) # indexes component
     R = np.arange(0, len(resources), dtype=int) # indexes resources
     # T = np.arange(start_index, end_index, dtype=int) # indexes resources

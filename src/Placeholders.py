@@ -4,19 +4,22 @@
 """
   Evaluated signal values for use in HERON
 """
-from __future__ import unicode_literals, print_function
 import os
 import sys
 import abc
 import copy
 
-from base import Base
-from scipy import interpolate
 import _utils as hutils
+from base import Base
 
 framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)
 from utils import InputData, InputTypes, utils, xmlUtils
+sys.path.pop()
+
+sys.path.append(os.path.join(hutils.get_raven_loc(), os.pardir, 'scripts'))
+from externalROMloader import ravenROMexternal
+sys.path.pop()
 
 class Placeholder(Base):
   """
@@ -349,25 +352,6 @@ class ROM(Placeholder):
     self._rom = None          # actual unpickled instance of ROM
     self._rom_location = None # string path to ROM
 
-  def __getstate__(self):
-    """
-      Serialization.
-      @ In, None
-      @ Out, d, dict, object contents
-    """
-    # d = super(self, __getstate__) TODO only if super has one ...
-    d = copy.deepcopy(dict((k, v) for k, v in self.__dict__.items() if k not in ['_rom']))
-    return d
-
-  def __setstate__(self, d):
-    """
-      Deserialization.
-      @ In, d, dict, object contents
-      @ Out, None
-    """
-    self.__dict__ = d
-    self._rom = self._load_ROM(self._rom_location)
-
   def read_input(self, xml):
     """
       Sets settings from input file
@@ -375,9 +359,17 @@ class ROM(Placeholder):
       @ Out, None
     """
     super().read_input(xml)
-    # ? nothing else for now I guess
-    # -> interrogate file?
+    self._runner = ravenROMexternal(self._target_file, framework_path)
+    # TODO is this serializable? or get/set state for this?
 
+  def evaluate(self, rlz):
+    """
+      Evaluates requested method in stored module.
+      @ In, rlz, dict, input realization as {input_name: value}
+      @ Out, result, dict, results of evaluation
+    """
+    result = self._runner.evaluate(rlz)[0] # [0] because can batch evaluate, I think
+    return result
 
 
 

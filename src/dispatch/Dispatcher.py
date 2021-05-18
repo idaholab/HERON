@@ -144,7 +144,10 @@ class Dispatcher(MessageUser, InputDataUser):
         specific_meta['HERON']['time_index'] = t + time_offset
         specific_meta['HERON']['time_value'] = time
         cfs = comp.get_state_cost(specific_activity, specific_meta)
-        time_subtotal = sum(cfs.values())
+        time_subtotal = 0
+        for cf, val in cfs.items():
+          time_subtotal += val
+        #time_subtotal = sum(cfs.values()) -> DOES NOT WORK with pyomo
         comp_subtotal += time_subtotal
       total += comp_subtotal
     return total

@@ -10,7 +10,6 @@
     <MultiRun name='sweep'>
       <Input          class='Files'       type='raven'   >inner_workflow</Input>
       <Input          class='Files'       type=''        >heron_lib</Input>
-      <Input          class='Files'       type=''        >transfers</Input>
       <Model          class='Models'      type='Code'    >raven</Model>
       <Sampler        class='Samplers'    type='Grid'    >grid</Sampler>
       <Output         class='DataObjects' type='PointSet'>grid</Output>

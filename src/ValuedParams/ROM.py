@@ -81,8 +81,6 @@ class ROM(ValuedParam):
       name = vp_node.parameterValues['name']
       new_signals = self.make_sub_vp(name, comp_name, vp_node, mode)
       req_signals.extend(new_signals)
-    # self._source_name = spec.value
-    # self._var_name = spec.parameterValues['variable']
     return req_signals
 
   def make_sub_vp(self, name, comp, spec, mode):
@@ -103,11 +101,11 @@ class ROM(ValuedParam):
   def evaluate(self, inputs, target_var=None, aliases=None):
     """
       Evaluate this ValuedParam, wherever it gets its data from
-      @ In, inputs, dict, stuff from RAVEN, particularly including the keys 'meta' and 'raven_vars'
+      @ In, inputs, dict, run information from RAVEN, including meta and other run info
       @ In, target_var, str, optional, requested outgoing variable name if not None
       @ In, aliases, dict, optional, alternate variable names for searching in variables
       @ Out, value, dict, dictionary of resulting evaluation as {vars: vals}
-      @ Out, meta, dict, dictionary of meta (possibly changed during evaluation)
+      @ Out, inputs, dict, possibly-modified dictionary of run information
     """
     if aliases is None:
       aliases = {}

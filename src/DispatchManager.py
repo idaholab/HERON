@@ -114,6 +114,10 @@ class DispatchRunner:
     if time_vals is not None:
       pass_vars[time_var] = time_vals
 
+    # TODO references to all ValuedParams should probably be registered somewhere
+    # like maybe in the VPFactory, then we can loop through and look for info
+    # that we know from Outer and fill in the blanks? Maybe?
+
     # TODO magic keywords (e.g. verbosity, MAX_TIMES, MAX_YEARS, ONLY_DISPATCH, etc)
     # TODO other arbitrary constants, such as sampled values from Outer needed in Inner?
     magics = ['NPP_bid_adjust', 'HTSE_built_capacity', 'IES_delta_cap'] # XXX FIXME TODO

@@ -318,6 +318,7 @@ class Template(TemplateBase):
       @ Out, None
     """
     files = template.find('Files')
+    step = template.find('Steps').find('MultiRun') # NOTE assuming MultiRun for sampling is the first one
     # modify path to inner
     inner = files.find('Input') # NOTE assuming it's the first file in the template
     inner.text = '../inner.xml'
@@ -328,6 +329,9 @@ class Template(TemplateBase):
         files = template.find('Files')
         src = xmlUtils.newNode('Input', attrib={'name': 'transfers'}, text='../'+source._source)
         files.append(src)
+        # add it to the Step inputs so it gets carried along
+        inp = self._assemblerNode('Input', 'Files', '', 'transfers')
+        step.insert(0, inp)
 
   def _modify_outer_models(self, template, case, components):
     """
@@ -425,17 +429,14 @@ class Template(TemplateBase):
       var_name = self.namingTemplates['variable'].format(unit=name, feature='capacity')
       cap = interaction.get_capacity(None, raw=True)
       # do we already know the capacity values?
-      if cap.type == 'value':
-        vals = cap.get_values()
-        # if we're debugging, take the average value and treat it as a constant
-        if case.debug['enabled']:
-          vals = np.average(vals)
+      if cap.is_parametric():
+        vals = cap.get_value()
         # is the capacity variable being swept over?
         if isinstance(vals, list):
           # make new Distribution, Sampler.Grid.variable
           dist, for_grid, for_opt = self._create_new_sweep_capacity(name, var_name, vals)
           dists_node.append(dist)
-          if case._mode == 'sweep':
+          if case.get_mode() == 'sweep':
             samps_node.append(for_grid)
           else:
             samps_node.append(for_opt)
@@ -677,11 +678,13 @@ class Template(TemplateBase):
       ## The Dispatch needs info from the Outer to know which capacity to use, so we can't pass it from here.
       capacity = component.get_capacity(None, raw=True)
       interaction = component.get_interaction()
-      values = capacity.get_values()
-      if isinstance(values, (list, float)):
+      parametric = capacity.is_parametric()
+
+      if parametric:
         # this capacity is being [swept or optimized in outer] (list) or is constant (float)
         # -> so add a node, put either the const value or a dummy in place
         cap_name = self.namingTemplates['variable'].format(unit=name, feature='capacity')
+        values = capacity.get_value()
         if isinstance(values, list):
           cap_val = 42 # placeholder
         else:
@@ -689,7 +692,7 @@ class Template(TemplateBase):
         mc.append(xmlUtils.newNode('constant', attrib={'name': cap_name}, text=cap_val))
         # add component to applicable variable groups
         self._updateCommaSeperatedList(groups['capacities'], cap_name)
-      elif values is None and capacity.type in ['ARMA', 'Function', 'variable']:
+      elif capacity.type in ['SyntheticHistory', 'Function', 'Variable']:
         # capacity is limited by a signal, so it has to be handled in the dispatch; don't include it here.
         # OR capacity is limited by a function, and we also can't handle it here, but in the dispatch.
         pass
@@ -804,9 +807,9 @@ class Template(TemplateBase):
                                                                 'mult_target': mult_target
                                                                 })
           cfNode.append(xmlUtils.newNode('driver',text = driverName))
-          cfNode.append(xmlUtils.newNode('alpha',text = subCash._alpha._value))
-          cfNode.append(xmlUtils.newNode('reference',text = subCash._reference._value))
-          cfNode.append(xmlUtils.newNode('X',text = subCash._scale._value))
+          cfNode.append(xmlUtils.newNode('alpha',text = subCash._alpha.get_value()))
+          cfNode.append(xmlUtils.newNode('reference',text = subCash._reference.get_value()))
+          cfNode.append(xmlUtils.newNode('X',text = subCash._scale.get_value()))
           if depreciation:
             cfNode.append(xmlUtils.newNode('depreciation',attrib={'scheme':'MACRS'}, text = depreciation))
           cfs.append(cfNode)

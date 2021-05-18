@@ -4,19 +4,22 @@
 """
   Evaluated signal values for use in HERON
 """
-from __future__ import unicode_literals, print_function
 import os
 import sys
 import abc
 import copy
 
-from base import Base
-from scipy import interpolate
 import _utils as hutils
+from base import Base
 
-framework_path = hutils.get_raven_loc()
-sys.path.append(framework_path)
+FRAMEWORK_PATH = hutils.get_raven_loc()
+sys.path.append(FRAMEWORK_PATH)
 from utils import InputData, InputTypes, utils, xmlUtils
+sys.path.pop()
+
+sys.path.append(os.path.join(FRAMEWORK_PATH, os.pardir, 'scripts'))
+from externalROMloader import ravenROMexternal
+sys.path.pop()
 
 class Placeholder(Base):
   """
@@ -112,7 +115,7 @@ class Placeholder(Base):
       @ Out, is_type, bool, True if matching request
     """
     # maybe it's not anything we know about
-    if typ not in ['ARMA', 'Function']:
+    if typ not in ['ARMA', 'Function', 'ROM']:
       return False
     return eval('isinstance(self, {})'.format(typ))
 
@@ -218,7 +221,6 @@ class Function(Placeholder):
   """
     Placeholder for values that are evaluated on the fly
   """
-  # TODO combine with RAVEN's external Function class?
   @classmethod
   def get_input_specs(cls):
     """
@@ -317,6 +319,60 @@ class Function(Placeholder):
                          '    {}'.format(result))
     return result
 
+
+
+class ROM(Placeholder):
+  """
+    Placeholder for values that are evaluated via a RAVEN ROM
+  """
+  @classmethod
+  def get_input_specs(cls):
+    """
+      Collects input specifications for this class.
+      @ In, None
+      @ Out, specs, InputData, specs
+    """
+    specs = InputData.parameterInputFactory('ROM', contentType=InputTypes.StringType,
+        ordered=False, baseNode=None,
+        descr=r"""This data source is a trained RAVEN ROM to provide derived values.
+              Variables within the dispatcher act as sources for the ROM inputs. The text
+              of this node indicates the location of the serialized ROM. This location is usually
+              relative with respect to the HERON XML input file; however, a full absolute path can
+              be used, or the path can be prepended with ``\%HERON\%'' to be relative to the
+              installation directory of HERON.""")
+    specs.addParam('name', param_type=InputTypes.StringType, required=True,
+        descr=r"""identifier for this data source in HERON and in the HERON input file. """)
+    return specs
+
+  def __init__(self, **kwargs):
+    """
+      Constructor.
+      @ In, kwargs, dict, passthrough args
+      @ Out, None
+    """
+    super().__init__(**kwargs)
+    self._type = 'ROM'
+    self._rom = None          # actual unpickled instance of ROM
+    self._rom_location = None # string path to ROM
+
+  def read_input(self, xml):
+    """
+      Sets settings from input file
+      @ In, xml, xml.etree.ElementTree.Element, input from user
+      @ Out, None
+    """
+    super().read_input(xml)
+    self._runner = ravenROMexternal(self._target_file, FRAMEWORK_PATH)
+    # TODO is this serializable? or get/set state for this?
+
+  def evaluate(self, rlz):
+    """
+      Evaluates requested method in stored module.
+      @ In, rlz, dict, input realization as {input_name: value}
+      @ Out, result, dict, results of evaluation
+    """
+    result = self._runner.evaluate(rlz)[0] # [0] because can batch evaluate, I think
+    return result
 
 
 

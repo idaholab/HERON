@@ -1,0 +1,105 @@
+<?xml version="1.0" ?>
+<Simulation>
+  <RunInfo>
+    <WorkingDir>.</WorkingDir>
+    <Sequence>sample, train, serialize, resample</Sequence>
+  </RunInfo>
+
+  <Steps>
+    <MultiRun name="sample" sleepTime="1e-5">
+      <Input class="DataObjects" type="PointSet">placeholder</Input>
+      <Model class="Models" type="ExternalModel">market</Model>
+      <Sampler class="Samplers" type="MonteCarlo">mc</Sampler>
+      <Output class="DataObjects" type="PointSet">samples</Output>
+      <Output class="OutStreams" type="Print">samples</Output>
+    </MultiRun>
+    <MultiRun name="resample" sleepTime="1e-5">
+      <Input class="DataObjects" type="PointSet">placeholder</Input>
+      <Model class="Models" type="ROM">rom</Model>
+      <Sampler class="Samplers" type="MonteCarlo">mc</Sampler>
+      <Output class="DataObjects" type="PointSet">resamples</Output>
+      <Output class="OutStreams" type="Print">resamples</Output>
+    </MultiRun>
+    <RomTrainer name="train">
+      <Input class="DataObjects" type="PointSet">samples</Input>
+      <Output class="Models" type="ROM">rom</Output>
+    </RomTrainer>
+    <IOStep name="serialize">
+      <Input class="Models" type="ROM">rom</Input>
+      <Output class="Files" type="">pk</Output>
+    </IOStep>
+  </Steps>
+
+  <Files>
+    <Input name="pk">linear_rom.pk</Input>
+  </Files>
+
+  <DataObjects>
+    <PointSet name="placeholder"/>
+    <PointSet name="samples">
+      <Input>a, b, c, d</Input>
+      <Output>price</Output>
+    </PointSet>
+    <PointSet name="resamples">
+      <Input>a, b, c, d</Input>
+      <Output>price</Output>
+    </PointSet>
+  </DataObjects>
+
+  <Models>
+    <ExternalModel ModuleToLoad="market" name="market" subType="">
+      <variables>a, b, c, d, price</variables>
+    </ExternalModel>
+    <ROM name="rom" subType="SciKitLearn">
+      <SKLtype>linear_model|LinearRegression</SKLtype>
+      <Features>a, b, c, d</Features>
+      <Target>price</Target>
+      <fit_intercept>True</fit_intercept>
+      <normalize>True</normalize>
+    </ROM>
+  </Models>
+
+  <Samplers>
+    <MonteCarlo name="mc">
+      <samplerInit>
+        <limit>10</limit>
+        <initialSeed>42</initialSeed>
+      </samplerInit>
+      <variable name="a">
+        <distribution>small</distribution>
+      </variable>
+      <variable name="b">
+        <distribution>large</distribution>
+      </variable>
+      <variable name="c">
+        <distribution>small</distribution>
+      </variable>
+      <variable name="d">
+        <distribution>large</distribution>
+      </variable>
+    </MonteCarlo>
+  </Samplers>
+
+  <Distributions>
+    <Uniform name="small">
+      <lowerBound>0</lowerBound>
+      <upperBound>1</upperBound>
+    </Uniform>
+    <Uniform name="large">
+      <lowerBound>-10</lowerBound>
+      <upperBound>10</upperBound>
+    </Uniform>
+  </Distributions>
+
+  <OutStreams>
+    <Print name="samples">
+      <type>csv</type>
+      <source>samples</source>
+    </Print>
+    <Print name="resamples">
+      <type>csv</type>
+      <source>resamples</source>
+    </Print>
+  </OutStreams>
+
+</Simulation>

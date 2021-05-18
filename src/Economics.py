@@ -9,7 +9,8 @@ from __future__ import unicode_literals, print_function
 import sys
 from collections import defaultdict
 import numpy as np
-from ValuedParams import ValuedParam
+import ValuedParams
+from ValuedParamHandler import ValuedParamHandler
 import _utils as hutils
 framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)
@@ -169,11 +170,16 @@ class CashFlowGroup:
       @ In, refs, dict, reference entities
       @ Out, None
     """
+    # set up pointers
     for cf in list(refs.keys()):
       for try_match in self._cash_flows:
         if try_match == cf:
           try_match.set_crossrefs(refs.pop(try_match))
           break
+      else:
+        cf.set_crossrefs({})
+    # perform checks
+
 
   #######
   # API #
@@ -296,26 +302,26 @@ class CashFlow:
               Generally, CashFlows such as fixed operations and maintenance costs are per-cycle, whereas
               variable costs such as fuel and maintenance as well as sales are repeated every time step.""")
 
-    driver = ValuedParam.get_input_specs('driver')
-    driver.descr = r"""indicates the main driver for this CashFlow, such as the number of units sold
-                   or the size of the constructed unit. Corresponds to $D$ in the CashFlow equation."""
+    descr = r"""indicates the main driver for this CashFlow, such as the number of units sold
+            or the size of the constructed unit. Corresponds to $D$ in the CashFlow equation."""
+    driver = ValuedParams.factory.make_input_specs('driver', descr=descr, kind='post-dispatch')
     cf.addSub(driver)
 
-    reference_price = ValuedParam.get_input_specs('reference_price')
-    reference_price.descr = r"""indicates the cash value of the reference number of units sold.
-                            corresponds to $\alpha$ in the CashFlow equation. If \xmlNode{reference_driver}
-                            is 1, then this is the price-per-unit for the CashFlow."""
+    descr = r"""indicates the cash value of the reference number of units sold.
+            corresponds to $\alpha$ in the CashFlow equation. If \xmlNode{reference_driver}
+            is 1, then this is the price-per-unit for the CashFlow."""
+    reference_price = ValuedParams.factory.make_input_specs('reference_price', descr=descr, kind='post-dispatch')
     cf.addSub(reference_price)
 
-    reference_driver = ValuedParam.get_input_specs('reference_driver')
-    reference_driver.desecr = r"""determines the number of units sold to which the \xmlNode{reference_price}
-                              refers. Corresponds to $\prime D$ in the CashFlow equation. """
+    descr = r"""determines the number of units sold to which the \xmlNode{reference_price}
+            refers. Corresponds to $\prime D$ in the CashFlow equation. """
+    reference_driver = ValuedParams.factory.make_input_specs('reference_driver', descr=descr, kind='post-dispatch')
     cf.addSub(reference_driver)
 
-    x = ValuedParam.get_input_specs('scaling_factor_x')
-    x.descr = r"""determines the scaling factor for this CashFlow. Corresponds to $x$ in the CashFlow
-              equation. If $x$ is less than one, the per-unit price decreases as the units sold increases
-              above the \xmlNode{reference_driver}, and vice versa."""
+    descr = r"""determines the scaling factor for this CashFlow. Corresponds to $x$ in the CashFlow
+            equation. If $x$ is less than one, the per-unit price decreases as the units sold increases
+            above the \xmlNode{reference_driver}, and vice versa."""
+    x = ValuedParams.factory.make_input_specs('scaling_factor_x', descr=descr, kind='post-dispatch')
     cf.addSub(x)
 
     depreciate = InputData.parameterInputFactory('depreciate', contentType=InputTypes.IntegerType)
@@ -350,7 +356,6 @@ class CashFlow:
     # other members
     self._signals = set()     # variable values needed for this cash flow
     self._crossrefs = defaultdict(dict)
-
 
   def read_input(self, item):
     """
@@ -411,9 +416,8 @@ class CashFlow:
       @ In, value, float, value to set for ValuedParam
       @ Out, None
     """
-    vp = ValuedParam(name)
-    vp.type = 'value'
-    vp._value = value # TODO directly accessing private member!
+    vp = ValuedParamHandler(name)
+    vp.set_const_VP(value)
     setattr(self, name, vp)
 
   def _set_valued_param(self, name, spec):
@@ -423,12 +427,12 @@ class CashFlow:
       @ In, spec, InputData params, input parameters
       @ Out, None
     """
-    vp = ValuedParam(name)
+    vp = ValuedParamHandler(name)
     signal = vp.read('CashFlow \'{}\''.format(self.name), spec, None) # TODO what "mode" to use?
     self._signals.update(signal)
     self._crossrefs[name] = vp
-    # alias: redirect "capacity" variable
-    if vp.type == 'variable' and vp._sub_name == 'capacity':
+    # standard alias: redirect "capacity" variable
+    if isinstance(vp, ValuedParams.factory.returnClass('variable')) and vp._raven_var == 'capacity':
       vp = self._component.get_capacity_param()
     setattr(self, name, vp)
 
@@ -463,9 +467,13 @@ class CashFlow:
       @ In, refs, dict, cross referenced entities
       @ Out, None
     """
+    # set up pointers
     for attr, obj in refs.items():
       valued_param = self._crossrefs[attr]
       valued_param.set_object(obj)
+    # check on VP setup
+    for attr, vp in self._crossrefs.items():
+      vp.crosscheck(self._component.get_interaction())
 
   def evaluate_cost(self, activity, values_dict):
     """

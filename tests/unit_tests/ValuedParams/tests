@@ -1,0 +1,6 @@
+[Tests]
+  [./parametric]
+    type = RavenPython
+    input = 'testParametric.py'
+  [../]
+[]

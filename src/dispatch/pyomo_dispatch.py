@@ -56,7 +56,9 @@ class Pyomo(Dispatcher):
       @ In, None
       @ Out, specs, InputData, specs
     """
-    specs = InputData.parameterInputFactory('pyomo', ordered=False, baseNode=None)
+    specs = InputData.parameterInputFactory('pyomo', ordered=False, baseNode=None,
+        descr=r"""The \texttt{pyomo} dispatcher uses analytic modeling and rolling windows to
+        solve dispatch optimization with perfect information via the pyomo optimization library.""")
     specs.addSub(InputData.parameterInputFactory('rolling_window_length', contentType=InputTypes.IntegerType,
         descr=r"""Sets the length of the rolling window that the Pyomo optimization algorithm
         uses to break down histories. Longer window lengths will minimize boundary effects, such as
@@ -186,6 +188,7 @@ class Pyomo(Dispatcher):
     m.Components = components
     m.Activity = PyomoState()
     m.Activity.initialize(m.Components, m.resource_index_map, m.Times, m)
+    ## DEBUGG XXX can we pre-valuate some of the ValuedParams, like ROMs?
     # constraints and variables
     for comp in components:
       # NOTE: "fixed" components could hypothetically be treated differently

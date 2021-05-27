@@ -7,6 +7,11 @@
       output = 'Debug_Run_o/dispatch.nc'
       gold_files = 'gold/dispatch.nc'
     [../]
+    [./debug_plot]
+      type = NetCDF
+      output = 'Debug_Run_o/dispatch_id0_y10_c0.png'
+      gold_files = 'gold/dispatch_id0_y10_c0.png'
+    [../]
   [../]
 []
 

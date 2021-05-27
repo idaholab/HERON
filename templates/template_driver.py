@@ -387,7 +387,12 @@ class Template(TemplateBase):
       out = OSs.findall('Print')[0]
       out.attrib['name'] = 'debug'
       out.find('source').text = 'mc'
-      # TODO plots for dispatch, etc
+      # handle dispatch plots for debug mode
+      if case.debug['dispatch_plot']:
+        out_plot = ET.SubElement(OSs, 'Plot', attrib={'name': 'dispatchPlot', 'subType': 'HERON.DispatchPlot'})
+        out_plot_source = ET.SubElement(out_plot, 'source')
+        out_plot_source.text = 'dispatch'
+
 
   def _modify_outer_samplers(self, template, case, components):
     """
@@ -478,6 +483,16 @@ class Template(TemplateBase):
       # add debug dispatch collector and printer
       sweep.append(self._assemblerNode('Output', 'DataObjects', 'DataSet', 'dispatch'))
       sweep.append(self._assemblerNode('Output', 'Databases', 'NetCDF', 'dispatch'))
+      if case.debug['dispatch_plot']:
+        io_step = ET.SubElement(steps, 'IOStep', attrib={'name': 'debug_output'})
+        io_input = ET.SubElement(io_step, 'Input', attrib={'class': 'DataObjects', 'type': 'DataSet'})
+        io_input.text = 'dispatch'
+        io_output = ET.SubElement(io_step, 'Output', attrib={'class': 'OutStreams', 'type': 'Plot'})
+        io_output.text = 'dispatchPlot'
+        # Modify Sequence Node at this point in time
+        run_info = template.find('RunInfo')
+        sequence = run_info.findall('Sequence')[0]
+        sequence.text += ', debug_output'
 
   def _create_new_sweep_capacity(self, comp_name, var_name, capacities):
     """

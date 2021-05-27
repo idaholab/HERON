@@ -15,6 +15,7 @@
     <debug>
       <inner_samples>2</inner_samples>
       <macro_steps>2</macro_steps>
+      <dispatch_plot>True</dispatch_plot>
     </debug>
     <num_arma_samples>1</num_arma_samples>
     <time_discretization>

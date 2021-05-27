@@ -90,6 +90,10 @@ class Case(Base):
     debug.addSub(InputData.parameterInputFactory('macro_steps', contentType=InputTypes.IntegerType,
         descr=r"""sets the number of macro steps (e.g. years) the stochastic synthetic histories and dispatch
               optimization should include. \default{1}"""))
+    debug.addSub(InputData.parameterInputFactory('dispatch_plot', contentType=InputTypes.BoolType,
+        descr=r"""provides a dispatch plot after running through \xmlNode{inner_samples} and
+              \xmlNode{macro_steps} provided. To prevent plotting output during debug mode set to "False".
+              \default{True}"""))
     input_specs.addSub(debug)
 
     input_specs.addSub(InputData.parameterInputFactory('num_arma_samples', contentType=InputTypes.IntegerType,
@@ -201,6 +205,7 @@ class Case(Base):
         'enabled': False,         # whether to enable debug mode
         'inner_samples': 1,       # how many inner realizations to sample
         'macro_steps': 1,         # how many "years" for inner realizations
+        'dispatch_plot': True    # whether to output a plot in debug mode
     }
 
     self._time_discretization = None # (start, end, number) for constructing time discretization, same as argument to np.linspace

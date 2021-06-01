@@ -141,11 +141,45 @@ def test_Syngas():
   netGen=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24]
   nucCap,coalCap,FCcap,capcost,FOM,nLCOE,rLCOE,sLCOE,fixcost,varcost,NGcost,count,Demand = SCM.Syngas(netGen,Syn,10,5,5,10)
 
+def test_carbon():
+  TR = 1E299
+  Coal = {"Name":"Coal","FOM":307059,"VOM":30.92976827,"CarbonEmission":0.997903}
+  Coal30 = {"Name":"Coal30","FOM":384716.945,"VOM":36.91522463,"CarbonEmission":0.6985321}
+  Coal90 = {"Name":"Coal90","FOM":485500.941,"VOM":49.24778325,"CarbonEmission":0.0997903}
+# FC = {"Name":"Fuel Cell","FOM":683245.1647,"VOM":0.59,"CarbonEmission":0}
+  Nuclear = {"Name":"Nuclear","FOM":405690.9528,"VOM":0,"CarbonEmission":0}
+  NUCHTSE = {"Name":"NucHTSE","FOM":32711.20087,"VOM":53.47593583,"CarbonEmission":0}
+  CC221 = {"Name":"CC221","FOM":81647.00161,"VOM":24.165,"CarbonEmission":0.408233}
+  CC111 ={"Name":"CC111","FOM":108131.8966,"VOM":25.0585,"CarbonEmission":0.408233}
+  CC111_90 = {"Name":"CC111_90","FOM":207451.786,"VOM":30.774,"CarbonEmission":0.0408233}
+  IC = {"Name":"IC","FOM":180053.3027,"VOM":34.7225,"CarbonEmission":0.408233}
+  CTLM = {"Name":"CTLM","FOM":101477.6899,"VOM":36.634,"CarbonEmission":0.408233}
+  CTGE = {"Name":"CTGE","FOM":58686.54713,"VOM":39.1675,"CarbonEmission":0.408233}
+  Generation = pd.read_excel('~/Documents/SCM/unittests/SWPP_Demand_and_Genearation_2020.xls')
+  demand = Generation['Demand (MW)']
+  Solar = Generation['Net Generation (MW) from Solar']
+  Wind = Generation['Net Generation (MW) from Wind']
+  maxSolar = max(Solar)                         #Find maximum solar generation, this will be our solar capacity production factor of 1
+  maxWind = max(Wind)
+  normalizedSolar = Solar/maxSolar        #Normalize solar production between 0 and 1, with one being the index of maxSolar
+  normalizedWind = Wind/maxWind           #See normalizedSolar
+  normalizedWind = normalizedWind.to_numpy().flatten()    #Flatten for output
+  normalizedSolar = normalizedSolar.to_numpy().flatten()  #Flatten for output
+  demand = demand.to_numpy().flatten()
+  WC = 10000
+  SC = 10000
+  gen_wind, cost_wind = SCM.wind_cap(WC,normalizedWind)
+  gen_solar, cost_solar = SCM.solar_cap(SC, normalizedSolar)
+  totalGen, netGen = SCM.net_gen(demand, gen_solar, gen_wind)
+  capacities, totalCost, mincostline = SCM.run2(netGen,TR,Coal,Coal30,Coal90,Nuclear,NUCHTSE,CC221,CC111,CC111_90,IC,CTLM,CTGE)
+  
+  
 
 test_wind_cap()
 test_solar_cap()
 test_net_gen()
 test_storage()
 test_SCM()
+test_carbon()
 #test_FuelCell()
 #test_Syngas()

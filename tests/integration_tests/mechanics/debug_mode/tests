@@ -2,15 +2,19 @@
   [./DebugMode]
     type = 'HeronIntegration'
     input = heron_input.xml
-    [./dispatch]
+    [./dispatch_db]
       type = NetCDF
       output = 'Debug_Run_o/dispatch.nc'
       gold_files = 'gold/dispatch.nc'
     [../]
+    [./dispatch_csv]
+      type = UnorderedCSV
+      output = 'Debug_Run_o/dispatch_print.csv'
+      gold_files = 'gold/dispatch_print.csv'
+    [../]
     [./debug_plot]
-      type = NetCDF
-      output = 'Debug_Run_o/dispatch_id0_y10_c0.png'
-      gold_files = 'gold/dispatch_id0_y10_c0.png'
+      type = Exists
+      output = 'Debug_Run_o/dispatch_id0_y10_c0.png Debug_Run_o/dispatch_id0_y11_c0.png Debug_Run_o/dispatch_id0_y12_c0.png Debug_Run_o/dispatch_id1_y10_c0.png Debug_Run_o/dispatch_id1_y11_c0.png Debug_Run_o/dispatch_id1_y12_c0.png'
     [../]
   [../]
 []

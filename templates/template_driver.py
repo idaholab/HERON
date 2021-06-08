@@ -223,7 +223,9 @@ class Template(TemplateBase):
     run_info.find('JobName').text = case_name
     run_info.find('WorkingDir').text = case_name
     if case.debug['enabled']:
-      run_info.find('Sequence').text = 'debug'
+      seq = run_info.find('Sequence')
+      seq.text = 'debug'
+      self._updateCommaSeperatedList(seq, 'debug_output')
     elif case.get_mode() == 'sweep':
       run_info.find('Sequence').text = 'sweep'
     elif case.get_mode() == 'opt':
@@ -385,14 +387,13 @@ class Template(TemplateBase):
     if case.debug['enabled']:
       # modify normal metric output
       out = OSs.findall('Print')[0]
-      out.attrib['name'] = 'debug'
-      out.find('source').text = 'mc'
+      out.attrib['name'] = 'dispatch_print'
+      out.find('source').text = 'dispatch'
       # handle dispatch plots for debug mode
       if case.debug['dispatch_plot']:
         out_plot = ET.SubElement(OSs, 'Plot', attrib={'name': 'dispatchPlot', 'subType': 'HERON.DispatchPlot'})
         out_plot_source = ET.SubElement(out_plot, 'source')
         out_plot_source.text = 'dispatch'
-
 
   def _modify_outer_samplers(self, template, case, components):
     """
@@ -483,16 +484,14 @@ class Template(TemplateBase):
       # add debug dispatch collector and printer
       sweep.append(self._assemblerNode('Output', 'DataObjects', 'DataSet', 'dispatch'))
       sweep.append(self._assemblerNode('Output', 'Databases', 'NetCDF', 'dispatch'))
+      # add an output step to print/plot summaries
+      io_step = ET.SubElement(steps, 'IOStep', attrib={'name': 'debug_output'})
+      io_input = ET.SubElement(io_step, 'Input', attrib={'class': 'DataObjects', 'type': 'DataSet'})
+      io_input.text = 'dispatch'
+      io_step.append(self._assemblerNode('Output', 'OutStreams', 'Print', 'dispatch_print'))
       if case.debug['dispatch_plot']:
-        io_step = ET.SubElement(steps, 'IOStep', attrib={'name': 'debug_output'})
-        io_input = ET.SubElement(io_step, 'Input', attrib={'class': 'DataObjects', 'type': 'DataSet'})
-        io_input.text = 'dispatch'
         io_output = ET.SubElement(io_step, 'Output', attrib={'class': 'OutStreams', 'type': 'Plot'})
         io_output.text = 'dispatchPlot'
-        # Modify Sequence Node at this point in time
-        run_info = template.find('RunInfo')
-        sequence = run_info.findall('Sequence')[0]
-        sequence.text += ', debug_output'
 
   def _create_new_sweep_capacity(self, comp_name, var_name, capacities):
     """

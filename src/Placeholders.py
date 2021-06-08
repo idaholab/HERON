@@ -75,6 +75,9 @@ class Placeholder(Base):
         abs_interp = os.path.abspath(self._source)
         if os.path.isfile(abs_interp):
           self._target_file = abs_interp
+        else:
+          # let relative path trigger the error
+          self._target_file = rel_interp
     # check source
     if not os.path.isfile(self._target_file):
       self.raiseAnError(IOError, f'File not found for <DataGenerator><{self._type}> named "{self.name}".' +

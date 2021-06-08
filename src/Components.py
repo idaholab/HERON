@@ -5,17 +5,16 @@
   Defines the Component entity.
 """
 from __future__ import unicode_literals, print_function
-import os
 import sys
 from collections import defaultdict
 import numpy as np
 from base import Base
-import time
 import xml.etree.ElementTree as ET
 from Economics import CashFlowUser
 from ValuedParams import factory as vp_factory
 from ValuedParamHandler import ValuedParamHandler
 import _utils as hutils
+
 framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)
 from utils import InputData, xmlUtils,InputTypes
@@ -32,7 +31,6 @@ def factory(xml, method='sweep'):
   comp = Component()
   comp.read_input(xml, method)
   return comp
-
 
 class Component(Base, CashFlowUser):
   """

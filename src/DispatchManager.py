@@ -12,6 +12,7 @@ import pickle as pk
 from time import time as run_clock
 
 import numpy as np
+from typing_extensions import final
 
 # set up path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -50,7 +51,10 @@ class DispatchRunner:
     self._components = None        # HERON components list
     self._sources = None           # HERON sources (placeholders) list
     self._override_time = None     # override for micro parameter
+    self._save_dispatch = False    # if True then maintain and return full dispatch record
 
+  #####################
+  # API
   def override_time(self, new):
     """
       Sets the micro time-like parameter for dispatch optimization.
@@ -72,6 +76,8 @@ class DispatchRunner:
     self._sources = sources        # HERON sources (placeholders) list
     # derivative
     self._dispatcher = self._case.dispatcher
+    if self._case.debug['enabled']:
+      self._save_dispatch = True
 
   def extract_variables(self, raven, raven_dict):
     """
@@ -114,7 +120,7 @@ class DispatchRunner:
 
     # TODO magic keywords (e.g. verbosity, MAX_TIMES, MAX_YEARS, ONLY_DISPATCH, etc)
     # TODO other arbitrary constants, such as sampled values from Outer needed in Inner?
-    magics = ['NPP_bid_adjust', 'HTSE_built_capacity', 'IES_delta_cap'] # XXX DO NOT MERGE FIXME TODO
+    magics = ['NPP_bid_adjust', 'HTSE_built_capacity', 'IES_delta_cap'] # XXX FIXME TODO
     # XXX get "other opt vars" off the CASE itself, rather than hard coding.
     for magic in magics:
       val = getattr(raven, magic, None)
@@ -145,7 +151,11 @@ class DispatchRunner:
       if source.is_type('ARMA'):
         vars_needed = source.get_variable()
         for v in vars_needed:
-          pass_vars[v] = getattr(raven, v)
+          vals = getattr(raven, v, None)
+          # checks
+          if vals is None:
+            raise RuntimeError(f'HERON: Expected ARMA variable "{v}" was not passed to DispatchManager!')
+          pass_vars[v] = vals
     return pass_vars
 
   def run(self, raven_vars):
@@ -158,7 +168,7 @@ class DispatchRunner:
     ## TODO move as much of this as possible to "intialize" instead of "run"!
     # build meta variable
     ## this will be passed to external functions
-    print("RUNNING HERON RUN")
+    print("RUNNING HERON DISPATCH MANAGER")
     heron_meta = {}
     heron_meta['Case'] = self._case
     heron_meta['Components'] = self._components
@@ -166,16 +176,15 @@ class DispatchRunner:
     heron_meta['RAVEN_vars_full'] = raven_vars
     # build indexer for components
     ## indexer is as {component: {res: index}} where index is a standardized index for tracking activity
-    heron_meta['resource_indexer'] = dict((comp, dict((res, r) for r, res in enumerate(comp.get_resources()))) for comp in self._components)
+    heron_meta['resource_indexer'] = dict((comp, dict((res, r) for r, res in enumerate(comp.get_resources())))
+                                          for comp in self._components)
     # store meta
     meta = {'HERON': heron_meta}
-
     # do some checking a priori
     ## TODO can we do any of this at compile time instead of run time?
     ## -> probably, by investigating the ARMA file to be used
     self._check_time(raven_vars)
     self._check_signals(raven_vars)
-
     # determine analysis structure
     all_structure = self._get_structure(raven_vars)
     # just need the summary info for now
@@ -184,13 +193,12 @@ class DispatchRunner:
     if structure['clusters']:
       seg_type = 'Cluster'
       segs = structure['clusters']
-    elif structure['segments']:   # FIXME TODO
+    elif structure['segments']:
       seg_type = 'Segment'
       segs = structure['Segment']
     else:
       seg_type = 'All'
       segs = range(1)
-
     interp_years = range(*structure['interpolated'])
     project_life = hutils.get_project_lifetime(self._case, self._components) - 1 # 1 for construction year
     # if the ARMA is a single year, no problem, we replay it for each year
@@ -200,18 +208,85 @@ class DispatchRunner:
       raise IOError(f'An interpolated ARMA ROM was used, but there are less interpolated years ' +
                     f'({list(range(*structure["interpolated"]))}) ' +
                     f'than requested project years ({project_life})!')
-
-    pre_dispatch_time = run_clock()
+    # do the dispatching
     all_dispatch, metrics = self._do_dispatch(meta, all_structure, project_life, interp_years, segs, seg_type)
     return all_dispatch, metrics
 
+  def save_variables(self, raven, all_dispatch, metrics):
+    """
+      generates RAVEN-acceptable variables
+      Saves variables on "raven" object for returning
+      @ In, raven, object, RAVEN object for setting values
+      @ In, all_dispatch, dict, dispatch values
+      @ In, metrics, dict, economic metrics
+    """
+    # TODO if debug mode...
+    #   indexer = dict((comp, dict((res, r) for r, res in enumerate(comp.get_resources()))) for comp in self._components)
+    #   shape = [len(dispatch), len(next(iter(dispatch)))] # years, clusters
+    template = self.naming_template['dispatch var']
+    # initialize variables TODO if debug mode ...
+    # for comp in self._components:
+    #   for res, r in indexer[comp].items():
+    #     name = template.format(c=comp.name, r=res)
+    #     setattr(raven, name, np.zeros(shape)) # FIXME need time!
+    ##### FIXME year_data is now empty, so none of the following gets run!
+    for y, (year, year_data) in enumerate(all_dispatch.items()):
+      for c, (cluster, dispatch) in enumerate(year_data.items()):
+        dispatches = dispatch.create_raven_vars(template)
+        # set up index map, first time only
+        if y == c == 0:
+          # string names
+          year_name = self._case.get_year_name()
+          clst_name = '_ROM_Cluster'
+          time_name = self._case.get_time_name()
+          # number of entries for each dim
+          n_year = len(all_dispatch)
+          n_clst = len(year_data)
+          n_time = len(dispatch._times) # NOTE assuming same across clusters!
+          # set indices on raven
+          setattr(raven, time_name, np.asarray(dispatch._times))
+          setattr(raven, year_name, np.asarray(list(all_dispatch.keys())))
+          setattr(raven, clst_name, np.arange(n_clst))
+          if not getattr(raven, '_indexMap', None):
+            raven._indexMap = np.atleast_1d({})
+        for var_name, data in dispatches.items():
+          # if first time, initialize data structure
+          if y == c == 0:
+            shape = (n_year, n_clst, n_time)
+            setattr(raven, var_name, np.empty(shape)) # NOTE could use np.zeros, but slower?
+          getattr(raven, var_name)[y, c] = data
+          getattr(raven, '_indexMap')[0][var_name] = [year_name, clst_name, time_name]
+        #for component in self._components:
+          # TODO cheating using the numpy state
+        #  dispatch = cluster_data['dispatch']
+        #  resource_indices = cluster_data._resources[component]
+    # TODO clustering, multiyear
+    # TODO should this be a Runner method or separate?
+    # TODO if debug mode ...
+    # template = self.naming_template['dispatch var']
+    # for comp_name, data in dispatch.items():
+    #   for resource, usage in data.items():
+    #     name = template.format(comp=comp_name, res=resource)
+    #     setattr(raven, name, usage)
+    #     # TODO indexMap?
+    for metric, value in metrics.items():
+      setattr(raven, metric, np.atleast_1d(value))
+    # if component capacities weren't given by Outer, save them as part of Inner
+    for comp in self._components:
+      cap_name = self.naming_template['comp capacity'].format(comp=comp.name)
+      if cap_name not in dir(raven):
+        # TODO what value should actually be used?
+        setattr(raven, cap_name, -42)
+
+  #####################
+  # UTILITIES
   def _do_dispatch(self, meta, all_structure, project_life, interp_years, segs, seg_type):
     """
       perform dispatching
       @ In, meta, dict, dictionary of passthrough variables
       @ In, project_life, int, total analysis years (e.g. 30)
       @ In, interp_years, list, actual analysis tagged years (e.g. range(2015, 2045))
-      @ In, segs, list, segments/clusters/divisions
+      @ In, segs, list(int), segments/clusters/divisions
       @ In, seg_type, str, "segment" or "cluster" if segmented or clustered
       @ Out, dispatch_results, list(DispatchState), results of dispatch for each segment/cluster and year
     """
@@ -221,161 +296,25 @@ class DispatchRunner:
     active_index = {}
     dispatch_results = {}
     yearly_cluster_data = next(iter(all_structure['details'].values()))['clusters']
-
     for year in range(project_life):
       interp_year = interp_years[year] if len(interp_years) > 1 else (interp_years[0] + year)
-      dispatch_results[interp_year] = []
+      if self._save_dispatch:
+        dispatch_results[interp_year] = {}
       # If the ARMA is interpolated, we need to track which year we're in.
       # Otherwise, use just the nominal first year.
       active_index['year'] = year if len(range(*structure['interpolated'])) > 1 else 0 # FIXME MacroID not year
-
       for s, seg in enumerate(segs):
-        active_index['division'] = seg
-        meta['HERON']['active_index'] = active_index
-        # truncate signals to appropriate Year, Cluster
-        ## -> chop up raven_vars for sources to corresponding segment/cluster, year, and time
-        meta['HERON']['RAVEN_vars'] = self._slice_signals(all_structure, meta['HERON'])
+        multiplicity = self._update_meta_for_segment(meta, seg, interp_year, yearly_cluster_data,
+                                                     interp_years, active_index, all_structure)
+        # perform dispatch
         dispatch = self._dispatcher.dispatch(self._case, self._components, self._sources, meta)
-        # get cluster info from the first source -> assumes all clustering is aligned!
-        # -> find the info for this cluster -> FIXME this should be restructured so searching isn't necessary!
-        if interp_year in yearly_cluster_data:
-          clusters_info = yearly_cluster_data[interp_year]
-        else:
-          clusters_info = yearly_cluster_data[interp_years[0]]
-
-        for cl_info in clusters_info:
-          if cl_info['id'] == seg:
-            break
-        else:
-          raise RuntimeError
-        # how many clusters does this one represent?
-        multiplicity = len(cl_info['represents'])
+        if self._save_dispatch:
+          dispatch_results[interp_year][seg] = dispatch
         # build evaluation cash flows
-        # LOCAL component cashflows are SPECIFIC TO A DIVISION
-        _, local_comps = self._build_econ_objects(self._case, self._components, project_life)
-        meta['HERON']['active_index'] = {'year': year if len(interp_years) > 1 else 0, 'division': seg,}
-        meta['HERON']['RAVEN_vars'] = self._slice_signals(all_structure, meta['HERON'])
-        pivot_var = meta['HERON']['Case'].get_time_name()
-        times = meta['HERON']['RAVEN_vars'][pivot_var]
-        specific_meta = dict(meta) # TODO more deepcopy needed?
-        resource_indexer = meta['HERON']['resource_indexer']
-        for comp in self._components:
-          # get corresponding current and final CashFlow.Component
-          cf_comp = local_comps[comp.name]
-          final_comp = final_components[comp.name]
-          # sanity check
-          if comp.name != cf_comp.name: raise RuntimeError
-          specific_meta['HERON']['component'] = comp
-          specific_meta['HERON']['all_activity'] = dispatch
-          specific_activity = {}
-          final_cashflows = final_comp.getCashflows()
-          for f, heron_cf in enumerate(comp.get_cashflows()):
-            # get the corresponding CashFlow.CashFlow
-            cf_cf = cf_comp.getCashflows()[f]
-            final_cf = final_cashflows[f]
-            # sanity continued
-            if not (cf_cf.name == final_cf.name == heron_cf.name):
-                raise RuntimeError
-
-            ## FIXME time then cashflow, or cashflow then time?
-            ## "activity" is the same for every cashflow at a point in
-            ## time, but many cashflows only need to be evaluated once
-            ## and we can vectorize ...
-
-            ## FIXME maybe "if activity is None" approach, so it gets
-            ## filled on the first cashflow when looping through time.
-
-            ## TODO we assume Capex and Recurring Year do not depend
-            ## on the Activity
-
-            if cf_cf.type == 'Capex':
-              # Capex cfs should only be constructed in the first  of the project life
-              # FIXME is this doing capex once per segment, or once per life?
-              if year == 0 and s == 0:
-                params = heron_cf.calculate_params(specific_meta) # a, D, Dp, x, cost
-                cf_params = {'name': cf_cf.name,
-                             'mult_target': heron_cf._mult_target,
-                             'depreciate': heron_cf._depreciate,
-                             'alpha': params['alpha'],
-                             'driver': params['driver'],
-                             'reference': params['ref_driver'],
-                             'X': params['scaling'],}
-                cf_cf.setParams(cf_params)
-
-                ## Because alpha, driver, etc are only set once for capex cash flows,
-                ## we can just hot swap this cashflow into the final_comp, I think ...
-
-                ## I believe we can do this because Capex are division-independent?
-                ## Can we just do it once instead of once per division?
-
-                final_comp._cashFlows[f] = cf_cf
-                # depreciators
-                # FIXME do we need to know alpha, drivers first??
-                if heron_cf._depreciate and cf_cf.getAmortization() is None:
-                  cf_cf.setAmortization('MACRS', heron_cf._depreciate)
-                  deprs = cf_comp._createDepreciation(cf_cf)
-                  final_comp._cashFlows.extend(deprs)
-            elif cf_cf.type == 'Recurring':
-              # yearly recurring only need setting up once per year
-              if heron_cf.get_period() == 'year':
-                if s == 0:
-                  params = heron_cf.calculate_params(specific_meta) # a, D, Dp, x, cost
-                  contrib = params['cost']
-                  final_cf._yearlyCashflow[year + 1] += contrib
-              # hourly recurring need iteration over time
-              elif heron_cf.get_period() == 'hour':
-                for t, time in enumerate(times):
-                  # fill in the specific activity for this time stamp
-                  for resource, r in resource_indexer[comp].items():
-                    specific_activity[resource] = dispatch.get_activity(comp, resource, time)
-                  specific_meta['HERON']['time_index'] = t
-                  specific_meta['HERON']['time_value'] = time
-                  # TODO does the rest need to be available?
-                  specific_meta['HERON']['activity'] = specific_activity
-                  # contribute to cashflow (using sum as discrete integral)
-                  # NOTE that intrayear depreciation is NOT being considered here
-                  params = heron_cf.calculate_params(specific_meta) # a, D, Dp, x, cost
-                  contrib = params['cost'] * multiplicity
-                  final_cf._yearlyCashflow[year+1] += contrib
-              else:
-                raise NotImplementedError(
-                    f'Unrecognized Recurring period for "{comp.name}" cashflow "{heron_cf.name}": {heron_cf.get_period()}'
-                )
-            else:
-                raise NotImplementedError(
-                    f'Unrecognized CashFlow type for "{comp.name}" cashflow "{heron_cf.name}": {cf_cf.type}'
-                )
-            # end CashFlow type if
-          # end CashFlow per Component loop
-        # end Component loop
-      # end Division/segment/cluster loop
-    # end Year loop
-
-    # CashFlow, take it away.
-    print('****************************************')
-    print('* Starting final cashflow calculations *')
-    print('****************************************')
-    raven_vars = meta['HERON']['RAVEN_vars_full']
-    # DEBUGG
-    print('DEBUGG CASHFLOWS')
-    for comp_name, comp in final_components.items():
-      print(f' ... comp {comp_name} ...')
-      for cf in comp.getCashflows():
-        print(f' ... ... cf {cf.name} ...')
-        print(f' ... ... ... D', cf._driver)
-        print(f' ... ... ... a', cf._alpha)
-        print(f' ... ... ... Dp', cf._reference)
-        print(f' ... ... ... x', cf._scale)
-        if hasattr(cf, '_yearlyCashflow'):
-          print(f' ... ... ... hourly', cf._yearlyCashflow)
-
-    cf_metrics = CashFlow_run(final_settings, list(final_components.values()), raven_vars)
-
-    print('****************************************')
-    print('DEBUGG final cashflow metrics:')
-    for k, v in cf_metrics.items():
-      print('  ', k, v)
-    print('****************************************')
+        self._segment_cashflow(meta, s, seg, year, dispatch, multiplicity,
+                               project_life, interp_years, all_structure, final_components)
+    # TEAL, take it away.
+    cf_metrics = self._final_cashflow(meta, final_components, final_settings)
     return dispatch_results, cf_metrics
 
   def _build_econ_objects(self, heron_case, heron_components, project_life):
@@ -436,62 +375,180 @@ class DispatchRunner:
       cf_comp.addCashflows(cf_cfs)
     return global_settings, cf_components
 
-  def save_variables(self, raven, dispatch, metrics):
+  def _update_meta_for_segment(self, meta, seg, interp_year, yearly_cluster_data,
+                               interp_years, active_index, all_structure) -> int:
     """
-      generates RAVEN-acceptable variables
-      Saves variables on "raven" object for returning
-      @ In, raven, object, RAVEN object for setting values
-      @ In, dispatch, DispatchState, dispatch values (FIXME currently unused)
-      @ In, metrics, dict, economic metrics
+      Updates the "meta" auxiliary information variable to use info specific to the segment
+      @ In, meta, dict, auxiliary information
+      @ In, seg, int, id for current segment (or cluster)
+      @ In, interp_year, int, identifier for active year
+      @ In, yearly_cluster_data, TODO
+      @ In, interp_years, TODO
+      @ In, active_index, dict, active indices (including year, segment)
+      @ In, all_structure, dict, structure of ARMA sample/realization
+      @ Out, multiplicity, int, number of segments represented by this segment within the year
     """
-    # indexer = dict((comp, dict((res, r) for r, res in enumerate(comp.get_resources()))) for comp in self._components)
-    # shape = [len(dispatch), len(next(iter(dispatch)))] # years, clusters
-    template = self.naming_template['dispatch var']
-    # initialize variables
-    # for comp in self._components:
-    #   for res, r in indexer[comp].items():
-    #     name = template.format(c=comp.name, r=res)
-    #     setattr(raven, name, np.zeros(shape)) # FIXME need time!
-    ##### FIXME year_data is now empty, so none of the following gets run!
-    for y, (year, year_data) in enumerate(dispatch.items()):
-      for c, cluster_data in enumerate(year_data):
-        dispatches = cluster_data['dispatch'].create_raven_vars(template)
-        # set up index map, first time only
-        if y == c == 0:
-          # TODO custom names?
-          raven.ClusterTime = np.asarray(cluster_data['dispatch']._times) # TODO assuming same across clusters!
+    # get cluster info from the first source -> assumes all clustering is aligned!
+    # -> find the info for this cluster -> FIXME this should be restructured so searching isn't necessary!
+    if interp_year in yearly_cluster_data:
+      clusters_info = yearly_cluster_data[interp_year]
+    else:
+      clusters_info = yearly_cluster_data[interp_years[0]]
+    for cl_info in clusters_info:
+      if cl_info['id'] == seg:
+        break
+    else:
+      raise RuntimeError
+    # how many clusters does this one represent?
+    multiplicity = len(cl_info['represents'])
 
-          raven._ROM_Cluster = np.arange(len(year_data))
-          raven.Years = np.asarray(dispatch.keys())
-          if not getattr(raven, '_indexMap', None):
-            raven._indexMap = np.atleast_1d({})
-        for var_name, data in dispatches.items():
-          # if first time, initialize data structure
-          if y == c == 0:
-            shape = (len(dispatch), len(year_data), len(data))
-            setattr(raven, var_name, np.empty(shape)) # FIXME could use np.zeros, but slower?
-          getattr(raven, var_name)[y, c] = data
-          getattr(raven, '_indexMap')[0][var_name] = [self._case.get_year_name(), '_ROM_Cluster', 'ClusterTime']
-        #for component in self._components:
-          # TODO cheating using the numpy state
-        #  dispatch = cluster_data['dispatch']
-        #  resource_indices = cluster_data._resources[component]
-    # TODO clustering, multiyear
-    # TODO should this be a Runner method or separate?
-    # template = self.naming_template['dispatch var']
-    # for comp_name, data in dispatch.items():
-    #   for resource, usage in data.items():
-    #     name = template.format(comp=comp_name, res=resource)
-    #     setattr(raven, name, usage)
-    #     # TODO indexMap?
-    for metric, value in metrics.items():
-      setattr(raven, metric, np.atleast_1d(value))
-    # if component capacities weren't given by Outer, save them as part of Inner
+    # update meta for the current segment
+    active_index['division'] = seg
+    meta['HERON']['active_index'] = active_index
+    # truncate signals to appropriate Year, Cluster
+    ## -> chop up raven_vars for sources to corresponding segment/cluster, year, and time
+    meta['HERON']['RAVEN_vars'] = self._slice_signals(all_structure, meta['HERON'])
+    return multiplicity
+
+  def _segment_cashflow(self, meta, s, seg, year, dispatch, multiplicity,
+                        project_life, interp_years, all_structure, final_components) -> None:
+    """
+      Update TEAL CashFlow objects with new dispatch information for a segment
+      @ In, TODO
+      @ Out, None
+    """
+    # LOCAL component cashflows are SPECIFIC TO A DIVISION
+    _, local_comps = self._build_econ_objects(self._case, self._components, project_life)
+    meta['HERON']['active_index'] = {'year': year if len(interp_years) > 1 else 0, 'division': seg,}
+    meta['HERON']['RAVEN_vars'] = self._slice_signals(all_structure, meta['HERON'])
+    pivot_var = meta['HERON']['Case'].get_time_name()
+    times = meta['HERON']['RAVEN_vars'][pivot_var]
+    specific_meta = dict(meta) # TODO more deepcopy needed?
+    resource_indexer = meta['HERON']['resource_indexer']
     for comp in self._components:
-      cap_name = self.naming_template['comp capacity'].format(comp=comp.name)
-      if cap_name not in dir(raven):
-        # TODO what value should actually be used?
-        setattr(raven, cap_name, -42)
+      # get corresponding current and final CashFlow.Component
+      cf_comp = local_comps[comp.name]
+      final_comp = final_components[comp.name]
+      # sanity check
+      if comp.name != cf_comp.name: raise RuntimeError
+      specific_meta['HERON']['component'] = comp
+      specific_meta['HERON']['all_activity'] = dispatch
+      specific_activity = {}
+      final_cashflows = final_comp.getCashflows()
+      for f, heron_cf in enumerate(comp.get_cashflows()):
+        # get the corresponding CashFlow.CashFlow
+        cf_cf = cf_comp.getCashflows()[f]
+        final_cf = final_cashflows[f]
+        # sanity continued
+        if not (cf_cf.name == final_cf.name == heron_cf.name):
+            raise RuntimeError
+
+        ## FIXME time then cashflow, or cashflow then time?
+        ## "activity" is the same for every cashflow at a point in
+        ## time, but many cashflows only need to be evaluated once
+        ## and we can vectorize ...
+
+        ## FIXME maybe "if activity is None" approach, so it gets
+        ## filled on the first cashflow when looping through time.
+
+        ## TODO we assume Capex and Recurring Year do not depend
+        ## on the Activity
+
+        if cf_cf.type == 'Capex':
+          # Capex cfs should only be constructed in the first  of the project life
+          # FIXME is this doing capex once per segment, or once per life?
+          if year == 0 and s == 0:
+            params = heron_cf.calculate_params(specific_meta) # a, D, Dp, x, cost
+            cf_params = {'name': cf_cf.name,
+                          'mult_target': heron_cf._mult_target,
+                          'depreciate': heron_cf._depreciate,
+                          'alpha': params['alpha'],
+                          'driver': params['driver'],
+                          'reference': params['ref_driver'],
+                          'X': params['scaling'],}
+            cf_cf.setParams(cf_params)
+
+            ## Because alpha, driver, etc are only set once for capex cash flows,
+            ## we can just hot swap this cashflow into the final_comp, I think ...
+
+            ## I believe we can do this because Capex are division-independent?
+            ## Can we just do it once instead of once per division?
+
+            final_comp._cashFlows[f] = cf_cf
+            # depreciators
+            # FIXME do we need to know alpha, drivers first??
+            if heron_cf._depreciate and cf_cf.getAmortization() is None:
+              cf_cf.setAmortization('MACRS', heron_cf._depreciate)
+              deprs = cf_comp._createDepreciation(cf_cf)
+              final_comp._cashFlows.extend(deprs)
+        elif cf_cf.type == 'Recurring':
+          # yearly recurring only need setting up once per year
+          if heron_cf.get_period() == 'year':
+            if s == 0:
+              params = heron_cf.calculate_params(specific_meta) # a, D, Dp, x, cost
+              contrib = params['cost']
+              final_cf._yearlyCashflow[year + 1] += contrib
+          # hourly recurring need iteration over time
+          elif heron_cf.get_period() == 'hour':
+            for t, time in enumerate(times):
+              # fill in the specific activity for this time stamp
+              for resource, r in resource_indexer[comp].items():
+                specific_activity[resource] = dispatch.get_activity(comp, resource, time)
+              specific_meta['HERON']['time_index'] = t
+              specific_meta['HERON']['time_value'] = time
+              # TODO does the rest need to be available?
+              specific_meta['HERON']['activity'] = specific_activity
+              # contribute to cashflow (using sum as discrete integral)
+              # NOTE that intrayear depreciation is NOT being considered here
+              params = heron_cf.calculate_params(specific_meta) # a, D, Dp, x, cost
+              contrib = params['cost'] * multiplicity
+              final_cf._yearlyCashflow[year+1] += contrib
+          else:
+            raise NotImplementedError(
+                f'Unrecognized Recurring period for "{comp.name}" cashflow "{heron_cf.name}": {heron_cf.get_period()}'
+            )
+        else:
+            raise NotImplementedError(
+                f'Unrecognized CashFlow type for "{comp.name}" cashflow "{heron_cf.name}": {cf_cf.type}'
+            )
+        # end CashFlow type if
+      # end CashFlow per Component loop
+    # end Component loop
+
+  def _final_cashflow(self, meta, final_components, final_settings) -> dict:
+    """
+      Perform final cashflow calculations using TEAL.
+      @ In, meta, dict, auxiliary information
+      @ In, final_components, list, completed TEAL component objects
+      @ In, final_settings, TEAL.Settings, completed TEAL settings object
+      @ Out, cf_metrics, dict, values for calculated metrics
+    """
+    print('****************************************')
+    print('* Starting final cashflow calculations *')
+    print('****************************************')
+    raven_vars = meta['HERON']['RAVEN_vars_full']
+    # DEBUGG
+    print('DEBUGG CASHFLOWS')
+    for comp_name, comp in final_components.items():
+      print(f' ... comp {comp_name} ...')
+      for cf in comp.getCashflows():
+        print(f' ... ... cf {cf.name} ...')
+        print(f' ... ... ... D', cf._driver)
+        print(f' ... ... ... a', cf._alpha)
+        print(f' ... ... ... Dp', cf._reference)
+        print(f' ... ... ... x', cf._scale)
+        if hasattr(cf, '_yearlyCashflow'):
+          print(f' ... ... ... hourly', cf._yearlyCashflow)
+    # END DEBUGG
+    cf_metrics = CashFlow_run(final_settings, list(final_components.values()), raven_vars)
+    # DEBUGG
+    print('****************************************')
+    print('DEBUGG final cashflow metrics:')
+    for k, v in cf_metrics.items():
+      print('  ', k, v)
+    print('****************************************')
+    # END DEBUGG
+    return cf_metrics
 
   def _get_structure(self, raven_vars):
     """
@@ -662,7 +719,5 @@ def run(raven, raven_dict):
     runner.override_time(override_time) # TODO setter
   dispatch, metrics = runner.run(raven_vars)
   runner.save_variables(raven, dispatch, metrics)
-  # TODO these are extraneous, remove from template!
-  raven.time_delta = 0
 
 

@@ -15,7 +15,6 @@ import numpy as np
 import dill as pk
 
 # load utils
-## don't pop from path so we can use it later
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 import _utils as hutils
 sys.path.pop()
@@ -57,7 +56,8 @@ class Template(TemplateBase):
                                    'ARMA sampler'   : '{rom}_sampler',
                                    'lib file'       : 'heron.lib', # TODO use case name?
                                    'cashfname'      : '_{component}{cashname}',
-                                   're_cash'        : '_rec_{period}_{driverType}{driverName}'
+                                   're_cash'        : '_rec_{period}_{driverType}{driverName}',
+                                   'cluster_index'  : '_ROM_Cluster',
                                   })
 
   # template nodes
@@ -175,6 +175,7 @@ class Template(TemplateBase):
   # UTILS    #
   ############
   ##### OUTER #####
+  # Right now we modify outer by RAVEN structure, rather than HERON features
   def _modify_outer(self, template, case, components, sources):
     """
       Defines modifications to the outer.xml RAVEN input file.
@@ -184,53 +185,31 @@ class Template(TemplateBase):
       @ In, sources, list, list of HERON Placeholder instances for this run
       @ Out, template, xml.etree.ElementTree.Element, modified template
     """
-    self._modify_outer_mode(template, case)
+    self._modify_outer_mode(template, case, components, sources)
     self._modify_outer_runinfo(template, case)
-    self._modify_outer_vargroups(template, case, components)
+    self._modify_outer_vargroups(template, case, components, sources)
+    self._modify_outer_databases(template, case)
+    self._modify_outer_dataobjects(template, case, components)
     self._modify_outer_files(template, sources)
-    self._modify_outer_models(template, components)
+    self._modify_outer_models(template, case, components)
+    self._modify_outer_outstreams(template, case, components, sources)
     self._modify_outer_samplers(template, case, components)
-    # TODO copy needed model/ARMA/etc files to Outer Working Dir so they're known
-    # TODO including the heron library file
+    self._modify_outer_steps(template, case, components, sources)
     return template
 
-  def _modify_outer_mode(self, template, case):
+  def _modify_outer_mode(self, template, case, components, sources):
     """
-      Defines modifications throughout outer.xml RAVEN input file due to "sweep" or "opt" mode.
+      Defines major (entity-level) modifications to outer.xml RAVEN input file due to case mode
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
       @ In, case, HERON Case, defining Case instance
+      @ In, components, list, list of HERON Component instances for this run
+      @ In, sources, list, list of HERON Placeholder instances for this run
       @ Out, None
     """
-    if case._mode == 'opt':
-      # RunInfo
-      template.find('RunInfo').find('Sequence').text = 'optimize'
-      # Steps
-      sweep = template.find('Steps').findall('MultiRun')[0]
-      template.find('Steps').remove(sweep)
-      # DataObjects
-      grid = template.find('DataObjects').findall('PointSet')[0]
-      template.find('DataObjects').remove(grid)
-      # Samplers
-      template.remove(template.find('Samplers'))
-      # OutStreams
-      sweep = template.find('OutStreams').findall('Print')[0]
-      template.find('OutStreams').remove(sweep)
-    else: # mode is 'sweep'
-      # RunInfo
-      template.find('RunInfo').find('Sequence').text = 'sweep'
-      # Steps
-      opt = template.find('Steps').findall('MultiRun')[1]
-      template.find('Steps').remove(opt)
-      # DataObjects
-      opt_eval = template.find('DataObjects').findall('PointSet')[1]
-      opt_soln = template.find('DataObjects').findall('PointSet')[2]
-      template.find('DataObjects').remove(opt_eval)
-      template.find('DataObjects').remove(opt_soln)
-      # Optimizers
+    if case.get_mode() == 'sweep' or case.debug['enabled']:
       template.remove(template.find('Optimizers'))
-      # OutStreams
-      opt_soln = template.find('OutStreams').findall('Print')[1]
-      template.find('OutStreams').remove(opt_soln)
+    elif case._mode == 'opt':
+      template.remove(template.find('Samplers'))
 
   def _modify_outer_runinfo(self, template, case):
     """
@@ -243,25 +222,95 @@ class Template(TemplateBase):
     case_name = self.namingTemplates['jobname'].format(case=case.name, io='o')
     run_info.find('JobName').text = case_name
     run_info.find('WorkingDir').text = case_name
+    if case.debug['enabled']:
+      seq = run_info.find('Sequence')
+      seq.text = 'debug'
+      self._updateCommaSeperatedList(seq, 'debug_output')
+    elif case.get_mode() == 'sweep':
+      run_info.find('Sequence').text = 'sweep'
+    elif case.get_mode() == 'opt':
+      run_info.find('Sequence').text = 'optimize'
 
-  def _modify_outer_vargroups(self, template, case, components):
+  def _modify_outer_vargroups(self, template, case, components, sources):
     """
       Defines modifications to the VariableGroups of outer.xml RAVEN input file.
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
       @ In, components, list, list of HERON Component instances for this run
+      @ In, sources, list, list of HERON Placeholder instances for this run
       @ Out, None
     """
     var_groups = template.find('VariableGroups')
     # capacities
     caps = var_groups[0]
     caps.text = ', '.join(f'{x.name}_capacity' for x in components if (x.get_capacity(None, raw=True).type not in ['Function', 'ARMA']))
+    # labels group
     if case.get_labels():
       case_labels = ET.SubElement(var_groups, 'Group', attrib={'name': 'GRO_case_labels'})
       case_labels.text = ', '.join([f'{key}_label' for key in case.get_labels().keys()])
-      for node in template.find('DataObjects'):
+    if case.debug['enabled']:
+      # expected dispatch, ARMA outputs
+      # -> dispatch results
+      group = var_groups.find(".//Group[@name='GRO_outer_debug_dispatch']")
+      for component in components:
+        name = component.name
+        interaction = component.get_interaction()
+        for resource in interaction.get_resources():
+          var_name = self.namingTemplates['dispatch'].format(component=name, resource=resource)
+          self._updateCommaSeperatedList(group, var_name)
+      # -> synthetic histories?
+      group = var_groups.find(".//Group[@name='GRO_outer_debug_synthetics']")
+      for source in sources:
+        if source.is_type('ARMA'):
+          synths = source.get_variable()
+          for synth in synths:
+            if not group.text or synth not in group.text.split(','):
+              self._updateCommaSeperatedList(group, synth)
+
+  def _modify_outer_databases(self, template, case):
+    """
+      Defines modifications to the VariableGroups of outer.xml RAVEN input file.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, components, list, list of HERON Component instances for this run
+      @ Out, None
+    """
+    if case.debug['enabled']:
+      DBs = xmlUtils.newNode('Databases')
+      template.append(DBs)
+      attrs = {'name': 'dispatch', 'readMode': 'overwrite', 'directory': ''}
+      db = xmlUtils.newNode('NetCDF', attrib=attrs)
+      db.append(xmlUtils.newNode('variables', text='GRO_outer_debug_dispath,GRO_outer_debug_synthetics'))
+      DBs.append(db)
+
+  def _modify_outer_dataobjects(self, template, case, components):
+    """
+      Defines modifications to the VariableGroups of outer.xml RAVEN input file.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, components, list, list of HERON Component instances for this run
+      @ Out, None
+    """
+    DOs = template.find('DataObjects')
+    # labels pass to inner
+    if case.get_labels():
+      for node in DOs:
         if node.get('name') == 'grid':
           input_node = node.find('Input')
           input_node.text += ', GRO_case_labels'
+    # remove opt components if not used
+    if case.get_mode() == 'sweep' or case.debug['enabled']:
+      self._remove_by_name(DOs, ['opt_eval', 'opt_soln'])
+    elif case.get_mode() == 'opt':
+      self._remove_by_name(DOs, ['grid'])
+    # debug mode
+    if case.debug['enabled']:
+      # add debug dispatch output dataset
+      debug_gro = ['GRO_outer_debug_dispatch', 'GRO_outer_debug_synthetics']
+      deps = {self.__case.get_time_name(): debug_gro,
+              self.namingTemplates['cluster_index']: debug_gro,
+              self.__case.get_year_name(): debug_gro}
+      self._create_dataobject(DOs, 'DataSet', 'dispatch',
+                              inputs=['scaling'],
+                              outputs=debug_gro,
+                              depends=deps)
 
   def _modify_outer_files(self, template, sources):
     """
@@ -286,10 +335,11 @@ class Template(TemplateBase):
         inp = self._assemblerNode('Input', 'Files', '', 'transfers')
         step.insert(0, inp)
 
-  def _modify_outer_models(self, template, components):
+  def _modify_outer_models(self, template, case, components):
     """
       Defines modifications to the Models of outer.xml RAVEN input file.
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
       @ In, components, list, list of HERON Component instances for this run
       @ Out, None
     """
@@ -307,6 +357,10 @@ class Template(TemplateBase):
       attribs = {'variable':'{}_capacity'.format(name), 'type':'input'}
       new = xmlUtils.newNode('alias', text=text.format(name), attrib=attribs)
       raven.append(new)
+    # if debug, grab the dispatch output instead of the summary
+    if case.debug['enabled']:
+      raven.find('outputDatabase').text = 'disp_full'
+
 
     # label aliases placed inside models
     text = 'Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:{}_label'
@@ -314,6 +368,32 @@ class Template(TemplateBase):
       attribs = {'variable': '{}_label'.format(var), 'type':'input'}
       new = xmlUtils.newNode('alias', text=text.format(var), attrib=attribs)
       raven.append(new)
+
+  def _modify_outer_outstreams(self, template, case, components, sources):
+    """
+      Defines modifications to the OutStreams of outer.xml RAVEN input file.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, components, list, list of HERON Component instances for this run
+      @ In, sources, list, list of HERON Placeholder instances for this run
+      @ Out, None
+    """
+    OSs = template.find('OutStreams')
+    # remove opt if not used
+    if case.get_mode() == 'sweep' or case.debug['enabled']:
+      self._remove_by_name(OSs, ['opt_soln'])
+    elif case.get_mode() == 'opt':
+      self._remove_by_name(OSs, ['sweep'])
+    # debug mode
+    if case.debug['enabled']:
+      # modify normal metric output
+      out = OSs.findall('Print')[0]
+      out.attrib['name'] = 'dispatch_print'
+      out.find('source').text = 'dispatch'
+      # handle dispatch plots for debug mode
+      if case.debug['dispatch_plot']:
+        out_plot = ET.SubElement(OSs, 'Plot', attrib={'name': 'dispatchPlot', 'subType': 'HERON.DispatchPlot'})
+        out_plot_source = ET.SubElement(out_plot, 'source')
+        out_plot_source.text = 'dispatch'
 
   def _modify_outer_samplers(self, template, case, components):
     """
@@ -328,20 +408,27 @@ class Template(TemplateBase):
       samps_node = template.find('Samplers').find('Grid')
     else:
       samps_node = template.find('Optimizers').find('GradientDescent')
+    if case.debug['enabled']:
+      samps_node.tag = 'MonteCarlo'
+      samps_node.attrib['name'] = 'mc'
+      init = xmlUtils.newNode('samplerInit')
+      init.append(xmlUtils.newNode('limit', text=1))
+      samps_node.append(init)
     # number of denoisings
     ## assumption: first node is the denoises node
-    samps_node.find('constant').text = str(case._num_samples)
+    samps_node.find('constant').text = str(case.get_num_samples())
     # add sweep variables to input
 
     ## TODO: Refactor this portion with the below portion to handle
     ## all general cases instead of only two.
     for key, value in case.get_labels().items():
-        var_name = self.namingTemplates['variable'].format(unit=key, feature='label')
-        samps_node.append(xmlUtils.newNode('constant', text=value, attrib={'name': var_name}))
+      var_name = self.namingTemplates['variable'].format(unit=key, feature='label')
+      samps_node.append(xmlUtils.newNode('constant', text=value, attrib={'name': var_name}))
 
     for component in components:
       interaction = component.get_interaction()
       # NOTE this algorithm does not check for everthing to be swept! Future work could expand it.
+      # This is approached by the labels feature above
       ## Currently checked: Component.Interaction.Capacity
       ## --> this really needs to be made generic for all kinds of valued params!
       name = component.name
@@ -366,6 +453,45 @@ class Template(TemplateBase):
       else:
         # this capacity will be evaluated by ARMA/Function, and doesn't need to be added here.
         pass
+
+  def _modify_outer_steps(self, template, case, components, sources):
+    """
+      Defines modifications to the Steps of outer.xml RAVEN input file.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, components, list, list of HERON Component instances for this run
+      @ In, sources, list, list of HERON Placeholder instances for this run
+      @ Out, None
+    """
+    steps = template.find('Steps')
+    # clear out optimization if not used
+    if case.get_mode() == 'sweep' or case.debug['enabled']:
+      self._remove_by_name(steps, ['optimize'])
+    elif case.get_mode() == 'opt':
+      self._remove_by_name(steps, ['sweep'])
+    if case.debug['enabled']:
+      # repurpose the sweep multirun
+      sweep = steps.findall('MultiRun')[0]
+      sweep.attrib['name'] = 'debug'
+      sweep.find('Sampler').attrib['type'] = 'MonteCarlo'
+      sweep.find('Sampler').text = 'mc'
+      # remove the BasicStats collector and printer
+      to_remove = []
+      for output in sweep.findall('Output'):
+        if output.text in ['grid', 'sweep']:
+          to_remove.append(output)
+      for node in to_remove:
+        sweep.remove(node)
+      # add debug dispatch collector and printer
+      sweep.append(self._assemblerNode('Output', 'DataObjects', 'DataSet', 'dispatch'))
+      sweep.append(self._assemblerNode('Output', 'Databases', 'NetCDF', 'dispatch'))
+      # add an output step to print/plot summaries
+      io_step = ET.SubElement(steps, 'IOStep', attrib={'name': 'debug_output'})
+      io_input = ET.SubElement(io_step, 'Input', attrib={'class': 'DataObjects', 'type': 'DataSet'})
+      io_input.text = 'dispatch'
+      io_step.append(self._assemblerNode('Output', 'OutStreams', 'Print', 'dispatch_print'))
+      if case.debug['dispatch_plot']:
+        io_output = ET.SubElement(io_step, 'Output', attrib={'class': 'OutStreams', 'type': 'Plot'})
+        io_output.text = 'dispatchPlot'
 
   def _create_new_sweep_capacity(self, comp_name, var_name, capacities):
     """
@@ -403,7 +529,10 @@ class Template(TemplateBase):
     opt.append(xmlUtils.newNode('initial', text=initial))
     return dist, grid, opt
 
+
+
   ##### INNER #####
+  # Right now we modify inner by HERON features, rather than RAVEN structure
   def _modify_inner(self, template, case, components, sources):
     """
       Defines modifications to the inner.xml RAVEN input file.
@@ -424,6 +553,8 @@ class Template(TemplateBase):
     self._modify_inner_components(template, case, components)
     self._modify_inner_caselabels(template, case)
     self._modify_inner_time_vars(template, case)
+    if case.debug['enabled']:
+      self._modify_inner_debug(template, case, components)
     # TODO modify based on resources ... should only need if units produce multiple things, right?
     # TODO modify CashFlow input ... this will be a big undertaking with changes to the inner.
     ## Maybe let the user change them? but then we don't control the variable names. We probably have to do it.
@@ -460,9 +591,11 @@ class Template(TemplateBase):
       @ In, case, HERON Case, defining Case instance
       @ Out, None
     """
-    # Modify GRO_dispatch to contain correct 'Time' and 'Year' variable.
-    var_group = template.find("VariableGroups/Group")
-    var_group.text += f", {case.get_time_name()}, {case.get_year_name()}"
+    # Modify dispatch groups to contain correct 'Time' and 'Year' variable.
+    for group in template.find('VariableGroups').findall('Group'):
+      if group.attrib['name'] in ['GRO_dispatch', 'GRO_full_dispatch_indices']:
+        self._updateCommaSeperatedList(group, case.get_time_name())
+        self._updateCommaSeperatedList(group, case.get_year_name())
     # Modify Data Objects to contain correct index var.
     data_objs = template.find('DataObjects')
     for index in data_objs.findall("DataSet/Index"):
@@ -482,6 +615,9 @@ class Template(TemplateBase):
     run_info = template.find('RunInfo')
     run_info.find('JobName').text = case_name
     run_info.find('WorkingDir').text = case_name
+    if case.debug['enabled']:
+      # need to "write full" as part of sequence, after arma sampling
+      self._updateCommaSeperatedList(run_info.find('Sequence'), 'write_full', after='arma_sampling')
 
   def _modify_inner_sources(self, template, case, components, sources):
     """
@@ -507,17 +643,17 @@ class Template(TemplateBase):
         self._add_arma_to_ensemble(template, source)
         # NOTE assuming input to all ARMAs is "scaling" constant = 1.0, already in MC sampler
         if source.eval_mode == 'clustered':
-          # add _ROM_cluster to the variable group if it isn't there already
+          # add _ROM_Cluster to the variable group if it isn't there already
           var_group = template.find("VariableGroups/Group")
-          if '_ROM_Cluster' not in var_group.text:
-            var_group.text += f", _ROM_Cluster"
+          if self.namingTemplates['cluster_index'] not in var_group.text:
+            var_group.text += f",{self.namingTemplates['cluster_index']}"
           # make sure _ROM_Cluster is part of dispatch targetevaluation
           found = False
           for dataObj in template.find('DataObjects').findall('DataSet'):
             if dataObj.attrib['name'] == 'dispatch_eval':
               dispatch_eval = dataObj
               for idx in dataObj.findall('Index'):
-                if idx.attrib['var'] == '_ROM_Cluster':
+                if idx.attrib['var'] == self.namingTemplates['cluster_index']:
                   found = True
                   break
               break
@@ -525,7 +661,7 @@ class Template(TemplateBase):
             raise RuntimeError
           if not found:
             dispatch_eval.append(xmlUtils.newNode('Index',
-                                                  attrib={'var': '_ROM_Cluster'},
+                                                  attrib={'var': self.namingTemplates['cluster_index']},
                                                   text='GRO_dispatch_in_Time'))
 
       elif source.is_type('Function'):
@@ -544,7 +680,7 @@ class Template(TemplateBase):
     # find specific variable groups
     groups = {}
     var_groups = template.find('VariableGroups')
-    for tag in ['capacities', 'init_disp', 'means']:
+    for tag in ['capacities', 'init_disp', 'full_dispatch']:
       groups[tag] = var_groups.find(".//Group[@name='GRO_{}']".format(tag))
     # change inner input due to components requested
     for component in components:
@@ -558,7 +694,7 @@ class Template(TemplateBase):
       interaction = component.get_interaction()
       parametric = capacity.is_parametric()
 
-      if capacity.is_parametric():
+      if parametric:
         # this capacity is being [swept or optimized in outer] (list) or is constant (float)
         # -> so add a node, put either the const value or a dummy in place
         cap_name = self.namingTemplates['variable'].format(unit=name, feature='capacity')
@@ -580,7 +716,41 @@ class Template(TemplateBase):
       for resource in interaction.get_resources():
         var_name = self.namingTemplates['dispatch'].format(component=name, resource=resource)
         self._updateCommaSeperatedList(groups['init_disp'], var_name)
-        self._updateCommaSeperatedList(groups['means'], var_name)
+        self._updateCommaSeperatedList(groups['full_dispatch'], var_name)
+
+  def _modify_inner_debug(self, template, case, components):
+    """
+      Modify template to work in a debug mode.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ In, components, list, list of HERON Component instances for this run
+      @ Out, None
+    """
+    # RunInfo
+    seq = template.find('.//RunInfo/Sequence')
+    seq.text = (','.join(seq.text.split(',')[:-2])) # exclude basic stats parts
+    # Steps
+    for step in template.find('Steps'):
+      if step.get('name') == 'arma_sampling':
+        step.append(self._assemblerNode('Output', 'DataObjects', 'DataSet', 'disp_full'))
+      # elif step.get('name') == 'write_summary':
+      #   step.find('Output').text = 'disp_full'
+    # Model
+    extmod_vars = template.find('Models').find('ExternalModel').find('variables')
+    self._updateCommaSeperatedList(extmod_vars, 'GRO_full_dispatch')
+    self._updateCommaSeperatedList(extmod_vars, 'GRO_full_dispatch_indices')
+    # DataObject
+    datasets = template.find('DataObjects').findall('DataSet')
+    for ds in datasets:
+      if ds.attrib['name'] == 'dispatch_eval':
+        break
+    else:
+      raise RuntimeError
+    ds.append(xmlUtils.newNode('Output', text='GRO_full_dispatch'))
+    for idx in ds.findall('Index'):
+      self._updateCommaSeperatedList(idx, 'GRO_full_dispatch')
+
+
 
   ##### CASHFLOW #####
   def _modify_cash(self, template, case, components, sources):
@@ -673,6 +843,8 @@ class Template(TemplateBase):
       subComp.append(cfs)
       template.append(subComp)
 
+
+
   ##### OTHER UTILS #####
   def _add_arma_to_ensemble(self, template, source):
     """
@@ -701,7 +873,7 @@ class Template(TemplateBase):
     deps = {self.__case.get_time_name(): out_vars,
             self.__case.get_year_name(): out_vars}
     if source.eval_mode == 'clustered':
-      deps['_ROM_Cluster'] = out_vars
+      deps[self.namingTemplates['cluster_index']] = out_vars
 
     self._create_dataobject(data_objs, 'PointSet', inp_name, inputs=['scaling'])
     self._create_dataobject(data_objs, 'DataSet', eval_name,
@@ -787,7 +959,11 @@ class Template(TemplateBase):
       multiyear.append(xmlUtils.newNode('cycles', text=source.needs_multiyear))
       model.append(multiyear)
     if source.limit_interp is not None:
-      model.append(xmlUtils.newNode('maxCycles', text=source.limit_interp))
+      maxCycles = model.find('maxCycles')
+      if maxCycles is not None:
+        maxCycles.text = source.limit_interp
+      else:
+        model.append(xmlUtils.newNode('maxCycles', text=source.limit_interp))
     # change eval mode?
     if source.eval_mode == 'clustered':
       model.append(xmlUtils.newNode('clusterEvalMode', text='clustered'))
@@ -813,6 +989,9 @@ class Template(TemplateBase):
     # create the output outstream
     os_name = obj_name
     streams = template.find('OutStreams')
+    if streams is None:
+      streams = xmlUtils.newNode('OutStreams')
+      template.append(streams)
     new = xmlUtils.newNode('Print', attrib={'name': os_name})
     new.append(xmlUtils.newNode('type', text='csv'))
     new.append(xmlUtils.newNode('source', text=obj_name))
@@ -825,3 +1004,17 @@ class Template(TemplateBase):
     new_step.append(self._assemblerNode('Output', 'OutStreams', 'Print', os_name))
     template.find('Steps').append(new_step)
     self._updateCommaSeperatedList(template.find('RunInfo').find('Sequence'), step_name, position=1)
+
+  def _remove_by_name(self, root, removable):
+    """
+      Removes subs of "root" whose "name" attribute is in "removable"
+      @ In, root. ET.Element, node whose subs should be searched through
+      @ In, removable, list(str), names to remove
+      @ Out, None
+    """
+    to_remove = []
+    for node in root:
+      if node.get('name', None) in removable:
+        to_remove.append(node)
+    for node in to_remove:
+      root.remove(node)

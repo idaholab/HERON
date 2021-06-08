@@ -1,4 +1,5 @@
 ECHO Starting to compile manual...
+conda activate raven_libraries
 chmod u+x script/copy_tex.sh
 script/copy_tex.sh
 python script/generate_user_manual.py

@@ -25,6 +25,10 @@
       <SolutionExport class='DataObjects' type='PointSet'        >opt_soln</SolutionExport>
       <Output         class='OutStreams'  type='Print'           >opt_soln</Output>
     </MultiRun>
+    <IOStep name="plot">
+      <Input class="DataObjects" type="PointSet">opt_soln</Input>
+      <Output class='OutStreams' type='Plot'>opt_path</Output>
+    </IOStep>
   </Steps>
 
   <VariableGroups>
@@ -113,5 +117,9 @@
       <source>opt_soln</source>
       <clusterLabel>trajID</clusterLabel>
     </Print>
+    <Plot name="opt_path" subType="OptPath">
+      <source>opt_soln</source>
+      <vars>GRO_capacities, mean_NPV</vars>
+    </Plot>
   </OutStreams>
 </Simulation>

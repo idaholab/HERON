@@ -229,7 +229,7 @@ class Template(TemplateBase):
     elif case.get_mode() == 'sweep':
       run_info.find('Sequence').text = 'sweep'
     elif case.get_mode() == 'opt':
-      run_info.find('Sequence').text = 'optimize'
+      run_info.find('Sequence').text = 'optimize, plot'
 
   def _modify_outer_vargroups(self, template, case, components, sources):
     """
@@ -465,7 +465,7 @@ class Template(TemplateBase):
     steps = template.find('Steps')
     # clear out optimization if not used
     if case.get_mode() == 'sweep' or case.debug['enabled']:
-      self._remove_by_name(steps, ['optimize'])
+      self._remove_by_name(steps, ['optimize', 'plot'])
     elif case.get_mode() == 'opt':
       self._remove_by_name(steps, ['sweep'])
     if case.debug['enabled']:

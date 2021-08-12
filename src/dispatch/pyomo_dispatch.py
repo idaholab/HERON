@@ -10,6 +10,7 @@ import sys
 import time as time_mod
 from functools import partial
 import platform
+from itertools import compress
 
 import numpy as np
 import pyomo.environ as pyo
@@ -20,6 +21,7 @@ from utils import InputData, InputTypes
 # allows pyomo to solve on threaded processes
 import pyutilib.subprocess.GlobalData
 pyutilib.subprocess.GlobalData.DEFINE_SIGNAL_HANDLERS_DEFAULT = False
+from pyutilib.common._exceptions import ApplicationError
 
 from .Dispatcher import Dispatcher
 from .DispatchState import DispatchState, NumpyState
@@ -68,7 +70,10 @@ class Pyomo(Dispatcher):
         \default{24}"""))
     specs.addSub(InputData.parameterInputFactory('debug_mode', contentType=InputTypes.BoolType,
         descr=r"""Enables additional printing in the pyomo dispatcher. Highly discouraged for production runs.
-              \default{False}."""))
+        \default{False}."""))
+    specs.addSub(InputData.parameterInputFactory('solver', contentType=InputTypes.StringType,
+        descr=r"""Indicates which solver should be used by pyomo. Options depend on individual installation.
+        \default{'glpk' for Windows, 'cbc' otherwise}."""))
     # TODO specific for pyomo dispatcher
     return specs
 
@@ -81,6 +86,7 @@ class Pyomo(Dispatcher):
     self.name = 'PyomoDispatcher' # identifying name
     self.debug_mode = False       # whether to print additional information
     self._window_len = 24         # time window length to dispatch at a time # FIXME user input
+    self._solver = None           # overwrite option for solver
 
   def read_input(self, specs):
     """
@@ -97,6 +103,42 @@ class Pyomo(Dispatcher):
     debug_node = specs.findFirst('debug_mode')
     if debug_node is not None:
       self.debug_mode = debug_node.value
+
+    solver_node = specs.findFirst('solver')
+    if solver_node is not None:
+      self._solver = solver_node.value
+
+    # check solver exists
+    if self._solver is None:
+      self._solver = SOLVER
+    found_solver = True
+    try:
+      if not pyo.SolverFactory(self._solver).available():
+        found_solver = False
+    except ApplicationError:
+      found_solver = False
+    # NOTE: we probably need a consistent way to test and check viable solvers,
+    # maybe through a unit test that mimics the model setup here. For now, I assume
+    # that anything that shows as not available or starts with an underscore is not
+    # viable, and it will crash if the solver can't solve our kinds of models.
+    # This should only come up if the user is specifically requesting a solver, though,
+    # the default glpk and cbc are tested.
+    if not found_solver:
+      all_options = pyo.SolverFactory._cls.keys() # TODO shorten to list of tested options?
+      solver_filter = []
+      for op in all_options:
+        if op.startswith('_'): # These don't seem like legitimate options, based on testing
+          solver_filter.append(False)
+          continue
+        try:
+          solver_filter.append(pyo.SolverFactory(op).available())
+        except (ApplicationError, NameError, ImportError):
+          solver_filter.append(False)
+      available = list(compress(all_options, solver_filter))
+      msg = f'Requested solver "{self._solver}" was not found for pyomo dispatcher!'
+      msg += f' Options MAY include: {available}'
+      raise RuntimeError(msg)
+
 
   ### API
   def dispatch(self, case, components, sources, meta):
@@ -209,7 +251,7 @@ class Pyomo(Dispatcher):
       attempts += 1
       print(f'DEBUGG solve attempt {attempts} ...:')
       # solve
-      soln = pyo.SolverFactory(SOLVER).solve(m)
+      soln = pyo.SolverFactory(self._solver).solve(m)
       # check solve status
       if soln.solver.status == SolverStatus.ok and soln.solver.termination_condition == TerminationCondition.optimal:
         print('DEBUGG ... solve was successful!')

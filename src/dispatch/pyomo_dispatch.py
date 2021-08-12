@@ -117,11 +117,17 @@ class Pyomo(Dispatcher):
         found_solver = False
     except ApplicationError:
       found_solver = False
+    # NOTE: we probably need a consistent way to test and check viable solvers,
+    # maybe through a unit test that mimics the model setup here. For now, I assume
+    # that anything that shows as not available or starts with an underscore is not
+    # viable, and it will crash if the solver can't solve our kinds of models.
+    # This should only come up if the user is specifically requesting a solver, though,
+    # the default glpk and cbc are tested.
     if not found_solver:
       all_options = pyo.SolverFactory._cls.keys() # TODO shorten to list of tested options?
       solver_filter = []
       for op in all_options:
-        if op.startswith('_'):
+        if op.startswith('_'): # These don't seem like legitimate options, based on testing
           solver_filter.append(False)
           continue
         try:

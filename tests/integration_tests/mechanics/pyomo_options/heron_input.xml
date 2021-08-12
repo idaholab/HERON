@@ -31,6 +31,7 @@
       <pyomo>
         <rolling_window_length>8</rolling_window_length>
         <debug_mode>True</debug_mode>
+        <solver>ipopt</solver>
       </pyomo>
     </dispatcher>
   </Case>

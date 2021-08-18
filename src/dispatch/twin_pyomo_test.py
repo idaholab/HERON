@@ -1,4 +1,10 @@
-
+# Copyright 2020, Battelle Energy Alliance, LLC
+# ALL RIGHTS RESERVED
+"""
+Enables quick testing of Pyomo problem solves, intending to set up a system
+similar to how it is set up in the Pyomo dispatcher. This allows rapid testing
+of different configurations for the rolling window optimization.
+"""
 import platform
 
 import numpy as np
@@ -38,7 +44,6 @@ def make_concrete_model():
     @ In, None
     @ Out, m, pyo.ConcreteModel, instance of the model to solve
   """
-
   m = pyo.ConcreteModel()
   # indices
   C = np.arange(0, len(components), dtype=int) # indexes component
@@ -53,7 +58,7 @@ def make_concrete_model():
   m.Components = components
   m.resource_index_map = resource_map
   m.Activity = activity
-  #######
+  #*******************
   #  set up optimization variables
   # -> for now we just do this manually
   # steam_source
@@ -68,7 +73,7 @@ def make_concrete_model():
   # elec_sink
   m.elec_sink_index_map = pyo.Set(initialize=range(len(m.resource_index_map['elec_sink'])))
   m.elec_sink_production = pyo.Var(m.elec_sink_index_map, m.T, initialize=0)
-  #######
+  #*******************
   #  set up lower, upper bounds
   # -> for now we just do this manually
   # -> consuming is negative sign by convention!
@@ -88,32 +93,81 @@ def make_concrete_model():
   # storage is in LEVEL not ACTIVITY (e.g. kg not kg/s) -> lets say it can store X kg
   m.steam_storage_lower_limit = pyo.Constraint(m.T, rule=lambda m, t: m.steam_storage_production[0, t] >= 0)
   m.steam_storage_upper_limit = pyo.Constraint(m.T, rule=lambda m, t: m.steam_storage_production[0, t] <= storage_limit)
-  #######
+  #*******************
   # create transfer function
   # 2 steam make 1 electricity (sure, why not)
-  m.elec_generator_transfer = pyo.Constraint(m.T, rule=lambda m, t:
-      - m.elec_generator_production[0, t] == 2.0 * m.elec_generator_production[1, t])
-  #######
+  m.elec_generator_transfer = pyo.Constraint(m.T, rule=_generator_transfer)
+  #*******************
   # create conservation rules
   # steam
-  m.steam_conservation = pyo.Constraint(m.T,
-      rule=lambda m, t: 0 == m.steam_source_production[0, t] + m.elec_generator_production[0, t] + # steam source, sink
-          - (m.steam_storage_production[0, t] - (storage_initial if t == 0 else m.steam_storage_production[0, t-1])) / dt # steam storage
-      )
+  m.steam_conservation = pyo.Constraint(m.T, rule=_conserve_steam)
   # electricity
-  m.elec_conservation = pyo.Constraint(m.T,
-      rule=lambda m, t: 0 == m.elec_generator_production[1, t] + m.elec_sink_production[0, t])
-  #######
+  m.elec_conservation = pyo.Constraint(m.T, rule=_conserve_electricity)
+  #*******************
   # create objective function
-  m.OBJ = pyo.Objective(sense=pyo.maximize, rule=lambda m: 0 \
-      + sum(m.elec_generator_production[0, t] for t in m.T) * 10 # cost to run generator
-      - sum((m.elec_sink_production[0, t] * (100 if t < 5 else 1)) for t in m.T) # sales
-      )
+  m.OBJ = pyo.Objective(sense=pyo.maximize, rule=_economics)
   #######
   # return
   return m
 
+#######
+#
+# Callback Functions
+#
+def _generator_transfer(m, t):
+  """
+    Constraint rule for electricity generation in generator
+    @ In, m, pyo.ConcreteModel, model containing problem
+    @ In, t, int, time indexer
+    @ Out, constraint, bool, constraining evaluation
+  """
+  return - m.elec_generator_production[0, t] == 2.0 * m.elec_generator_production[1, t]
+
+def _conserve_steam(m, t):
+  """
+    Constraint rule for conserving steam
+    @ In, m, pyo.ConcreteModel, model containing problem
+    @ In, t, int, time indexer
+    @ Out, constraint, bool, constraining evaluation
+  """
+  # signs are tricky here, consumption is negative and production is positive
+  # a positive delta in steam storage level means it absorbed steam, so it's a negative term
+  steam_source = - (m.steam_storage_production[0, t] - (storage_initial if t == 0 else m.steam_storage_production[0, t-1])) / dt
+  sources = steam_source + m.steam_source_production[0, t]
+  sinks = m.elec_generator_production[0, t]
+  return sources + sinks == 0
+
+def _conserve_electricity(m, t):
+  """
+    Constraint rule for conserving electricity
+    @ In, m, pyo.ConcreteModel, model containing problem
+    @ In, t, int, time indexer
+    @ Out, constraint, bool, constraining evaluation
+  """
+  sources = m.elec_generator_production[1, t]
+  sinks = m.elec_sink_production[0, t]
+  return sources + sinks == 0
+
+def _economics(m):
+  """
+    Constraint rule for optimization target
+    @ In, m, pyo.ConcreteModel, model containing problem
+    @ Out, objective, float, constraining evaluation
+  """
+  opex = sum(m.elec_generator_production[0, t] for t in m.T) * 10 # will be negative b/c consumed
+  sales = - sum((m.elec_sink_production[0, t] * (100 if t < 5 else 1)) for t in m.T) # net positive because consumed
+  return opex + sales
+
+#######
+#
+# Debug printing functions
+#
 def print_setup(m):
+  """
+    Debug printing for pre-solve model setup
+    @ In, m, pyo.ConcreteModel, model containing problem
+    @ Out, None
+  """
   print('/' + '='*80)
   print('DEBUGG model pieces:')
   print('  -> objective:')
@@ -127,11 +181,12 @@ def print_setup(m):
   print('\\' + '='*80)
   print('')
 
-def solve_model(m):
-  soln = pyo.SolverFactory(SOLVER).solve(m)
-  return soln
-
 def print_solution(m):
+  """
+    Debug printing for post-solve model setup
+    @ In, m, pyo.ConcreteModel, model containing problem
+    @ Out, None
+  """
   print('')
   print('*'*80)
   print('solution:')
@@ -145,6 +200,19 @@ def print_solution(m):
         f'{m.elec_sink_production[0, t].value: 1.3e}'
         )
   print('*'*80)
+
+#######
+#
+# Solver.
+#
+def solve_model(m):
+  """
+    Solves the model.
+    @ In, m, pyo.ConcreteModel, model containing problem
+    @ Out, m, pyo.ConcreteModel, results
+  """
+  soln = pyo.SolverFactory(SOLVER).solve(m)
+  return soln
 
 if __name__ == '__main__':
   m = make_concrete_model()

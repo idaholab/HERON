@@ -132,8 +132,8 @@ def _conserve_steam(m, t):
   """
   # signs are tricky here, consumption is negative and production is positive
   # a positive delta in steam storage level means it absorbed steam, so it's a negative term
-  steam_source = - (m.steam_storage_production[0, t] - (storage_initial if t == 0 else m.steam_storage_production[0, t-1])) / dt
-  sources = steam_source + m.steam_source_production[0, t]
+  storage_source = - (m.steam_storage_production[0, t] - (storage_initial if t == 0 else m.steam_storage_production[0, t-1])) / dt
+  sources = storage_source + m.steam_source_production[0, t]
   sinks = m.elec_generator_production[0, t]
   return sources + sinks == 0
 

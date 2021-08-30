@@ -329,10 +329,10 @@ class Template(TemplateBase):
       if source.is_type('Function'):
         # add it to the list of things that have to be transferred
         files = template.find('Files')
-        src = xmlUtils.newNode('Input', attrib={'name': 'transfers'}, text='../'+source._source)
+        src = xmlUtils.newNode('Input', attrib={'name': source.name}, text='../'+source._source)
         files.append(src)
         # add it to the Step inputs so it gets carried along
-        inp = self._assemblerNode('Input', 'Files', '', 'transfers')
+        inp = self._assemblerNode('Input', 'Files', '', source.name)
         step.insert(0, inp)
 
   def _modify_outer_models(self, template, case, components):

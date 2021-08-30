@@ -13,6 +13,7 @@ import platform
 from itertools import compress
 
 import numpy as np
+from numpy.lib.recfunctions import assign_fields_by_name
 import pyomo.environ as pyo
 from pyomo.opt import SolverStatus, TerminationCondition
 
@@ -87,6 +88,7 @@ class Pyomo(Dispatcher):
     self.debug_mode = False       # whether to print additional information
     self._window_len = 24         # time window length to dispatch at a time # FIXME user input
     self._solver = None           # overwrite option for solver
+    self._picard_limit = 10       # iterative solve limit
 
   def read_input(self, specs):
     """
@@ -180,10 +182,26 @@ class Pyomo(Dispatcher):
             initial_levels[comp] = comp.get_interaction().get_initial_level(meta)
           else:
             initial_levels[comp] = subdisp[comp.name][comp.get_interaction().get_resource()][-1]
-      # dispatch
-      subdisp = self.dispatch_window(specific_time, start_index,
-                                     case, components, sources, resources,
-                                     initial_levels, meta)
+      # allow for converging solution iteratively
+      converged = False
+      conv_counter = 0
+      previous = None
+      while not converged:
+        conv_counter += 1
+        if conv_counter > self._picard_limit:
+          break
+        # dispatch
+        subdisp = self.dispatch_window(specific_time, start_index,
+                                      case, components, sources, resources,
+                                      initial_levels, meta)
+        # do we need a convergence criteria? Check now.
+        if self.needs_convergence(components):
+          print(f'DEBUGG iteratively solving window, iteration {conv_counter}/{self._picard_limit} ...')
+          converged = self.check_converged(subdisp, previous, components)
+          previous = subdisp
+        else:
+          converged = True
+
       end = time_mod.time()
       print('DEBUGG solve time: {} s'.format(end-start))
       # store result in corresponding part of dispatch
@@ -231,6 +249,15 @@ class Pyomo(Dispatcher):
     m.Activity.initialize(m.Components, m.resource_index_map, m.Times, m)
     # constraints and variables
     for comp in components:
+      # components using a governing strategy (not opt) are Parameters, not Variables
+      # TODO should this come BEFORE or AFTER each dispatch opt solve?
+      # -> responsive or proactive?
+      intr = comp.get_interaction()
+      if intr.is_governed(): #intr.is_type('Storage') and intr.get_strategy() is not None:
+        meta['request'] = {'component': comp, 'time': time}
+        activity = intr.get_strategy().evaluate(meta)[0]['activity']
+        self._create_production_param(m, comp, activity)
+        continue
       # NOTE: "fixed" components could hypothetically be treated differently
       ## however, in order for the "production" variable for components to be treatable as the
       ## same as other production variables, we create components with limitation
@@ -289,6 +316,47 @@ class Pyomo(Dispatcher):
     result = self._retrieve_solution(m)
     return result
 
+  def check_converged(self, new, old, components):
+    """
+      Checks convergence of consecutive dispatch solves
+      @ In, new, dict, results of dispatch # TODO should this be the model rather than dict?
+      @ In, old, dict, results of previous dispatch
+      @ In, components, list, HERON component list
+      @ Out, converged, bool, True if convergence is met
+    """
+    tol = 1e-4 # TODO user option
+    if old is None:
+      return False
+    converged = True
+    for comp in components:
+      intr = comp.get_interaction()
+      name = comp.name
+      if intr.is_governed():
+      #if intr.is_type('Storage') and intr.get_strategy() is not None:
+        # check activity L2 norm as a differ
+        # TODO this may be specific to storage right now
+        res = intr.get_resource()
+        scale = np.max(old[name][res])
+        diff = np.linalg.norm(new[name][res] - old[name][res]) / (scale if scale != 0 else 1)
+        if diff > tol:
+          converged = False
+    return converged
+
+  def needs_convergence(self, components):
+    """
+      Determines whether the current setup needs convergence to solve.
+      @ In, components, list, HERON component list
+      @ Out, needs_convergence, bool, True if iteration is needed
+    """
+    for comp in components:
+      intr = comp.get_interaction()
+      # storages with a prescribed strategy MAY need iteration
+      if intr.is_governed():
+        return True
+    # if we get here, no iteration is needed
+    return False
+
+
   ### PYOMO Element Constructors
   def _create_production_limit(self, m, validation):
     """
@@ -321,6 +389,23 @@ class Pyomo(Dispatcher):
     setattr(m, name, constr)
     print(f'DEBUGG added validation constraint "{name}"')
 
+  def _create_production_param(self, m, comp, values):
+    """
+      Creates production pyomo fixed parameter object for a component
+      @ In, m, pyo.ConcreteModel, associated model
+      @ In, comp, HERON Component, component to make production variables for
+      @ Out, prod_name, str, name of production variable
+    """
+    name = comp.name
+    # create pyomo indexer for this component's resources
+    res_indexer = pyo.Set(initialize=range(len(m.resource_index_map[comp])))
+    setattr(m, f'{name}_res_index_map', res_indexer)
+    prod_name = '{c}_production'.format(c=name)
+    init = (((0, t), values[t]) for t in m.T)
+    prod = pyo.Param(res_indexer, m.T, initialize=dict(init))
+    setattr(m, prod_name, prod)
+    return prod_name
+
   def _create_production(self, m, comp):
     """
       Creates production pyomo variable object for a component
@@ -338,8 +423,8 @@ class Pyomo(Dispatcher):
     #lower, upper, domain = self._get_prod_bounds(comp)
     #prod = pyo.Var(res_indexer, m.T, bounds=(lower, upper)) #within=domain,
     ## Method 2: set capacity as a seperate constraint
-    prod = pyo.Var(res_indexer, m.T, initialize=0)
     prod_name = '{c}_production'.format(c=name)
+    prod = pyo.Var(res_indexer, m.T, initialize=0)
     setattr(m, prod_name, prod)
     return prod_name
 
@@ -492,9 +577,16 @@ class Pyomo(Dispatcher):
     result = {} # {component: {resource: production}}
     for comp in m.Components:
       prod = getattr(m, '{n}_production'.format(n=comp.name))
+      if isinstance(prod, pyo.Var):
+        kind = 'Var'
+      elif isinstance(prod, pyo.Param):
+        kind = 'Param'
       result[comp.name] = {}
       for res, comp_r in m.resource_index_map[comp].items():
-        result[comp.name][res] = np.fromiter((prod[comp_r, t].value for t in m.T), dtype=float, count=len(m.T))
+        if kind == 'Var':
+          result[comp.name][res] = np.fromiter((prod[comp_r, t].value for t in m.T), dtype=float, count=len(m.T))
+        elif kind == 'Param':
+          result[comp.name][res] = np.fromiter((prod[comp_r, t] for t in m.T), dtype=float, count=len(m.T))
     return result
 
   ### RULES for partial function calls
@@ -646,7 +738,10 @@ class Pyomo(Dispatcher):
         print('    resource:', r, res)
         for t, time in enumerate(m.Times):
           prod = getattr(m, '{n}_production'.format(n=name))
-          print('      time:', t + m.time_offset, time, prod[r, t].value)
+          if isinstance(prod, pyo.Var):
+            print('      time:', t + m.time_offset, time, prod[r, t].value)
+          elif isinstance(prod, pyo.Param):
+            print('      time:', t + m.time_offset, time, prod[r, t])
     print('*'*80)
 
 

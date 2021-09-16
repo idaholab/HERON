@@ -13,7 +13,6 @@ import platform
 from itertools import compress
 
 import numpy as np
-from numpy.lib.recfunctions import assign_fields_by_name
 import pyomo.environ as pyo
 from pyomo.opt import SolverStatus, TerminationCondition
 
@@ -253,7 +252,7 @@ class Pyomo(Dispatcher):
       # TODO should this come BEFORE or AFTER each dispatch opt solve?
       # -> responsive or proactive?
       intr = comp.get_interaction()
-      if intr.is_governed(): #intr.is_type('Storage') and intr.get_strategy() is not None:
+      if intr.is_governed():
         meta['request'] = {'component': comp, 'time': time}
         activity = intr.get_strategy().evaluate(meta)[0]['activity']
         self._create_production_param(m, comp, activity)
@@ -331,8 +330,7 @@ class Pyomo(Dispatcher):
     for comp in components:
       intr = comp.get_interaction()
       name = comp.name
-      if intr.is_governed():
-      #if intr.is_type('Storage') and intr.get_strategy() is not None:
+      if intr.is_governed(): # by "is_governed" we mean "isn't optimized in pyomo"
         # check activity L2 norm as a differ
         # TODO this may be specific to storage right now
         res = intr.get_resource()

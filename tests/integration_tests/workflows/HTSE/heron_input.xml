@@ -1,0 +1,133 @@
+<HERON>
+  <TestInfo>
+    <name>HTSE</name>
+    <author>talbpaul</author>
+    <created>2021-08-29</created>
+    <description>
+      Typical IES configuration with NPP, BOP, HTSE, H2 Storage, H2 Customer. Uses reduced histories
+      for shorter project lifetime.
+    </description>
+    <classesTested>HERON</classesTested>
+  </TestInfo>
+
+  <Case name="IES_opt">
+    <mode>opt</mode>
+    <num_arma_samples>2</num_arma_samples>
+    <time_discretization>
+      TODO
+      <time_variable>Time</time_variable>
+      <end_time>2</end_time>
+      <num_steps>21</num_steps>
+    </time_discretization>
+    <economics>
+      <ProjectTime>3</ProjectTime>
+      <DiscountRate>0.08</DiscountRate>
+      <tax>0.1</tax>
+      <inflation>0.1</inflation>
+      <verbosity>50</verbosity>
+    </economics>
+    <dispatcher>
+      <pyomo/>
+    </dispatcher>
+
+  </Case>
+
+
+  <Components>
+    <Component name="NPP">
+      <produces resource="electricity" dispatch="fixed">
+        <capacity resource="electricity">
+          <fixed_value>40000</fixed_value> <!-- MW -->
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>60</lifetime>
+        <!-- because NPP is built and operated regardless, no CAPEX or OPEX here. -->
+      </economics>
+    </Component>
+
+    <Component name="HTSE">
+      <produces resource="H2" dispatch="independent">
+        <consumes>electricity</consumes>
+        <capacity resource="electricity">
+          <opt_bounds>0,10</opt_bounds> <!-- kg/s -->
+        </capacity>
+      </produces>
+      <transfer>
+        <linear> <!-- 0.043 MWh produces 1 kg H2-->
+          <rate resource="electricity">-0.043</rate>
+          <rate resource="H2">1</rate>
+        </linear>
+      </transfer>
+      <economics>
+        <lifetime>30</lifetime>
+        <CashFlow name="capex" type="one-time" taxable="True" inflation='none' mult_target='False'>
+          <driver><variable>HTSE_capacity</variable></driver>
+          <reference_price><fixed_value>-545263737</fixed_value></reference_price> <!-- 2019 Frick study -->
+          <reference_driver><fixed_value>7.4</fixed_value></reference_driver>
+          <scaling_factor_x><fixed_value>0.955</fixed_value></scaling_factor_x>
+          <depreciate>15</depreciate>
+        </CashFlow>
+        <CashFlow name="fixed_OM" type="repeating" period="year" taxable="True" inflation='none' mult_target='False'>
+          <driver><variable>HTSE_capacity</variable></driver>
+          <reference_price><fixed_value>-70752705</fixed_value></reference_price> <!-- 2019 Frick study -->
+          <reference_driver><fixed_value>7.4</fixed_value></reference_driver>
+          <scaling_factor_x><fixed_value>0.955</fixed_value></scaling_factor_x>
+        </CashFlow>
+        <!-- No variable OM b/c hot standby is sunk cost-->
+      </economics>
+    </Component>
+
+    <Component name="H2_storage">
+      <stores resource="H2" dispatch="independent">
+        <capacity resource="H2"><opt_bounds>0, 5e5</opt_bounds></capacity>
+        <initial_stored><fixed_value>0</fixed_value></initial_stored>
+      </stores>
+      <economics>
+        <lifetime>30</lifetime>
+        <CashFlow name="capex" type="one-time" taxable='True' inflation='none' mult_target='False'>
+          <driver><variable>H2_storage_capacity</variable></driver>
+          <reference_price><fixed_value>-550</fixed_value></reference_price> <!-- 2019 Frick midwest study -->
+          <depreciate>15</depreciate>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="grid">
+      <demands resource="electricity" dispatch="independent">
+        <!-- FIXME net load function -->
+        <capacity><Function method="get_load">functions</Function></capacity>
+      </demands>
+      <economics>
+        <lifetime>1</lifetime>
+        <CashFlow name="grid_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver><activity>electricity</activity><multiplier>-1</multiplier></driver>
+          <!-- FIXME ROM -->
+          <reference_price><Function method="grid_price">functions</Function></reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="H2_market">
+      <demands resource="H2" dispatch="independent">
+        <capacity><opt_bounds>0, -10</opt_bounds></capacity>
+      </demands>
+      <economics>
+        <lifetime>1</lifetime>
+        <CashFlow name="H2_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver><activity>H2</activity><multiplier>-1</multiplier></driver>
+          <!-- FIXME ROM -->
+          <reference_price><Function method="H2_price">functions</Function></reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <!-- TODO penalties for overproduction/missed demand? -->
+  </Components>
+
+  <DataGenerators>
+    <ARMA name='Demand' variable="Solar,Demand">TODO</ARMA>
+    <Function name="functions">funcs.py</Function>
+  </DataGenerators>
+
+</HERON>

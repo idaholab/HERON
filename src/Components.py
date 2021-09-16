@@ -245,6 +245,14 @@ class Component(Base, CashFlowUser):
     """
     return self.get_interaction().is_dispatchable()
 
+  def is_governed(self):
+    """
+      Determines if this component is optimizable or governed by some function.
+      @ In, None
+      @ Out, is_governed, bool, whether this component is governed.
+    """
+    return self.get_interaction().is_governed()
+
   def set_capacity(self, cap):
     """
       Set the float value of the capacity of this component's interaction
@@ -557,6 +565,15 @@ class Interaction(Base):
     """
     return typ == self.__class__.__name__
 
+  def is_governed(self):
+    """
+      Determines if this interaction is optimizable or governed by some function.
+      @ In, None
+      @ Out, is_governed, bool, whether this component is governed.
+    """
+    # Default option is False; specifics by interaction type
+    return False
+
   def produce(self, *args, **kwargs):
     """
       Determines the results of this interaction producing resources.
@@ -841,6 +858,8 @@ class Storage(Interaction):
     descr=r"""initial quantity of resource assumed to be present in the storage unit at the beginning
           of a given calculation, in units of quantity (not rate). \default{0}. """
     specs.addSub(vp_factory.make_input_specs('initial_stored', descr=descr))
+    descr=r"""control strategy for operating the storage. If not specified, uses a perfect foresight strategy. """
+    specs.addSub(vp_factory.make_input_specs('strategy', allowed=['Function'], descr=descr))
     return specs
 
   def __init__(self, **kwargs):
@@ -850,9 +869,10 @@ class Storage(Interaction):
       @ Out, None
     """
     Interaction.__init__(self, **kwargs)
-    self._stores = None   # the resource stored by this interaction
-    self._rate = None     # the rate at which this component can store up or discharge
+    self._stores = None         # the resource stored by this interaction
+    self._rate = None           # the rate at which this component can store up or discharge
     self._initial_stored = None # how much resource does this component start with stored?
+    self._strategy = None       # how to operate storage unit
 
   def read_input(self, specs, mode, comp_name):
     """
@@ -870,6 +890,8 @@ class Storage(Interaction):
         self._set_valued_param('_rate', comp_name, item, mode)
       elif item.getName() == 'initial_stored':
         self._set_valued_param('_initial_stored', comp_name, item, mode)
+      elif item.getName() == 'strategy':
+        self._set_valued_param('_strategy', comp_name, item, mode)
     assert len(self._stores) == 1, 'Multiple storage resources given for component "{}"'.format(comp_name)
     self._stores = self._stores[0]
     # checks and defaults
@@ -909,6 +931,22 @@ class Storage(Interaction):
       @ Out, stores, str, resource stored
     """
     return self._stores
+
+  def get_strategy(self):
+    """
+      Returns the resource this unit stores.
+      @ In, None
+      @ Out, stores, str, resource stored
+    """
+    return self._strategy
+
+  def is_governed(self):
+    """
+      Determines if this interaction is optimizable or governed by some function.
+      @ In, None
+      @ Out, is_governed, bool, whether this component is governed.
+    """
+    return self._strategy is not None
 
   def print_me(self, tabs=0, tab='  '):
     """

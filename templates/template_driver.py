@@ -190,7 +190,7 @@ class Template(TemplateBase):
     self._modify_outer_vargroups(template, case, components, sources)
     self._modify_outer_databases(template, case)
     self._modify_outer_dataobjects(template, case, components)
-    self._modify_outer_files(template, sources)
+    self._modify_outer_files(template, case, sources)
     self._modify_outer_models(template, case, components)
     self._modify_outer_outstreams(template, case, components, sources)
     self._modify_outer_samplers(template, case, components)
@@ -312,15 +312,21 @@ class Template(TemplateBase):
                               outputs=debug_gro,
                               depends=deps)
 
-  def _modify_outer_files(self, template, sources):
+  def _modify_outer_files(self, template, case, sources):
     """
       Defines modifications to the Files of outer.xml RAVEN input file.
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
       @ In, sources, list, list of HERON Placeholder instances for this run
       @ Out, None
     """
     files = template.find('Files')
-    step = template.find('Steps').find('MultiRun') # NOTE assuming MultiRun for sampling is the first one
+    multiruns = template.find('Steps').findall('MultiRun')
+    for run in multiruns:
+      # This relies on the fact that the template is hardcoded so that
+      # the MultiRun 'name' attribute is either 'optimize' or 'sweep'.
+      if case.get_mode() in run.attrib['name']:
+        step = run
     # modify path to inner
     inner = files.find('Input') # NOTE assuming it's the first file in the template
     inner.text = '../inner.xml'

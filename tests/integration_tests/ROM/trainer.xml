@@ -50,8 +50,7 @@
     <ExternalModel ModuleToLoad="market" name="market" subType="">
       <variables>a, b, c, d, price</variables>
     </ExternalModel>
-    <ROM name="rom" subType="SciKitLearn">
-      <SKLtype>linear_model|LinearRegression</SKLtype>
+    <ROM name="rom" subType="LinearRegression">
       <Features>a, b, c, d</Features>
       <Target>price</Target>
       <fit_intercept>True</fit_intercept>

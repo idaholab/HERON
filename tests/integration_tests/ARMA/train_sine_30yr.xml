@@ -1,17 +1,18 @@
 <?xml version="1.0" ?>
 <Simulation verbosity="debug">
   <TestInfo>
-    <name>ARMA_sine</name>
-    <author>gaira</author>
-    <created>2020-05-12</created>
+    <name>ARMA_sine_30yr</name>
+    <author>talbpaul</author>
+    <created>2021-10-19</created>
     <description>
       This trains a non-stochastic sine function for use in HERON tests.
+      Extends training data to 30 years, albeit same 21 data points.
     </description>
     <classesTested>SupervisedLearning.ARMA</classesTested>
   </TestInfo>
 
   <RunInfo>
-    <WorkingDir>Sine</WorkingDir>
+    <WorkingDir>Sine30yr</WorkingDir>
     <Sequence>load, train, meta, serialize, sample</Sequence>
   </RunInfo>
 
@@ -44,7 +45,7 @@
 
   <Files>
     <Input name="input">Data.csv</Input>
-    <Input name="pk">arma.pk</Input>
+    <Input name="pk">arma_30yr.pk</Input>
   </Files>
 
   <DataObjects>

@@ -2,7 +2,7 @@
   [./Cashflows]
     type = HeronIntegration
     input = heron_input.xml
-    # prereq = SineArma
+    # prereq = SineArma_30yr
     [./csv]
       type = OrderedCSV
       output = 'Runs_o/sweep.csv'

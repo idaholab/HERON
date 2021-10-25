@@ -18,7 +18,6 @@
     <MultiRun name="optimize">
       <Input          class='Files'       type='raven'           >inner_workflow</Input>
       <Input          class='Files'       type=''                >heron_lib</Input>
-      <Input          class='Files'       type=''                >transfers</Input>
       <Model          class='Models'      type='Code'            >raven</Model>
       <Optimizer      class='Optimizers'  type='FiniteDifference'>cap_opt</Optimizer>
       <Output         class='DataObjects' type='PointSet'        >opt_eval</Output>

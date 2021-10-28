@@ -38,7 +38,7 @@ class DispatchRunner:
   """
   # TODO move naming templates to a common place for consistency!
   naming_template = {'comp capacity': '{comp}_capacity',
-                     'dispatch var': 'Dispatch__{comp}__{res}',
+                     'dispatch var': 'Dispatch__{comp}__{tracker}__{res}',
                     }
 
   def __init__(self):
@@ -220,16 +220,7 @@ class DispatchRunner:
       @ In, all_dispatch, dict, dispatch values
       @ In, metrics, dict, economic metrics
     """
-    # TODO if debug mode...
-    #   indexer = dict((comp, dict((res, r) for r, res in enumerate(comp.get_resources()))) for comp in self._components)
-    #   shape = [len(dispatch), len(next(iter(dispatch)))] # years, clusters
     template = self.naming_template['dispatch var']
-    # initialize variables TODO if debug mode ...
-    # for comp in self._components:
-    #   for res, r in indexer[comp].items():
-    #     name = template.format(c=comp.name, r=res)
-    #     setattr(raven, name, np.zeros(shape)) # FIXME need time!
-    ##### FIXME year_data is now empty, so none of the following gets run!
     for y, (year, year_data) in enumerate(all_dispatch.items()):
       for c, (cluster, dispatch) in enumerate(year_data.items()):
         dispatches = dispatch.create_raven_vars(template)
@@ -256,19 +247,6 @@ class DispatchRunner:
             setattr(raven, var_name, np.empty(shape)) # NOTE could use np.zeros, but slower?
           getattr(raven, var_name)[y, c] = data
           getattr(raven, '_indexMap')[0][var_name] = [year_name, clst_name, time_name]
-        #for component in self._components:
-          # TODO cheating using the numpy state
-        #  dispatch = cluster_data['dispatch']
-        #  resource_indices = cluster_data._resources[component]
-    # TODO clustering, multiyear
-    # TODO should this be a Runner method or separate?
-    # TODO if debug mode ...
-    # template = self.naming_template['dispatch var']
-    # for comp_name, data in dispatch.items():
-    #   for resource, usage in data.items():
-    #     name = template.format(comp=comp_name, res=resource)
-    #     setattr(raven, name, usage)
-    #     # TODO indexMap?
     for metric, value in metrics.items():
       setattr(raven, metric, np.atleast_1d(value))
     # if component capacities weren't given by Outer, save them as part of Inner
@@ -492,8 +470,10 @@ class DispatchRunner:
           elif heron_cf.get_period() == 'hour':
             for t, time in enumerate(times):
               # fill in the specific activity for this time stamp
-              for resource, r in resource_indexer[comp].items():
-                specific_activity[resource] = dispatch.get_activity(comp, resource, time)
+              for track_var in comp.get_tracking_vars():
+                specific_activity[track_var] = {}
+                for resource, r in resource_indexer[comp].items():
+                  specific_activity[track_var][resource] = dispatch.get_activity(comp, track_var, resource, time)
               specific_meta['HERON']['time_index'] = t
               specific_meta['HERON']['time_value'] = time
               # TODO does the rest need to be available?

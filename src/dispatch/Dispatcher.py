@@ -139,8 +139,10 @@ class Dispatcher(MessageUser, InputDataUser):
         #print(f'DEBUGG ... ... time {t}')
         # NOTE care here to assure that pyomo-indexed variables work here too
         specific_activity = {}
-        for resource in resource_indexer[comp]:
-          specific_activity[resource] = activity.get_activity(comp, resource, time, **state_args)
+        for tracker in comp.get_tracking_vars():
+          specific_activity[tracker] = {}
+          for resource in resource_indexer[comp]:
+            specific_activity[tracker][resource] = activity.get_activity(comp, tracker, resource, time, **state_args)
         specific_meta['HERON']['time_index'] = t + time_offset
         specific_meta['HERON']['time_value'] = time
         cfs = comp.get_state_cost(specific_activity, specific_meta)

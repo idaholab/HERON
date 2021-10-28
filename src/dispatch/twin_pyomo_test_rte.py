@@ -32,11 +32,13 @@ for comp in components:
   activity[comp] = np.zeros((len(resources), len(time)), dtype=float)
 
 # sizing specifications
-storage_initial = 50 # kg of steam
-storage_limit = 400 # kg of steam
-steam_produced = 100 # kg/h of steam
+storage_initial = 50    # kg of steam
+storage_limit = 400     # kg of steam
+steam_produced = 100    # kg/h of steam
 gen_consume_limit = 110 # consumes at most 110 kg/h steam
-sink_limit = 10000 # kWh/h = kW of electricity
+sink_limit = 10000      # kWh/h = kW of electricity
+rte = 0.90              # storage round trip efficiency
+sq_rte = np.sqrt(rte)   # square root of rte
 
 def make_concrete_model():
   """
@@ -70,7 +72,14 @@ def make_concrete_model():
   m.elec_generator_production = pyo.Var(m.elec_generator_index_map, m.T, initialize=0, bounds=bounds)
   # steam_storage
   m.steam_storage_index_map = pyo.Set(initialize=range(len(m.resource_index_map['steam_storage'])))
-  m.steam_storage_production = pyo.Var(m.steam_storage_index_map, m.T, initialize=0, bounds=(0, storage_limit))
+  m.steam_storage_level = pyo.Var(m.steam_storage_index_map, m.T, initialize=0, bounds=(0, storage_limit))
+  m.steam_storage_charge = pyo.Var(m.steam_storage_index_map, m.T, initialize=0, bounds=(-storage_limit/dt, 0)) # TODO should be ramp rate limit
+  m.steam_storage_discharge = pyo.Var(m.steam_storage_index_map, m.T, initialize=0, bounds=(0, storage_limit/dt)) # TODO ramp rate limit
+  m.steam_oneway_bigM = pyo.Var(m.T, initialize=0, within=pyo.Binary) # 0 is charging, discharging is 1
+  large_eps = storage_limit / dt * 1.1
+  m.steam_oneway_charge = pyo.Constraint(m.T, rule=lambda m, t: -m.steam_storage_charge[0, t] <= (1 - m.steam_oneway_bigM[t]) * large_eps)
+  m.steam_oneway_discharge = pyo.Constraint(m.T, rule=lambda m, t: m.steam_storage_discharge[0, t] <= m.steam_oneway_bigM[t] * large_eps)
+  # OLD m.steam_storage_production = pyo.Var(m.steam_storage_index_map, m.T, initialize=0, bounds=(0, storage_limit))
   # elec_sink
   m.elec_sink_index_map = pyo.Set(initialize=range(len(m.resource_index_map['elec_sink'])))
   m.elec_sink_production = pyo.Var(m.elec_sink_index_map, m.T, initialize=0, bounds=(-sink_limit, 0))
@@ -104,6 +113,8 @@ def make_concrete_model():
   m.steam_conservation = pyo.Constraint(m.T, rule=_conserve_steam)
   # electricity
   m.elec_conservation = pyo.Constraint(m.T, rule=_conserve_electricity)
+  # track storage level by charge/discharge
+  m.steam_storage_management = pyo.Constraint(m.T, rule=_manage_storage)
   #*******************
   # create objective function
   m.OBJ = pyo.Objective(sense=pyo.maximize, rule=_economics)
@@ -133,7 +144,7 @@ def _conserve_steam(m, t):
   """
   # signs are tricky here, consumption is negative and production is positive
   # a positive delta in steam storage level means it absorbed steam, so it's a negative term
-  storage_source = - (m.steam_storage_production[0, t] - (storage_initial if t == 0 else m.steam_storage_production[0, t-1])) / dt
+  storage_source = m.steam_storage_charge[0, t] + m.steam_storage_discharge[0, t] #(storage_initial if t == 0 else m.steam_storage_level[0, t-1])) / dt
   sources = storage_source + m.steam_source_production[0, t]
   sinks = m.elec_generator_production[0, t]
   return sources + sinks == 0
@@ -148,6 +159,21 @@ def _conserve_electricity(m, t):
   sources = m.elec_generator_production[1, t]
   sinks = m.elec_sink_production[0, t]
   return sources + sinks == 0
+
+def _manage_storage(m, t):
+  """
+    Balance level of the storage unit with charge, discharge activities
+    @ In, m, pyo.ConcreteModel, model containing problem
+    @ In, t, int, time indexer
+    @ Out, constraint, bool, constraining evaluation
+  """
+  if t > 0:
+    previous = m.steam_storage_level[0, t-1]
+  else:
+    previous = storage_initial
+  # recall charge is negative (absorbing) and discharge is positive (emitting)
+  production = -sq_rte * m.steam_storage_charge[0, t] - m.steam_storage_discharge[0, t] / sq_rte
+  return m.steam_storage_level[0, t] == previous + production * dt
 
 def _economics(m):
   """
@@ -192,13 +218,16 @@ def print_solution(m):
   print('*'*80)
   print('solution:')
   print('  objective value:', m.OBJ())
-  print('time | steam source | steam storage | elec gen (s, e) | elec sink')
+  print('  storage initial:', storage_initial)
+  print('  dt:', dt)
+  print(f'{"time":^8} | {"steam src":^10} | {"storage c, d, l":^34} | {"elec gen (s, e)":^22} | elec sink | bigM')
   for t in m.T:
     print(f'{m.Times[t]:1.2e} | ' +
         f'{m.steam_source_production[0, t].value: 1.3e} | ' +
-        f'{m.steam_storage_production[0, t].value: 1.3e} | ' +
-        f'({m.elec_generator_production[0, t].value: 1.3e}, {m.elec_generator_production[1, t].value: 1.3e}) | ' +
-        f'{m.elec_sink_production[0, t].value: 1.3e}'
+        f'{m.steam_storage_charge[0, t].value: 1.3e}, {m.steam_storage_discharge[0, t].value: 1.3e}, {m.steam_storage_level[0, t].value: 1.3e} | ' +
+        f'{m.elec_generator_production[0, t].value: 1.3e}, {m.elec_generator_production[1, t].value: 1.3e} | ' +
+        f'{m.elec_sink_production[0, t].value: 1.3e} | ' +
+        f'{m.steam_oneway_bigM[t].value} '
         )
   print('*'*80)
 

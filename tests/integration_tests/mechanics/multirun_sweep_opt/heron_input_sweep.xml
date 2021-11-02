@@ -71,7 +71,7 @@
           </CashFlow>
           <CashFlow name="VOM" type="repeating" taxable="False" inflation="none" mult_target="False">
             <driver>
-              <Function method="activity">functions</Function>
+              <activity>a</activity>
             </driver>
             <reference_price>
               <fixed_value>-1</fixed_value>
@@ -90,7 +90,7 @@
           <lifetime>30</lifetime>
           <CashFlow name="sales" type="repeating" taxable="False" inflation="none" mult_target="False">
             <driver>
-              <Function method="activity">functions</Function>
+              <activity>a</activity>
             </driver>
             <reference_price>
               <fixed_value>10.0</fixed_value>

@@ -145,7 +145,7 @@ class Dispatcher(MessageUser, InputDataUser):
             specific_activity[tracker][resource] = activity.get_activity(comp, tracker, resource, time, **state_args)
         specific_meta['HERON']['time_index'] = t + time_offset
         specific_meta['HERON']['time_value'] = time
-        cfs = comp.get_state_cost(specific_activity, specific_meta)
+        cfs = comp.get_state_cost(specific_activity, specific_meta, marginal=True)
         time_subtotal = sum(cfs.values())
         comp_subtotal += time_subtotal
       total += comp_subtotal

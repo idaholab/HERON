@@ -13,7 +13,7 @@ def electric_source(data, meta):
     @ Out, meta, dict, state information
   """
   # flip sign because we consume the electricity
-  E = -1.0 * meta['HERON']['activity']['electricity']
+  E = -1.0 * meta['HERON']['activity']['production']['electricity']
   data = {'driver': E}
   return data, meta
 

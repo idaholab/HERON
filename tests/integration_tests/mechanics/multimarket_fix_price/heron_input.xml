@@ -58,7 +58,8 @@
         <lifetime>3</lifetime>
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
           <driver>
-            <Function method="electric_source">transfers</Function>
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
           </driver>
           <reference_price>
             <fixed_value>10.0</fixed_value>
@@ -83,7 +84,8 @@
         <lifetime>3</lifetime>
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
           <driver>
-            <Function method="electric_source">transfers</Function>
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
           </driver>
           <reference_price>
             <fixed_value>0.1</fixed_value>

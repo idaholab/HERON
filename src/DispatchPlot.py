@@ -122,7 +122,11 @@ class DispatchPlot(PlotPlugin):
                 var_label = comp_label
               else:
                 var_label = f'{comp_label}, {tracker.title()}'
-              ax.plot(dat.iloc[:, 1], dat[var], label=var_label)
+              if tracker == 'level':
+                style = '.:'
+              else:
+                style = '.-'
+              ax.plot(dat.iloc[:, 1], dat[var], style, label=var_label)
               ax.set_title(key.title())
               ax.set_xlabel('Time')
               ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))

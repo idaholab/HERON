@@ -1,3 +1,3 @@
-steamer_capacity,steam_storage_capacity,generator_capacity,electr_market_capacity,electr_flex_capacity,mean_NPV,std_NPV,med_NPV,max_NPV,min_NPV,perc_5_NPV,perc_95_NPV,samp_NPV,var_NPV,ProbabilityWeight,PointProbability,ProbabilityWeight-steamer_capacity,prefix
-1.0,100.0,-99.0,-2.0,-1e+200,27.3667638372,1.56343784157e-08,27.3667638291,27.3667638552,27.3667638272,27.3667638272,27.3667638552,3.0,2.44433788446e-16,0.5,0.010101010101,0.5,1
-100.0,100.0,-99.0,-2.0,-1e+200,607.644521623,4.14697493498e-07,607.644521647,607.644522025,607.644521197,607.644521197,607.644522025,3.0,1.71974011114e-13,0.5,0.010101010101,0.5,2
+steamer_capacity,steam_storage_capacity,generator_capacity,electr_market_capacity,electr_flex_capacity,mean_NPV,std_NPV,med_NPV,max_NPV,min_NPV,perc_5_NPV,perc_95_NPV,samp_NPV,var_NPV,ProbabilityWeight,ProbabilityWeight-steamer_capacity,PointProbability,prefix
+1.0,100.0,-99.0,-2.0,-1e+200,27.3667638372,1.56343784157e-08,27.3667638291,27.3667638552,27.3667638272,27.3667638272,27.3667638552,3.0,2.44433788446e-16,0.5,0.5,0.010101010101,1
+100.0,100.0,-99.0,-2.0,-1e+200,621.494308544,3.98747544645e-07,621.494308515,621.494308957,621.494308161,621.494308161,621.494308957,3.0,1.5899960436e-13,0.5,0.5,0.010101010101,2

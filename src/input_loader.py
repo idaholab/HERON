@@ -60,7 +60,7 @@ def parse(xml, loc, messageHandler):
   if not components:
     raise IOError('No <Component> nodes were found in the <Components> section!')
 
-  sources_node = xml.find('Case')
+  sources_node = xml.find('DataGenerators')
   if sources_node is None:
     raise IOError('<DataGenerators> node is missing from HERON input file!')
   # TODO only load the generators we need?? it'd be a good idea ...

@@ -779,6 +779,7 @@ class Pyomo(Dispatcher):
       @ In, r, int, index of stored resource (is this always 0?)
       @ In, m, pyo.ConcreteModel, associated model
       @ In, t, int, time index for capacity rule
+      @ Out, rule, bool, inequality used to limit charge behavior
     """
     charge_var = getattr(m, charge_name)
     bin_var = getattr(m, bin_name)
@@ -794,6 +795,7 @@ class Pyomo(Dispatcher):
       @ In, r, int, index of stored resource (is this always 0?)
       @ In, m, pyo.ConcreteModel, associated model
       @ In, t, int, time index for capacity rule
+      @ Out, rule, bool, inequality used to limit discharge behavior
     """
     discharge_var = getattr(m, discharge_name)
     bin_var = getattr(m, bin_name)
@@ -810,6 +812,7 @@ class Pyomo(Dispatcher):
       @ In, r, int, index of stored resource (is this always 0?)
       @ In, m, pyo.ConcreteModel, associated model
       @ In, t, int, time index for capacity rule
+      @ Out, rule, bool, inequality used to limit level behavior
     """
     level_var = getattr(m, level_name)
     charge_var = getattr(m, charge_name)

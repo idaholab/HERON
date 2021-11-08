@@ -16,15 +16,3 @@ def capacity(data, meta):
   data = {'driver': c}
   return data, meta
 
-def activity(data, meta):
-  """
-    return usage of resource "a"
-    @ In, data, dict, data requeset
-    @ In, meta, dict, state information
-    @ Out, data, dict, filled data
-    @ Out, meta, dict, state information
-  """
-  a = meta['HERON']['activity']['a']
-  data = {'driver': a}
-  return data, meta
-

@@ -36,10 +36,11 @@ class DispatchState:
     """
     return '<HERON generic DispatchState object>'
 
-  def get_activity(self, comp, res, time, **kwargs):
+  def get_activity(self, comp, activity, res, time, **kwargs):
     """
       Getter for activity level.
       @ In, comp, HERON Component, component whose information should be retrieved
+      @ In, activity, str, tracking variable name for activity subset
       @ In, res, string, name of resource to retrieve
       @ In, time, float, time at which activity should be provided
       @ Out, activity, float, amount of resource "res" produced/consumed by "comp" at time "time";
@@ -47,12 +48,13 @@ class DispatchState:
     """
     r = self._resources[comp][res]
     t = np.searchsorted(self._times, time) # TODO protect against value not present
-    return self.get_activity_indexed(comp, r, t, **kwargs)
+    return self.get_activity_indexed(comp, activity, r, t, **kwargs)
 
-  def set_activity(self, comp, res, time, value, **kwargs):
+  def set_activity(self, comp, activity, res, time, value, **kwargs):
     """
       Setter for activity level.
       @ In, comp, HERON Component, component whose information should be set
+      @ In, activity, str, tracking variable name for activity subset
       @ In, res, string, name of resource to retrieve
       @ In, time, float, time at which activity should be provided
       @ In, value, float, activity level; note positive is producting, negative is consuming
@@ -61,9 +63,9 @@ class DispatchState:
     """
     r = self._resources[comp][res]
     t = np.searchsorted(self._times, time) # TODO protect against value not present
-    self.set_activity_indexed(comp, r, t, value, **kwargs)
+    self.set_activity_indexed(comp, activity, r, t, value, **kwargs)
 
-  def get_activity_indexed(self, comp, r, t, **kwargs):
+  def get_activity_indexed(self, *args, **kwargs):
     """
       Getter for activity level, using indexes instead of values for r and t
       @ In, comp, HERON Component, component whose information should be retrieved
@@ -76,13 +78,10 @@ class DispatchState:
     # to be overwritten by implementing classes
     raise NotImplementedError
 
-  def set_activity_indexed(self, comp, r, t, value, **kwargs):
+  def set_activity_indexed(self, *args, **kwargs):
     """
       Getter for activity level, using indexes instead of values for r and t
-      @ In, comp, HERON Component, component whose information should be retrieved
-      @ In, r, int, index of resource to retrieve (as given by meta[HERON][resource_indexer])
-      @ In, t, int, index of time at which activity should be provided
-      @ In, value, float, value to set for activity
+      @ In, args, list, additional pass-through arguments
       @ In, kwargs, dict, additional pass-through keyword arguments
       @ Out, activity, float, amount of resource "res" produced/consumed by "comp" at time "time";
                               note positive is producting, negative is consuming
@@ -99,11 +98,12 @@ class DispatchState:
     #template = 'Dispatch__{c}__{r}' # standardized via input
     data = {}
     for comp in self._components:
-      for res, r in self._resources[comp].items():
-        result = np.empty(len(self._times))
-        for t, time in enumerate(self._times):
-          result[t] = self.get_activity_indexed(comp, r, t)
-        data[template.format(comp=comp.name, res=res)] = result
+      for tracker in comp.get_tracking_vars():
+        for res, r in self._resources[comp].items():
+          result = np.empty(len(self._times))
+          for t, time in enumerate(self._times):
+            result[t] = self.get_activity_indexed(comp, tracker, r, t)
+          data[template.format(comp=comp.name, tracker=tracker, res=res)] = result
     return data
 
 # NumpyState is the nominal DispatchState implementation
@@ -129,7 +129,8 @@ class NumpyState(DispatchState):
     DispatchState.initialize(self, components, resources_map, times)
     self._data = {}
     for comp in components:
-      self._data[comp] = np.zeros((len(self._resources[comp]), len(times)))
+      for tag in comp.get_tracking_vars():
+        self._data[f'{comp.name}_{tag}'] = np.zeros((len(self._resources[comp]), len(times)))
 
   def __repr__(self):
     """
@@ -139,43 +140,51 @@ class NumpyState(DispatchState):
     """
     msg = StringIO()
     msg.write('<HERON NumpyState dispatch record: \n')
-    for comp in self._data:
+    for key, act_data in self._data.items():
+      name, activity = key.split('_')
+      # find corresponding component
+      for comp, resources in self._resources.items():
+        if comp.name == name:
+          break
       resources = self._resources[comp]
-      msg.write(f'   component: {comp.name}\n')
+      msg.write(f'   component: {name} activity: {activity}\n')
       for res, r in resources.items():
-        msg.write(f'      {res}: {self._data[comp][r]}\n')
+        msg.write(f'      {res}: {act_data[r]}\n')
     msg.write('END NumpyState dispatch record>')
     return msg.getvalue()
 
-  def get_activity_indexed(self, comp, r, t, **kwargs):
+  def get_activity_indexed(self, comp, activity, r, t, **kwargs):
     """
       Getter for activity level.
       Note, if any of the arguments are "None" it is assumed that means "all"
       @ In, comp, HERON Component, component whose information should be retrieved
+      @ In, activity, str, tracking variable name for activity subset
       @ In, r, int, index of resource to retrieve (as given by meta[HERON][resource_indexer])
       @ In, t, int, index of time at which activity should be provided
       @ In, kwargs, dict, additional pass-through keyword arguments
       @ Out, activity, float, amount of resource "res" produced/consumed by "comp" at time "time";
                               note positive is producting, negative is consuming
     """
-    return self._data[comp][r, t]
+    return self._data[f'{comp.name}_{activity}'][r, t]
 
-  def set_activity_indexed(self, comp, r, t, value, **kwargs):
+  def set_activity_indexed(self, comp, activity, r, t, value, **kwargs):
     """
       Setter for activity level.
       @ In, comp, HERON Component, component whose information should be set
+      @ In, activity, str, tracking variable name for activity subset
       @ In, res, string, name of resource to retrieve
       @ In, time, float, time at which activity should be provided
       @ In, value, float, activity level; note positive is producting, negative is consuming
       @ In, kwargs, dict, additional pass-through keyword arguments
       @ Out, None
     """
-    self._data[comp][r, t] = value
+    self._data[f'{comp.name}_{activity}'][r, t] = value
 
-  def set_activity_vector(self, comp, res, start_time, end_time, values):
+  def set_activity_vector(self, comp, activity, res, start_time, end_time, values):
     """
       Shortcut utility for setting values all-at-once in a vector.
       @ In, comp, HERON Component, component whose information should be set
+      @ In, activity, str, tracking variable name for activity subset
       @ In, res, string, name of resource to retrieve
       @ In, start_time, int, first time index at which activity is provided
       @ In, end_time, int, last time at which activity is provided (not inclusive)
@@ -183,4 +192,4 @@ class NumpyState(DispatchState):
       @ Out, None
     """
     r = self._resources[comp][res]
-    self._data[comp][r, start_time:end_time] = values
+    self._data[f'{comp.name}_{activity}'][r, start_time:end_time] = values

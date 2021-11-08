@@ -43,45 +43,44 @@ def parse(xml, loc, messageHandler):
 
   # intentionally read case first
   case_node = xml.find('Case')
+  if case_node is None:
+    raise IOError('<Case> node is missing from HERON input file!')
   case = Cases.Case(loc, messageHandler=messageHandler)
   case.read_input(case_node)
 
-  # read everything else
-  for section in xml:
-    if section.tag == 'Components':
-      for comp_xml in section:
-        #print(type(Components.Component()))
-        #time.sleep(2000)
-        comp = Components.Component(messageHandler=messageHandler)
-        # check parsing
-        comp.read_input(comp_xml, case.get_mode())
-        components.append(comp)
+  # components
+  components_node = xml.find('Components')
+  if components_node is None:
+    raise IOError('<Components> node is missing from HERON input file!')
+  for comp_xml in components_node:
+    comp = Components.Component(messageHandler=messageHandler)
+    # check parsing
+    comp.read_input(comp_xml, case.get_mode())
+    components.append(comp)
+  if not components:
+    raise IOError('No <Component> nodes were found in the <Components> section!')
 
-    elif section.tag == 'DataGenerators':
-      # TODO only load the generators we need?? it'd be a good idea ...
-      for sub_xml in section:
-        typ = sub_xml.tag
-        if typ == 'CSV':
-          raise NotImplementedError('Not taking histories from CSV yet. If needed, let me know.')
-          new = Placeholders.CSV(messageHandler=messageHandler)
-        elif typ == 'ARMA':
-          new = Placeholders.ARMA(loc=loc, messageHandler=messageHandler)
-          #print("THIS IS INPUT LOADER")
-        elif typ == 'Function':
-          new = Placeholders.Function(loc=loc, messageHandler=messageHandler)
-        elif typ == 'ROM':
-          new = Placeholders.ROM(loc=loc, messageHandler=messageHandler)
-        else:
-          raise IOError('Unrecognized DataGenerator: "{}"'.format(sub_xml.tag))
-        new.read_input(sub_xml)
-        sources.append(new)
+  sources_node = xml.find('DataGenerators')
+  if sources_node is None:
+    raise IOError('<DataGenerators> node is missing from HERON input file!')
+  # TODO only load the generators we need?? it'd be a good idea ...
+  for sub_xml in sources_node:
+    typ = sub_xml.tag
+    if typ == 'CSV':
+      raise NotImplementedError('Not taking histories from CSV yet. If needed, let me know.')
+      # new = Placeholders.CSV(messageHandler=messageHandler)
+    elif typ == 'ARMA':
+      new = Placeholders.ARMA(loc=loc, messageHandler=messageHandler)
+    elif typ == 'Function':
+      new = Placeholders.Function(loc=loc, messageHandler=messageHandler)
+    elif typ == 'ROM':
+      new = Placeholders.ROM(loc=loc, messageHandler=messageHandler)
+    else:
+      raise IOError('Unrecognized DataGenerator: "{}"'.format(sub_xml.tag))
+    new.read_input(sub_xml)
+    sources.append(new)
 
   # now go back through and link up stuff
-  # TODO move to case.initialize?
-  need_source = (ValuedParams.factory.returnClass('Function'),
-                 ValuedParams.factory.returnClass('ARMA'),
-                 ValuedParams.factory.returnClass('ROM')
-                 )
   for comp in components:
     found = {}
     for obj, info in comp.get_crossrefs().items():

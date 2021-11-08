@@ -15,7 +15,7 @@ def electric_consume(data, meta):
   """
   activity = meta['HERON']['activity']
   # TODO a get_activity method for the dispatcher -> returns object-safe activity (expression or value)?
-  amount = activity['electricity']
+  amount = activity['production']['electricity']
   # NOTE multiplier is -1 in the input!
   data = {'driver': amount}
   return data, meta

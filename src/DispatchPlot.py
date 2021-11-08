@@ -95,7 +95,11 @@ class DispatchPlot(PlotPlugin):
       @ In, None
       @ Out, None
     """
-    df = self._source.asDataset().to_dataframe().reset_index()
+    ds = self._source.asDataset()
+    if ds is None:
+      self.raiseAWarning(f'No data in "{self._source.name}" data object; nothing to plot!')
+      return
+    df = ds.to_dataframe().reset_index()
     dispatch_vars = list(filter(lambda x: "Dispatch__" in x, df.columns))
     grouped_vars = self._group_by(dispatch_vars)
 
@@ -111,8 +115,18 @@ class DispatchPlot(PlotPlugin):
             ax = fig.add_subplot(len(grouped_vars),1,i+1)
             for var in group:
               # Plot the micro-step variable on the x-axis (i.ee Time)
-              var_label = var.split('__')[1].replace('_', ' ').title()
-              ax.plot(dat.iloc[:, 1], dat[var], label=var_label)
+              _, comp_name, tracker, resource = var.split('__')
+              comp_label = comp_name.replace('_', ' ').title()
+              # NOTE custom behavior based on production/storage labels
+              if tracker == 'production':
+                var_label = comp_label
+              else:
+                var_label = f'{comp_label}, {tracker.title()}'
+              if tracker == 'level':
+                style = '.:'
+              else:
+                style = '.-'
+              ax.plot(dat.iloc[:, 1], dat[var], style, label=var_label)
               ax.set_title(key.title())
               ax.set_xlabel('Time')
               ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))

@@ -297,7 +297,7 @@ class Pyomo(Dispatcher):
     done_and_checked = False
     attempts = 0
     # DEBUGG show variables, bounds
-    if True: #self.debug_mode:
+    if self.debug_mode:
       self._debug_pyomo_print(m)
     while not done_and_checked:
       attempts += 1
@@ -421,7 +421,7 @@ class Pyomo(Dispatcher):
       Creates production pyomo fixed parameter object for a component
       @ In, m, pyo.ConcreteModel, associated model
       @ In, comp, HERON Component, component to make production variables for
-      @ In, values, array(float), values to set for param
+      @ In, values, np.array(float), values to set for param
       @ In, tag, str, optional, if not None then name will be component_[tag]
       @ Out, prod_name, str, name of production variable
     """
@@ -462,7 +462,7 @@ class Pyomo(Dispatcher):
       Creates production pyomo variable object for a component
       @ In, m, pyo.ConcreteModel, associated model
       @ In, comp, HERON Component, component to make production variables for
-      @ In, tag, str, optional, if not None then name will be component_[tag]
+      @ In, tag, str, optional, if not None then name will be component_[tag]; otherwise "production"
       @ In, add_bounds, bool, optional, if True then determine and set bounds for variable
       @ In, kwargs, dict, optional, passalong kwargs to pyomo variable
       @ Out, prod_name, str, name of production variable
@@ -496,6 +496,7 @@ class Pyomo(Dispatcher):
     # production variable depends on resources, time
     #FIXME initials! Should be lambda with mins for tracking var!
     prod = pyo.Var(indexer, m.T, initialize=initial, bounds=bounds, **kwargs)
+    # TODO it may be that we need to set variable values to avoid problems in some solvers.
     # if comp.is_dispatchable() == 'fixed':
     #   for t, _ in enumerate(m.Times):
     #     prod[limit_r, t].fix(caps[t])

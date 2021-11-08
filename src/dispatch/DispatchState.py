@@ -81,10 +81,7 @@ class DispatchState:
   def set_activity_indexed(self, *args, **kwargs):
     """
       Getter for activity level, using indexes instead of values for r and t
-      @ In, comp, HERON Component, component whose information should be retrieved
-      @ In, r, int, index of resource to retrieve (as given by meta[HERON][resource_indexer])
-      @ In, t, int, index of time at which activity should be provided
-      @ In, value, float, value to set for activity
+      @ In, args, list, additional pass-through arguments
       @ In, kwargs, dict, additional pass-through keyword arguments
       @ Out, activity, float, amount of resource "res" produced/consumed by "comp" at time "time";
                               note positive is producting, negative is consuming

@@ -81,7 +81,6 @@ class DispatchPlot(PlotPlugin):
     if src is None:
       self.raiseAnError(IOError, f'Source DataObject "{self._sourceName}" was not found in the Step!')
     self._source = src
-    print(self._macroName)
 
   @staticmethod
   def _group_by(iterable):

@@ -400,6 +400,11 @@ class Template(TemplateBase):
         out_plot = ET.SubElement(OSs, 'Plot', attrib={'name': 'dispatchPlot', 'subType': 'HERON.DispatchPlot'})
         out_plot_source = ET.SubElement(out_plot, 'source')
         out_plot_source.text = 'dispatch'
+        out_plot_macro = ET.SubElement(out_plot, 'macro_variable')
+        out_plot_macro.text = case.get_year_name()
+        out_plot_micro = ET.SubElement(out_plot, 'micro_variable')
+        out_plot_micro.text = case.get_time_name()
+
 
   def _modify_outer_samplers(self, template, case, components):
     """

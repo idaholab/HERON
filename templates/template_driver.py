@@ -404,6 +404,13 @@ class Template(TemplateBase):
         out_plot_macro.text = case.get_year_name()
         out_plot_micro = ET.SubElement(out_plot, 'micro_variable')
         out_plot_micro.text = case.get_time_name()
+        out_plot_signals = ET.SubElement(out_plot, 'signals')
+        signals = set()
+        for source in sources:
+          new = source.get_variable()
+          if new is not None:
+            signals.update(set(new))
+        out_plot_signals.text = ', '.join(signals)
 
 
   def _modify_outer_samplers(self, template, case, components):

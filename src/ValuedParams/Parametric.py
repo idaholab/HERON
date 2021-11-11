@@ -23,6 +23,8 @@ class Parametric(ValuedParam):
     spec = InputData.parameterInputFactory('Parametric', contentType=InputTypes.StringType,
         descr=r"""indicates this value should be parametrized (or fixed) in the outer run,
         but functionally act as a constant in the inner workflow.""")
+    spec.addParam('debug_value', param_type=InputTypes.FloatType, required=False,
+        descr=r"""provides a value to use for this entry when in Case mode has "debug" enabled.""")
     return spec
 
   def __init__(self):
@@ -32,7 +34,8 @@ class Parametric(ValuedParam):
       @ Out, None
     """
     super().__init__()
-    self._parametric = None # (low, high) for opt, sweep values for sweep, or fixed value for fixed
+    self._parametric = None  # (low, high) for opt, sweep values for sweep, or fixed value for fixed
+    self._debug_value = None # value to use if in debug mode (if desired by user)
     # NOTE that _parametric gets FIXED in the inner runs, becoming a constant
     # NOTE I think "_parametric" may only be set in the DispatchManager currently, and possibly
     #  only for Capacities. Perhaps we need a registry for valued params that keeps track
@@ -49,15 +52,19 @@ class Parametric(ValuedParam):
     """
     super().read(comp_name, spec, mode, alias_dict=None)
     self._parametric = spec.value
+    self._debug_value = spec.parameterValues.get('debug_value', None)
     return []
 
-  def get_value(self):
+  def get_value(self, debug=False):
     """
       Get the value for this parametric source.
-      @ In, None
+      @ In, debug, bool, optional if True then give debug value (if any)
       @ Out, value, None, value
     """
-    return self._parametric
+    if debug and self._debug_value is not None:
+      return self._debug_value
+    else:
+      return self._parametric
 
   def set_value(self, value):
     """
@@ -90,9 +97,11 @@ class FixedValue(Parametric):
       @ In, None
       @ Out, spec, InputData, value-based spec
     """
-    spec = InputData.parameterInputFactory('fixed_value', contentType=InputTypes.FloatType,
-        descr=r"""indicates this value should be fixed in the outer run,
-        and act as a constant in the inner workflow.""")
+    spec = super().get_input_specs()
+    spec.name = 'fixed_value'
+    spec.contentType = InputTypes.FloatType
+    spec.description = r"""indicates this value should be fixed in the outer run,
+                       and act as a constant in the inner workflow."""
     return spec
 
 class OptBounds(Parametric):
@@ -103,9 +112,11 @@ class OptBounds(Parametric):
       @ In, None
       @ Out, spec, InputData, value-based spec
     """
-    spec = InputData.parameterInputFactory('opt_bounds', contentType=InputTypes.FloatListType,
-        descr=r"""indicates this value should be optimized in the outer run,
-        while acting as a constant in the inner workflow.""")
+    spec = super().get_input_specs()
+    spec.name = 'opt_bounds'
+    spec.contentType = InputTypes.FloatListType
+    spec.description = r"""indicates this value should be optimized in the outer run,
+        while acting as a constant in the inner workflow."""
     return spec
 
 class SweepValues(Parametric):
@@ -116,7 +127,9 @@ class SweepValues(Parametric):
       @ In, None
       @ Out, spec, InputData, value-based spec
     """
-    spec = InputData.parameterInputFactory('sweep_values', contentType=InputTypes.FloatListType,
-        descr=r"""indicates this value should be parametrically swept in the outer run,
-        while acting as a constant in the inner workflow.""")
+    spec = super().get_input_specs()
+    spec.name = 'sweep_values'
+    spec.contentType = InputTypes.FloatListType
+    spec.description = r"""indicates this value should be parametrically swept in the outer run,
+        while acting as a constant in the inner workflow."""
     return spec

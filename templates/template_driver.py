@@ -454,7 +454,7 @@ class Template(TemplateBase):
       cap = interaction.get_capacity(None, raw=True)
       # do we already know the capacity values?
       if cap.is_parametric():
-        vals = cap.get_value()
+        vals = cap.get_value(debug=case.debug['enabled'])
         # is the capacity variable being swept over?
         if isinstance(vals, list):
           # make new Distribution, Sampler.Grid.variable
@@ -716,7 +716,7 @@ class Template(TemplateBase):
         # this capacity is being [swept or optimized in outer] (list) or is constant (float)
         # -> so add a node, put either the const value or a dummy in place
         cap_name = self.namingTemplates['variable'].format(unit=name, feature='capacity')
-        values = capacity.get_value()
+        values = capacity.get_value(debug=case.debug['enabled'])
         if isinstance(values, list):
           cap_val = 42 # placeholder
         else:

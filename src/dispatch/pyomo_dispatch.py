@@ -208,7 +208,7 @@ class Pyomo(Dispatcher):
       for comp in components:
         for tag in comp.get_tracking_vars():
           for res, values in subdisp[comp.name][tag].items():
-            dispatch.set_activity_vector(comp, tag, res, start_index, end_index, values)
+            dispatch.set_activity_vector(comp, res, values, tracker=tag, start_idx=start_index, end_idx=end_index)
       start_index = end_index
     return dispatch
 

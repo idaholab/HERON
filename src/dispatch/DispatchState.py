@@ -180,16 +180,22 @@ class NumpyState(DispatchState):
     """
     self._data[f'{comp.name}_{activity}'][r, t] = value
 
-  def set_activity_vector(self, comp, activity, res, start_time, end_time, values):
+  # def set_activity_vector(self, comp, tracker, res, start_time, end_time, values):
+  def set_activity_vector(self, comp, res, values, tracker='production', start_idx=0, end_idx=None):
     """
       Shortcut utility for setting values all-at-once in a vector.
       @ In, comp, HERON Component, component whose information should be set
-      @ In, activity, str, tracking variable name for activity subset
       @ In, res, string, name of resource to retrieve
-      @ In, start_time, int, first time index at which activity is provided
-      @ In, end_time, int, last time at which activity is provided (not inclusive)
       @ In, values, np.array, activity level; note positive is producting, negative is consuming
+      @ In, tracker, str, optional, tracking variable name for activity subset, Default: 'production'
+      @ In, start_idx, int, optional, first time index at which activity is provided, Default: 0
+      @ In, end_idx, int, optional, last time index at which activity is provided, Default: None
       @ Out, None
     """
+    if comp.get_interaction().is_type('Storage') and tracker == 'production':
+      raise RuntimeError(f'Component "{comp.name}" is Storage and the provided tracker is "production"!')
+    if end_idx is None:
+      end_idx = len(self._times)
+
     r = self._resources[comp][res]
-    self._data[f'{comp.name}_{activity}'][r, start_time:end_time] = values
+    self._data[f'{comp.name}_{tracker}'][r, start_idx:end_idx] = values

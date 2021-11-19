@@ -102,6 +102,23 @@ class DispatchPlot(PlotPlugin):
         gr[key] = [var]
     return gr
 
+  @staticmethod
+  def _group_by_component(iterable):
+    """
+      Returns dictionary containing grouped dispatch variables.
+      @ In, iterable, list, a list of column names to group-by.
+      @ Out, gr, dict, a dictionary containing a mapping of grouped variable names.
+    """
+    gr = {}
+    for var in iterable:
+      key = var.split('__')[1]
+      if key in gr.keys():
+        gr[key].append(var)
+      else:
+        gr[key] = [var]
+    return gr
+
+
   def run(self):
     """
       Generate the plot
@@ -115,16 +132,19 @@ class DispatchPlot(PlotPlugin):
     df = ds.to_dataframe().reset_index()
     dispatch_vars = list(filter(lambda x: "Dispatch__" in x, df.columns))
     grouped_vars = self._group_by(dispatch_vars)
+    grouped_comp = self._group_by_component(dispatch_vars)
+    comp_idx = dict((comp, i) for i,comp in enumerate(grouped_comp.keys()))
 
     # Dimension variables to plot with
     sample_ids = df[self._source.sampleTag].unique()
     cluster_ids = df['_ROM_Cluster'].unique()  # TODO: find way to not hardcode name
     macro_steps = df[self._macroName].unique()
-    total_axs = len(grouped_vars) + len(self._addSignals)
+
 
     for sample_id in sample_ids:
       for macro_step in macro_steps:
         for cluster_id in cluster_ids:
+          total_axs = len(grouped_vars) # + len(self._addSignals)
           fig = plt.figure()
           axs = fig.subplots(total_axs, 1, sharex=True)
           # Filter data to plot correct values for current dimension
@@ -137,37 +157,58 @@ class DispatchPlot(PlotPlugin):
           # add dispatch lines
           for i, (key, group) in enumerate(grouped_vars.items()):
             ax = axs[i] #fig.add_subplot(total_axs, 1, i+1, sharex=True)
+            ax_twin = ax.twinx()
+            lines = []
             for var in group:
               _, comp_name, tracker, resource = var.split('__')
+              cidx = comp_idx[comp_name]
               comp_label = comp_name.replace('_', ' ').title()
+
               # NOTE custom behavior based on production/storage labels
               if tracker == 'production':
                 var_label = comp_label
               else:
                 var_label = f'{comp_label}, {tracker.title()}'
+
               if tracker == 'level':
-                style = ':'
+                plot_ax = ax_twin
+                ls = ':'
               else:
-                style = '-'
+                plot_ax = ax
+                ls = '-'
+
               # Plot the micro-step variable on the x-axis (i.e Time)
-              ax.plot(micro, dat[var],  marker='.', linestyle=style, label=var_label)
-              ax.set_title(key.title())
-              ax.set_xlabel(self._microName.title())
-              ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-          file_name = f"dispatch_id{sample_id}_y{macro_step}_c{cluster_id}.png"
-          # add signal lines (e.g. synthetic history values)
-          for s, name in enumerate(self._addSignals):
-            var = dat.get(name, None)
-            if var is None:
-              msg = f'Requested signal variable "{name}" but variable not in data!'
-              self.raiseAnError(msg)
-            ax = axs[i+s+1]#fig.add_subplot(total_axs, 1, i+s+2)
-            ax.plot(micro, var, marker='.', linestyle='-', label=name)
-            ax.set_title(name.title())
+              ln = plot_ax.plot(micro, dat[var],  marker='.', linestyle=ls, label=var_label, color=f"C{cidx}")
+              lines.extend(ln)
+
+            ax.set_title(key.title())
             ax.set_xlabel(self._microName.title())
-            ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+            labels = [l.get_label() for l in lines]
+            ax.legend(lines, labels, loc='center left', bbox_to_anchor=(1.1, 0.5))
+
+          file_name = f"dispatch_id{sample_id}_y{macro_step}_c{cluster_id}.png"
           fig.tight_layout()
           fig.savefig(file_name)
           self.raiseAMessage(f'Saved figure to "{file_name}"')
           plt.clf()
 
+          # add signal lines (e.g. synthetic history values)
+          total_axs = len(self._addSignals)
+          fig02 = plt.figure()
+          axs = fig02.subplots(total_axs, 1, sharex=True)
+          for s, name in enumerate(self._addSignals):
+            var = dat.get(name, None)
+            if var is None:
+              msg = f'Requested signal variable "{name}" but variable not in data!'
+              self.raiseAnError(msg)
+            ax = axs[s]
+            ax.plot(micro, var, marker='.', linestyle='-', label=name)
+            ax.set_title(name.title())
+            ax.set_xlabel(self._microName.title())
+            ax.legend(loc='center left', bbox_to_anchor=(1.1, 0.5))
+
+          signal_file_name = f"dispatch_id{sample_id}_y{macro_step}_c{cluster_id}_SIGNAL.png"
+          fig02.tight_layout()
+          fig02.savefig(signal_file_name)
+          self.raiseAMessage(f'Saved figure to "{signal_file_name}"')
+          plt.clf()

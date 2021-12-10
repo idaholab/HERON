@@ -9,6 +9,8 @@ import sys
 import itertools as it
 import numpy as np
 import pandas as pd
+import matplotlib as mpl
+mpl.use('Agg') # Prevents the script from blocking while plotting
 import matplotlib.pyplot as plt
 
 from PluginBaseClasses.OutStreamPlotPlugin import PlotPlugin, InputTypes, InputData
@@ -173,12 +175,20 @@ class DispatchPlot(PlotPlugin):
               if tracker == 'level':
                 plot_ax = ax_twin
                 ls = ':'
+                mk = '.'
+              elif tracker == 'charge':
+                plot_ax = ax
+                mk = '^'
+              elif tracker == 'discharge':
+                plot_ax = ax
+                mk = 'v'
               else:
                 plot_ax = ax
                 ls = '-'
+                mk = '1'
 
               # Plot the micro-step variable on the x-axis (i.e Time)
-              ln = plot_ax.plot(micro, dat[var],  marker='.', linestyle=ls, label=var_label, color=f"C{cidx}")
+              ln = plot_ax.plot(micro, dat[var],  marker=mk, linestyle=ls, label=var_label, color=f"C{cidx}")
               lines.extend(ln)
 
             ax.set_title(key.title())

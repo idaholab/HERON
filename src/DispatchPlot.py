@@ -179,9 +179,11 @@ class DispatchPlot(PlotPlugin):
               elif tracker == 'charge':
                 plot_ax = ax
                 mk = '^'
+                ls = '-'
               elif tracker == 'discharge':
                 plot_ax = ax
                 mk = 'v'
+                ls = '-'
               else:
                 plot_ax = ax
                 ls = '-'

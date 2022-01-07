@@ -39,7 +39,7 @@
     <Component name="steamer">
       <produces resource="steam" dispatch="fixed">
         <capacity resource="steam">
-          <sweep_values>1, 100</sweep_values>
+          <sweep_values debug_value="3.14">1, 100</sweep_values>
         </capacity>
       </produces>
       <economics>

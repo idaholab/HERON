@@ -57,7 +57,7 @@ class Variable(ValuedParam):
     if aliases is None:
       aliases = {}
     key = self._raven_var if target_var is None else target_var
-    var = aliases.get(key, key)
+    var = aliases.get(key, self._raven_var)
     try:
       val = inputs['HERON']['RAVEN_vars'][var]
     except KeyError as e:

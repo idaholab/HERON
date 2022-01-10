@@ -1,6 +1,8 @@
 ECHO Starting to compile manual...
 chmod u+x script/copy_tex.sh
-script/copy_tex.sh
+cd script
+copy_tex.sh
+cd ..
 python script/generate_user_manual.py
 cd build
 pdflatex -interaction=nonstopmode HERON_user_manual.tex

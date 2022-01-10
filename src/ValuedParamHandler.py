@@ -133,13 +133,13 @@ class ValuedParamHandler(MessageUser):
     """
     return self._vp.get_source()
 
-  def get_value(self):
+  def get_value(self, **kwargs):
     """
       Get fixed values, if any.
       @ In, None
       @ Out, value, object, VP's reported fixed value (may be None)
     """
-    return self._vp.get_value()
+    return self._vp.get_value(**kwargs)
 
   def set_value(self, value):
     """

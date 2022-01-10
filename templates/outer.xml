@@ -4,6 +4,10 @@
     <WorkingDir>.</WorkingDir>
     <Sequence></Sequence>
     <batchSize>1</batchSize>
+    <!-- <internalParallel>True</internalParallel>
+     <mode>mpi<runQSUB></runQSUB></mode>
+     <expectedTime>72:0:0</expectedTime>
+     <clusterParameters>-P nst -j oe</clusterParameters> -->
   </RunInfo>
 
   <Steps>
@@ -18,7 +22,6 @@
     <MultiRun name="optimize">
       <Input          class='Files'       type='raven'           >inner_workflow</Input>
       <Input          class='Files'       type=''                >heron_lib</Input>
-      <Input          class='Files'       type=''                >transfers</Input>
       <Model          class='Models'      type='Code'            >raven</Model>
       <Optimizer      class='Optimizers'  type='FiniteDifference'>cap_opt</Optimizer>
       <Output         class='DataObjects' type='PointSet'        >opt_eval</Output>

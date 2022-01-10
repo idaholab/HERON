@@ -26,6 +26,10 @@ class Activity(ValuedParam):
               The value of this node should be the name of a resource that this component
               either produces or consumes. Note the sign of the activity by default will be negative
               for consumed resources and positive for produced resources.""")
+    spec.addParam('tracking', param_type=InputTypes.StringType, required=False,
+        descr=r"""Some kinds of components have multiple tracking variables. This attribute specifies
+               which tracking variable is desired. Options are only "production" for Production and Demand
+               units, and [level, charge, discharge] for Storage units. Default is the first entry listed.""")
     return spec
 
   def __init__(self):
@@ -38,6 +42,7 @@ class Activity(ValuedParam):
     self._source_kind = 'activity'
     self._var_name = None # name of the variable within the synth hist
     self._resource = None # name of the resource whose activity should be used
+    self._tracking_var = None # specific tracking variable for the component
 
   def read(self, comp_name, spec, mode, alias_dict=None):
     """
@@ -49,6 +54,8 @@ class Activity(ValuedParam):
       @ Out, needs, list, signals needed to evaluate this ValuedParam at runtime
     """
     super().read(comp_name, spec, mode, alias_dict=None)
+    subvar = spec.parameterValues.get('tracking', None)
+    self._tracking_var = subvar # NOTE this gets fixed up in the crosscheck
     # aliases get used to convert variable names, notably for the cashflow's "capacity"
     if alias_dict is None:
       alias_dict = {}
@@ -62,6 +69,15 @@ class Activity(ValuedParam):
       @ In, interaction, HERON.Component.Interaction, interaction that "owns" this VP
       @ Out, None
     """
+    # use this chance to link the interaction tracking vars
+    ok_trackers = interaction.get_tracking_vars()
+    if self._tracking_var is None:
+      self._tracking_var = ok_trackers[0]
+      self.raiseAMessage(f'Tracking variable not specified; using "{self._tracking_var}" ...')
+    else:
+      if self._tracking_var not in ok_trackers:
+        self.raiseAnError(f'Tracking variable "{self._tracking_var}" is not one of the variables ' +
+                           f'tracked by this interaction! Options are: {ok_trackers}.')
     # check that the requested resource is actually used by this interaction
     available = interaction.get_resources()
     if self._resource not in available:
@@ -84,7 +100,7 @@ class Activity(ValuedParam):
     # set the outgoing name for the evaluation results
     key = self._var_name if not target_var else target_var
     try:
-      value = inputs['HERON']['activity'][self._resource]
+      value = inputs['HERON']['activity'][self._tracking_var][self._resource]
     except KeyError as e:
       self.raiseAnError(RuntimeError, f'Resource "{self._resource}" was not found among those produced and ' +
                         'consumed by this component!')

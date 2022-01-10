@@ -50,7 +50,7 @@ class Template(TemplateBase):
   TemplateBase.addNamingTemplates({'jobname'        : '{case}_{io}',
                                    'stepname'       : '{action}_{subject}',
                                    'variable'       : '{unit}_{feature}',
-                                   'dispatch'       : 'Dispatch__{component}__{resource}',
+                                   'dispatch'       : 'Dispatch__{component}__{tracker}__{resource}',
                                    'data object'    : '{source}_{contents}',
                                    'distribution'   : '{unit}_{feature}_dist',
                                    'ARMA sampler'   : '{rom}_sampler',
@@ -190,7 +190,7 @@ class Template(TemplateBase):
     self._modify_outer_vargroups(template, case, components, sources)
     self._modify_outer_databases(template, case)
     self._modify_outer_dataobjects(template, case, components)
-    self._modify_outer_files(template, sources)
+    self._modify_outer_files(template, case, sources)
     self._modify_outer_models(template, case, components)
     self._modify_outer_outstreams(template, case, components, sources)
     self._modify_outer_samplers(template, case, components)
@@ -253,10 +253,10 @@ class Template(TemplateBase):
       group = var_groups.find(".//Group[@name='GRO_outer_debug_dispatch']")
       for component in components:
         name = component.name
-        interaction = component.get_interaction()
-        for resource in interaction.get_resources():
-          var_name = self.namingTemplates['dispatch'].format(component=name, resource=resource)
-          self._updateCommaSeperatedList(group, var_name)
+        for tracker in component.get_tracking_vars():
+          for resource in component.get_resources():
+            var_name = self.namingTemplates['dispatch'].format(component=name, tracker=tracker, resource=resource)
+            self._updateCommaSeperatedList(group, var_name)
       # -> synthetic histories?
       group = var_groups.find(".//Group[@name='GRO_outer_debug_synthetics']")
       for source in sources:
@@ -312,15 +312,21 @@ class Template(TemplateBase):
                               outputs=debug_gro,
                               depends=deps)
 
-  def _modify_outer_files(self, template, sources):
+  def _modify_outer_files(self, template, case, sources):
     """
       Defines modifications to the Files of outer.xml RAVEN input file.
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
       @ In, sources, list, list of HERON Placeholder instances for this run
       @ Out, None
     """
     files = template.find('Files')
-    step = template.find('Steps').find('MultiRun') # NOTE assuming MultiRun for sampling is the first one
+    multiruns = template.find('Steps').findall('MultiRun')
+    for run in multiruns:
+      # This relies on the fact that the template is hardcoded so that
+      # the MultiRun 'name' attribute is either 'optimize' or 'sweep'.
+      if case.get_mode() in run.attrib['name']:
+        step = run
     # modify path to inner
     inner = files.find('Input') # NOTE assuming it's the first file in the template
     inner.text = '../inner.xml'
@@ -329,10 +335,10 @@ class Template(TemplateBase):
       if source.is_type('Function'):
         # add it to the list of things that have to be transferred
         files = template.find('Files')
-        src = xmlUtils.newNode('Input', attrib={'name': 'transfers'}, text='../'+source._source)
+        src = xmlUtils.newNode('Input', attrib={'name': source.name}, text='../'+source._source)
         files.append(src)
         # add it to the Step inputs so it gets carried along
-        inp = self._assemblerNode('Input', 'Files', '', 'transfers')
+        inp = self._assemblerNode('Input', 'Files', '', source.name)
         step.insert(0, inp)
 
   def _modify_outer_models(self, template, case, components):
@@ -394,6 +400,18 @@ class Template(TemplateBase):
         out_plot = ET.SubElement(OSs, 'Plot', attrib={'name': 'dispatchPlot', 'subType': 'HERON.DispatchPlot'})
         out_plot_source = ET.SubElement(out_plot, 'source')
         out_plot_source.text = 'dispatch'
+        out_plot_macro = ET.SubElement(out_plot, 'macro_variable')
+        out_plot_macro.text = case.get_year_name()
+        out_plot_micro = ET.SubElement(out_plot, 'micro_variable')
+        out_plot_micro.text = case.get_time_name()
+        out_plot_signals = ET.SubElement(out_plot, 'signals')
+        signals = set()
+        for source in sources:
+          new = source.get_variable()
+          if new is not None:
+            signals.update(set(new))
+        out_plot_signals.text = ', '.join(signals)
+
 
   def _modify_outer_samplers(self, template, case, components):
     """
@@ -436,7 +454,7 @@ class Template(TemplateBase):
       cap = interaction.get_capacity(None, raw=True)
       # do we already know the capacity values?
       if cap.is_parametric():
-        vals = cap.get_value()
+        vals = cap.get_value(debug=case.debug['enabled'])
         # is the capacity variable being swept over?
         if isinstance(vals, list):
           # make new Distribution, Sampler.Grid.variable
@@ -698,7 +716,7 @@ class Template(TemplateBase):
         # this capacity is being [swept or optimized in outer] (list) or is constant (float)
         # -> so add a node, put either the const value or a dummy in place
         cap_name = self.namingTemplates['variable'].format(unit=name, feature='capacity')
-        values = capacity.get_value()
+        values = capacity.get_value(debug=case.debug['enabled'])
         if isinstance(values, list):
           cap_val = 42 # placeholder
         else:
@@ -713,10 +731,11 @@ class Template(TemplateBase):
       else:
         raise NotImplementedError('Capacity from "{}" not implemented yet. Component: {}'.format(capacity, cap_name))
 
-      for resource in interaction.get_resources():
-        var_name = self.namingTemplates['dispatch'].format(component=name, resource=resource)
-        self._updateCommaSeperatedList(groups['init_disp'], var_name)
-        self._updateCommaSeperatedList(groups['full_dispatch'], var_name)
+      for tracker in component.get_tracking_vars():
+        for resource in component.get_resources():
+          var_name = self.namingTemplates['dispatch'].format(component=name, tracker=tracker, resource=resource)
+          self._updateCommaSeperatedList(groups['init_disp'], var_name)
+          self._updateCommaSeperatedList(groups['full_dispatch'], var_name)
 
   def _modify_inner_debug(self, template, case, components):
     """

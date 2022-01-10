@@ -1,3 +1,4 @@
+<?xml version="1.0" ?>
 <Simulation verbosity="debug">
   <TestInfo>
     <name>ARMA_sine</name>
@@ -75,15 +76,15 @@
       <P>0</P>
       <Q>0</Q>
       <Fourier>10</Fourier>
-      <Segment grouping='interpolate'>
+      <Segment grouping="interpolate">
         <macroParameter>Year</macroParameter>
-        <Classifier class='Models' type='PostProcessor'>classifier</Classifier>
-        <subspace divisions='1'>Time</subspace>
+        <Classifier class="Models" type="PostProcessor">classifier</Classifier>
+        <subspace divisions="1">Time</subspace>
       </Segment>
       <reseedCopies>False</reseedCopies>
       <seed>42</seed>
     </ROM>
-   <PostProcessor name="classifier" subType="DataMining">
+    <PostProcessor name="classifier" subType="DataMining">
       <KDD labelFeature="labels" lib="SciKitLearn">
         <Features>Signal</Features>
         <SKLtype>cluster|KMeans</SKLtype>
@@ -93,9 +94,9 @@
   </Models>
 
   <Metrics>
-    <SKL name="metric">
+    <Metric name="metric" subType="SKL">
       <metricType>regression|mean_squared_error</metricType>
-    </SKL>
+    </Metric>
   </Metrics>
 
   <OutStreams>
@@ -118,4 +119,5 @@
       <constant name="scaling">1.0</constant>
     </MonteCarlo>
   </Samplers>
+
 </Simulation>

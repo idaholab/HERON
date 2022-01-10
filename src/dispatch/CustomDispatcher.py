@@ -96,15 +96,12 @@ class Custom(Dispatcher):
     # load user module
     load_string, _ = utils.identifyIfExternalModelExists(self, self._file, '')
     module = utils.importFromPath(load_string, True)
-    # run dispatch
-    results = module.dispatch(meta)
-    # load activity into a DispatchState
     state = NumpyState()
     indexer = meta['HERON']['resource_indexer']
     state.initialize(components, indexer, time)
-    for comp in components:
-      for resource, activity in results.get(comp.name, {}).items():
-        state.set_activity_vector(comp, resource, 0, t_num, activity)
+    # run dispatch
+    results = module.dispatch(meta, state)
+    # TODO: Check to make sure user has uploaded all activity data.
     return state
 
 

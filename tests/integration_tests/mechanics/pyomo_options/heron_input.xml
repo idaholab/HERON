@@ -31,7 +31,7 @@
       <pyomo>
         <rolling_window_length>8</rolling_window_length>
         <debug_mode>True</debug_mode>
-        <solver>ipopt</solver>
+        <solver>cbc</solver>
       </pyomo>
     </dispatcher>
   </Case>
@@ -90,8 +90,8 @@
         <lifetime>30</lifetime>
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
           <driver>
-            <Function method="electric_consume">transfers</Function>
-            <!-- <resource multiplier="-1" absolute="True">electricity</resource> -->
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
           </driver>
           <reference_price>
             <fixed_value>0.5</fixed_value>
@@ -111,7 +111,8 @@
         <lifetime>30</lifetime>
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
           <driver>
-            <Function method="electric_consume">transfers</Function>
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
           </driver>
           <reference_price>
             <Function method="flex_price">transfers</Function>

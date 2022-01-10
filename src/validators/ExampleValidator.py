@@ -71,23 +71,24 @@ class Example(Validator):
     """
     errs = [] # TODO best format for this?
     for comp, info in dispatch._resources.items():
-      for res in info:
-        for t, time in enumerate(times):
-          current = dispatch.get_activity(comp, res, time)
-          if comp.get_interaction().is_type('Storage') and t == 0:
-            init_level = comp.get_interaction().get_initial_level(meta)
-          if t > 0:
-            previous = dispatch.get_activity(comp, res, times[t-1])
-            delta = current - previous
-            sign = np.sign(delta)
-            if abs(delta) - self._allowable > self._tolerance:
-              errs.append({'msg': f'Exceeded ramp of {self._allowable} with {delta:1.8e}',
-                           'limit': previous + (sign * self._allowable),
-                           'limit_type': 'lower' if (sign < 0) else 'upper',
-                           'component': comp,
-                           'resource': res,
-                           'time': time,
-                           'time_index': t,
-                          })
+      for tracker in comp.get_tracking_vars():
+        for res in info:
+          for t, time in enumerate(times):
+            current = dispatch.get_activity(comp, tracker, res, time)
+            if comp.get_interaction().is_type('Storage') and t == 0:
+              init_level = comp.get_interaction().get_initial_level(meta)
+            if t > 0:
+              previous = dispatch.get_activity(comp, tracker, res, times[t-1])
+              delta = current - previous
+              sign = np.sign(delta)
+              if abs(delta) - self._allowable > self._tolerance:
+                errs.append({'msg': f'Exceeded ramp of {self._allowable} with {delta:1.8e}',
+                             'limit': previous + (sign * self._allowable),
+                             'limit_type': 'lower' if (sign < 0) else 'upper',
+                             'component': comp,
+                             'resource': res,
+                             'time': time,
+                             'time_index': t,
+                            })
 
     return errs

@@ -78,14 +78,15 @@ class CashFlowUser:
     """
     self._economics.set_crossrefs(refs)
 
-  def get_state_cost(self, activity, meta):
+  def get_state_cost(self, activity, meta, marginal=False):
     """
       get the cost given particular activities (state) of the cash flow user
       @ In, raven_vars, dict, additional variables (presumably from raven) that might be needed
       @ In, meta, dict, further dictionary of information that might be needed
+      @ In, marginal, bool, optional, if True then only get marginal costs
       @ Out, cost, dict, cost of activity as a breakdown
     """
-    return self.get_economics().evaluate_cfs(activity, meta)
+    return self.get_economics().evaluate_cfs(activity, meta, marginal=marginal)
 
   def get_economics(self):
     """
@@ -184,15 +185,24 @@ class CashFlowGroup:
   #######
   # API #
   #######
-  def evaluate_cfs(self, activity, meta):
+  def evaluate_cfs(self, activity, meta, marginal=False):
     """
       Calculates the incremental cost of a particular system configuration.
       @ In, activity, XArray.DataArray, array of driver-centric variable values
       @ In, meta, dict, additional user-defined meta
+      @ In, marginal, bool, optional, if True then only get marginal cashflows (e.g. recurring hourly)
       @ Out, cost, dict, cash flow evaluations
     """
     # combine all cash flows into single cash flow evaluation
-    cost = dict((cf.name, cf.evaluate_cost(activity, meta)) for cf in self.get_cashflows())
+    if marginal:
+      # FIXME assuming 'year' is the only non-marginal value
+      # FIXME why is it "repeating" and not "Recurring"?
+      cost = dict((cf.name, cf.evaluate_cost(activity, meta))
+                    for cf in self.get_cashflows()
+                    if (cf._type == 'repeating' and cf.get_period() != 'year'))
+    else:
+      cost = dict((cf.name, cf.evaluate_cost(activity, meta))
+                    for cf in self.get_cashflows())
     return cost
 
   def get_cashflows(self):

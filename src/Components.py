@@ -166,6 +166,15 @@ class Component(Base, CashFlowUser):
     except IndexError: # there are no interactions!
       return None
 
+  def get_sqrt_RTE(self):
+    """
+      Provide the square root of the round-trip efficiency for this component.
+      Note we use the square root due to splitting loss across the input and output.
+      @ In, None
+      @ Out, RTE, float, round-trip efficiency as a multiplier
+    """
+    return self.get_interaction().get_sqrt_RTE()
+
   def print_me(self, tabs=0, tab='  '):
     """
       Prints info about self
@@ -236,6 +245,14 @@ class Component(Base, CashFlowUser):
     """
     return self.get_interaction().get_capacity_var()
 
+  def get_tracking_vars(self):
+    """
+      Provides the variables used by this component to track dispatch
+      @ In, None
+      @ Out, get_tracking_vars, list, variable name list
+    """
+    return self.get_interaction().get_tracking_vars()
+
   def is_dispatchable(self):
     """
       Returns the dispatchability indicator of this component.
@@ -244,6 +261,14 @@ class Component(Base, CashFlowUser):
       @ Out, dispatchable, str, dispatchability (e.g. independent, dependent, fixed)
     """
     return self.get_interaction().is_dispatchable()
+
+  def is_governed(self):
+    """
+      Determines if this component is optimizable or governed by some function.
+      @ In, None
+      @ Out, is_governed, bool, whether this component is governed.
+    """
+    return self.get_interaction().is_governed()
 
   def set_capacity(self, cap):
     """
@@ -376,6 +401,7 @@ class Interaction(Base):
         descr=r"""indicates the resource that defines the minimum activity level for this component,
               as with the component's capacity.""")
     specs.addSub(minn)
+
     return specs
 
   def __init__(self, **kwargs):
@@ -395,6 +421,8 @@ class Interaction(Base):
     self._function_method_map = {}      # maps things that call functions to the method within the function that needs calling
     self._transfer = None               # the production rate (if any), in produces per consumes
                                         #   for example, {(Producer, 'capacity'): 'method'}
+    self._sqrt_rte = 1.0                # sqrt of the round-trip efficiency for this interaction
+    self._tracking_vars = []            # list of trackable variables for dispatch activity
 
   def read_input(self, specs, mode, comp_name):
     """
@@ -495,6 +523,15 @@ class Interaction(Base):
       evaluated, meta = self._minimum.evaluate(meta, target_var=self._minimum_var)
     return evaluated, meta
 
+  def get_sqrt_RTE(self):
+    """
+      Provide the square root of the round-trip efficiency for this component.
+      Note we use the square root due to splitting loss across the input and output.
+      @ In, None
+      @ Out, RTE, float, round-trip efficiency as a multiplier
+    """
+    return self._sqrt_rte
+
   def get_crossrefs(self):
     """
       Getter.
@@ -541,6 +578,14 @@ class Interaction(Base):
     """
     return list(self.get_inputs()) + list(self.get_outputs())
 
+  def get_tracking_vars(self):
+    """
+      Provides the variables used by this component to track dispatch
+      @ In, None
+      @ Out, get_tracking_vars, list, variable name list
+    """
+    return self._tracking_vars
+
   def is_dispatchable(self):
     """
       Getter. Indicates if this interaction is Fixed, Dependent, or Independent.
@@ -556,6 +601,15 @@ class Interaction(Base):
       @ Out, is_type, bool, whether there is a match or not.
     """
     return typ == self.__class__.__name__
+
+  def is_governed(self):
+    """
+      Determines if this interaction is optimizable or governed by some function.
+      @ In, None
+      @ Out, is_governed, bool, whether this component is governed.
+    """
+    # Default option is False; specifics by interaction type
+    return False
 
   def produce(self, *args, **kwargs):
     """
@@ -665,6 +719,7 @@ class Producer(Interaction):
     Interaction.__init__(self, **kwargs)
     self._produces = []   # the resource(s) produced by this interaction
     self._consumes = []   # the resource(s) consumed by this interaction
+    self._tracking_vars = ['production']
 
   def read_input(self, specs, mode, comp_name):
     """
@@ -841,6 +896,10 @@ class Storage(Interaction):
     descr=r"""initial quantity of resource assumed to be present in the storage unit at the beginning
           of a given calculation, in units of quantity (not rate). \default{0}. """
     specs.addSub(vp_factory.make_input_specs('initial_stored', descr=descr))
+    descr=r"""control strategy for operating the storage. If not specified, uses a perfect foresight strategy. """
+    specs.addSub(vp_factory.make_input_specs('strategy', allowed=['Function'], descr=descr))
+    descr = r"""round-trip efficiency for this component as a scalar multiplier. \default{1.0}"""
+    specs.addSub(InputData.parameterInputFactory('RTE', contentType=InputTypes.FloatType, descr=descr))
     return specs
 
   def __init__(self, **kwargs):
@@ -850,9 +909,11 @@ class Storage(Interaction):
       @ Out, None
     """
     Interaction.__init__(self, **kwargs)
-    self._stores = None   # the resource stored by this interaction
-    self._rate = None     # the rate at which this component can store up or discharge
+    self._stores = None         # the resource stored by this interaction
+    self._rate = None           # the rate at which this component can store up or discharge
     self._initial_stored = None # how much resource does this component start with stored?
+    self._strategy = None       # how to operate storage unit
+    self._tracking_vars = ['level', 'charge', 'discharge'] # stored quantity, charge activity, discharge activity
 
   def read_input(self, specs, mode, comp_name):
     """
@@ -870,6 +931,10 @@ class Storage(Interaction):
         self._set_valued_param('_rate', comp_name, item, mode)
       elif item.getName() == 'initial_stored':
         self._set_valued_param('_initial_stored', comp_name, item, mode)
+      elif item.getName() == 'strategy':
+        self._set_valued_param('_strategy', comp_name, item, mode)
+      elif item.getName() == 'RTE':
+        self._sqrt_rte = np.sqrt(item.value)
     assert len(self._stores) == 1, 'Multiple storage resources given for component "{}"'.format(comp_name)
     self._stores = self._stores[0]
     # checks and defaults
@@ -909,6 +974,22 @@ class Storage(Interaction):
       @ Out, stores, str, resource stored
     """
     return self._stores
+
+  def get_strategy(self):
+    """
+      Returns the resource this unit stores.
+      @ In, None
+      @ Out, stores, str, resource stored
+    """
+    return self._strategy
+
+  def is_governed(self):
+    """
+      Determines if this interaction is optimizable or governed by some function.
+      @ In, None
+      @ Out, is_governed, bool, whether this component is governed.
+    """
+    return self._strategy is not None
 
   def print_me(self, tabs=0, tab='  '):
     """
@@ -1048,6 +1129,7 @@ class Demand(Interaction):
     Interaction.__init__(self, **kwargs)
     self._demands = None  # the resource demanded by this interaction
     self._penalty = None  # how to penalize for not meeting demand NOT IMPLEMENTED
+    self._tracking_vars = ['production']
 
   def read_input(self, specs, mode, comp_name):
     """

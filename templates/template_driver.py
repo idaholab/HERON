@@ -242,7 +242,7 @@ class Template(TemplateBase):
     var_groups = template.find('VariableGroups')
     # capacities
     caps = var_groups[0]
-    caps.text = ', '.join(f'{x.name}_capacity' for x in components if (x.get_capacity(None, raw=True).type not in ['Function', 'ARMA']))
+    caps.text = ', '.join(f'{x.name}_capacity' for x in components if (x.get_capacity(None, raw=True).type not in ['Function', 'SyntheticHistory']))
     # labels group
     if case.get_labels():
       case_labels = ET.SubElement(var_groups, 'Group', attrib={'name': 'GRO_case_labels'})
@@ -411,7 +411,6 @@ class Template(TemplateBase):
           if new is not None:
             signals.update(set(new))
         out_plot_signals.text = ', '.join(signals)
-
 
   def _modify_outer_samplers(self, template, case, components):
     """

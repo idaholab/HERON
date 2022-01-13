@@ -5,6 +5,8 @@
   Implements transfer functions
 """
 
+########### OLD #############
+
 def electric_consume(data, meta):
   """
     Swaps the sign for electricity consumption to yield positive cash values.

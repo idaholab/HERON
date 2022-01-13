@@ -303,7 +303,8 @@ class Pyomo(Dispatcher):
       attempts += 1
       print(f'DEBUGG solve attempt {attempts} ...:')
       # solve
-      soln = pyo.SolverFactory(self._solver).solve(m)
+      solve_options = {'threads': 2}
+      soln = pyo.SolverFactory(self._solver).solve(m, options=solve_options)
       # check solve status
       if soln.solver.status == SolverStatus.ok and soln.solver.termination_condition == TerminationCondition.optimal:
         print('DEBUGG ... solve was successful!')

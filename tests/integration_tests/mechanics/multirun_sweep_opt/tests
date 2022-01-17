@@ -14,6 +14,7 @@
     type = HeronIntegration
     input = heron_input_opt.xml
     # prereq = SineArma
+    prereq = MultiRun_Sweep
     [./csv]
       type = OrderedCSV
       output = 'Runs_o/opt_soln_0.csv'

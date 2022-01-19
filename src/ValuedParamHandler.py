@@ -198,7 +198,7 @@ class ValuedParamHandler(MessageUser):
     """
     self._vp.set_object(obj)
 
-  def evaluate(self, *args, **kwargs):
+  def evaluate(self, *args, util_factor=False, **kwargs):
     """
       Evaluate the ValuedParam, wherever it gets its data from
       @ In, args, list, positional arguments for ValuedParam

@@ -181,6 +181,7 @@
 
       <produces resource="electricity" dispatch="independent">
         <!-- <consumes>wind_pct</consumes> -->
+        <capacity resource="e">2</capacity>
         <capacity resource="electricity">
 
           <opt_bounds>3, 10</opt_bounds>
@@ -195,9 +196,9 @@
           <opt_bounds>3, 10</opt_bounds>
           <multiplier>-1</multiplier>
         </capacity>
-        <utility_factor>
+        <scaling_factor>
           <ARMA var="WIND">synth</ARMA>
-        </utility_factor>
+        </scaling_factor>
 
         <!-- <transfer>
           <linear>

@@ -8,7 +8,7 @@
 import os
 import sys
 import time as time_mod
-from functools import partial
+from functools import partial, partialmethod
 import platform
 from itertools import compress
 import pprint
@@ -655,7 +655,7 @@ class Pyomo(Dispatcher):
       @ Out, None
     """
     ## cashflow eval
-    rule = partial(self._cashflow_rule, meta)
+    rule = partial(self._cashflow_rule, 3.14, meta)
     m.obj = pyo.Objective(rule=rule, sense=pyo.maximize)
 
   ### UTILITIES for general use
@@ -858,7 +858,7 @@ class Pyomo(Dispatcher):
     else:
       raise TypeError('Unrecognized production limit "kind":', kind)
 
-  def _cashflow_rule(self, meta, m):
+  def _cashflow_rule(self, meta, unknown_dict, m, *args):
     """
       Objective function rule.
       @ In, meta, dict, additional variable passthrough

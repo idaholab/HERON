@@ -6,6 +6,7 @@ similar to how it is set up in the Pyomo dispatcher. This allows rapid testing
 of different configurations for the rolling window optimization.
 """
 import platform
+from functools import partial
 
 import numpy as np
 
@@ -117,7 +118,8 @@ def make_concrete_model():
   m.steam_storage_management = pyo.Constraint(m.T, rule=_manage_storage)
   #*******************
   # create objective function
-  m.OBJ = pyo.Objective(sense=pyo.maximize, rule=_economics)
+  rule = partial(_economics, 3.14)
+  m.OBJ = pyo.Objective(sense=pyo.maximize, rule=rule) #_economics)
   #######
   # return
   return m
@@ -175,7 +177,7 @@ def _manage_storage(m, t):
   production = -sq_rte * m.steam_storage_charge[0, t] - m.steam_storage_discharge[0, t] / sq_rte
   return m.steam_storage_level[0, t] == previous + production * dt
 
-def _economics(m):
+def _economics(dummy, m):
   """
     Constraint rule for optimization target
     @ In, m, pyo.ConcreteModel, model containing problem

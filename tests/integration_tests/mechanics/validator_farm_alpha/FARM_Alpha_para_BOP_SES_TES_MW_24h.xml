@@ -1,0 +1,125 @@
+<HERON>
+  <TestInfo>
+    <name>validator</name>
+    <author>haoyuwang</author>
+    <created>2021-01-14</created>
+    <description>
+      Tests using a ``FARM_Alpha_SESBOPTES_MW'' validator to modify behavior of a dispatch optimizer. 
+    </description>
+    <classesTested>HERON</classesTested>
+  </TestInfo>
+
+  <Case name="Sweep_Runs">
+    <mode>sweep</mode>
+    <num_arma_samples>1</num_arma_samples>
+    <time_discretization>
+      <time_variable>Time</time_variable>
+      <end_time>23</end_time>
+      <num_steps>24</num_steps>
+    </time_discretization>
+    <economics>
+      <ProjectTime>1</ProjectTime>
+      <DiscountRate>0.08</DiscountRate>
+      <tax>0.0</tax>
+      <inflation>0.0</inflation>
+      <verbosity>50</verbosity>
+    </economics>
+    <dispatcher>
+      <pyomo/>
+    </dispatcher>
+    
+    <validator>
+      <FARM_Alpha_SESBOPTES_MW/>
+    </validator>
+  </Case>
+
+  <Components>
+    <Component name="BOP">
+      <produces resource="electricity" dispatch="independent">
+        <capacity resource="electricity">
+          <!-- <fixed_value>1500</fixed_value> -->
+          <sweep_values> 1500,1510</sweep_values>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>30</lifetime>
+		    <CashFlow name="e_prod" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+			      <Function method="electric_prod">transfers</Function>
+          </driver>
+          <reference_price>
+            <fixed_value>-100</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+    <Component name="SES">
+      <produces resource="electricity" dispatch="independent">
+        <capacity resource="electricity">
+          <fixed_value>100</fixed_value>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>30</lifetime>
+        <CashFlow name="e_prod" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <Function method="electric_prod">transfers</Function>
+          </driver>
+          <reference_price>
+            <fixed_value>-200</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+    <Component name="TES">
+      <stores resource="electricity" dispatch="independent">
+        <capacity resource="electricity">
+          <fixed_value>100000</fixed_value>
+        </capacity>
+        <initial_stored>
+          <fixed_value>50000</fixed_value>
+        </initial_stored>
+      </stores>
+      <economics>
+        <lifetime>30</lifetime>
+        <CashFlow name="e_prod" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <Function method="electric_prod">transfers</Function>
+          </driver>
+          <reference_price>
+            <fixed_value>300</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+    <Component name="electr_market">
+      <demands resource="electricity" dispatch="dependent"><!---->
+        <capacity resource="electricity">   
+          <fixed_value>-1e5</fixed_value>
+          <!-- <ARMA variable="Signal">flex</ARMA> -->
+          <!-- <multiplier>1</multiplier> -->
+        </capacity>
+        <minimum>
+          <ARMA variable="Signal">flex</ARMA>
+          <multiplier>1</multiplier>
+        </minimum>
+      </demands>
+      <economics>
+        <lifetime>30</lifetime>
+        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <Function method="electric_consume">transfers</Function>
+            <!-- <resource multiplier="-1" absolute="True">electricity</resource> -->
+          </driver>
+          <reference_price>
+            <fixed_value>-1000</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+  </Components>
+  <DataGenerators>
+    <ARMA name='flex' variable="Signal">../ARMA/Sine_24h/arma_Sine_24h.pk</ARMA>
+    <Function name="transfers">transfers.py</Function>
+  </DataGenerators>
+</HERON>

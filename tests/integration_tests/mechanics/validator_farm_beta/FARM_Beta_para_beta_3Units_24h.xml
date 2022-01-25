@@ -1,0 +1,146 @@
+<HERON>
+  <TestInfo>
+    <name>validator</name>
+    <author>haoyuwang</author>
+    <created>2022-01-10</created>
+    <description>
+      Tests using a parameterized validator to modify behavior of a dispatch optimizer. Uses the "FARM_Beta" validator.
+    </description>
+    <classesTested>HERON</classesTested>
+  </TestInfo>
+
+  <Case name="Sweep_Runs">
+    <mode>sweep</mode>
+    <num_arma_samples>1</num_arma_samples>
+    <time_discretization>
+      <time_variable>Time</time_variable>
+      <end_time>23</end_time>
+      <num_steps>24</num_steps>
+    </time_discretization>
+    <economics>
+      <ProjectTime>1</ProjectTime>
+      <DiscountRate>0.08</DiscountRate>
+      <tax>0.0</tax>
+      <inflation>0.0</inflation>
+      <verbosity>50</verbosity>
+    </economics>
+    <dispatcher>
+      <pyomo>
+        <rolling_window_length>200</rolling_window_length>
+      </pyomo>
+    </dispatcher>
+    
+    <validator>
+      <FARM_Beta>
+        <ComponentForFARM name="BOP">
+          <MatricesFile>%HERON%/tests/integration_tests/mechanics/validator_farm_alpha/BOP_SES_TES_Mat_Unit_MW/DMDcCxCoeff_BOP_para.xml</MatricesFile>
+          <OpConstraintsUpper> 14.5E8, 53.8E5 </OpConstraintsUpper>
+          <OpConstraintsLower> 7.25E8, 51.8E5 </OpConstraintsLower>
+          <!-- <InitialState> 6.50034120e+07 </InitialState> -->
+        </ComponentForFARM>
+        <ComponentForFARM name="SES">
+          <MatricesFile>%HERON%/tests/integration_tests/mechanics/validator_farm_alpha/BOP_SES_TES_Mat_Unit_MW/DMDcCxCoeff_SES_para.xml</MatricesFile>
+          <OpConstraintsUpper> 50.0E6, 1873. </OpConstraintsUpper>
+          <OpConstraintsLower> 13.5E6, 1089. </OpConstraintsLower>
+          <!-- <InitialState> 5.00000000e+06 </InitialState> -->
+        </ComponentForFARM>
+        <ComponentForFARM name="TES">
+          <MatricesFile>%HERON%/tests/integration_tests/mechanics/validator_farm_alpha/BOP_SES_TES_Mat_Unit_MW/DMDcCxCoeff_TES_para.xml</MatricesFile>
+          <OpConstraintsUpper> 55., 55. </OpConstraintsUpper>
+          <OpConstraintsLower> 2.5, 2.5 </OpConstraintsLower>
+          <!-- <InitialState> 2.54999886e+01 0.00000000e+00 </InitialState> -->
+        </ComponentForFARM>
+      </FARM_Beta>
+    </validator>
+  </Case>
+
+  <Components>
+    <Component name="BOP">
+      <produces resource="electricity" dispatch="independent">
+        <capacity resource="electricity">
+          <!-- <fixed_value>1500</fixed_value> -->
+          <sweep_values> 1500,1510</sweep_values>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>30</lifetime>
+		    <CashFlow name="e_prod" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+			      <Function method="electric_prod">transfers</Function>
+          </driver>
+          <reference_price>
+            <fixed_value>-100</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+    <Component name="SES">
+      <produces resource="electricity" dispatch="independent">
+        <capacity resource="electricity">
+          <fixed_value>100</fixed_value>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>30</lifetime>
+        <CashFlow name="e_prod" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <Function method="electric_prod">transfers</Function>
+          </driver>
+          <reference_price>
+            <fixed_value>-200</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+    <Component name="TES">
+      <stores resource="electricity" dispatch="independent">
+        <capacity resource="electricity">
+          <fixed_value>100000</fixed_value>
+        </capacity>
+        <initial_stored>
+          <fixed_value>50000</fixed_value>
+        </initial_stored>
+      </stores>
+      <economics>
+        <lifetime>30</lifetime>
+        <CashFlow name="e_prod" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <Function method="electric_prod">transfers</Function>
+          </driver>
+          <reference_price>
+            <fixed_value>300</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+    <Component name="electr_market">
+      <demands resource="electricity" dispatch="dependent"><!---->
+        <capacity resource="electricity">   
+          <fixed_value>-1e5</fixed_value>
+          <!-- <ARMA variable="Signal">flex</ARMA> -->
+          <!-- <multiplier>1</multiplier> -->
+        </capacity>
+        <minimum>
+          <ARMA variable="Signal">flex</ARMA>
+          <multiplier>1</multiplier>
+        </minimum>
+      </demands>
+      <economics>
+        <lifetime>30</lifetime>
+        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <Function method="electric_consume">transfers</Function>
+            <!-- <resource multiplier="-1" absolute="True">electricity</resource> -->
+          </driver>
+          <reference_price>
+            <fixed_value>-1000</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+  </Components>
+  <DataGenerators>
+    <ARMA name='flex' variable="Signal">%HERON%/tests/integration_tests/ARMA/Sine_24h/arma_Sine_24h.pk</ARMA>
+    <Function name="transfers">transfers.py</Function>
+  </DataGenerators>
+</HERON>

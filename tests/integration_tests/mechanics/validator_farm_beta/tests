@@ -1,7 +1,7 @@
 [Tests]
-  [./ValidatorFARMAlpha]
+  [./ValidatorFARMbeta]
     type = HeronIntegration
-    input = FARM_Alpha_para_BOP_SES_TES_MW_24h.xml
+    input = FARM_Beta_para_beta_3Units_24h.xml
     # prereq = Sine_24h_Arma
     [./csv]
       type = OrderedCSV

@@ -357,7 +357,7 @@ class FARM_Alpha_SESBOPTES_MW(Validator):
     heron_path = hutils.get_heron_loc()
     self._unitInfo = { # a two-layer dictionary, containing the matrix, lower/upper constraints, and XLast to start with
       'BOP':{
-        'MatrixFile':os.path.abspath(os.path.join(heron_path,'tests/integration_tests/validator_FARM/BOP_SES_TES_Mat_Unit_MW/DMDcCxCoeff_BOP_para.xml')),
+        'MatrixFile':os.path.abspath(os.path.join(heron_path,'tests/integration_tests/mechanics/validator_farm_alpha/BOP_SES_TES_Mat_Unit_MW/DMDcCxCoeff_BOP_para.xml')),
         'Targets_Min':[7.25E8, 51.8E5], # Target Variable minimum values, BOP outputs [BOP.portElec_b.W, BOP_steamTurbine_portHP_p], units [W,Pascal]
         'Targets_Max':[14.5E8, 53.8E5], # Target Variable maximum values, BOP outputs [BOP.portElec_b.W, BOP_steamTurbine_portHP_p], units [W,Pascal]
         'XLast':[], # the final system state vector
@@ -365,7 +365,7 @@ class FARM_Alpha_SESBOPTES_MW(Validator):
         'y_hist':[] # the history of y, absolute value
         },
       'SES':{
-        'MatrixFile':os.path.abspath(os.path.join(heron_path,'tests/integration_tests/validator_FARM/BOP_SES_TES_Mat_Unit_MW/DMDcCxCoeff_SES_para.xml')),
+        'MatrixFile':os.path.abspath(os.path.join(heron_path,'tests/integration_tests/mechanics/validator_farm_alpha/BOP_SES_TES_Mat_Unit_MW/DMDcCxCoeff_SES_para.xml')),
         'Targets_Min':[13.5E6, 1089.], # Target Variable minimum values, SES outputs [SES.portElec_b.W, SES.GTunit.Tf], units [W,K]
         'Targets_Max':[50.0E6, 1873.], # Target Variable maximum values, SES outputs [SES.portElec_b.W, SES.GTunit.Tf], units [W,K]
         'XLast':[], # the final system state vector
@@ -374,7 +374,7 @@ class FARM_Alpha_SESBOPTES_MW(Validator):
         },  
       'TES':{
         'Initial_Level': 5.0E5, # initial stored energy (MWh), to be erased when new API becomes available
-        'MatrixFile':os.path.abspath(os.path.join(heron_path,'tests/integration_tests/validator_FARM/BOP_SES_TES_Mat_Unit_MW/DMDcCxCoeff_TES_para.xml')),
+        'MatrixFile':os.path.abspath(os.path.join(heron_path,'tests/integration_tests/mechanics/validator_farm_alpha/BOP_SES_TES_Mat_Unit_MW/DMDcCxCoeff_TES_para.xml')),
         'Targets_Min':[2.5, 2.5], # Target Variable minimum values
         'Targets_Max':[55., 55.], # Target Variable maximum values
         'XLast':[], # the final system state vector

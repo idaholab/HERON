@@ -309,7 +309,7 @@ class DispatchRunner:
     heron_econs = list(comp.get_economics() for comp in heron_components)
     # build global econ settings for CashFlow
     global_params = heron_case.get_econ(heron_econs)
-    global_settings = TEAL.CashFlows.GlobalSettings()
+    global_settings = TEAL.src.CashFlows.GlobalSettings()
     global_settings.setParams(global_params)
     global_settings._verbosity = 0 # FIXME direct access, also make user option?
     # build TEAL CashFlow component instances
@@ -320,7 +320,7 @@ class DispatchRunner:
       heron_comp = heron_components[c]
       comp_name = heron_comp.name
       # build TEAL equivalent component
-      teal_comp = TEAL.CashFlows.Component()
+      teal_comp = TEAL.src.CashFlows.Component()
       teal_comp_params = {'name': comp_name,
                         'Life_time': cfg.get_lifetime(),
                         # TODO StartTime, Repetitions, custom tax/inflation rate
@@ -333,7 +333,7 @@ class DispatchRunner:
         cf_name = heron_cf.name
         # the way to build it slightly changes depending on the CashFlow type
         if heron_cf._type == 'repeating': # FIXME protected access
-          teal_cf = TEAL.CashFlows.Recurring()
+          teal_cf = TEAL.src.CashFlows.Recurring()
           # NOTE: the params are listed in order of how they're read in TEAL.CashFlows.CashFlow.setParams
           teal_cf_params = {'name': cf_name,
                           # driver: comes later
@@ -349,20 +349,20 @@ class DispatchRunner:
           teal_cf.setParams(teal_cf_params)
           teal_cf.initParams(project_life)
         elif heron_cf._type == 'one-time':
-          teal_cf = TEAL.CashFlows.Capex()
+          teal_cf = TEAL.src.CashFlows.Capex()
           teal_cf.name = cf_name
           teal_cf_params = {'name': cf_name,
-                            # driver: handled in segment_cashflow
+                            'driver': 1.0, # handled in segment_cashflow
                             'tax': heron_cf._taxable,
                             'inflation': heron_cf._inflation,
                             'mult_target': heron_cf._mult_target,
                             # multiply: do we ever use this?
-                            # alpha: handled in segment_cashflow
-                            # reference: handled in segment_cashflow
+                            'alpha': 1.0, # handled in segment_cashflow
+                            'reference': 1.0, # actually handled in segment_cashflow
                             'X': 1.0,
                             # depreciate: handled in segment_cashflow
                            }
-          teal_cf.set_params(teal_cf_params)
+          teal_cf.setParams(teal_cf_params)
           teal_cf.initParams(teal_comp.getLifetime())
           # alpha, driver aren't known yet, so set those later
         else:
@@ -544,7 +544,7 @@ class DispatchRunner:
         if hasattr(cf, '_yearlyCashflow'):
           print(f' ... ... ... hourly', cf._yearlyCashflow)
     # END DEBUGG
-    cf_metrics = TEAL.CashFlow.run(final_settings, list(final_components.values()), raven_vars)
+    cf_metrics = TEAL.src.main.run(final_settings, list(final_components.values()), raven_vars)
     # DEBUGG
     print('****************************************')
     print('DEBUGG final cashflow metrics:')

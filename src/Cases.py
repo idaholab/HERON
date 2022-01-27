@@ -69,6 +69,16 @@ class Case(Base):
     input_specs.addSub(InputData.parameterInputFactory('mode', contentType=mode_options, strictMode=True,
                                                        descr=desc_mode_options))
 
+    verbosity_options = InputTypes.makeEnumType('VerbosityOptions', 'VerbosityOptionsType',
+                                                ['silent', 'quiet', 'all', 'debug'])
+    desc_verbosity_options = r"""determines the level of verbosity for the outer/inner RAVEN runs. \default{all}.
+                             If ``silent'' only errors are displayed.
+                             If ``quiet'' errors and warnings are displayed.
+                             If ``all'' errors, warnings, and messages are displayed.
+                             If ``debug'' errors, warnings, messages, and debug messages are displayed."""
+    input_specs.addSub(InputData.parameterInputFactory('verbosity', contentType=verbosity_options,
+                                                       strictMode=True, descr=desc_verbosity_options))
+
     # not yet implemented TODO
     #econ_metrics = InputTypes.makeEnumType('EconMetrics', 'EconMetricsTypes', ['NPV', 'lcoe'])
     #desc_econ_metrics = r"""indicates the economic metric that should be used for the HERON analysis. For most cases, this
@@ -185,6 +195,7 @@ class Case(Base):
     self._mode = None           # extrema to find: opt, sweep
     self._metric = 'NPV'        # UNUSED (future work); economic metric to focus on: lcoe, profit, cost
     self.run_dir = run_dir      # location of HERON input file
+    self._verbosity = 'all'     # default verbosity for RAVEN inner/outer
 
     self.dispatch_name = None   # name of dispatcher to use
     self.dispatcher = None      # type of dispatcher to use
@@ -232,6 +243,8 @@ class Case(Base):
           self.debug[node.getName()] = node.value
       if item.getName() == 'label':
         self._labels[item.parameterValues['name']] = item.value
+      if item.getName() == 'verbosity':
+        self._verbosity = item.value
       if item.getName() == 'mode':
         self._mode = item.value
       elif item.getName() == 'metric':
@@ -427,6 +440,14 @@ class Case(Base):
       @ Out, mode, str, mode of analysis for this case (sweep, opt, etc)
     """
     return self._mode
+
+  def get_verbosity(self):
+    """
+      Accessor
+      @ In, None
+      @ Out, verbosity, str, level of vebosity for RAVEN inner/outer runs.
+    """
+    return self._verbosity
 
   def get_num_samples(self):
     """

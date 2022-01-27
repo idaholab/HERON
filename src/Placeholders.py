@@ -103,10 +103,10 @@ class Placeholder(Base):
       @ Out, None
     """
     pre = tab*tabs
-    print(pre+'DataGenerator:')
-    print(pre+'  name:', self.name)
-    print(pre+'  source:', self._source)
-    print(pre+'  variables:', self._var_names)
+    self.raiseADebug(pre+'DataGenerator:')
+    self.raiseADebug(pre+'  name:', self.name)
+    self.raiseADebug(pre+'  source:', self._source)
+    self.raiseADebug(pre+'  variables:', self._var_names)
 
   def is_type(self, typ):
     """

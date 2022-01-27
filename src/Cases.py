@@ -361,11 +361,11 @@ class Case(Base):
       @ Out, None
     """
     pre = tab*tabs
-    print(pre+'Case:')
-    print(pre+'  name:', self.name)
-    print(pre+'  mode:', self._mode)
-    print(pre+'  meric:', self._metric)
-    print(pre+'  diff_study:', self._diff_study)
+    self.raiseADebug(pre+'Case:')
+    self.raiseADebug(pre+'  name:', self.name)
+    self.raiseADebug(pre+'  mode:', self._mode)
+    self.raiseADebug(pre+'  meric:', self._metric)
+    self.raiseADebug(pre+'  diff_study:', self._diff_study)
 
   #### ACCESSORS ####
   def get_increments(self):

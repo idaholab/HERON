@@ -47,7 +47,7 @@ def electric_prod(data, meta):
   amount = 1 * activity['electricity']
   data = {'driver': amount}
   return data, meta
-  
+
 def flex_cost(data, meta):
   """
     Transfer function to acquire the flexible price of electricity

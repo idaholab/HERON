@@ -524,8 +524,7 @@ class Case(Base):
     template_class.writeWorkflow((inner, outer, cash), loc)
 
   #### UTILITIES ####
-  @staticmethod
-  def _load_template():
+  def _load_template(self):
     """
       Loads template files for modification
       @ In, None
@@ -539,6 +538,6 @@ class Case(Base):
     sys.path.append(heron_dir)
     module = importlib.import_module('templates.{}'.format(template_name))
     # load template, perform actions
-    template_class = module.Template()
+    template_class = module.Template(messageHandler=self.messageHandler)
     template_class.loadTemplate(template_dir)
     return template_class

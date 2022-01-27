@@ -16,6 +16,7 @@ import dill as pk
 
 # load utils
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+from base import Base
 import _utils as hutils
 sys.path.pop()
 
@@ -36,7 +37,7 @@ from utils import xmlUtils
 from InputTemplates.TemplateBaseClass import Template as TemplateBase
 sys.path.pop()
 
-class Template(TemplateBase):
+class Template(TemplateBase, Base):
   """
     Template for lcoe sweep opt class
     This templates the workflow split into sweeping over unit capacities
@@ -72,12 +73,22 @@ class Template(TemplateBase):
   ############
   # API      #
   ############
-  def __init__(self):
+  def __repr__(self):
+    """
+      String representation of this Handler and its VP
+      @ In, None
+      @ Out, repr, str, string representation
+    """
+    msg = f'<Template Driver>'
+    return msg
+
+  def __init__(self, **kwargs):
     """
       Constructor
       @ In, None
       @ Out, None
     """
+    Base.__init__(self, **kwargs)
     here = os.path.dirname(os.path.abspath(sys.modules[self.__class__.__module__].__file__))
     self._template_path = here
     self._template_inner_path = None
@@ -145,28 +156,30 @@ class Template(TemplateBase):
     outer_file = os.path.abspath(os.path.join(destination, 'outer.xml'))
     inner_file = os.path.abspath(os.path.join(destination, 'inner.xml'))
     cash_file = os.path.abspath(os.path.join(destination, 'cash.xml'))
-    print('HERON: writing files ...')
-    msg_format = ' ... wrote "{1:15s}" to "{0}/"'
+    self.raiseAMessage('========================')
+    self.raiseAMessage('HERON: writing files ...')
+    self.raiseAMessage('========================')
+    msg_format = 'Wrote "{1}" to "{0}/"'
     with open(outer_file, 'w') as f:
       f.write(xmlUtils.prettify(outer))
-    print(msg_format.format(*os.path.split(outer_file)))
+    self.raiseAMessage(msg_format.format(*os.path.split(outer_file)))
     with open(inner_file, 'w') as f:
       f.write(xmlUtils.prettify(inner))
-    print(msg_format.format(*os.path.split(inner_file)))
+    self.raiseAMessage(msg_format.format(*os.path.split(inner_file)))
     with open(cash_file, 'w') as f:
       f.write(xmlUtils.prettify(cash))
-    print(msg_format.format(*os.path.split(cash_file)))
+    self.raiseAMessage(msg_format.format(*os.path.split(cash_file)))
     # write library of info so it can be read in dispatch during inner run
     data = (self.__case, self.__components, self.__sources)
     lib_file = os.path.abspath(os.path.join(destination, self.namingTemplates['lib file']))
     with open(lib_file, 'wb') as lib:
       pk.dump(data, lib)
-    print(msg_format.format(*os.path.split(lib_file)))
+    self.raiseAMessage(msg_format.format(*os.path.split(lib_file)))
     # copy "write_inner.py", which has the denoising and capacity fixing algorithms
     conv_src = os.path.abspath(os.path.join(self._template_path, 'write_inner.py'))
     conv_file = os.path.abspath(os.path.join(destination, 'write_inner.py'))
     shutil.copyfile(conv_src, conv_file)
-    print(msg_format.format(*os.path.split(conv_file)))
+    self.raiseAMessage(msg_format.format(*os.path.split(conv_file)))
     # run, if requested
     if run:
       self.runWorkflow(destination)
@@ -185,6 +198,7 @@ class Template(TemplateBase):
       @ In, sources, list, list of HERON Placeholder instances for this run
       @ Out, template, xml.etree.ElementTree.Element, modified template
     """
+    template.set('verbosity', case.get_verbosity())
     self._modify_outer_mode(template, case, components, sources)
     self._modify_outer_runinfo(template, case)
     self._modify_outer_vargroups(template, case, components, sources)

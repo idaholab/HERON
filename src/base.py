@@ -21,6 +21,7 @@ class Base(MessageUser):
       @ Out, None
     """
     super().__init__()
+    self.messageHandler = kwargs.get('messageHandler', None)
 
   def __repr__(self):
     """

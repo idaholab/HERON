@@ -191,27 +191,33 @@ class ARMA(Placeholder):
       @ In, sources, list(HERON.Placeholder), sources
       @ Out, None
     """
-    print(f'Checking ROM at "{self._target_file}" ...')
+    self.raiseAMessage(f'Checking ROM at "{self._target_file}"')
     structure = hutils.get_synthhist_structure(self._target_file)
     interpolated = 'macro' in structure
     clustered = bool(structure['clusters'])
     # segmented = bool(structure['segments']) # TODO
-    print(f'For DataGenerator <{self._type}> "{self.name}", detected: ' +
-          f'{"" if interpolated else "NOT"} interpolated, ' +
-          f'{"" if clustered else "NOT"} clustered.')
+    self.raiseAMessage(
+        f'For DataGenerator <{self._type}> "{self.name}", detected: {"" if interpolated else "NOT"} interpolated, ' +
+        f'{"" if clustered else "NOT"} clustered.'
+    )
     # expect that project life == num macro years
     project_life = hutils.get_project_lifetime(case, components) - 1 # one less for construction year
     if interpolated:
       # if interpolated, needs more checking
       interp_years = structure['macro']['num']
       if interp_years >= project_life:
-        print(f' -> "{self.name}" interpolates {interp_years} macro steps, and project life is {project_life}, so histories will be trunctated.')
+        self.raiseADebug(f'"{self.name}" interpolates {interp_years} macro steps,' +
+                           f'and project life is {project_life}, so histories will be trunctated.')
         self.limit_interp = project_life
       else:
-        raise RuntimeError(f' -> "{self.name}" interpolates {interp_years} macro steps, but project life is {project_life}!')
+        self.raiseAnError(
+            RuntimeError, f'"{self.name}" interpolates {interp_years} macro steps, but project life is {project_life}!'
+        )
     else:
       # if single year, we can use multiyear so np
-      print(f' -> "{self.name}" will be extended to project life ({project_life}) macro steps using <Multicycle>.')
+      self.raiseADebug(
+          f'"{self.name}" will be extended to project life ({project_life}) macro steps using <Multicycle>.'
+      )
       self.needs_multiyear = project_life
 
 

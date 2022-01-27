@@ -140,7 +140,6 @@ class CashFlowGroup:
       @ In, xml, bool, if True then XML is passed in, not input data
       @ Out, None
     """
-    print(' ... loading economics ...')
     # allow read_input argument to be either xml or input specs
     if xml:
       specs = self.get_input_specs()()
@@ -374,7 +373,6 @@ class CashFlow:
       @ Out, None
     """
     self.name = item.parameterValues['name']
-    print(' ... ... loading cash flow "{}"'.format(self.name))
     # handle type directly here momentarily
     self._taxable = item.parameterValues['taxable']
     self._inflation = item.parameterValues['inflation']

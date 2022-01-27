@@ -30,28 +30,28 @@
       </pyomo>
     </dispatcher>
     
-    <validator>
-      <FARM_Beta>
+    <!-- <validator> -->
+      <!-- <FARM_Beta>
         <ComponentForFARM name="BOP">
           <MatricesFile>%HERON%/tests/integration_tests/mechanics/validator_farm_alpha/BOP_SES_TES_Mat_Unit_MW/DMDcCxCoeff_BOP_para.xml</MatricesFile>
           <OpConstraintsUpper> 14.5E8, 53.8E5 </OpConstraintsUpper>
-          <OpConstraintsLower> 7.25E8, 51.8E5 </OpConstraintsLower>
+          <OpConstraintsLower> 7.25E8, 51.8E5 </OpConstraintsLower> -->
           <!-- <InitialState> 6.50034120e+07 </InitialState> -->
-        </ComponentForFARM>
+        <!-- </ComponentForFARM>
         <ComponentForFARM name="SES">
           <MatricesFile>%HERON%/tests/integration_tests/mechanics/validator_farm_alpha/BOP_SES_TES_Mat_Unit_MW/DMDcCxCoeff_SES_para.xml</MatricesFile>
           <OpConstraintsUpper> 50.0E6, 1873. </OpConstraintsUpper>
-          <OpConstraintsLower> 13.5E6, 1089. </OpConstraintsLower>
+          <OpConstraintsLower> 13.5E6, 1089. </OpConstraintsLower> -->
           <!-- <InitialState> 5.00000000e+06 </InitialState> -->
-        </ComponentForFARM>
+        <!-- </ComponentForFARM>
         <ComponentForFARM name="TES">
           <MatricesFile>%HERON%/tests/integration_tests/mechanics/validator_farm_alpha/BOP_SES_TES_Mat_Unit_MW/DMDcCxCoeff_TES_para.xml</MatricesFile>
           <OpConstraintsUpper> 55., 55. </OpConstraintsUpper>
-          <OpConstraintsLower> 2.5, 2.5 </OpConstraintsLower>
+          <OpConstraintsLower> 2.5, 2.5 </OpConstraintsLower> -->
           <!-- <InitialState> 2.54999886e+01 0.00000000e+00 </InitialState> -->
-        </ComponentForFARM>
-      </FARM_Beta>
-    </validator>
+        <!-- </ComponentForFARM>
+      </FARM_Beta> -->
+    <!-- </validator> -->
   </Case>
 
   <Components>

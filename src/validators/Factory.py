@@ -2,11 +2,10 @@
 # ALL RIGHTS RESERVED
 
 from .ExampleValidator import Example
-from .FARMValidators import FARM_Alpha_SESBOPTES_MW, FARM_Beta
+from .FARMValidators import FARM_Beta
 
 known = {
     'Example': Example,
-    'FARM_Alpha_SESBOPTES_MW': FARM_Alpha_SESBOPTES_MW,
     'FARM_Beta': FARM_Beta,
     # ModelicaGoverner: TODO,
 }

@@ -33,9 +33,9 @@ class HERON(Base):
     self._input_name = None # name of the input XML file
 
     messageHandler = MessageHandler()
-    messageHandler.initialize({'verbosity':'debug',
-                               'callerLength': 25,
-                               'tagLength': 15,
+    messageHandler.initialize({'verbosity': 'all',
+                               'callerLength': 18,
+                               'tagLength': 7,
                                'suppressErrs': False,})
     self.messageHandler = messageHandler
 
@@ -70,7 +70,10 @@ class HERON(Base):
       @ Out, None
     """
     pre = tab*tabs
-    print('Printing simulation state:')
+    self.raiseADebug("==========================")
+    self.raiseADebug("Printing simulation state:")
+    self.raiseADebug("==========================")
+    assert self._case is not None
     self._case.print_me(tabs=tabs+1, tab=tab)
     for comp in self._components:
       comp.print_me(tabs=tabs+1, tab=tab)
@@ -86,6 +89,7 @@ class HERON(Base):
     if case is None:
       case = self._case
     # let the case do the work
+    assert case is not None
     case.write_workflows(self._components, self._sources, self._input_dir)
 
 if __name__ == '__main__':

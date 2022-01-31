@@ -8,6 +8,8 @@ import os
 import sys
 import importlib
 import xml.etree.ElementTree as ET
+import warnings
+
 
 def get_heron_loc():
   """
@@ -92,7 +94,10 @@ def get_synthhist_structure(fpath):
   scripts_path = os.path.join(raven_loc, '..', 'scripts')
   sys.path.append(scripts_path)
   from externalROMloader import ravenROMexternal as ravenROM
-  rom = ravenROM(fpath, raven_loc).rom
+  # Why should we get warnings from RAVEN when we are just trying to write an input file.
+  with warnings.catch_warnings():
+    warnings.simplefilter('ignore')
+    rom = ravenROM(fpath, raven_loc).rom
   meta = rom.writeXML().getRoot()
   structure = {}
   # interpolation information

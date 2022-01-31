@@ -183,8 +183,8 @@ class Component(Base, CashFlowUser):
       @ Out, None
     """
     pre = tab*tabs
-    print(pre+'Component:')
-    print(pre+'  name:', self.name)
+    self.raiseADebug(pre+'Component:')
+    self.raiseADebug(pre+'  name:', self.name)
     self.get_interaction().print_me(tabs=tabs+1, tab=tab)
 
   def get_inputs(self):
@@ -771,11 +771,11 @@ class Producer(Interaction):
       @ Out, None
     """
     pre = tab*tabs
-    print(pre+'Producer:')
-    print(pre+'  produces:', self._produces)
-    print(pre+'  consumes:', self._consumes)
-    print(pre+'  transfer:', self._transfer)
-    print(pre+'  capacity:', self._capacity)
+    self.raiseADebug(pre+'Producer:')
+    self.raiseADebug(pre+'  produces:', self._produces)
+    self.raiseADebug(pre+'  consumes:', self._consumes)
+    self.raiseADebug(pre+'  transfer:', self._transfer)
+    self.raiseADebug(pre+'  capacity:', self._capacity)
 
   def produce(self, request, meta, raven_vars, dispatch, t, level=None):
     """
@@ -999,10 +999,10 @@ class Storage(Interaction):
       @ Out, None
     """
     pre = tab*tabs
-    print(pre+'Storage:')
-    print(pre+'  stores:', self._stores)
-    print(pre+'  rate:', self._rate)
-    print(pre+'  capacity:', self._capacity)
+    self.raiseADebug(pre+'Storage:')
+    self.raiseADebug(pre+'  stores:', self._stores)
+    self.raiseADebug(pre+'  rate:', self._rate)
+    self.raiseADebug(pre+'  capacity:', self._capacity)
 
   def produce(self, request, meta, raven_vars, dispatch, t, level=None):
     """
@@ -1165,10 +1165,10 @@ class Demand(Interaction):
       @ Out, None
     """
     pre = tab*tabs
-    print(pre+'Demand/Load:')
-    print(pre+'  demands:', self._demands)
-    print(pre+'  penalty:', self._penalty)
-    print(pre+'  capacity:', self._capacity)
+    self.raiseADebug(pre+'Demand/Load:')
+    self.raiseADebug(pre+'  demands:', self._demands)
+    self.raiseADebug(pre+'  penalty:', self._penalty)
+    self.raiseADebug(pre+'  capacity:', self._capacity)
 
   def produce(self, request, meta, raven_vars, dispatch, t, level=None):
     """

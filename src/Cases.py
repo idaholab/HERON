@@ -182,6 +182,60 @@ class Case(Base):
       validator.addSub(vld_spec)
     input_specs.addSub(validator)
 
+    # optimization settings
+    optimizer = InputData.parameterInputFactory('optimization_settings',
+                                                descr=r"""node that defines the settings to be used for the optimizer in
+                                                the ``outer'' run.""")
+    metric_options = InputTypes.makeEnumType('MetricOptions', 'MetricOptionsType',
+                                             ['expectedValue', 'minimum', 'maximum', 'median',
+                                              'variance', 'sigma', 'percentile',
+                                              'variationCoefficient', 'skewness', 'kurtosis',
+                                              'sharpeRatio', 'sortinoRatio', 'gainLossRatio',
+                                              'expectedShortfall', 'valueAtRisk'])
+    desc_metric_options = r"""determines the statistical metric (calculated by RAVEN BasicStatistics
+                          or EconomicRatio PostProcessors) from the ``inner'' run to be used as the
+                          objective in the ``outer'' optimization.
+                          \begin{itemize}
+                            \item For ``percentile'' the additional parameter \textit{percent=`X'}
+                            is required where \textit{X} is the requested percentile (a floating
+                            point value between 0.0 and 100.0).
+                            \item For ``sortinoRatio'' and ``gainLossRatio'' the additional
+                            parameter \textit{threshold=`X'} is required where \textit{X} is the
+                            requested threshold (`median' or `zero').
+                            \item For ``expectedShortfall'' and ``valueAtRisk'' the additional
+                            parameter \textit{threshold=`X'} is required where \textit{X} is the
+                            requested $\alpha$ value (a floating point value between 0.0 and 1.0).
+                          \end{itemize}
+                          """
+    metric = InputData.parameterInputFactory('metric', contentType=metric_options, strictMode=True,
+                                             descr=desc_metric_options)
+    metric.addParam(name='percent',
+                    param_type=InputTypes.FloatType,
+                    required=True,
+                    descr=r"""requested percentile (a floating point value between 0.0 and 100.0).
+                              Required when \xmlNode{metric} is ``percentile.''
+                              \default{5}""")
+    metric.addParam(name='threshold',
+                    param_type=InputTypes.StringType,
+                    required=True,
+                    descr=r"""\begin{itemize}
+                                \item requested threshold (`median' or `zero'). Required when
+                                \xmlNode{metric} is ``sortinoRatio'' or ``gainLossRatio.''
+                                \default{`zero'}
+                                \item requested $ \alpha $ value (a floating point value between 0.0
+                                and 1.0). Required when \xmlNode{metric} is ``expectedShortfall'' or
+                                ``valueAtRisk.'' \default{5.0}
+                              \end{itemize}""")
+    optimizer.addSub(metric)
+    type_options = InputTypes.makeEnumType('TypeOptions', 'TypeOptionsType',
+                                           ['min', 'max'])
+    desc_type_options = r"""determines whether the objective should be minimized or maximized.
+                            \default{max}"""
+    type_sub = InputData.parameterInputFactory('type', contentType=type_options, strictMode=True,
+                                               descr=desc_type_options)
+    optimizer.addSub(type_sub)
+    input_specs.addSub(optimizer)
+
     return input_specs
 
   def __init__(self, run_dir, **kwargs):

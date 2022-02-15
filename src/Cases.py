@@ -211,13 +211,11 @@ class Case(Base):
                                              descr=desc_metric_options)
     metric.addParam(name='percent',
                     param_type=InputTypes.FloatType,
-                    required=True,
                     descr=r"""requested percentile (a floating point value between 0.0 and 100.0).
                               Required when \xmlNode{metric} is ``percentile.''
                               \default{5}""")
     metric.addParam(name='threshold',
                     param_type=InputTypes.StringType,
-                    required=True,
                     descr=r"""\begin{itemize}
                                 \item requested threshold (`median' or `zero'). Required when
                                 \xmlNode{metric} is ``sortinoRatio'' or ``gainLossRatio.''
@@ -275,6 +273,7 @@ class Case(Base):
 
     self._time_discretization = None # (start, end, number) for constructing time discretization, same as argument to np.linspace
     self._Resample_T = None    # user-set increments for resources
+    self._optimization_settings = None # optimization settings dictionary for outer optimization loop
 
     # clean up location
     self.run_dir = os.path.abspath(os.path.expanduser(self.run_dir))
@@ -325,6 +324,8 @@ class Case(Base):
         typ = get_validator(name)
         self.validator = typ()
         self.validator.read_input(vld)
+      elif item.getName() == 'optimization_settings':
+        self._optimization_settings = self._read_optimization_settings(item)
 
     # checks
     if self._mode is None:
@@ -385,6 +386,43 @@ class Case(Base):
                                  '(<num_steps> and <time_interval>.)')
     # TODO can we take it automatically from an ARMA later, either by default or if told to?
     return (start, end, num)
+
+  def _read_optimization_settings(self, node):
+    """
+      Reads optimization settings node
+      @ In, node, InputParams.ParameterInput, optimization settings head node
+      @ Out, opt_settings, dict, optimization settings as dictionary
+    """
+
+    opt_settings = {}
+    for sub in node.subparts:
+      sub_name = sub.getName()
+      # add metric information to opt_settings dictionary
+      if sub_name == 'metric':
+        opt_settings[sub_name] = {}
+        metric_name = sub.value
+        opt_settings[sub_name]['name'] = metric_name
+        # some metrics have an associated parameter
+        if metric_name == 'percentile':
+          try:
+            opt_settings[sub_name]['percent'] = sub.parameterValues['percent']
+          except KeyError:
+            opt_settings[sub_name]['percent'] = 5
+        elif metric_name in ['sortinoRatio', 'gainLossRatio']:
+          try:
+            opt_settings[sub_name]['threshold'] = sub.parameterValues['threshold']
+          except KeyError:
+            opt_settings[sub_name]['threshold'] = 'zero'
+        elif metric_name in ['expectedShortfall', 'valueAtRisk']:
+          try:
+            opt_settings[sub_name]['threshold'] = sub.parameterValues['threshold']
+          except KeyError:
+            opt_settings[sub_name]['threshold'] = 0.05
+      else:
+        # add other information to opt_settings dictionary (type is only information implemented)
+        opt_settings[sub_name] = sub.value
+
+    return opt_settings
 
   def initialize(self, components, sources):
     """

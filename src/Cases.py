@@ -32,6 +32,24 @@ class Case(Base):
     Produces something, often as the cost of something else
     TODO this case is for "sweep-opt", need to make a superclass for generic
   """
+
+  # metrics that can be used for objective in optimization mapped from RAVEN name to result name
+  optimization_metrics_mapping = {'expectedValue': 'mean',
+                                  'minimum': 'min',
+                                  'maximum': 'max',
+                                  'median': 'med',
+                                  'variance': 'var',
+                                  'sigma': 'std',
+                                  'percentile': 'perc',
+                                  'variationCoefficient': 'varCoeff',
+                                  'skewness': 'skew',
+                                  'kurtosis': 'kurt',
+                                  'sharpeRatio': 'sharpe',
+                                  'sortinoRatio': 'sortino',
+                                  'gainLossRatio': 'glr',
+                                  'expectedShortfall': 'es',
+                                  'valueAtRisk': 'VaR'}
+
   #### INITIALIZATION ####
   @classmethod
   def get_input_specs(cls):
@@ -186,12 +204,7 @@ class Case(Base):
     optimizer = InputData.parameterInputFactory('optimization_settings',
                                                 descr=r"""node that defines the settings to be used for the optimizer in
                                                 the ``outer'' run.""")
-    metric_options = InputTypes.makeEnumType('MetricOptions', 'MetricOptionsType',
-                                             ['expectedValue', 'minimum', 'maximum', 'median',
-                                              'variance', 'sigma', 'percentile',
-                                              'variationCoefficient', 'skewness', 'kurtosis',
-                                              'sharpeRatio', 'sortinoRatio', 'gainLossRatio',
-                                              'expectedShortfall', 'valueAtRisk'])
+    metric_options = InputTypes.makeEnumType('MetricOptions', 'MetricOptionsType', list(cls.optimization_metrics_mapping.keys()))
     desc_metric_options = r"""determines the statistical metric (calculated by RAVEN BasicStatistics
                           or EconomicRatio PostProcessors) from the ``inner'' run to be used as the
                           objective in the ``outer'' optimization.

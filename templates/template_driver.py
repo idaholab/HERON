@@ -257,6 +257,23 @@ class Template(TemplateBase, Base):
     # capacities
     caps = var_groups[0]
     caps.text = ', '.join(f'{x.name}_capacity' for x in components if (x.get_capacity(None, raw=True).type not in ['Function', 'ARMA']))
+    # outer results
+    if case._optimization_settings is not None:
+      group_outer_results = var_groups.find(".//Group[@name='GRO_outer_results']")
+      metric_raven_name = case._optimization_settings['metric']['name']
+      # potential metric name to add to outer results
+      new_metric_outer_results = case.optimization_metrics_mapping[metric_raven_name]
+      # do I need to add a percent or threshold to this name?
+      if metric_raven_name == 'percentile':
+        new_metric_outer_results += '_' + str(case._optimization_settings['metric']['percent'])
+      elif metric_raven_name in ['valueAtRisk', 'expectedShortfall']:
+        new_metric_outer_results += '_' + str(case._optimization_settings['metric']['threshold'])
+      elif metric_raven_name in ['sortinoRatio', 'gainLossRatio']:
+        new_metric_outer_results += '_' + case._optimization_settings['metric']['threshold']
+      # add target variable to name TODO should this be changeable from NPV?
+      new_metric_outer_results += '_NPV'
+      if new_metric_outer_results not in group_outer_results.text:
+        self._updateCommaSeperatedList(group_outer_results, new_metric_outer_results, position=0)
     # labels group
     if case.get_labels():
       case_labels = ET.SubElement(var_groups, 'Group', attrib={'name': 'GRO_case_labels'})

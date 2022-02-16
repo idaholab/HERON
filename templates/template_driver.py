@@ -249,6 +249,7 @@ class Template(TemplateBase, Base):
     """
       Defines modifications to the VariableGroups of outer.xml RAVEN input file.
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
       @ In, components, list, list of HERON Component instances for this run
       @ In, sources, list, list of HERON Placeholder instances for this run
       @ Out, None
@@ -260,18 +261,7 @@ class Template(TemplateBase, Base):
     # outer results
     if case._optimization_settings is not None:
       group_outer_results = var_groups.find(".//Group[@name='GRO_outer_results']")
-      metric_raven_name = case._optimization_settings['metric']['name']
-      # potential metric name to add to outer results
-      new_metric_outer_results = case.optimization_metrics_mapping[metric_raven_name]
-      # do I need to add a percent or threshold to this name?
-      if metric_raven_name == 'percentile':
-        new_metric_outer_results += '_' + str(case._optimization_settings['metric']['percent'])
-      elif metric_raven_name in ['valueAtRisk', 'expectedShortfall']:
-        new_metric_outer_results += '_' + str(case._optimization_settings['metric']['threshold'])
-      elif metric_raven_name in ['sortinoRatio', 'gainLossRatio']:
-        new_metric_outer_results += '_' + case._optimization_settings['metric']['threshold']
-      # add target variable to name TODO should this be changeable from NPV?
-      new_metric_outer_results += '_NPV'
+      new_metric_outer_results = self._build_opt_metric_out_name(case)
       if new_metric_outer_results not in group_outer_results.text:
         self._updateCommaSeperatedList(group_outer_results, new_metric_outer_results, position=0)
     # labels group
@@ -301,7 +291,7 @@ class Template(TemplateBase, Base):
     """
       Defines modifications to the VariableGroups of outer.xml RAVEN input file.
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
-      @ In, components, list, list of HERON Component instances for this run
+      @ In, case, HERON Case, defining Case instance
       @ Out, None
     """
     if case.debug['enabled']:
@@ -316,6 +306,7 @@ class Template(TemplateBase, Base):
     """
       Defines modifications to the VariableGroups of outer.xml RAVEN input file.
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
       @ In, components, list, list of HERON Component instances for this run
       @ Out, None
     """
@@ -331,6 +322,20 @@ class Template(TemplateBase, Base):
       self._remove_by_name(DOs, ['opt_eval', 'opt_soln'])
     elif case.get_mode() == 'opt':
       self._remove_by_name(DOs, ['grid'])
+    # update opt components if used
+    if (case.get_mode() == 'opt') and (case._optimization_settings is not None):
+      new_opt_objective = self._build_opt_metric_out_name(case)
+      # check if the metric in 'opt_eval' needs to be changed
+      opt_eval_node = DOs.find(".//PointSet[@name='opt_eval']")
+      opt_eval_output_node = opt_eval_node.find('Output')
+      if new_opt_objective != opt_eval_output_node.text:
+        opt_eval_output_node.text = new_opt_objective
+      # check if the metric in 'opt_soln' needs to be changed
+      opt_soln_node = DOs.find(".//PointSet[@name='opt_soln']")
+      opt_soln_output = opt_soln_node.find('Output')
+      if new_opt_objective not in opt_soln_output.text:
+        # remove mean_NPV and replace with new_opt_objective
+        opt_soln_output.text = opt_soln_output.text.replace('mean_NPV', new_opt_objective)
     # debug mode
     if case.debug['enabled']:
       # add debug dispatch output dataset
@@ -410,6 +415,7 @@ class Template(TemplateBase, Base):
     """
       Defines modifications to the OutStreams of outer.xml RAVEN input file.
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
       @ In, components, list, list of HERON Component instances for this run
       @ In, sources, list, list of HERON Placeholder instances for this run
       @ Out, None
@@ -442,7 +448,6 @@ class Template(TemplateBase, Base):
           if new is not None:
             signals.update(set(new))
         out_plot_signals.text = ', '.join(signals)
-
 
   def _modify_outer_samplers(self, template, case, components):
     """
@@ -507,6 +512,7 @@ class Template(TemplateBase, Base):
     """
       Defines modifications to the Steps of outer.xml RAVEN input file.
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
       @ In, components, list, list of HERON Component instances for this run
       @ In, sources, list, list of HERON Placeholder instances for this run
       @ Out, None
@@ -1068,3 +1074,25 @@ class Template(TemplateBase, Base):
         to_remove.append(node)
     for node in to_remove:
       root.remove(node)
+
+  def _build_opt_metric_out_name(self, case):
+    """
+      Constructs the output name of the metric specified as the optimization objective
+      @ In, case, HERON Case, defining Case instance
+      @ Out, opt_out_metric_name, str, output metric name for use in inner/outer files
+    """
+    # metric name in RAVEN
+    metric_raven_name = case._optimization_settings['metric']['name']
+    # potential metric name to add to VariableGroups, DataObjects, Optimizers
+    opt_out_metric_name = case.optimization_metrics_mapping[metric_raven_name]
+    # do I need to add a percent or threshold to this name?
+    if metric_raven_name == 'percentile':
+      opt_out_metric_name += '_' + str(case._optimization_settings['metric']['percent'])
+    elif metric_raven_name in ['valueAtRisk', 'expectedShortfall']:
+      opt_out_metric_name += '_' + str(case._optimization_settings['metric']['threshold'])
+    elif metric_raven_name in ['sortinoRatio', 'gainLossRatio']:
+      opt_out_metric_name += '_' + case._optimization_settings['metric']['threshold']
+    # add target variable to name TODO should this be changeable from NPV?
+    opt_out_metric_name += '_NPV'
+
+    return opt_out_metric_name

@@ -427,6 +427,12 @@ class Template(TemplateBase, Base):
       self._remove_by_name(OSs, ['opt_soln'])
     elif case.get_mode() == 'opt':
       self._remove_by_name(OSs, ['sweep'])
+      # update plot 'opt_path' if necessary
+      new_opt_objective = self._build_opt_metric_out_name(case)
+      opt_path_plot = OSs.find(".//Plot[@name='opt_path']")
+      opt_path_plot_vars = opt_path_plot.find('vars')
+      if (new_opt_objective != 'missing') and (new_opt_objective not in opt_path_plot_vars.text):
+        opt_path_plot_vars.text = opt_path_plot_vars.text.replace('mean_NPV', new_opt_objective)
     # debug mode
     if case.debug['enabled']:
       # modify normal metric output

@@ -290,7 +290,7 @@ class Template(TemplateBase, Base):
 
   def _modify_outer_databases(self, template, case):
     """
-      Defines modifications to the VariableGroups of outer.xml RAVEN input file.
+      Defines modifications to the Databases of outer.xml RAVEN input file.
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
       @ In, case, HERON Case, defining Case instance
       @ Out, None
@@ -305,7 +305,7 @@ class Template(TemplateBase, Base):
 
   def _modify_outer_dataobjects(self, template, case, components):
     """
-      Defines modifications to the VariableGroups of outer.xml RAVEN input file.
+      Defines modifications to the DataObjects of outer.xml RAVEN input file.
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
       @ In, case, HERON Case, defining Case instance
       @ In, components, list, list of HERON Component instances for this run
@@ -641,6 +641,7 @@ class Template(TemplateBase, Base):
     self._modify_inner_components(template, case, components)
     self._modify_inner_caselabels(template, case)
     self._modify_inner_time_vars(template, case)
+    self._modify_inner_optimization_settings(template, case)
     if case.debug['enabled']:
       self._modify_inner_debug(template, case, components)
     # TODO modify based on resources ... should only need if units produce multiple things, right?
@@ -839,6 +840,55 @@ class Template(TemplateBase, Base):
     for idx in ds.findall('Index'):
       self._updateCommaSeperatedList(idx, 'GRO_full_dispatch')
 
+  def _modify_inner_optimization_settings(self, template, case):
+    """
+      Modifies template to include optimization settings
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ Out, None
+    """
+    # TODO currently only modifies if optimization settings has metric and type, add additional settings?
+    # only modify if the mode is 'opt' and <optimization_settings> has anything to modify
+    if (case.get_mode() == 'opt') and (case._optimization_settings is not None):
+      # optimization objective name provided (or 'missing')
+      new_objective = self._build_opt_metric_out_name(case)
+      # add optimization objective name to VariableGroups 'GRO_final_return' if not already there
+      group = template.find('VariableGroups').find(".//Group[@name='GRO_final_return']")
+      if (new_objective != 'missing') and (new_objective not in group.text):
+        self._updateCommaSeperatedList(group, new_objective, position=0)
+      # add optimization objective to PostProcessor list if not already there
+      pp_node = template.find('Models').find(".//PostProcessor[@name='statistics']")
+      raven_metric_name = case._optimization_settings['metric']['name']
+      prefix = case.optimization_metrics_mapping[raven_metric_name]
+      if new_objective != 'missing':
+        if pp_node.find(raven_metric_name) is None:
+          # add subnode to PostProcessor
+          if 'threshold' in case._optimization_settings['metric'].keys():
+            if raven_metric_name in ['valueAtRisk', 'expectedShortfall']:
+              threshold = str(case._optimization_settings['metric']['threshold'])
+            else:
+              threshold = case._optimization_settings['metric']['threshold']
+              # TODO should NPV be the only metric available?
+            new_node = xmlUtils.newNode(raven_metric_name, text='NPV',
+                                        attrib={'prefix': prefix,
+                                                'threshold': threshold})
+          else:
+            # TODO should NPV be the only metric available?
+            new_node = xmlUtils.newNode(raven_metric_name, text='NPV',
+                                        attrib={'prefix': prefix})
+          pp_node.append(new_node)
+        else:
+          # check that subnode has correct values
+          subnode = pp_node.find(raven_metric_name)
+          # check that prefix is correct
+          if prefix != subnode.attrib['prefix']:
+            subnode.attrib['prefix'] = prefix
+          # percentile has additional parameter to check
+          if 'percent' in case._optimization_settings['metric'].keys():
+            # defaults to 5 or 95 percentile
+            if str(int(case._optimization_settings['metric']['percent'])) not in ['5', '95']:
+              # update attribute
+              subnode.attrib['percent'] = str(case._optimization_settings['metric']['percent'])
 
 
   ##### CASHFLOW #####

@@ -323,17 +323,15 @@ class Template(TemplateBase, Base):
       self._remove_by_name(DOs, ['opt_eval', 'opt_soln'])
     elif case.get_mode() == 'opt':
       self._remove_by_name(DOs, ['grid'])
-    # update opt components if used
+    # update optimization settings if provided
     if (case.get_mode() == 'opt') and (case._optimization_settings is not None):
       new_opt_objective = self._build_opt_metric_out_name(case)
       # check if the metric in 'opt_eval' needs to be changed
-      opt_eval_node = DOs.find(".//PointSet[@name='opt_eval']")
-      opt_eval_output_node = opt_eval_node.find('Output')
+      opt_eval_output_node = DOs.find(".//PointSet[@name='opt_eval']").find('Output')
       if (new_opt_objective != 'missing') and (new_opt_objective != opt_eval_output_node.text):
         opt_eval_output_node.text = new_opt_objective
       # check if the metric in 'opt_soln' needs to be changed
-      opt_soln_node = DOs.find(".//PointSet[@name='opt_soln']")
-      opt_soln_output = opt_soln_node.find('Output')
+      opt_soln_output = DOs.find(".//PointSet[@name='opt_soln']").find('Output')
       if (new_opt_objective != 'missing') and (new_opt_objective not in opt_soln_output.text):
         # remove mean_NPV and replace with new_opt_objective
         opt_soln_output.text = opt_soln_output.text.replace('mean_NPV', new_opt_objective)
@@ -429,8 +427,7 @@ class Template(TemplateBase, Base):
       self._remove_by_name(OSs, ['sweep'])
       # update plot 'opt_path' if necessary
       new_opt_objective = self._build_opt_metric_out_name(case)
-      opt_path_plot = OSs.find(".//Plot[@name='opt_path']")
-      opt_path_plot_vars = opt_path_plot.find('vars')
+      opt_path_plot_vars = OSs.find(".//Plot[@name='opt_path']").find('vars')
       if (new_opt_objective != 'missing') and (new_opt_objective not in opt_path_plot_vars.text):
         opt_path_plot_vars.text = opt_path_plot_vars.text.replace('mean_NPV', new_opt_objective)
     # debug mode
@@ -525,10 +522,9 @@ class Template(TemplateBase, Base):
 
     # only modify if optimization_settings is in Case
     if (case.get_mode() == 'opt') and (case._optimization_settings is not None):
-      optimizers = template.find('Optimizers')
-      new_opt_objective = self._build_opt_metric_out_name(case)
       # TODO will the optimizer always be GradientDescent?
-      opt_node = optimizers.find(".//GradientDescent[@name='cap_opt']")
+      opt_node = template.find('Optimizers').find(".//GradientDescent[@name='cap_opt']")
+      new_opt_objective = self._build_opt_metric_out_name(case)
       # swap out objective if necessary
       opt_node_objective = opt_node.find('objective')
       if (new_opt_objective != 'missing') and (new_opt_objective != opt_node_objective.text):
@@ -847,7 +843,7 @@ class Template(TemplateBase, Base):
       @ In, case, HERON Case, defining Case instance
       @ Out, None
     """
-    # TODO currently only modifies if optimization settings has metric and type, add additional settings?
+    # TODO currently only modifies if optimization settings has metric and/or type, add additional settings?
     # only modify if the mode is 'opt' and <optimization_settings> has anything to modify
     if (case.get_mode() == 'opt') and (case._optimization_settings is not None):
       # optimization objective name provided (or 'missing')
@@ -857,10 +853,10 @@ class Template(TemplateBase, Base):
       if (new_objective != 'missing') and (new_objective not in group.text):
         self._updateCommaSeperatedList(group, new_objective, position=0)
       # add optimization objective to PostProcessor list if not already there
-      pp_node = template.find('Models').find(".//PostProcessor[@name='statistics']")
-      raven_metric_name = case._optimization_settings['metric']['name']
-      prefix = case.optimization_metrics_mapping[raven_metric_name]
       if new_objective != 'missing':
+        pp_node = template.find('Models').find(".//PostProcessor[@name='statistics']")
+        raven_metric_name = case._optimization_settings['metric']['name']
+        prefix = case.optimization_metrics_mapping[raven_metric_name]
         if pp_node.find(raven_metric_name) is None:
           # add subnode to PostProcessor
           if 'threshold' in case._optimization_settings['metric'].keys():

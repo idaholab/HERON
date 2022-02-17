@@ -208,6 +208,7 @@ class Template(TemplateBase, Base):
     self._modify_outer_models(template, case, components)
     self._modify_outer_outstreams(template, case, components, sources)
     self._modify_outer_samplers(template, case, components)
+    self._modify_outer_optimizers(template, case)
     self._modify_outer_steps(template, case, components, sources)
     return template
 
@@ -506,6 +507,32 @@ class Template(TemplateBase, Base):
           samps_node.append(xmlUtils.newNode('constant', text=vals, attrib={'name': var_name}))
       else:
         # this capacity will be evaluated by ARMA/Function, and doesn't need to be added here.
+        pass
+
+  def _modify_outer_optimizers(self, template, case):
+    """
+      Defines modifications to the Optimizers of outer.xml RAVEN input file.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ Out, None
+    """
+
+    # only modify if optimization_settings is in Case
+    if (case.get_mode() == 'opt') and (case._optimization_settings is not None):
+      optimizers = template.find('Optimizers')
+      new_opt_objective = self._build_opt_metric_out_name(case)
+      # TODO will the optimizer always be GradientDescent?
+      opt_node = optimizers.find(".//GradientDescent[@name='cap_opt']")
+      # swap out objective if necessary
+      opt_node_objective = opt_node.find('objective')
+      if new_opt_objective != opt_node_objective.text:
+        opt_node_objective.text = new_opt_objective
+      # swap out samplerInit values (only type implemented now)
+      sampler_init = opt_node.find('samplerInit')
+      type_node = sampler_init.find('type')
+      try:
+        type_node.text = case._optimization_settings['type']
+      except KeyError:
         pass
 
   def _modify_outer_steps(self, template, case, components, sources):

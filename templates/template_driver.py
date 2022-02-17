@@ -263,7 +263,7 @@ class Template(TemplateBase, Base):
     if case._optimization_settings is not None:
       group_outer_results = var_groups.find(".//Group[@name='GRO_outer_results']")
       new_metric_outer_results = self._build_opt_metric_out_name(case)
-      if new_metric_outer_results not in group_outer_results.text:
+      if (new_metric_outer_results != 'missing') and (new_metric_outer_results not in group_outer_results.text):
         self._updateCommaSeperatedList(group_outer_results, new_metric_outer_results, position=0)
     # labels group
     if case.get_labels():
@@ -329,12 +329,12 @@ class Template(TemplateBase, Base):
       # check if the metric in 'opt_eval' needs to be changed
       opt_eval_node = DOs.find(".//PointSet[@name='opt_eval']")
       opt_eval_output_node = opt_eval_node.find('Output')
-      if new_opt_objective != opt_eval_output_node.text:
+      if (new_opt_objective != 'missing') and (new_opt_objective != opt_eval_output_node.text):
         opt_eval_output_node.text = new_opt_objective
       # check if the metric in 'opt_soln' needs to be changed
       opt_soln_node = DOs.find(".//PointSet[@name='opt_soln']")
       opt_soln_output = opt_soln_node.find('Output')
-      if new_opt_objective not in opt_soln_output.text:
+      if (new_opt_objective != 'missing') and (new_opt_objective not in opt_soln_output.text):
         # remove mean_NPV and replace with new_opt_objective
         opt_soln_output.text = opt_soln_output.text.replace('mean_NPV', new_opt_objective)
     # debug mode
@@ -525,7 +525,7 @@ class Template(TemplateBase, Base):
       opt_node = optimizers.find(".//GradientDescent[@name='cap_opt']")
       # swap out objective if necessary
       opt_node_objective = opt_node.find('objective')
-      if new_opt_objective != opt_node_objective.text:
+      if (new_opt_objective != 'missing') and (new_opt_objective != opt_node_objective.text):
         opt_node_objective.text = new_opt_objective
       # swap out samplerInit values (only type implemented now)
       sampler_init = opt_node.find('samplerInit')
@@ -1108,18 +1108,22 @@ class Template(TemplateBase, Base):
       @ In, case, HERON Case, defining Case instance
       @ Out, opt_out_metric_name, str, output metric name for use in inner/outer files
     """
-    # metric name in RAVEN
-    metric_raven_name = case._optimization_settings['metric']['name']
-    # potential metric name to add to VariableGroups, DataObjects, Optimizers
-    opt_out_metric_name = case.optimization_metrics_mapping[metric_raven_name]
-    # do I need to add a percent or threshold to this name?
-    if metric_raven_name == 'percentile':
-      opt_out_metric_name += '_' + str(case._optimization_settings['metric']['percent'])
-    elif metric_raven_name in ['valueAtRisk', 'expectedShortfall']:
-      opt_out_metric_name += '_' + str(case._optimization_settings['metric']['threshold'])
-    elif metric_raven_name in ['sortinoRatio', 'gainLossRatio']:
-      opt_out_metric_name += '_' + case._optimization_settings['metric']['threshold']
-    # add target variable to name TODO should this be changeable from NPV?
-    opt_out_metric_name += '_NPV'
+    try:
+      # metric name in RAVEN
+      metric_raven_name = case._optimization_settings['metric']['name']
+      # potential metric name to add to VariableGroups, DataObjects, Optimizers
+      opt_out_metric_name = case.optimization_metrics_mapping[metric_raven_name]
+      # do I need to add a percent or threshold to this name?
+      if metric_raven_name == 'percentile':
+        opt_out_metric_name += '_' + str(case._optimization_settings['metric']['percent'])
+      elif metric_raven_name in ['valueAtRisk', 'expectedShortfall']:
+        opt_out_metric_name += '_' + str(case._optimization_settings['metric']['threshold'])
+      elif metric_raven_name in ['sortinoRatio', 'gainLossRatio']:
+        opt_out_metric_name += '_' + case._optimization_settings['metric']['threshold']
+      # add target variable to name TODO should this be changeable from NPV?
+      opt_out_metric_name += '_NPV'
+    except KeyError:
+      # 'metric' is missing from _optimization_settings
+      opt_out_metric_name = 'missing'
 
     return opt_out_metric_name

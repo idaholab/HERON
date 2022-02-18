@@ -1174,7 +1174,8 @@ class Template(TemplateBase, Base):
         opt_out_metric_name += '_' + case._optimization_settings['metric']['threshold']
       # add target variable to name TODO should this be changeable from NPV?
       opt_out_metric_name += '_NPV'
-    except KeyError:
+    except (TypeError, KeyError):
+      # <optimization_settings> node not in input file OR
       # 'metric' is missing from _optimization_settings
       opt_out_metric_name = 'missing'
 

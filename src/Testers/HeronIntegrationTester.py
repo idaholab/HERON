@@ -35,7 +35,7 @@ class HeronIntegration(RavenTester):
       @ Out, None
     """
     RavenTester.__init__(self, name, param)
-    self.heron_driver = os.path.join(HERON_LOC, '..', 'heron')
+    self.heron_driver = os.path.join(HERON_LOC, 'main.py')
     # NOTE: self.driver is RAVEN driver (e.g. /path/to/Driver.py)
 
   def get_command(self):
@@ -50,14 +50,13 @@ class HeronIntegration(RavenTester):
     # HERON expects to be run in the dir of the input file currently, TODO fix this
     cmd += ' cd {loc} && '.format(loc=test_loc)
     # clear the subdirectory if it's present
-    # FIXME it's not always Sweep_Runs; can we do git clean maybe?
-    cmd += ' rm -rf Sweep_Runs_o/ ||: && '
+    cmd += ' rm -rf *_o/ && '
     # run HERON first
     heron_inp = os.path.join(test_loc, self.specs['input'])
-    cmd += f' {self.heron_driver} {heron_inp} && '
+    cmd += f' {python} {self.heron_driver} {heron_inp} && '
     # then run "outer.xml"
     raven_inp = os.path.abspath(os.path.join(os.path.dirname(heron_inp), 'outer.xml'))
-    # TODO should this use raven_framework instead of "python Driver.py"?
     cmd += f' {python} {self.driver} {raven_inp}'
+
     return cmd
 

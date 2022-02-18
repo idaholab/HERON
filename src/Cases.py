@@ -59,12 +59,10 @@ class Case(Base):
                          Example: ``<label name="state">Idaho</label>''""")
     input_specs.addSub(label_specs)
 
-    mode_options = InputTypes.makeEnumType('ModeOptions', 'ModeOptionsType', ['opt', 'sweep', 'debug'])
+    mode_options = InputTypes.makeEnumType('ModeOptions', 'ModeOptionsType', ['opt', 'sweep'])
     desc_mode_options = r"""determines the mode of operation for the outer/inner RAVEN.
                         If ``sweep'' then parametrically sweep over distributed values.
                         If ``opt'' then search distributed values for economic metric optima.
-                        If ``debug'' then run a simplified one-point outer, one-point inner to check
-                          dispatch behavior, cash flows, and simulation mechanics.
                         """
     input_specs.addSub(InputData.parameterInputFactory('mode', contentType=mode_options, strictMode=True,
                                                        descr=desc_mode_options))

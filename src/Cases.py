@@ -33,22 +33,23 @@ class Case(Base):
     TODO this case is for "sweep-opt", need to make a superclass for generic
   """
 
-  # metrics that can be used for objective in optimization mapped from RAVEN name to result name
-  optimization_metrics_mapping = {'expectedValue': 'mean',
-                                  'minimum': 'min',
-                                  'maximum': 'max',
-                                  'median': 'med',
-                                  'variance': 'var',
-                                  'sigma': 'std',
-                                  'percentile': 'perc',
-                                  'variationCoefficient': 'varCoeff',
-                                  'skewness': 'skew',
-                                  'kurtosis': 'kurt',
-                                  'sharpeRatio': 'sharpe',
-                                  'sortinoRatio': 'sortino',
-                                  'gainLossRatio': 'glr',
-                                  'expectedShortfall': 'es',
-                                  'valueAtRisk': 'VaR'}
+  # metrics that can be used for objective in optimization mapped from RAVEN name to result name (prefix)
+  # 'default' is the default type of optimization (min/max)
+  optimization_metrics_mapping = {'expectedValue': {'prefix': 'mean', 'default': 'max'},
+                                  'minimum': {'prefix': 'min', 'default': 'max'},
+                                  'maximum': {'prefix': 'max', 'default': 'max'},
+                                  'median': {'prefix': 'med', 'default': 'max'},
+                                  'variance': {'prefix': 'var', 'default': 'min'},
+                                  'sigma': {'prefix': 'std', 'default': 'min'},
+                                  'percentile': {'prefix': 'perc', 'default': 'max'},
+                                  'variationCoefficient': {'prefix': 'varCoeff', 'default': 'min'},
+                                  'skewness': {'prefix': 'skew', 'default': 'min'},
+                                  'kurtosis': {'prefix': 'kurt', 'default': 'min'},
+                                  'sharpeRatio': {'prefix': 'sharpe', 'default': 'max'},
+                                  'sortinoRatio': {'prefix': 'sortino', 'default': 'max'},
+                                  'gainLossRatio': {'prefix': 'glr', 'default': 'max'},
+                                  'expectedShortfall': {'prefix': 'es', 'default': 'min'},
+                                  'valueAtRisk': {'prefix': 'VaR', 'default': 'min'}}
 
   #### INITIALIZATION ####
   @classmethod
@@ -241,7 +242,13 @@ class Case(Base):
     type_options = InputTypes.makeEnumType('TypeOptions', 'TypeOptionsType',
                                            ['min', 'max'])
     desc_type_options = r"""determines whether the objective should be minimized or maximized.
-                            \default{max}"""
+                            \begin{itemize}
+                              \item when metric is ``expectedValue,'' ``minimum,'' ``maximum,''
+                              ``median,'' ``percentile,'' ``sharpeRatio,'' ``sortinoRatio,''
+                              ``gainLossRatio'' \default{max}}}
+                              \item when metric is ``variance,'' ``sigma,'' ``variationCoefficient,''
+                              ``skewness,'' ``kurtosis,'' ``expectedShortfall,'' ``valueAtRisk''
+                              \default{min}"""
     type_sub = InputData.parameterInputFactory('type', contentType=type_options, strictMode=True,
                                                descr=desc_type_options)
     optimizer.addSub(type_sub)

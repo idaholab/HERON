@@ -1,0 +1,14 @@
+[Tests]
+  [./OptimizationSettings]
+    type = HeronIntegration
+    input = heron_input.xml
+    # prereq = SineArma
+    max_time = 600
+    [./csv]
+      type = UnorderedCSV
+      output = 'Opt_Runs_o/opt_soln.csv Opt_Runs_o/opt_soln_0.csv'
+      zero_threshold = 1e-6
+      rel_err = 1e-6
+    [../]
+  [../]
+[]

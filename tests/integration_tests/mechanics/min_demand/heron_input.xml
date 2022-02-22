@@ -58,7 +58,6 @@
             <fixed_value>-2500</fixed_value>
           </capacity>
           <minimum>
-            <!-- <fixed_value>-100</fixed_value> -->
             <ARMA variable="Signal">flex</ARMA>
             <multiplier>-100</multiplier>
           </minimum>

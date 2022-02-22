@@ -32,6 +32,25 @@ class Case(Base):
     Produces something, often as the cost of something else
     TODO this case is for "sweep-opt", need to make a superclass for generic
   """
+
+  # metrics that can be used for objective in optimization mapped from RAVEN name to result name (prefix)
+  # 'default' is the default type of optimization (min/max)
+  optimization_metrics_mapping = {'expectedValue': {'prefix': 'mean', 'default': 'max'},
+                                  'minimum': {'prefix': 'min', 'default': 'max'},
+                                  'maximum': {'prefix': 'max', 'default': 'max'},
+                                  'median': {'prefix': 'med', 'default': 'max'},
+                                  'variance': {'prefix': 'var', 'default': 'min'},
+                                  'sigma': {'prefix': 'std', 'default': 'min'},
+                                  'percentile': {'prefix': 'perc', 'default': 'max'},
+                                  'variationCoefficient': {'prefix': 'varCoeff', 'default': 'min'},
+                                  'skewness': {'prefix': 'skew', 'default': 'min'},
+                                  'kurtosis': {'prefix': 'kurt', 'default': 'min'},
+                                  'sharpeRatio': {'prefix': 'sharpe', 'default': 'max'},
+                                  'sortinoRatio': {'prefix': 'sortino', 'default': 'max'},
+                                  'gainLossRatio': {'prefix': 'glr', 'default': 'max'},
+                                  'expectedShortfall': {'prefix': 'es', 'default': 'min'},
+                                  'valueAtRisk': {'prefix': 'VaR', 'default': 'min'}}
+
   #### INITIALIZATION ####
   @classmethod
   def get_input_specs(cls):
@@ -180,6 +199,59 @@ class Case(Base):
       validator.addSub(vld_spec)
     input_specs.addSub(validator)
 
+    # optimization settings
+    optimizer = InputData.parameterInputFactory('optimization_settings',
+                                                descr=r"""node that defines the settings to be used for the optimizer in
+                                                the ``outer'' run.""")
+    metric_options = InputTypes.makeEnumType('MetricOptions', 'MetricOptionsType', list(cls.optimization_metrics_mapping.keys()))
+    desc_metric_options = r"""determines the statistical metric (calculated by RAVEN BasicStatistics
+                          or EconomicRatio PostProcessors) from the ``inner'' run to be used as the
+                          objective in the ``outer'' optimization.
+                          \begin{itemize}
+                            \item For ``percentile'' the additional parameter \textit{percent=`X'}
+                            is required where \textit{X} is the requested percentile (a floating
+                            point value between 0.0 and 100.0).
+                            \item For ``sortinoRatio'' and ``gainLossRatio'' the additional
+                            parameter \textit{threshold=`X'} is required where \textit{X} is the
+                            requested threshold (`median' or `zero').
+                            \item For ``expectedShortfall'' and ``valueAtRisk'' the additional
+                            parameter \textit{threshold=`X'} is required where \textit{X} is the
+                            requested $\alpha$ value (a floating point value between 0.0 and 1.0).
+                          \end{itemize}
+                          """
+    metric = InputData.parameterInputFactory('metric', contentType=metric_options, strictMode=True,
+                                             descr=desc_metric_options)
+    metric.addParam(name='percent',
+                    param_type=InputTypes.FloatType,
+                    descr=r"""requested percentile (a floating point value between 0.0 and 100.0).
+                              Required when \xmlNode{metric} is ``percentile.''
+                              \default{5}""")
+    metric.addParam(name='threshold',
+                    param_type=InputTypes.StringType,
+                    descr=r"""\begin{itemize}
+                                \item requested threshold (`median' or `zero'). Required when
+                                \xmlNode{metric} is ``sortinoRatio'' or ``gainLossRatio.''
+                                \default{`zero'}
+                                \item requested $ \alpha $ value (a floating point value between 0.0
+                                and 1.0). Required when \xmlNode{metric} is ``expectedShortfall'' or
+                                ``valueAtRisk.'' \default{5.0}
+                              \end{itemize}""")
+    optimizer.addSub(metric)
+    type_options = InputTypes.makeEnumType('TypeOptions', 'TypeOptionsType',
+                                           ['min', 'max'])
+    desc_type_options = r"""determines whether the objective should be minimized or maximized.
+                            \begin{itemize}
+                              \item when metric is ``expectedValue,'' ``minimum,'' ``maximum,''
+                              ``median,'' ``percentile,'' ``sharpeRatio,'' ``sortinoRatio,''
+                              ``gainLossRatio'' \default{max}}}
+                              \item when metric is ``variance,'' ``sigma,'' ``variationCoefficient,''
+                              ``skewness,'' ``kurtosis,'' ``expectedShortfall,'' ``valueAtRisk''
+                              \default{min}"""
+    type_sub = InputData.parameterInputFactory('type', contentType=type_options, strictMode=True,
+                                               descr=desc_type_options)
+    optimizer.addSub(type_sub)
+    input_specs.addSub(optimizer)
+
     return input_specs
 
   def __init__(self, run_dir, **kwargs):
@@ -219,6 +291,7 @@ class Case(Base):
 
     self._time_discretization = None # (start, end, number) for constructing time discretization, same as argument to np.linspace
     self._Resample_T = None    # user-set increments for resources
+    self._optimization_settings = None # optimization settings dictionary for outer optimization loop
 
     # clean up location
     self.run_dir = os.path.abspath(os.path.expanduser(self.run_dir))
@@ -269,6 +342,8 @@ class Case(Base):
         typ = get_validator(name)
         self.validator = typ()
         self.validator.read_input(vld)
+      elif item.getName() == 'optimization_settings':
+        self._optimization_settings = self._read_optimization_settings(item)
 
     # checks
     if self._mode is None:
@@ -329,6 +404,43 @@ class Case(Base):
                                  '(<num_steps> and <time_interval>.)')
     # TODO can we take it automatically from an ARMA later, either by default or if told to?
     return (start, end, num)
+
+  def _read_optimization_settings(self, node):
+    """
+      Reads optimization settings node
+      @ In, node, InputParams.ParameterInput, optimization settings head node
+      @ Out, opt_settings, dict, optimization settings as dictionary
+    """
+
+    opt_settings = {}
+    for sub in node.subparts:
+      sub_name = sub.getName()
+      # add metric information to opt_settings dictionary
+      if sub_name == 'metric':
+        opt_settings[sub_name] = {}
+        metric_name = sub.value
+        opt_settings[sub_name]['name'] = metric_name
+        # some metrics have an associated parameter
+        if metric_name == 'percentile':
+          try:
+            opt_settings[sub_name]['percent'] = sub.parameterValues['percent']
+          except KeyError:
+            opt_settings[sub_name]['percent'] = 5
+        elif metric_name in ['sortinoRatio', 'gainLossRatio']:
+          try:
+            opt_settings[sub_name]['threshold'] = sub.parameterValues['threshold']
+          except KeyError:
+            opt_settings[sub_name]['threshold'] = 'zero'
+        elif metric_name in ['expectedShortfall', 'valueAtRisk']:
+          try:
+            opt_settings[sub_name]['threshold'] = sub.parameterValues['threshold']
+          except KeyError:
+            opt_settings[sub_name]['threshold'] = 0.05
+      else:
+        # add other information to opt_settings dictionary (type is only information implemented)
+        opt_settings[sub_name] = sub.value
+
+    return opt_settings
 
   def initialize(self, components, sources):
     """

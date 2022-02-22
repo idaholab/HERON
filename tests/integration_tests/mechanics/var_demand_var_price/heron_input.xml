@@ -11,9 +11,6 @@
   </TestInfo>
 
   <Case name="Sweep_Runs">
-    <!--
-    <metric>NPV</metric>
-    -->
     <mode>sweep</mode>
     <num_arma_samples>3</num_arma_samples>
     <time_discretization>
@@ -39,9 +36,6 @@
         <capacity resource="electricity">
           <sweep_values>1095,1098</sweep_values>
         </capacity>
-        <!-- <transfer>
-          <Function method="power_conversion">transfers</Function>
-        </transfer> -->
       </produces>
       <economics>
         <lifetime>27</lifetime>

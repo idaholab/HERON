@@ -64,7 +64,7 @@
     </Component>
 
     <Component name="electr_market">
-      <demands resource="electricity" dispatch="dependent"><!---->
+      <demands resource="electricity" dispatch="dependent">
         <capacity>
           <fixed_value>-2</fixed_value>
         </capacity>
@@ -93,8 +93,6 @@
         <lifetime>30</lifetime>
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
           <driver>
-            <!-- NOTE this could be activity.electricity as with electr_market,
-                 but we show how to use the Function here for variety. -->
             <Function method="electric_consume">transfers</Function>
             <multiplier>-1</multiplier>
           </driver>

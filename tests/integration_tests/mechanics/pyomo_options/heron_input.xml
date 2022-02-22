@@ -81,7 +81,7 @@
     </Component>
 
     <Component name="electr_market">
-      <demands resource="electricity" dispatch="dependent"><!---->
+      <demands resource="electricity" dispatch="dependent">
         <capacity>
           <fixed_value>-2</fixed_value>
         </capacity>

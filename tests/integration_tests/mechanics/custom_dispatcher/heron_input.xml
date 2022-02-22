@@ -58,15 +58,6 @@
       </produces>
       <economics>
         <lifetime>27</lifetime>
-        <!--<CashFlow name="var_om" type="repeating" taxable='True' inflation='none' mult_target='False'>
-          <driver>
-            <resource>electricity</resource>
-            <Function method="steam_consume">transfers</Function>
-          </driver>
-          <reference_price>
-            <fixed_value>0.01</fixed_value>
-          </reference_price>
-        </CashFlow>-->
       </economics>
     </Component>
 

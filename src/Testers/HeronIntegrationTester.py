@@ -5,6 +5,7 @@
 
 import os
 import sys
+import platform
 
 # get heron utilities
 HERON_LOC = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -50,14 +51,16 @@ class HeronIntegration(RavenTester):
     # HERON expects to be run in the dir of the input file currently, TODO fix this
     cmd += ' cd {loc} && '.format(loc=test_loc)
     # clear the subdirectory if it's present
-    # FIXME it's not always Sweep_Runs; can we do git clean maybe?
-    cmd += ' rm -rf Sweep_Runs_o/ ||: && '
+    cmd += ' rm -rf *_o/ && '
     # run HERON first
     heron_inp = os.path.join(test_loc, self.specs['input'])
+    # Windows is a little different with bash scripts
+    if platform.system() == 'Windows':
+      cmd += ' bash.exe '
     cmd += f' {self.heron_driver} {heron_inp} && '
     # then run "outer.xml"
     raven_inp = os.path.abspath(os.path.join(os.path.dirname(heron_inp), 'outer.xml'))
-    # TODO should this use raven_framework instead of "python Driver.py"?
     cmd += f' {python} {self.driver} {raven_inp}'
+
     return cmd
 

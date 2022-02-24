@@ -28,6 +28,11 @@
     <dispatcher>
       <pyomo><debug_mode>True</debug_mode></pyomo>
     </dispatcher>
+    <dispatch_vars>
+      <variable name='NPP_bid_adjust'>
+        <sweep_values>1, 100</sweep_values>
+      </variable>
+    </dispatch_vars>
   </Case>
 
   <Components>

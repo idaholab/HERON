@@ -264,7 +264,19 @@ class Template(TemplateBase, Base):
     var_groups = template.find('VariableGroups')
     # capacities
     caps = var_groups[0]
-    caps.text = ', '.join(f'{x.name}_capacity' for x in components if (x.get_capacity(None, raw=True).type not in ['Function', 'SyntheticHistory']))
+    var_list = []
+
+    # Add component opt vars
+    for comp in components:
+      comp_cap_type = comp.get_capacity(None, raw=True).type
+      if comp_cap_type  not in ['Function', 'ARMA']:
+        var_list.append(f'{comp.name}_capacity')
+
+    # Add dispatch opt vars
+    for var in case.dispatch_vars.keys():
+      var_list.append(var)
+    caps.text = ', '.join(var_list)
+
     # outer results
     if case._optimization_settings is not None:
       group_outer_results = var_groups.find(".//Group[@name='GRO_outer_results']")
@@ -397,6 +409,7 @@ class Template(TemplateBase, Base):
     # conversion script
     conv = raven.find('conversion').find('input')
     conv.attrib['source'] = '../write_inner.py'
+
     # aliases
     text = 'Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:{}_capacity'
     for component in components:
@@ -404,17 +417,25 @@ class Template(TemplateBase, Base):
       attribs = {'variable':'{}_capacity'.format(name), 'type':'input'}
       new = xmlUtils.newNode('alias', text=text.format(name), attrib=attribs)
       raven.append(new)
+
+    # Now we check for any non-component dispatch variables and assign aliases
+    text = 'Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:{}'
+    for name in case.dispatch_vars.keys():
+      attribs = {'variable': name, 'type':'input'}
+      new = xmlUtils.newNode('alias', text=text.format(name), attrib=attribs)
+      raven.append(new)
+
+    # label aliases placed inside models
+    text = 'Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:{}_label'
+    for label in case.get_labels().keys():
+      attribs = {'variable': '{}_label'.format(var), 'type':'input'}
+      new = xmlUtils.newNode('alias', text=text.format(label), attrib=attribs)
+      raven.append(new)
+
     # if debug, grab the dispatch output instead of the summary
     if case.debug['enabled']:
       raven.find('outputDatabase').text = 'disp_full'
 
-
-    # label aliases placed inside models
-    text = 'Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:{}_label'
-    for var, _ in self.__case.get_labels().items():
-      attribs = {'variable': '{}_label'.format(var), 'type':'input'}
-      new = xmlUtils.newNode('alias', text=text.format(var), attrib=attribs)
-      raven.append(new)
 
   def _modify_outer_outstreams(self, template, case, components, sources):
     """
@@ -495,6 +516,17 @@ class Template(TemplateBase, Base):
       sampler = 'grid'
     else:
       sampler = 'opt'
+
+    for key, value in case.dispatch_vars.items():
+      var_name = self.namingTemplates['variable'].format(unit=key, feature='dispatch')
+      vals = value.get_value(debug=case.debug['enabled'])
+      if isinstance(vals, list):
+        dist, xml = self._create_new_sweep_capacity(key, var_name, vals, sampler)
+        dists_node.append(dist)
+        if case.get_mode() == 'sweep':
+          samps_node.append(xml)
+        else:
+          samps_node.append(xml)
 
     for component in components:
       interaction = component.get_interaction()
@@ -600,7 +632,10 @@ class Template(TemplateBase, Base):
       @ Out, xml, xml.etree.ElementTree,Element, XML for sampled variable
     """
     # distribution
-    dist_name = self.namingTemplates['distribution'].format(unit=comp_name, feature='capacity')
+    if 'capacity' in var_name:
+      dist_name = self.namingTemplates['distribution'].format(unit=comp_name, feature='capacity')
+    else:
+      dist_name = self.namingTemplates['distribution'].format(unit=comp_name, feature='dispatch')
     dist = copy.deepcopy(self.dist_template)
     dist.attrib['name'] = dist_name
     min_cap = min(capacities)
@@ -782,6 +817,19 @@ class Template(TemplateBase, Base):
     var_groups = template.find('VariableGroups')
     for tag in ['capacities', 'init_disp', 'full_dispatch']:
       groups[tag] = var_groups.find(".//Group[@name='GRO_{}']".format(tag))
+
+    # # add dispatch vars
+    # for key, value in case.dispatch_vars.items():
+    #   if value.is_parametric():
+    #     var_name = self.namingTemplates['variable'].format(unit=key, feature='dispatch')
+    #     values = value.get_value(debug=case.debug['enabled'])
+    #     if isinstance(values, list):
+    #       placeholder = 42
+    #     else:
+    #       placeholder = values
+    #   mc.append(xmlUtils.newNode('constant', attrib={'name': var_name}, text=placeholder))
+    #   self._updateCommaSeperatedList(groups['capacities'], var_name)
+
     # change inner input due to components requested
     for component in components:
       name = component.name

@@ -818,18 +818,6 @@ class Template(TemplateBase, Base):
     for tag in ['capacities', 'init_disp', 'full_dispatch']:
       groups[tag] = var_groups.find(".//Group[@name='GRO_{}']".format(tag))
 
-    # # add dispatch vars
-    # for key, value in case.dispatch_vars.items():
-    #   if value.is_parametric():
-    #     var_name = self.namingTemplates['variable'].format(unit=key, feature='dispatch')
-    #     values = value.get_value(debug=case.debug['enabled'])
-    #     if isinstance(values, list):
-    #       placeholder = 42
-    #     else:
-    #       placeholder = values
-    #   mc.append(xmlUtils.newNode('constant', attrib={'name': var_name}, text=placeholder))
-    #   self._updateCommaSeperatedList(groups['capacities'], var_name)
-
     # change inner input due to components requested
     for component in components:
       name = component.name

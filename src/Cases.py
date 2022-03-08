@@ -270,9 +270,20 @@ class Case(Base):
     input_specs.addSub(optimizer)
 
     # Add magic variables that will be passed to the outer and inner.
-    dispatch_vars = InputData.parameterInputFactory('dispatch_vars', descr=r"""TODO: FILL THIS IN.""")
-    value_param = vp_factory.make_input_specs('variable', descr=r"""TODO: FILL THIS IN.""")
-    value_param.addParam('name', param_type=InputTypes.StringType, descr=r"""TODO: FILL THIS IN.""")
+    dispatch_vars = InputData.parameterInputFactory(
+        'dispatch_vars',
+        descr=r"This node defines a set containing additional variables"
+        "to sample that are not associated with a specific component."
+    )
+    value_param = vp_factory.make_input_specs(
+        'variable',
+        descr=r"This node defines the single additional dispatch variable used in the case."
+    )
+    value_param.addParam(
+        'name',
+        param_type=InputTypes.StringType,
+        descr=r"The unique name of the dispatch variable."
+    )
     dispatch_vars.addSub(value_param)
     input_specs.addSub(dispatch_vars)
 

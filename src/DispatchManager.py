@@ -118,7 +118,7 @@ class DispatchRunner:
     # like maybe in the VPFactory, then we can loop through and look for info
     # that we know from Outer and fill in the blanks? Maybe?
     for magic in self._case.dispatch_vars.keys():
-      val = getattr(raven, magic, None)
+      val = getattr(raven, f'{magic}_dispatch', None)
       if val is not None:
         pass_vars[magic] = float(val)
 

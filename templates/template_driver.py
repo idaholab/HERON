@@ -274,7 +274,7 @@ class Template(TemplateBase, Base):
 
     # Add dispatch opt vars
     for var in case.dispatch_vars.keys():
-      var_list.append(var)
+      var_list.append(f'{var}_dispatch')
     caps.text = ', '.join(var_list)
 
     # outer results

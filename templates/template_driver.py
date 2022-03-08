@@ -428,7 +428,7 @@ class Template(TemplateBase, Base):
     # label aliases placed inside models
     text = 'Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:{}_label'
     for label in case.get_labels().keys():
-      attribs = {'variable': '{}_label'.format(var), 'type':'input'}
+      attribs = {'variable': f'{label}_label', 'type':'input'}
       new = xmlUtils.newNode('alias', text=text.format(label), attrib=attribs)
       raven.append(new)
 

@@ -419,9 +419,9 @@ class Template(TemplateBase, Base):
       raven.append(new)
 
     # Now we check for any non-component dispatch variables and assign aliases
-    text = 'Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:{}'
+    text = 'Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:{}_dispatch'
     for name in case.dispatch_vars.keys():
-      attribs = {'variable': name, 'type':'input'}
+      attribs = {'variable': f'{name}_dispatch', 'type':'input'}
       new = xmlUtils.newNode('alias', text=text.format(name), attrib=attribs)
       raven.append(new)
 

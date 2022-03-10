@@ -21,6 +21,7 @@ __pycache__
 *.bbl
 *.blg
 /doc/pdfs
+/doc/script/*png
 /doc/sqa/rtr/heron_requirements_traceability_matrix.pdf
 /doc/sqa/rtr/traceability_matrix.tex
 /doc/sqa/sdd/heron_software_design_description.pdf

@@ -16,6 +16,7 @@ import dill as pk
 
 # load utils
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+from base import Base
 import _utils as hutils
 sys.path.pop()
 
@@ -36,7 +37,7 @@ from utils import xmlUtils
 from InputTemplates.TemplateBaseClass import Template as TemplateBase
 sys.path.pop()
 
-class Template(TemplateBase):
+class Template(TemplateBase, Base):
   """
     Template for lcoe sweep opt class
     This templates the workflow split into sweeping over unit capacities
@@ -72,12 +73,22 @@ class Template(TemplateBase):
   ############
   # API      #
   ############
-  def __init__(self):
+  def __repr__(self):
+    """
+      String representation of this Handler and its VP
+      @ In, None
+      @ Out, repr, str, string representation
+    """
+    msg = f'<Template Driver>'
+    return msg
+
+  def __init__(self, **kwargs):
     """
       Constructor
       @ In, None
       @ Out, None
     """
+    Base.__init__(self, **kwargs)
     here = os.path.dirname(os.path.abspath(sys.modules[self.__class__.__module__].__file__))
     self._template_path = here
     self._template_inner_path = None
@@ -145,28 +156,30 @@ class Template(TemplateBase):
     outer_file = os.path.abspath(os.path.join(destination, 'outer.xml'))
     inner_file = os.path.abspath(os.path.join(destination, 'inner.xml'))
     cash_file = os.path.abspath(os.path.join(destination, 'cash.xml'))
-    print('HERON: writing files ...')
-    msg_format = ' ... wrote "{1:15s}" to "{0}/"'
+    self.raiseAMessage('========================')
+    self.raiseAMessage('HERON: writing files ...')
+    self.raiseAMessage('========================')
+    msg_format = 'Wrote "{1}" to "{0}/"'
     with open(outer_file, 'w') as f:
       f.write(xmlUtils.prettify(outer))
-    print(msg_format.format(*os.path.split(outer_file)))
+    self.raiseAMessage(msg_format.format(*os.path.split(outer_file)))
     with open(inner_file, 'w') as f:
       f.write(xmlUtils.prettify(inner))
-    print(msg_format.format(*os.path.split(inner_file)))
+    self.raiseAMessage(msg_format.format(*os.path.split(inner_file)))
     with open(cash_file, 'w') as f:
       f.write(xmlUtils.prettify(cash))
-    print(msg_format.format(*os.path.split(cash_file)))
+    self.raiseAMessage(msg_format.format(*os.path.split(cash_file)))
     # write library of info so it can be read in dispatch during inner run
     data = (self.__case, self.__components, self.__sources)
     lib_file = os.path.abspath(os.path.join(destination, self.namingTemplates['lib file']))
     with open(lib_file, 'wb') as lib:
       pk.dump(data, lib)
-    print(msg_format.format(*os.path.split(lib_file)))
+    self.raiseAMessage(msg_format.format(*os.path.split(lib_file)))
     # copy "write_inner.py", which has the denoising and capacity fixing algorithms
     conv_src = os.path.abspath(os.path.join(self._template_path, 'write_inner.py'))
     conv_file = os.path.abspath(os.path.join(destination, 'write_inner.py'))
     shutil.copyfile(conv_src, conv_file)
-    print(msg_format.format(*os.path.split(conv_file)))
+    self.raiseAMessage(msg_format.format(*os.path.split(conv_file)))
     # run, if requested
     if run:
       self.runWorkflow(destination)
@@ -185,6 +198,7 @@ class Template(TemplateBase):
       @ In, sources, list, list of HERON Placeholder instances for this run
       @ Out, template, xml.etree.ElementTree.Element, modified template
     """
+    template.set('verbosity', case.get_verbosity())
     self._modify_outer_mode(template, case, components, sources)
     self._modify_outer_runinfo(template, case)
     self._modify_outer_vargroups(template, case, components, sources)
@@ -194,6 +208,7 @@ class Template(TemplateBase):
     self._modify_outer_models(template, case, components)
     self._modify_outer_outstreams(template, case, components, sources)
     self._modify_outer_samplers(template, case, components)
+    self._modify_outer_optimizers(template, case)
     self._modify_outer_steps(template, case, components, sources)
     return template
 
@@ -242,6 +257,7 @@ class Template(TemplateBase):
     """
       Defines modifications to the VariableGroups of outer.xml RAVEN input file.
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
       @ In, components, list, list of HERON Component instances for this run
       @ In, sources, list, list of HERON Placeholder instances for this run
       @ Out, None
@@ -250,6 +266,12 @@ class Template(TemplateBase):
     # capacities
     caps = var_groups[0]
     caps.text = ', '.join(f'{x.name}_capacity' for x in components if (x.get_capacity(None, raw=True).type not in ['Function', 'SyntheticHistory']))
+    # outer results
+    if case._optimization_settings is not None:
+      group_outer_results = var_groups.find(".//Group[@name='GRO_outer_results']")
+      new_metric_outer_results = self._build_opt_metric_out_name(case)
+      if (new_metric_outer_results != 'missing') and (new_metric_outer_results not in group_outer_results.text):
+        self._updateCommaSeperatedList(group_outer_results, new_metric_outer_results, position=0)
     # labels group
     if case.get_labels():
       case_labels = ET.SubElement(var_groups, 'Group', attrib={'name': 'GRO_case_labels'})
@@ -275,9 +297,9 @@ class Template(TemplateBase):
 
   def _modify_outer_databases(self, template, case):
     """
-      Defines modifications to the VariableGroups of outer.xml RAVEN input file.
+      Defines modifications to the Databases of outer.xml RAVEN input file.
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
-      @ In, components, list, list of HERON Component instances for this run
+      @ In, case, HERON Case, defining Case instance
       @ Out, None
     """
     if case.debug['enabled']:
@@ -290,8 +312,9 @@ class Template(TemplateBase):
 
   def _modify_outer_dataobjects(self, template, case, components):
     """
-      Defines modifications to the VariableGroups of outer.xml RAVEN input file.
+      Defines modifications to the DataObjects of outer.xml RAVEN input file.
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
       @ In, components, list, list of HERON Component instances for this run
       @ Out, None
     """
@@ -307,6 +330,18 @@ class Template(TemplateBase):
       self._remove_by_name(DOs, ['opt_eval', 'opt_soln'])
     elif case.get_mode() == 'opt':
       self._remove_by_name(DOs, ['grid'])
+    # update optimization settings if provided
+    if (case.get_mode() == 'opt') and (case._optimization_settings is not None):
+      new_opt_objective = self._build_opt_metric_out_name(case)
+      # check if the metric in 'opt_eval' needs to be changed
+      opt_eval_output_node = DOs.find(".//PointSet[@name='opt_eval']").find('Output')
+      if (new_opt_objective != 'missing') and (new_opt_objective != opt_eval_output_node.text):
+        opt_eval_output_node.text = new_opt_objective
+      # check if the metric in 'opt_soln' needs to be changed
+      opt_soln_output = DOs.find(".//PointSet[@name='opt_soln']").find('Output')
+      if (new_opt_objective != 'missing') and (new_opt_objective not in opt_soln_output.text):
+        # remove mean_NPV and replace with new_opt_objective
+        opt_soln_output.text = opt_soln_output.text.replace('mean_NPV', new_opt_objective)
     # debug mode
     if case.debug['enabled']:
       # add debug dispatch output dataset
@@ -386,6 +421,7 @@ class Template(TemplateBase):
     """
       Defines modifications to the OutStreams of outer.xml RAVEN input file.
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
       @ In, components, list, list of HERON Component instances for this run
       @ In, sources, list, list of HERON Placeholder instances for this run
       @ Out, None
@@ -396,6 +432,11 @@ class Template(TemplateBase):
       self._remove_by_name(OSs, ['opt_soln'])
     elif case.get_mode() == 'opt':
       self._remove_by_name(OSs, ['sweep'])
+      # update plot 'opt_path' if necessary
+      new_opt_objective = self._build_opt_metric_out_name(case)
+      opt_path_plot_vars = OSs.find(".//Plot[@name='opt_path']").find('vars')
+      if (new_opt_objective != 'missing') and (new_opt_objective not in opt_path_plot_vars.text):
+        opt_path_plot_vars.text = opt_path_plot_vars.text.replace('mean_NPV', new_opt_objective)
     # debug mode
     if case.debug['enabled']:
       # modify normal metric output
@@ -483,10 +524,38 @@ class Template(TemplateBase):
         # this capacity will be evaluated by ARMA/Function, and doesn't need to be added here.
         pass
 
+  def _modify_outer_optimizers(self, template, case):
+    """
+      Defines modifications to the Optimizers of outer.xml RAVEN input file.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ Out, None
+    """
+
+    # only modify if optimization_settings is in Case
+    if (case.get_mode() == 'opt') and (case._optimization_settings is not None):
+      # TODO will the optimizer always be GradientDescent?
+      opt_node = template.find('Optimizers').find(".//GradientDescent[@name='cap_opt']")
+      new_opt_objective = self._build_opt_metric_out_name(case)
+      # swap out objective if necessary
+      opt_node_objective = opt_node.find('objective')
+      if (new_opt_objective != 'missing') and (new_opt_objective != opt_node_objective.text):
+        opt_node_objective.text = new_opt_objective
+      # swap out samplerInit values (only type implemented now)
+      sampler_init = opt_node.find('samplerInit')
+      type_node = sampler_init.find('type')
+      try:
+        type_node.text = case._optimization_settings['type']
+      except KeyError:
+        # type was not provided, so use the default value
+        metric_raven_name = case._optimization_settings['metric']['name']
+        type_node.text = case.optimization_metrics_mapping[metric_raven_name]['default']
+
   def _modify_outer_steps(self, template, case, components, sources):
     """
       Defines modifications to the Steps of outer.xml RAVEN input file.
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
       @ In, components, list, list of HERON Component instances for this run
       @ In, sources, list, list of HERON Placeholder instances for this run
       @ Out, None
@@ -581,6 +650,7 @@ class Template(TemplateBase):
     self._modify_inner_components(template, case, components)
     self._modify_inner_caselabels(template, case)
     self._modify_inner_time_vars(template, case)
+    self._modify_inner_optimization_settings(template, case)
     if case.debug['enabled']:
       self._modify_inner_debug(template, case, components)
     # TODO modify based on resources ... should only need if units produce multiple things, right?
@@ -783,6 +853,55 @@ class Template(TemplateBase):
     for idx in ds.findall('Index'):
       self._updateCommaSeperatedList(idx, 'GRO_full_dispatch')
 
+  def _modify_inner_optimization_settings(self, template, case):
+    """
+      Modifies template to include optimization settings
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ Out, None
+    """
+    # TODO currently only modifies if optimization settings has metric and/or type, add additional settings?
+    # only modify if the mode is 'opt' and <optimization_settings> has anything to modify
+    if (case.get_mode() == 'opt') and (case._optimization_settings is not None):
+      # optimization objective name provided (or 'missing')
+      new_objective = self._build_opt_metric_out_name(case)
+      # add optimization objective name to VariableGroups 'GRO_final_return' if not already there
+      group = template.find('VariableGroups').find(".//Group[@name='GRO_final_return']")
+      if (new_objective != 'missing') and (new_objective not in group.text):
+        self._updateCommaSeperatedList(group, new_objective, position=0)
+      # add optimization objective to PostProcessor list if not already there
+      if new_objective != 'missing':
+        pp_node = template.find('Models').find(".//PostProcessor[@name='statistics']")
+        raven_metric_name = case._optimization_settings['metric']['name']
+        prefix = case.optimization_metrics_mapping[raven_metric_name]['prefix']
+        if pp_node.find(raven_metric_name) is None:
+          # add subnode to PostProcessor
+          if 'threshold' in case._optimization_settings['metric'].keys():
+            if raven_metric_name in ['valueAtRisk', 'expectedShortfall']:
+              threshold = str(case._optimization_settings['metric']['threshold'])
+            else:
+              threshold = case._optimization_settings['metric']['threshold']
+              # TODO should NPV be the only metric available?
+            new_node = xmlUtils.newNode(raven_metric_name, text='NPV',
+                                        attrib={'prefix': prefix,
+                                                'threshold': threshold})
+          else:
+            # TODO should NPV be the only metric available?
+            new_node = xmlUtils.newNode(raven_metric_name, text='NPV',
+                                        attrib={'prefix': prefix})
+          pp_node.append(new_node)
+        else:
+          # check that subnode has correct values
+          subnode = pp_node.find(raven_metric_name)
+          # check that prefix is correct
+          if prefix != subnode.attrib['prefix']:
+            subnode.attrib['prefix'] = prefix
+          # percentile has additional parameter to check
+          if 'percent' in case._optimization_settings['metric'].keys():
+            # defaults to 5 or 95 percentile
+            if str(int(case._optimization_settings['metric']['percent'])) not in ['5', '95']:
+              # update attribute
+              subnode.attrib['percent'] = str(case._optimization_settings['metric']['percent'])
 
 
   ##### CASHFLOW #####
@@ -1051,3 +1170,30 @@ class Template(TemplateBase):
         to_remove.append(node)
     for node in to_remove:
       root.remove(node)
+
+  def _build_opt_metric_out_name(self, case):
+    """
+      Constructs the output name of the metric specified as the optimization objective
+      @ In, case, HERON Case, defining Case instance
+      @ Out, opt_out_metric_name, str, output metric name for use in inner/outer files
+    """
+    try:
+      # metric name in RAVEN
+      metric_raven_name = case._optimization_settings['metric']['name']
+      # potential metric name to add to VariableGroups, DataObjects, Optimizers
+      opt_out_metric_name = case.optimization_metrics_mapping[metric_raven_name]['prefix']
+      # do I need to add a percent or threshold to this name?
+      if metric_raven_name == 'percentile':
+        opt_out_metric_name += '_' + str(case._optimization_settings['metric']['percent'])
+      elif metric_raven_name in ['valueAtRisk', 'expectedShortfall']:
+        opt_out_metric_name += '_' + str(case._optimization_settings['metric']['threshold'])
+      elif metric_raven_name in ['sortinoRatio', 'gainLossRatio']:
+        opt_out_metric_name += '_' + case._optimization_settings['metric']['threshold']
+      # add target variable to name TODO should this be changeable from NPV?
+      opt_out_metric_name += '_NPV'
+    except (TypeError, KeyError):
+      # <optimization_settings> node not in input file OR
+      # 'metric' is missing from _optimization_settings
+      opt_out_metric_name = 'missing'
+
+    return opt_out_metric_name

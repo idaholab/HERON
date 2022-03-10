@@ -19,12 +19,12 @@
     </IOStep>
     <PostProcess name='summarize'>
       <Input class='DataObjects' type='PointSet'>arma_metrics</Input>
-      <Model class='Models' type='PostProcessor'>average</Model>
-      <Output class='DataObjects' type='PointSet'>metrics_avg</Output>
+      <Model class='Models' type='PostProcessor'>statistics</Model>
+      <Output class='DataObjects' type='PointSet'>metrics_stats</Output>
       <!-- <Output class='OutStreams' type='Print'>disp_results</Output> -->
     </PostProcess>
     <IOStep name="database">
-      <Input class='DataObjects' type='PointSet'>metrics_avg</Input>
+      <Input class='DataObjects' type='PointSet'>metrics_stats</Input>
       <Output class='Databases' type='NetCDF'>disp_results</Output>
     </IOStep>
     <!-- <IOStep name="debug_print">
@@ -66,7 +66,7 @@
     <PointSet name="arma_metrics">
       <Output>NPV</Output>
     </PointSet>
-    <PointSet name="metrics_avg">
+    <PointSet name="metrics_stats">
       <Output>GRO_final_return</Output>
     </PointSet>
     <DataSet name="disp_full">
@@ -102,7 +102,7 @@
       </Model>
     </EnsembleModel>
 
-    <PostProcessor name="average" subType="BasicStatistics">
+    <PostProcessor name="statistics" subType="EconomicRatio">
       <expectedValue prefix="mean">NPV</expectedValue>
       <sigma prefix="std">NPV</sigma>
       <median prefix="med">NPV</median>
@@ -140,7 +140,7 @@
     </Print>
     <Print name='disp_results'>
       <type>csv</type>
-      <source>metrics_avg</source>
+      <source>metrics_stats</source>
     </Print>
   </OutStreams>
 

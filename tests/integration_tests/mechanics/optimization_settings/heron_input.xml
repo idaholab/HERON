@@ -1,23 +1,21 @@
 <HERON>
   <TestInfo>
-    <name>DebugMode</name>
-    <author>talbpaul</author>
-    <created>2021-02-22</created>
+    <name>optimization_settings</name>
+    <author>dgarrett622</author>
+    <created>2022-02-18</created>
     <description>
-      Tests a debug mode of operation, where a single outer runs a single sample of inner
-      and outputs the optimized dispatch.
+      Demonstrates using value at risk as the optimization objective on a simple system. A steam
+      source feeds a generator, which then sells electricity to a low-capacity high-value market
+      and a high-capacity negative-value market. The size of the steam source and high-capacity
+      market are optimized. The market size is irrelevant; the optimal steam source size is equal
+      to the high-value market size.
     </description>
     <classesTested>HERON</classesTested>
   </TestInfo>
 
-  <Case name="Debug_Run">
-    <mode>sweep</mode>
-    <debug>
-      <inner_samples>2</inner_samples>
-      <macro_steps>2</macro_steps>
-      <dispatch_plot>True</dispatch_plot>
-    </debug>
-    <num_arma_samples>1</num_arma_samples>
+  <Case name="Opt_Runs">
+    <mode>opt</mode>
+    <num_arma_samples>3</num_arma_samples>
     <time_discretization>
       <time_variable>Time</time_variable>
       <end_time>2</end_time>
@@ -26,24 +24,28 @@
     <economics>
       <ProjectTime>3</ProjectTime>
       <DiscountRate>0.08</DiscountRate>
-      <tax>0.3</tax>
-      <inflation>0.02</inflation>
+      <tax>0.0</tax>
+      <inflation>0.0</inflation>
       <verbosity>50</verbosity>
     </economics>
     <dispatcher>
       <pyomo/>
     </dispatcher>
+    <optimization_settings>
+      <metric>valueAtRisk</metric>
+      <type>min</type>
+    </optimization_settings>
   </Case>
 
   <Components>
     <Component name="steamer">
       <produces resource="steam" dispatch="fixed">
         <capacity resource="steam">
-          <sweep_values debug_value="3.14">1, 100</sweep_values>
+          <opt_bounds>1, 10</opt_bounds>
         </capacity>
       </produces>
       <economics>
-        <lifetime>5</lifetime>
+        <lifetime>27</lifetime>
       </economics>
     </Component>
 
@@ -61,7 +63,7 @@
         </transfer>
       </produces>
       <economics>
-        <lifetime>5</lifetime>
+        <lifetime>27</lifetime>
       </economics>
     </Component>
 
@@ -76,6 +78,7 @@
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
           <driver>
             <activity>electricity</activity>
+            <multiplier>-1</multiplier>
           </driver>
           <reference_price>
             <fixed_value>0.5</fixed_value>
@@ -87,14 +90,15 @@
     <Component name="electr_flex">
       <demands resource="electricity" dispatch="dependent">
         <capacity>
-          <fixed_value>-1e200</fixed_value>
+          <opt_bounds>-2e3, -2.05e3</opt_bounds>
         </capacity>
       </demands>
       <economics>
         <lifetime>30</lifetime>
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
           <driver>
-            <activity>electricity</activity>
+            <Function method="electric_consume">transfers</Function>
+            <multiplier>-1</multiplier>
           </driver>
           <reference_price>
             <Function method="flex_price">transfers</Function>

@@ -32,6 +32,25 @@ class Case(Base):
     Produces something, often as the cost of something else
     TODO this case is for "sweep-opt", need to make a superclass for generic
   """
+
+  # metrics that can be used for objective in optimization mapped from RAVEN name to result name (prefix)
+  # 'default' is the default type of optimization (min/max)
+  optimization_metrics_mapping = {'expectedValue': {'prefix': 'mean', 'default': 'max'},
+                                  'minimum': {'prefix': 'min', 'default': 'max'},
+                                  'maximum': {'prefix': 'max', 'default': 'max'},
+                                  'median': {'prefix': 'med', 'default': 'max'},
+                                  'variance': {'prefix': 'var', 'default': 'min'},
+                                  'sigma': {'prefix': 'std', 'default': 'min'},
+                                  'percentile': {'prefix': 'perc', 'default': 'max'},
+                                  'variationCoefficient': {'prefix': 'varCoeff', 'default': 'min'},
+                                  'skewness': {'prefix': 'skew', 'default': 'min'},
+                                  'kurtosis': {'prefix': 'kurt', 'default': 'min'},
+                                  'sharpeRatio': {'prefix': 'sharpe', 'default': 'max'},
+                                  'sortinoRatio': {'prefix': 'sortino', 'default': 'max'},
+                                  'gainLossRatio': {'prefix': 'glr', 'default': 'max'},
+                                  'expectedShortfall': {'prefix': 'es', 'default': 'min'},
+                                  'valueAtRisk': {'prefix': 'VaR', 'default': 'min'}}
+
   #### INITIALIZATION ####
   @classmethod
   def get_input_specs(cls):
@@ -59,15 +78,23 @@ class Case(Base):
                          Example: ``<label name="state">Idaho</label>''""")
     input_specs.addSub(label_specs)
 
-    mode_options = InputTypes.makeEnumType('ModeOptions', 'ModeOptionsType', ['opt', 'sweep', 'debug'])
+    mode_options = InputTypes.makeEnumType('ModeOptions', 'ModeOptionsType', ['opt', 'sweep'])
     desc_mode_options = r"""determines the mode of operation for the outer/inner RAVEN.
                         If ``sweep'' then parametrically sweep over distributed values.
                         If ``opt'' then search distributed values for economic metric optima.
-                        If ``debug'' then run a simplified one-point outer, one-point inner to check
-                          dispatch behavior, cash flows, and simulation mechanics.
                         """
     input_specs.addSub(InputData.parameterInputFactory('mode', contentType=mode_options, strictMode=True,
                                                        descr=desc_mode_options))
+
+    verbosity_options = InputTypes.makeEnumType('VerbosityOptions', 'VerbosityOptionsType',
+                                                ['silent', 'quiet', 'all', 'debug'])
+    desc_verbosity_options = r"""determines the level of verbosity for the outer/inner RAVEN runs. \default{all}.
+                             If ``silent'' only errors are displayed.
+                             If ``quiet'' errors and warnings are displayed.
+                             If ``all'' errors, warnings, and messages are displayed.
+                             If ``debug'' errors, warnings, messages, and debug messages are displayed."""
+    input_specs.addSub(InputData.parameterInputFactory('verbosity', contentType=verbosity_options,
+                                                       strictMode=True, descr=desc_verbosity_options))
 
     # not yet implemented TODO
     #econ_metrics = InputTypes.makeEnumType('EconMetrics', 'EconMetricsTypes', ['NPV', 'lcoe'])
@@ -186,6 +213,59 @@ class Case(Base):
       validator.addSub(vld_spec)
     input_specs.addSub(validator)
 
+    # optimization settings
+    optimizer = InputData.parameterInputFactory('optimization_settings',
+                                                descr=r"""node that defines the settings to be used for the optimizer in
+                                                the ``outer'' run.""")
+    metric_options = InputTypes.makeEnumType('MetricOptions', 'MetricOptionsType', list(cls.optimization_metrics_mapping.keys()))
+    desc_metric_options = r"""determines the statistical metric (calculated by RAVEN BasicStatistics
+                          or EconomicRatio PostProcessors) from the ``inner'' run to be used as the
+                          objective in the ``outer'' optimization.
+                          \begin{itemize}
+                            \item For ``percentile'' the additional parameter \textit{percent=`X'}
+                            is required where \textit{X} is the requested percentile (a floating
+                            point value between 0.0 and 100.0).
+                            \item For ``sortinoRatio'' and ``gainLossRatio'' the additional
+                            parameter \textit{threshold=`X'} is required where \textit{X} is the
+                            requested threshold (`median' or `zero').
+                            \item For ``expectedShortfall'' and ``valueAtRisk'' the additional
+                            parameter \textit{threshold=`X'} is required where \textit{X} is the
+                            requested $\alpha$ value (a floating point value between 0.0 and 1.0).
+                          \end{itemize}
+                          """
+    metric = InputData.parameterInputFactory('metric', contentType=metric_options, strictMode=True,
+                                             descr=desc_metric_options)
+    metric.addParam(name='percent',
+                    param_type=InputTypes.FloatType,
+                    descr=r"""requested percentile (a floating point value between 0.0 and 100.0).
+                              Required when \xmlNode{metric} is ``percentile.''
+                              \default{5}""")
+    metric.addParam(name='threshold',
+                    param_type=InputTypes.StringType,
+                    descr=r"""\begin{itemize}
+                                \item requested threshold (`median' or `zero'). Required when
+                                \xmlNode{metric} is ``sortinoRatio'' or ``gainLossRatio.''
+                                \default{`zero'}
+                                \item requested $ \alpha $ value (a floating point value between 0.0
+                                and 1.0). Required when \xmlNode{metric} is ``expectedShortfall'' or
+                                ``valueAtRisk.'' \default{5.0}
+                              \end{itemize}""")
+    optimizer.addSub(metric)
+    type_options = InputTypes.makeEnumType('TypeOptions', 'TypeOptionsType',
+                                           ['min', 'max'])
+    desc_type_options = r"""determines whether the objective should be minimized or maximized.
+                            \begin{itemize}
+                              \item when metric is ``expectedValue,'' ``minimum,'' ``maximum,''
+                              ``median,'' ``percentile,'' ``sharpeRatio,'' ``sortinoRatio,''
+                              ``gainLossRatio'' \default{max}}}
+                              \item when metric is ``variance,'' ``sigma,'' ``variationCoefficient,''
+                              ``skewness,'' ``kurtosis,'' ``expectedShortfall,'' ``valueAtRisk''
+                              \default{min}"""
+    type_sub = InputData.parameterInputFactory('type', contentType=type_options, strictMode=True,
+                                               descr=desc_type_options)
+    optimizer.addSub(type_sub)
+    input_specs.addSub(optimizer)
+
     return input_specs
 
   def __init__(self, run_dir, **kwargs):
@@ -199,6 +279,7 @@ class Case(Base):
     self._mode = None           # extrema to find: opt, sweep
     self._metric = 'NPV'        # UNUSED (future work); economic metric to focus on: lcoe, profit, cost
     self.run_dir = run_dir      # location of HERON input file
+    self._verbosity = 'all'     # default verbosity for RAVEN inner/outer
 
     self.dispatch_name = None   # name of dispatcher to use
     self.dispatcher = None      # type of dispatcher to use
@@ -227,6 +308,7 @@ class Case(Base):
 
     self._time_discretization = None # (start, end, number) for constructing time discretization, same as argument to np.linspace
     self._Resample_T = None    # user-set increments for resources
+    self._optimization_settings = None # optimization settings dictionary for outer optimization loop
 
     # clean up location
     self.run_dir = os.path.abspath(os.path.expanduser(self.run_dir))
@@ -249,7 +331,9 @@ class Case(Base):
           self.debug[node.getName()] = node.value
       elif item.getName() == 'label':
         self._labels[item.parameterValues['name']] = item.value
-      elif item.getName() == 'mode':
+      if item.getName() == 'verbosity':
+        self._verbosity = item.value
+      if item.getName() == 'mode':
         self._mode = item.value
       elif item.getName() == 'parallel':
         for sub in item.subparts:
@@ -281,6 +365,8 @@ class Case(Base):
         typ = get_validator(name)
         self.validator = typ()
         self.validator.read_input(vld)
+      elif item.getName() == 'optimization_settings':
+        self._optimization_settings = self._read_optimization_settings(item)
 
     # checks
     if self._mode is None:
@@ -342,6 +428,43 @@ class Case(Base):
     # TODO can we take it automatically from an ARMA later, either by default or if told to?
     return (start, end, num)
 
+  def _read_optimization_settings(self, node):
+    """
+      Reads optimization settings node
+      @ In, node, InputParams.ParameterInput, optimization settings head node
+      @ Out, opt_settings, dict, optimization settings as dictionary
+    """
+
+    opt_settings = {}
+    for sub in node.subparts:
+      sub_name = sub.getName()
+      # add metric information to opt_settings dictionary
+      if sub_name == 'metric':
+        opt_settings[sub_name] = {}
+        metric_name = sub.value
+        opt_settings[sub_name]['name'] = metric_name
+        # some metrics have an associated parameter
+        if metric_name == 'percentile':
+          try:
+            opt_settings[sub_name]['percent'] = sub.parameterValues['percent']
+          except KeyError:
+            opt_settings[sub_name]['percent'] = 5
+        elif metric_name in ['sortinoRatio', 'gainLossRatio']:
+          try:
+            opt_settings[sub_name]['threshold'] = sub.parameterValues['threshold']
+          except KeyError:
+            opt_settings[sub_name]['threshold'] = 'zero'
+        elif metric_name in ['expectedShortfall', 'valueAtRisk']:
+          try:
+            opt_settings[sub_name]['threshold'] = sub.parameterValues['threshold']
+          except KeyError:
+            opt_settings[sub_name]['threshold'] = 0.05
+      else:
+        # add other information to opt_settings dictionary (type is only information implemented)
+        opt_settings[sub_name] = sub.value
+
+    return opt_settings
+
   def initialize(self, components, sources):
     """
       Called after all objects are created, allows post-input initialization
@@ -371,11 +494,11 @@ class Case(Base):
       @ Out, None
     """
     pre = tab*tabs
-    print(pre+'Case:')
-    print(pre+'  name:', self.name)
-    print(pre+'  mode:', self._mode)
-    print(pre+'  meric:', self._metric)
-    print(pre+'  diff_study:', self._diff_study)
+    self.raiseADebug(pre+'Case:')
+    self.raiseADebug(pre+'  name:', self.name)
+    self.raiseADebug(pre+'  mode:', self._mode)
+    self.raiseADebug(pre+'  meric:', self._metric)
+    self.raiseADebug(pre+'  diff_study:', self._diff_study)
 
   #### ACCESSORS ####
   def get_increments(self):
@@ -450,6 +573,14 @@ class Case(Base):
       @ Out, mode, str, mode of analysis for this case (sweep, opt, etc)
     """
     return self._mode
+
+  def get_verbosity(self):
+    """
+      Accessor
+      @ In, None
+      @ Out, verbosity, str, level of vebosity for RAVEN inner/outer runs.
+    """
+    return self._verbosity
 
   def get_num_samples(self):
     """
@@ -526,8 +657,7 @@ class Case(Base):
     template_class.writeWorkflow((inner, outer, cash), loc)
 
   #### UTILITIES ####
-  @staticmethod
-  def _load_template():
+  def _load_template(self):
     """
       Loads template files for modification
       @ In, None
@@ -541,176 +671,6 @@ class Case(Base):
     sys.path.append(heron_dir)
     module = importlib.import_module('templates.{}'.format(template_name))
     # load template, perform actions
-    template_class = module.Template()
+    template_class = module.Template(messageHandler=self.messageHandler)
     template_class.loadTemplate(template_dir)
     return template_class
-
-  def _modify(self, templates, components, sources):
-    """
-      Modifies template files to prepare case.
-      @ In, templates, dict, map of file templates
-      @ In, components, list, HERON Components
-      @ In, sources, list, HERON Placeholders
-      @ Out, _modify, dict, modified files
-    """
-    outer = self._modify_outer(templates['outer'], components, sources)
-    inner = self._modify_inner(templates['inner'], components, sources)
-    return {'outer':outer, 'inner':inner}
-
-  def _modify_outer(self, template, components, sources):
-    """
-      Modifies the "outer" template file
-      @ In, template, xml, file template
-      @ In, components, list, HERON Components
-      @ In, sources, list, HERON Placeholders
-      @ Out, template, xml, modified template
-    """
-    ###################
-    # RUN INFO        #
-    ###################
-    run_info = template.find('RunInfo')
-    case_name = self.get_working_dir('outer') #self.string_templates['jobname'].format(case=self.name, io='o')
-    # job name
-    run_info.find('JobName').text = case_name
-    # working dir
-    run_info.find('WorkingDir').text = case_name
-    # TODO sequence, maybe should be modified after STEPS (or part of it)
-
-    ###################
-    # STEPS           #
-    # FIlES           #
-    ###################
-    # no ARMA steps, that's all on the inner
-
-    ###################
-    # VARIABLE GROUPS #
-    ###################
-    var_groups = template.find('VariableGroups')
-    # capacities
-    caps = var_groups[0]
-    caps.text = ', '.join('{}_capacity'.format(x.name) for x in components)
-    # results
-    ## these don't need to be changed, they're fine.
-
-    ###################
-    # DATA OBJECTS    #
-    ###################
-    # thanks to variable groups, we don't really need to adjust these.
-
-    ###################
-    # MODELS          #
-    ###################
-    # aliases
-    raven = template.find('Models').find('Code')
-    text = 'Samplers|MonteCarlo@name:mc_arma|constant@name:{}_capacity'
-    for component in components:
-      name = component.name
-      attribs = {'variable':'{}_capacity'.format(name), 'type':'input'}
-      new = xmlUtils.newNode('alias', text=text.format(name), attrib=attribs)
-      raven.append(new)
-    # TODO location of RAVEN? We should know globally somehow.
-
-    ###################
-    # DISTRIBUTIONS   #
-    # SAMPLERS        #
-    ###################
-    dists_node = template.find('Distributions')
-    samps_node = template.find('Samplers').find('Grid')
-    # number of denoisings
-    ## assumption: first node is the denoises node
-    samps_node.find('constant').text = str(self.get_num_samples())
-    # add sweep variables to input
-    dist_template = xmlUtils.newNode('Uniform')
-    dist_template.append(xmlUtils.newNode('lowerBound'))
-    dist_template.append(xmlUtils.newNode('upperBound'))
-    var_template = xmlUtils.newNode('variable')
-    var_template.append(xmlUtils.newNode('distribution'))
-    var_template.append(xmlUtils.newNode('grid', attrib={'type':'value', 'construction':'custom'}))
-    for component in components:
-      interaction = component.get_interaction()
-      # if produces, then its capacity might be flexible
-      # TODO this algorithm does not check for everthing to be swept! Future work could expand it.
-      ## Currently checked: Component.Interaction.Capacity
-      # TODO doesn't test for Components.Demand; maybe the user wants to perturb the demand level?
-      if isinstance(interaction, (Components.Producer, Components.Storage)):
-        # is the capacity variable (being swept over)?
-        name = component.name
-        var_name = self.string_templates['variable'].format(unit=name, feature='capacity')
-        if isinstance(interaction._capacity, list):
-          dist_name = self.string_templates['distribution'].format(unit=name, feature='capacity')
-          new = copy.deepcopy(dist_template)
-          new.attrib['name'] = dist_name
-          new.find('lowerBound').text = str(min(interaction._capacity))
-          new.find('upperBound').text = str(max(interaction._capacity))
-          dists_node.append(new)
-          # also mess with the Sampler block
-          new = copy.deepcopy(var_template)
-          new.attrib['name'] = var_name
-          new.find('distribution').text = dist_name
-          new.find('grid').text = ', '.join(str(x) for x in sorted(interaction._capacity))
-          samps_node.append(new)
-          # TODO assumption (input checked): only one interaction per component
-        # elif the capacity is fixed, it becomes a constant
-        else:
-          samps_node.append(xmlUtils.newNode('constant', text=interaction._capacity, attrib={'name': var_name}))
-
-    ###################
-    # OUTSTREAMS      #
-    ###################
-    # no changes needed here!
-
-    # TODO copy needed model/ARMA/etc files to Outer Working Dir so they're known
-    return template
-
-  def _modify_inner(self, template, components, sources):
-    """
-      Modifies the "inner" template file
-      @ In, template, xml, file template
-      @ In, components, list, HERON Components
-      @ In, sources, list, HERON Placeholders
-      @ Out, template, xml, modified template
-    """
-    ###################
-    # RUN INFO        #
-    # STEPS           #
-    ###################
-    run_info = template.find('RunInfo')
-    steps = template.find('Steps')
-    models = template.find('Models')
-    # case, working dir
-    case_name = self.get_working_dir('inner') #self.string_templates['jobname'].format(case=self.name, io='i')
-    run_info.find('JobName').text = case_name
-    run_info.find('WorkingDir').text = case_name
-    # steps
-    ## for now, just load all sources
-    ## TODO someday, only load what's needed
-    for source in sources:
-      name = source.name
-      if isinstance(source, Placeholders.ARMA):
-        # add a model block
-        models.append(xmlUtils.newNode('ROM', attrib={'name':name, 'subType':'pickledROM'}))
-        # add a read step
-        read_step_name = self.string_templates['stepname'].format(action='read', subject=name)
-        new_step = xmlUtils.newNode('IOStep', attrib={'name': read_step_name})
-        new_step.append(xmlUtils.newNode('Input', attrib={'class':'Files', 'type':''}, text=source._source))
-        new_step.append(xmlUtils.newNode('Output', attrib={'class':'Models', 'type':'ROM'}, text=name))
-        # add a sample step (sample #denoises)
-        # add a custom sampler to read the samples
-        ## sequence # NOTE order matters!
-        seq = run_info.find('Sequence').text
-        if seq is None:
-          run_info.find('Sequence').text = read_step_name
-        else:
-          run_info.find('Sequence').text = '{}, {}'.format(seq, read_step_name)
-
-        # TODO ensemble model? data object?
-        steps.append(new_step)
-      elif isinstance(source, Placeholders.CSV):
-        # add a File
-        # add a step to read
-        # add a data object to read into
-        ## TODO no one needs this right now, so forget it.
-        pass # TODO
-      elif isinstance(source, Placeholders.Function):
-        pass # TODO
-    return template

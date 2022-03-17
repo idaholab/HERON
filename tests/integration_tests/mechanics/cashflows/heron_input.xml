@@ -25,9 +25,7 @@
         <verbosity>50</verbosity>
       </economics>
       <dispatcher>
-        <pyomo>
-          <solver>glpk</solver>
-        </pyomo>
+        <pyomo/>
       </dispatcher>
     </Case>
 

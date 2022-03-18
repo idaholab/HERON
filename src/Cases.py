@@ -126,7 +126,7 @@ class Case(Base):
     parallel = InputData.parameterInputFactory('parallel', descr=r"""Describes how to parallelize this run.""")
     parallel.addSub(InputData.parameterInputFactory('outer', contentType=InputTypes.IntegerType,
         descr=r"""the number of parallel runs to use for the outer optimization run. The product of this
-              number and \xmlNode{inner} should be at most the number of parallel process availabe on
+              number and \xmlNode{inner} should be at most the number of parallel process available on
               your computing device. This should also be at most the number of samples needed per outer iteration;
               for example, with 3 opt bound variables and using finite differencing, at most 4 parallel outer runs
               can be used. \default{1}"""))
@@ -375,6 +375,14 @@ class Case(Base):
       self.raiseAnError('No <dispatch> node was provided in the <Case> node!')
     if self._time_discretization is None:
       self.raiseAnError('<time_discretization> node was not provided in the <Case> node!')
+    cores_requested = self.innerParallel * self.outerParallel
+    if cores_requested > 1:
+      # check to see if the number of processes available can meet the request
+      detected = os.cpu_count() - 1 # -1 to prevent machine OS locking up
+      if detected < cores_requested:
+        self.raiseAWarning('System may be overloaded and greatly increase run time! ' +
+                           f'Number of available cores detected: {detected}; ' +
+                           f'Number requested: {cores_requested} (inner: {self.innerParallel} * outer: {self.outerParallel}) ')
 
     # TODO what if time discretization not provided yet?
     self.dispatcher.set_time_discr(self._time_discretization)

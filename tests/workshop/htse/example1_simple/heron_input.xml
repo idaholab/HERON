@@ -13,7 +13,7 @@
     <mode>opt</mode>
     <num_arma_samples>20</num_arma_samples>
     <parallel>
-      <inner>10</inner>
+      <inner>2</inner>
     </parallel>
     <time_discretization>
       <year_variable>YEAR</year_variable>

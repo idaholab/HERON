@@ -68,7 +68,6 @@ class Template(TemplateBase, Base):
 
   var_template = xmlUtils.newNode('variable')
   var_template.append(xmlUtils.newNode('distribution'))
-  #var_template.append(xmlUtils.newNode('grid', attrib={'type':'value', 'construction':'custom'}))
 
   ############
   # API      #
@@ -496,7 +495,6 @@ class Template(TemplateBase, Base):
       sampler = 'grid'
     else:
       sampler = 'opt'
-    print()
 
     for component in components:
       interaction = component.get_interaction()

@@ -123,6 +123,20 @@ class Case(Base):
               \default{True}"""))
     input_specs.addSub(debug)
 
+    parallel = InputData.parameterInputFactory('parallel', descr=r"""Describes how to parallelize this run.""")
+    parallel.addSub(InputData.parameterInputFactory('outer', contentType=InputTypes.IntegerType,
+        descr=r"""the number of parallel runs to use for the outer optimization run. The product of this
+              number and \xmlNode{inner} should be at most the number of parallel process available on
+              your computing device. This should also be at most the number of samples needed per outer iteration;
+              for example, with 3 opt bound variables and using finite differencing, at most 4 parallel outer runs
+              can be used. \default{1}"""))
+    parallel.addSub(InputData.parameterInputFactory('inner', contentType=InputTypes.IntegerType,
+        descr=r"""the number of parallel runs to use per inner sampling run. This should be at most the number
+              of denoising samples, and at most the number of parallel processes available on your computing
+              device. \default{1}"""))
+    # TODO HPC?
+    input_specs.addSub(parallel)
+
     input_specs.addSub(InputData.parameterInputFactory('num_arma_samples', contentType=InputTypes.IntegerType,
                                                        descr=r"""provides the number of synthetic histories that should
                                                        be considered per system configuration in order to obtain a
@@ -272,6 +286,9 @@ class Case(Base):
     self.validator_name = None  # name of dispatch validation to use
     self.validator = None       # type of dispatch validation to use
 
+    self.outerParallel = 0     # number of outer parallel runs to use
+    self.innerParallel = 0     # number of inner parallel runs to use
+
     self._diff_study = None     # is this only a differential study?
     self._num_samples = 1       # number of ARMA stochastic samples to use ("denoises")
     self._hist_interval = None  # time step interval, time between production points
@@ -286,7 +303,7 @@ class Case(Base):
         'enabled': False,         # whether to enable debug mode
         'inner_samples': 1,       # how many inner realizations to sample
         'macro_steps': 1,         # how many "years" for inner realizations
-        'dispatch_plot': True    # whether to output a plot in debug mode
+        'dispatch_plot': True     # whether to output a plot in debug mode
     }
 
     self._time_discretization = None # (start, end, number) for constructing time discretization, same as argument to np.linspace
@@ -312,12 +329,18 @@ class Case(Base):
         self.debug['enabled'] = True
         for node in item.subparts:
           self.debug[node.getName()] = node.value
-      if item.getName() == 'label':
+      elif item.getName() == 'label':
         self._labels[item.parameterValues['name']] = item.value
       if item.getName() == 'verbosity':
         self._verbosity = item.value
       if item.getName() == 'mode':
         self._mode = item.value
+      elif item.getName() == 'parallel':
+        for sub in item.subparts:
+          if sub.getName() == 'outer':
+            self.outerParallel = sub.value
+          elif sub.getName() == 'inner':
+            self.innerParallel = sub.value
       elif item.getName() == 'metric':
         self._metric = item.value
       elif item.getName() == 'differential':
@@ -352,6 +375,14 @@ class Case(Base):
       self.raiseAnError('No <dispatch> node was provided in the <Case> node!')
     if self._time_discretization is None:
       self.raiseAnError('<time_discretization> node was not provided in the <Case> node!')
+    cores_requested = self.innerParallel * self.outerParallel
+    if cores_requested > 1:
+      # check to see if the number of processes available can meet the request
+      detected = os.cpu_count() - 1 # -1 to prevent machine OS locking up
+      if detected < cores_requested:
+        self.raiseAWarning('System may be overloaded and greatly increase run time! ' +
+                           f'Number of available cores detected: {detected}; ' +
+                           f'Number requested: {cores_requested} (inner: {self.innerParallel} * outer: {self.outerParallel}) ')
 
     # TODO what if time discretization not provided yet?
     self.dispatcher.set_time_discr(self._time_discretization)

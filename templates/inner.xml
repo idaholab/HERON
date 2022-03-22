@@ -3,6 +3,7 @@
     <JobName></JobName>
     <WorkingDir>.</WorkingDir>
     <Sequence>arma_sampling, summarize, database</Sequence>
+    <batchSize>1</batchSize>
   </RunInfo>
 
   <Steps>

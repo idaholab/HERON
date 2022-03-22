@@ -92,14 +92,15 @@
       <stepSize>
         <GradientHistory>
           <growthFactor>2</growthFactor>
-          <shrinkFactor>2</shrinkFactor>
+          <shrinkFactor>1.5</shrinkFactor>
+          <initialStepScale>0.2</initialStepScale>
         </GradientHistory>
       </stepSize>
       <acceptance>
         <Strict/>
       </acceptance>
       <convergence>
-        <gradient>1e-8</gradient>
+        <gradient>1e-4</gradient>
         <objective>1e-8</objective>
       </convergence>
     </GradientDescent>

@@ -303,7 +303,9 @@ class Pyomo(Dispatcher):
       attempts += 1
       print(f'DEBUGG solve attempt {attempts} ...:')
       # solve
-      soln = pyo.SolverFactory(self._solver).solve(m)
+      # TODO someday if we want to give user access to options, we can add them to this dict. For now, no options.
+      solve_options = {}
+      soln = pyo.SolverFactory(self._solver).solve(m, options=solve_options)
       # check solve status
       if soln.solver.status == SolverStatus.ok and soln.solver.termination_condition == TerminationCondition.optimal:
         print('DEBUGG ... solve was successful!')

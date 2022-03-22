@@ -68,7 +68,6 @@ class Template(TemplateBase, Base):
 
   var_template = xmlUtils.newNode('variable')
   var_template.append(xmlUtils.newNode('distribution'))
-  var_template.append(xmlUtils.newNode('grid', attrib={'type':'value', 'construction':'custom'}))
 
   ############
   # API      #
@@ -245,6 +244,13 @@ class Template(TemplateBase, Base):
       run_info.find('Sequence').text = 'sweep'
     elif case.get_mode() == 'opt':
       run_info.find('Sequence').text = 'optimize, plot'
+    # parallel
+    if case.outerParallel:
+      # for now, outer does not use InternalParallel
+      batchSize = run_info.find('batchSize')
+      batchSize.text = f'{case.outerParallel}'
+    if case.innerParallel:
+      run_info.append(xmlUtils.newNode('NumMPI', text=case.innerParallel))
 
   def _modify_outer_vargroups(self, template, case, components, sources):
     """
@@ -258,7 +264,7 @@ class Template(TemplateBase, Base):
     var_groups = template.find('VariableGroups')
     # capacities
     caps = var_groups[0]
-    caps.text = ', '.join(f'{x.name}_capacity' for x in components if (x.get_capacity(None, raw=True).type not in ['Function', 'ARMA']))
+    caps.text = ', '.join(f'{x.name}_capacity' for x in components if (x.get_capacity(None, raw=True).type not in ['Function', 'SyntheticHistory']))
     # outer results
     if case._optimization_settings is not None:
       group_outer_results = var_groups.find(".//Group[@name='GRO_outer_results']")
@@ -462,7 +468,7 @@ class Template(TemplateBase, Base):
       @ Out, None
     """
     dists_node = template.find('Distributions')
-    if case.get_mode() == 'sweep':
+    if case.get_mode() == 'sweep' or case.debug['enabled']:
       samps_node = template.find('Samplers').find('Grid')
     else:
       samps_node = template.find('Optimizers').find('GradientDescent')
@@ -483,6 +489,13 @@ class Template(TemplateBase, Base):
       var_name = self.namingTemplates['variable'].format(unit=key, feature='label')
       samps_node.append(xmlUtils.newNode('constant', text=value, attrib={'name': var_name}))
 
+    if case.debug['enabled']:
+      sampler = 'mc'
+    elif case.get_mode() == 'sweep':
+      sampler = 'grid'
+    else:
+      sampler = 'opt'
+
     for component in components:
       interaction = component.get_interaction()
       # NOTE this algorithm does not check for everthing to be swept! Future work could expand it.
@@ -498,12 +511,9 @@ class Template(TemplateBase, Base):
         # is the capacity variable being swept over?
         if isinstance(vals, list):
           # make new Distribution, Sampler.Grid.variable
-          dist, for_grid, for_opt = self._create_new_sweep_capacity(name, var_name, vals)
+          dist, xml = self._create_new_sweep_capacity(name, var_name, vals, sampler)
           dists_node.append(dist)
-          if case.get_mode() == 'sweep':
-            samps_node.append(for_grid)
-          else:
-            samps_node.append(for_opt)
+          samps_node.append(xml)
           # NOTE assumption (input checked): only one interaction per component
         # if not being swept, then it's just a fixed value.
         else:
@@ -579,15 +589,15 @@ class Template(TemplateBase, Base):
         io_output = ET.SubElement(io_step, 'Output', attrib={'class': 'OutStreams', 'type': 'Plot'})
         io_output.text = 'dispatchPlot'
 
-  def _create_new_sweep_capacity(self, comp_name, var_name, capacities):
+  def _create_new_sweep_capacity(self, comp_name, var_name, capacities, sampler):
     """
       for OUTER, creates new distribution and variable for grid/opt sampling
       @ In, comp_name, str, name of component
       @ In, var_name, str, name of capacity variable
       @ In, capacities, list, float list of capacities to sweep/opt over
+      @ In, sampler, string, which sampler to assume (grid, mc, opt)
       @ Out, dist, xml.etree.ElementTree,Element, XML for distribution
-      @ Out, grid, xml.etree.ElementTree,Element, XML for grid sampler variable
-      @ Out, opt, xml.etree.ElementTree,Element, XML for optimizer variable
+      @ Out, xml, xml.etree.ElementTree,Element, XML for sampled variable
     """
     # distribution
     dist_name = self.namingTemplates['distribution'].format(unit=comp_name, feature='capacity')
@@ -597,23 +607,22 @@ class Template(TemplateBase, Base):
     max_cap = max(capacities)
     dist.find('lowerBound').text = str(min_cap)
     dist.find('upperBound').text = str(max_cap)
-    # sampler variable, for Grid case
-    grid = copy.deepcopy(self.var_template)
-    grid.attrib['name'] = var_name
-    grid.find('distribution').text = dist_name
-    grid.find('grid').text = ' '.join(str(x) for x in sorted(capacities))
-    # optimizer variable, for opt case
-    opt = copy.deepcopy(grid)
-    opt.remove(opt.find('grid'))
-    # initial value
-    delta = max_cap - min_cap
-    # start at 5% away from 0
-    if max_cap > 0:
-      initial = min_cap + 0.05 * delta # 0.5*(min_cap + max_cap) # capacities[np.argmin(abs(np.asarray(capacities)))]
-    else:
-      initial = max_cap - 0.05 * delta
-    opt.append(xmlUtils.newNode('initial', text=initial))
-    return dist, grid, opt
+    xml = copy.deepcopy(self.var_template)
+    xml.attrib['name'] = var_name
+    xml.find('distribution').text = dist_name
+    if sampler == 'grid':
+      caps = ' '.join(str(x) for x in sorted(capacities))
+      xml.append(xmlUtils.newNode('grid', attrib={'type':'value', 'construction':'custom'}, text=caps))
+    elif sampler == 'opt':
+      # initial value
+      delta = max_cap - min_cap
+      # start at 5% away from 0
+      if max_cap > 0:
+        initial = min_cap + 0.05 * delta
+      else:
+        initial = max_cap - 0.05 * delta
+      xml.append(xmlUtils.newNode('initial', text=initial))
+    return dist, xml
 
 
 
@@ -705,6 +714,10 @@ class Template(TemplateBase, Base):
     if case.debug['enabled']:
       # need to "write full" as part of sequence, after arma sampling
       self._updateCommaSeperatedList(run_info.find('Sequence'), 'write_full', after='arma_sampling')
+    # parallel
+    if case.innerParallel:
+      run_info.append(xmlUtils.newNode('internalParallel', text='True'))
+      run_info.find('batchSize').text = f'{case.innerParallel}'
 
   def _modify_inner_sources(self, template, case, components, sources):
     """

@@ -1,0 +1,14 @@
+[Tests]
+  [./ValidatorFARMbeta]
+    type = HeronIntegration
+    input = FARM_Beta_para_beta_3Units_24h.xml
+    # prereq = Sine_24h_Arma
+    [./csv]
+      type = OrderedCSV
+      output = 'Sweep_Runs_o/sweep.csv'
+      zero_threshold = 1e-6
+      rel_err = 1e-6
+    [../]
+  [../]
+
+[]

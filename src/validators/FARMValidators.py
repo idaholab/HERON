@@ -250,18 +250,18 @@ class FARM_Beta(Validator):
                               'time_index': tidx,
                               })
 
-    # if errs == []: # if no validation error:
-    #   print(" ")
-    #   print("*********************************************************************")
-    #   print("*** Haoyu Debug, Validation Success, Print for offline processing ***")
-    #   print("*********************************************************************")
-    #   print(" ")
-    #   t_hist = np.arange(0,len(self._unitInfo['TES']['vp_hist'])*Tss,Tss)
-    #   for unit in self._unitInfo:
-    #     y_hist = np.array(self._unitInfo[unit]['y_hist']).T
-    #     # print(str(unit),y_hist)
-    #     for i in range(len(t_hist)):
-    #       print(str(unit), ",t,",t_hist[i],",vp,",self._unitInfo[unit]['vp_hist'][i],",y1,",y_hist[0][i], ",y1min,",self._unitInfo[unit]['Targets_Min'][0],",y1max,",self._unitInfo[unit]['Targets_Max'][0],",y2,",y_hist[1][i], ",y2min,",self._unitInfo[unit]['Targets_Min'][1],",y2max,",self._unitInfo[unit]['Targets_Max'][1])
+    if errs == []: # if no validation error:
+      print(" ")
+      print("*********************************************************************")
+      print("*** Haoyu Debug, Validation Success, Print for offline processing ***")
+      print("*********************************************************************")
+      print(" ")
+      t_hist = np.arange(0,len(self._unitInfo['BOP']['vp_hist'])*Tss,Tss)
+      for unit in self._unitInfo:
+        y_hist = np.array(self._unitInfo[unit]['y_hist']).T
+        # print(str(unit),y_hist)
+        for i in range(len(t_hist)):
+          print(str(unit), ",t,",t_hist[i],",vp,",self._unitInfo[unit]['vp_hist'][i],",y1,",y_hist[0][i], ",y1min,",self._unitInfo[unit]['Targets_Min'][0],",y1max,",self._unitInfo[unit]['Targets_Max'][0],",y2,",y_hist[1][i], ",y2min,",self._unitInfo[unit]['Targets_Min'][1],",y2max,",self._unitInfo[unit]['Targets_Max'][1])
 
 
     return errs
@@ -304,6 +304,13 @@ class FARM_Gamma_LTI(Validator):
         descr=r"""The path to the Statespace representation matrices file of this component. Either absolute path
         or path relative to HERON root (starts with %HERON%/)will work. The matrices file can be generated from
         RAVEN DMDc or other sources."""))
+    component.addSub(InputData.parameterInputFactory('SystemProfile',contentType=InputTypes.IntegerType,
+        descr=r"""The system profile index in the parameterized matrices file. It should be an integer."""))
+    component.addSub(InputData.parameterInputFactory('FirstTwoSetpoints',contentType=InputTypes.InterpretedListType,
+        descr=r"""The first two setpoints used to find the nominal value and first set of ABCD matrices. 
+        It should be a list of two floating numbers or integers."""))
+    component.addSub(InputData.parameterInputFactory('MovingWindowDuration',contentType=InputTypes.IntegerType,
+        descr=r"""The moving window duration for DMDc, with the unit of seconds. It should be an integer."""))
     component.addSub(InputData.parameterInputFactory('OpConstraintsUpper',contentType=InputTypes.InterpretedListType,
         descr=r"""The upper bounds for the output variables of this component. It should be a list of
         floating numbers or integers."""))
@@ -345,13 +352,20 @@ class FARM_Gamma_LTI(Validator):
             # magic word for "relative to HERON root"
             heron_path = get_heron_loc()
             matFile = os.path.abspath(matFile.replace('%HERON%', heron_path))
+        if farmEntry.getName() == "SystemProfile":
+          systemProfile = farmEntry.value
+        if farmEntry.getName() == "FirstTwoSetpoints":
+          FirstTwoSetpoints = farmEntry.value
+        if farmEntry.getName() == "MovingWindowDuration":
+          MovingWindowDuration = farmEntry.value
         if farmEntry.getName() == "OpConstraintsUpper":
           UpperBound = farmEntry.value
         if farmEntry.getName() == "OpConstraintsLower":
           LowerBound = farmEntry.value
         if farmEntry.getName() == "InitialState":
           xInit = farmEntry.value
-      self._unitInfo.update({name:{'MatrixFile':matFile,'Targets_Max':UpperBound,'Targets_Min':LowerBound,'XInit':xInit,'vp_hist':[],'y_hist':[]}})
+      self._unitInfo.update({name:{'MatrixFile':matFile,'systemProfile':systemProfile,'FirstTwoSetpoints':FirstTwoSetpoints,'MovingWindowDuration':MovingWindowDuration,'Targets_Max':UpperBound,'Targets_Min':LowerBound,'XInit':xInit,'vp_hist':[],'y_hist':[]}})
+    print('\n',self._unitInfo,'\n')
 
   # ---------------------------------------------
   # API
@@ -488,7 +502,7 @@ class FARM_Gamma_LTI(Validator):
                 else: # when not TES,
                   V1 = v_value
 
-                # print("Haoyu Debug, unit=",str(unit),", t=",time, ", curr= %.8g, V1= %.8g, delta=%.8g" %(current, V1, (V1-current)))
+                print("Haoyu Debug, unit=",str(unit),", t=",time, ", curr= %.8g, V1= %.8g, delta=%.8g" %(current, V1, (V1-current)))
 
                 # Write up any violation to the errs:
                 if abs(current - V1) > self._tolerance*max(abs(current),abs(V1)):
@@ -502,18 +516,18 @@ class FARM_Gamma_LTI(Validator):
                               'time_index': tidx,
                               })
 
-    # if errs == []: # if no validation error:
-    #   print(" ")
-    #   print("*********************************************************************")
-    #   print("*** Haoyu Debug, Validation Success, Print for offline processing ***")
-    #   print("*********************************************************************")
-    #   print(" ")
-    #   t_hist = np.arange(0,len(self._unitInfo['TES']['vp_hist'])*Tss,Tss)
-    #   for unit in self._unitInfo:
-    #     y_hist = np.array(self._unitInfo[unit]['y_hist']).T
-    #     # print(str(unit),y_hist)
-    #     for i in range(len(t_hist)):
-    #       print(str(unit), ",t,",t_hist[i],",vp,",self._unitInfo[unit]['vp_hist'][i],",y1,",y_hist[0][i], ",y1min,",self._unitInfo[unit]['Targets_Min'][0],",y1max,",self._unitInfo[unit]['Targets_Max'][0],",y2,",y_hist[1][i], ",y2min,",self._unitInfo[unit]['Targets_Min'][1],",y2max,",self._unitInfo[unit]['Targets_Max'][1])
+    if errs == []: # if no validation error:
+      print(" ")
+      print("*********************************************************************")
+      print("*** Haoyu Debug, Validation Success, Print for offline processing ***")
+      print("*********************************************************************")
+      print(" ")
+      t_hist = np.arange(0,len(self._unitInfo['BOP']['vp_hist'])*Tss,Tss)
+      for unit in self._unitInfo:
+        y_hist = np.array(self._unitInfo[unit]['y_hist']).T
+        # print(str(unit),y_hist)
+        for i in range(len(t_hist)):
+          print(str(unit), ",t,",t_hist[i],",vp,",self._unitInfo[unit]['vp_hist'][i],",y1,",y_hist[0][i], ",y1min,",self._unitInfo[unit]['Targets_Min'][0],",y1max,",self._unitInfo[unit]['Targets_Max'][0],",y2,",y_hist[1][i], ",y2min,",self._unitInfo[unit]['Targets_Min'][1],",y2max,",self._unitInfo[unit]['Targets_Max'][1])
 
 
     return errs

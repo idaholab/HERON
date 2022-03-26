@@ -3,7 +3,7 @@ clear; tic
 filename = 'Sweep_Runs_o\sweep\1\out~inner';
 % filename = 'Saved_Dispatch_Results\Jan_2022\HW_124_out';
 % Specify the interval of x ticks
-x_tick_interval=2;  % 2 hours for plot 24-hour result
+x_tick_interval=1;  % 2 hours for plot 24-hour result
 % x_tick_interval=24; % 24 hours for plot 168-hour result
 
 fid = fopen(filename);
@@ -180,7 +180,7 @@ print('Figure_20.png','-dpng','-r300')
 %% 3. Plot everything in one figure
 figure(30)
 set(gcf,'Position',[100 50 2240 1260])
-subplot(3,4,[1 5 9]) 
+subplot(2,4,[1 5]) 
 % Plot the stacked bar of power components
 ba = bar(time_hour, power_array_hour, 'stacked', 'FaceColor','flat');hold on
 ba(1).CData = [0 0.4470 0.7410];
@@ -192,9 +192,9 @@ xlim([x_label_min x_label_max]);xticks(x_label_min:x_tick_interval:x_label_max)
 legend('BOP','TES Discharging(+)/Charging(-)','Market Demand','Location','best')
 title('Contribution of each Power Source')
 
-for unit_idx=1:3
+for unit_idx=1:2
     % Plot the output power for all 3 units
-    subplot(3,4,(unit_idx-1)*4+2)
+    subplot(2,4,(unit_idx-1)*4+2)
     if unit_idx==1
         plot(time,BOP_vyminmax(:,1))
 %         y_lb = min(BOP_vyminmax(:,1)); y_ub = max(BOP_vyminmax(:,1));
@@ -202,10 +202,10 @@ for unit_idx=1:3
         title('BOP Dispatched Power')
     elseif unit_idx==2
         plot(time,SES_vyminmax(:,1))
-        y_lb = min(SES_vyminmax(:,1)); y_ub = max(SES_vyminmax(:,1));
-%         y_lb = -5; y_ub = max(SES_vyminmax(:,4));
+%         y_lb = min(SES_vyminmax(:,1)); y_ub = max(SES_vyminmax(:,1));
+        y_lb = min(SES_vyminmax(:,3)); y_ub = max(SES_vyminmax(:,4));
         title('SES Dispatched Power')
-    elseif unit_idx==3
+%     elseif unit_idx==3
 %         plot(time,TES_vyminmax(:,1))
 %         y_lb = min(TES_vyminmax(:,1)); y_ub = max(TES_vyminmax(:,1));
 %         title({'TES Dispatched Power','Discharging(-)/Charging(+)'})
@@ -218,7 +218,7 @@ for unit_idx=1:3
     ytickformat('%.2f')
     
     % Plot y1 and its min/max
-    subplot(3,4,(unit_idx-1)*4+3)
+    subplot(2,4,(unit_idx-1)*4+3)
     if unit_idx==1
         plot(time,BOP_vyminmax(:,4),'--r','LineWidth',3); hold on % y1max
         plot(time,BOP_vyminmax(:,2),'-k'); % y1
@@ -232,7 +232,7 @@ for unit_idx=1:3
         y_lb = min(SES_vyminmax(:,3)); y_ub = max(SES_vyminmax(:,4));
 %         y_lb = -5; y_ub = max(SES_vyminmax(:,4));
         title("SES Constraint 1: Output Power"); ylabel('Power (MW)'); 
-    elseif unit_idx==3
+%     elseif unit_idx==3
 %         plot(time,TES_vyminmax(:,4),'--r','LineWidth',3); hold on
 %         plot(time,TES_vyminmax(:,2),'-k');
 %         plot(time,TES_vyminmax(:,3),'--b','LineWidth',3); hold off
@@ -243,7 +243,7 @@ for unit_idx=1:3
     ylim([y_lb-(y_ub-y_lb)*0.2 y_ub+(y_ub-y_lb)*0.2])
     legend('Upper Bound','Output #1','Lower Bound','Location','best')
     % Plot y2 and its min/max
-    subplot(3,4,(unit_idx-1)*4+4)
+    subplot(2,4,(unit_idx-1)*4+4)
     if unit_idx==1
         plot(time,BOP_vyminmax(:,7),'--r','LineWidth',3); hold on % y1max
         plot(time,BOP_vyminmax(:,5),'-k'); % y1
@@ -256,7 +256,7 @@ for unit_idx=1:3
         plot(time,SES_vyminmax(:,6),'--b','LineWidth',3); hold off
         y_lb = min(SES_vyminmax(:,6)); y_ub = max(SES_vyminmax(:,7));
         title("SES Constraint 2: Firing Temperature"); ylabel('Temperature (K)'); 
-    elseif unit_idx==3
+%     elseif unit_idx==3
 %         plot(time,TES_vyminmax(:,7),'--r','LineWidth',3); hold on
 %         plot(time,TES_vyminmax(:,5),'-k');
 %         plot(time,TES_vyminmax(:,6),'--b','LineWidth',3); hold off
@@ -320,6 +320,187 @@ for unit_idx=1:3
     end
 end
 print('Figure_40.png','-dpng','-r300')
+
+
+%% 5. Plot the r,v,y of BOP, in the format of "Self Learning Stage" and "Dispatching Stage" 
+figure(50)
+set(gcf,'Position',[100 100 1600 900])
+% define the logical arrays for learning and dispatching stages
+t_learn = time<0; x_learn_min = floor(min(time(t_learn))); x_learn_max = ceil(max(time(t_learn)));
+t_dispa = time>0; x_dispa_min = floor(min(time(t_dispa))); x_dispa_max = ceil(max(time(t_dispa)));
+% plot the input and outputs during learning and dispatching stages
+col_plot=9;
+for row_idx=1:3
+    % plot self-learning stage
+    subplot(3,col_plot,(row_idx-1)*col_plot+[1:2])
+    hold on
+    if row_idx==1 % power setpoint
+        plot(time(t_learn),BOP_vyminmax(t_learn,1),'Color','#0072BD')
+        ylabel('Power Setpoint (MW)'); 
+        y_lb = min(BOP_vyminmax(:,1)); y_ub = max(BOP_vyminmax(:,1));
+        title("BOP LTI, 2-hour Self-learning Stage")
+    elseif row_idx==2 % power output
+        plot(time(t_learn),BOP_vyminmax(t_learn,4),'--r','LineWidth',3)
+        plot(time(t_learn),BOP_vyminmax(t_learn,2),'-k')
+        plot(time(t_learn),BOP_vyminmax(t_learn,3),'--b','LineWidth',3)
+        ylabel('Power output (MW)');
+        y_lb = min(BOP_vyminmax(:,3)); y_ub = max(BOP_vyminmax(:,4));
+        legend('Upper Bound','Output #1','Lower Bound','Location','best')
+    elseif row_idx==3 % pressure
+        plot(time(t_learn),BOP_vyminmax(t_learn,7),'--r','LineWidth',3)
+        plot(time(t_learn),BOP_vyminmax(t_learn,5),'-k')
+        plot(time(t_learn),BOP_vyminmax(t_learn,6),'--b','LineWidth',3)
+        ylabel('Turbine Pressure (bar)');
+        y_lb = min(BOP_vyminmax(:,6)); y_ub = max(BOP_vyminmax(:,7));
+        legend('Upper Bound','Output #2','Lower Bound','Location','best')
+    end
+    xlabel('Time (Hour)');
+    xlim([x_learn_min x_learn_max]);xticks(x_learn_min:x_tick_interval:x_learn_max)
+    ylim([y_lb-(y_ub-y_lb)*0.2 y_ub+(y_ub-y_lb)*0.2])
+    ytickformat('%.1f')
+
+    % plot dispatching stage
+    subplot(3,col_plot,(row_idx-1)*col_plot+[4:col_plot])
+    hold on
+    if row_idx==1 % power setpoint
+        plot(time(t_dispa),BOP_vyminmax(t_dispa,1),'Color','#0072BD')
+        ylabel('Power Setpoint (MW)'); 
+        y_lb = min(BOP_vyminmax(:,1)); y_ub = max(BOP_vyminmax(:,1));
+        title("BOP LTI, 12-hour Dispatching Stage")
+    elseif row_idx==2 % power output
+        plot(time(t_dispa),BOP_vyminmax(t_dispa,4),'--r','LineWidth',3)
+        plot(time(t_dispa),BOP_vyminmax(t_dispa,2),'-k')
+        plot(time(t_dispa),BOP_vyminmax(t_dispa,3),'--b','LineWidth',3)
+        ylabel('Power output (MW)');
+        y_lb = min(BOP_vyminmax(:,3)); y_ub = max(BOP_vyminmax(:,4));
+        legend('Upper Bound','Output #1','Lower Bound','Location','best')
+    elseif row_idx==3 % pressure
+        plot(time(t_dispa),BOP_vyminmax(t_dispa,7),'--r','LineWidth',3)
+        plot(time(t_dispa),BOP_vyminmax(t_dispa,5),'-k')
+        plot(time(t_dispa),BOP_vyminmax(t_dispa,6),'--b','LineWidth',3)
+        ylabel('Turbine Pressure (bar)');
+        y_lb = min(BOP_vyminmax(:,6)); y_ub = max(BOP_vyminmax(:,7));
+        legend('Upper Bound','Output #2','Lower Bound','Location','best')
+    end
+    xlabel('Time (Hour)');
+    xlim([x_dispa_min x_dispa_max]);xticks(x_dispa_min:x_tick_interval:x_dispa_max)
+    ylim([y_lb-(y_ub-y_lb)*0.2 y_ub+(y_ub-y_lb)*0.2])
+    ytickformat('%.1f')
+end
+print('Figure_50_BOP_LearningDispatching_Stage.png','-dpng','-r300')
+
+
+%% 6. Plot the r,v,y of SES, in the format of "Self Learning Stage" and "Dispatching Stage" 
+figure(50)
+set(gcf,'Position',[100 100 1600 900])
+% define the logical arrays for learning and dispatching stages
+t_learn = time<0; x_learn_min = floor(min(time(t_learn))); x_learn_max = ceil(max(time(t_learn)));
+t_dispa = time>0; x_dispa_min = floor(min(time(t_dispa))); x_dispa_max = ceil(max(time(t_dispa)));
+% plot the input and outputs during learning and dispatching stages
+col_plot=9;
+for row_idx=1:3
+    % plot self-learning stage
+    subplot(3,col_plot,(row_idx-1)*col_plot+[1:2])
+    hold on
+    if row_idx==1 % power setpoint
+        plot(time(t_learn),SES_vyminmax(t_learn,1),'Color','#0072BD')
+        ylabel('Power Setpoint (MW)'); 
+        y_lb = min(SES_vyminmax(:,1)); y_ub = max(SES_vyminmax(:,1));
+        title("SES LTI, 2-hour Self-learning Stage")
+    elseif row_idx==2 % power output
+        plot(time(t_learn),SES_vyminmax(t_learn,4),'--r','LineWidth',3)
+        plot(time(t_learn),SES_vyminmax(t_learn,2),'-k')
+        plot(time(t_learn),SES_vyminmax(t_learn,3),'--b','LineWidth',3)
+        ylabel('Power output (MW)');
+        y_lb = min(SES_vyminmax(:,3)); y_ub = max(SES_vyminmax(:,4));
+        legend('Upper Bound','Output #1','Lower Bound','Location','best')
+    elseif row_idx==3 % pressure
+        plot(time(t_learn),SES_vyminmax(t_learn,7),'--r','LineWidth',3)
+        plot(time(t_learn),SES_vyminmax(t_learn,5),'-k')
+        plot(time(t_learn),SES_vyminmax(t_learn,6),'--b','LineWidth',3)
+        ylabel('Firing Temp. (K)');
+        y_lb = min(SES_vyminmax(:,6)); y_ub = max(SES_vyminmax(:,7));
+        legend('Upper Bound','Output #2','Lower Bound','Location','best')
+    end
+    xlabel('Time (Hour)');
+    xlim([x_learn_min x_learn_max]);xticks(x_learn_min:x_tick_interval:x_learn_max)
+    ylim([y_lb-(y_ub-y_lb)*0.2 y_ub+(y_ub-y_lb)*0.2])
+    ytickformat('%.1f')
+
+    % plot dispatching stage
+    subplot(3,col_plot,(row_idx-1)*col_plot+[4:col_plot])
+    hold on
+    if row_idx==1 % power setpoint
+        plot(time(t_dispa),SES_vyminmax(t_dispa,1),'Color','#0072BD')
+        ylabel('Power Setpoint (MW)'); 
+        y_lb = min(SES_vyminmax(:,1)); y_ub = max(SES_vyminmax(:,1));
+        title("SES LTI, 12-hour Dispatching Stage")
+    elseif row_idx==2 % power output
+        plot(time(t_dispa),SES_vyminmax(t_dispa,4),'--r','LineWidth',3)
+        plot(time(t_dispa),SES_vyminmax(t_dispa,2),'-k')
+        plot(time(t_dispa),SES_vyminmax(t_dispa,3),'--b','LineWidth',3)
+        ylabel('Power output (MW)');
+        y_lb = min(SES_vyminmax(:,3)); y_ub = max(SES_vyminmax(:,4));
+        legend('Upper Bound','Output #1','Lower Bound','Location','best')
+    elseif row_idx==3 % pressure
+        plot(time(t_dispa),SES_vyminmax(t_dispa,7),'--r','LineWidth',3)
+        plot(time(t_dispa),SES_vyminmax(t_dispa,5),'-k')
+        plot(time(t_dispa),SES_vyminmax(t_dispa,6),'--b','LineWidth',3)
+        ylabel('Firing Temp. (K)');
+        y_lb = min(SES_vyminmax(:,6)); y_ub = max(SES_vyminmax(:,7));
+        legend('Upper Bound','Output #2','Lower Bound','Location','best')
+    end
+    xlabel('Time (Hour)');
+    xlim([x_dispa_min x_dispa_max]);xticks(x_dispa_min:x_tick_interval:x_dispa_max)
+    ylim([y_lb-(y_ub-y_lb)*0.2 y_ub+(y_ub-y_lb)*0.2])
+    ytickformat('%.1f')
+end
+print('Figure_60_SES_LearningDispatching_Stage.png','-dpng','-r300')
+
+%% Plot the power dispatch stack in learning and dispatching stage
+figure(70)
+set(gcf,'Position',[100 100 1600 900])
+col_plot=9;
+% plot the stacked bars of power components, time in hours
+
+t_learn = time_hour<0; x_learn_min = floor(min(time_hour(t_learn))); x_learn_max = ceil(max(time_hour(t_learn)));
+t_dispa = time_hour>0; x_dispa_min = floor(min(time_hour(t_dispa))); x_dispa_max = ceil(max(time_hour(t_dispa)));
+
+subplot(1,col_plot,[1:2]) % learning
+ba = bar(time_hour(t_learn), power_array_hour(t_learn,:), 'stacked', 'FaceColor','flat');hold on
+ba(1).CData = [0 0.4470 0.7410];
+ba(2).CData = [0.9290 0.6940 0.1250];
+
+subplot(1,col_plot,[4:col_plot]) % dispatching
+ba = bar(time_hour(t_dispa), power_array_hour(t_dispa,:), 'stacked', 'FaceColor','flat');hold on
+ba(1).CData = [0 0.4470 0.7410];
+ba(2).CData = [0.9290 0.6940 0.1250];
+
+
+% Plot the line showing total power provided, time in seconds
+t_learn = time<0; x_learn_min = floor(min(time(t_learn))); x_learn_max = ceil(max(time(t_learn)));
+t_dispa = time>0; x_dispa_min = floor(min(time(t_dispa))); x_dispa_max = ceil(max(time(t_dispa)));
+
+subplot(1,col_plot,[1:2]) % learning
+plot(time(t_learn), power_provided(t_learn),'LineWidth',3,'color','#7E2F8E');hold off
+xlabel('Time (Hour)');ylabel('Power (MW)'); 
+xlim([x_learn_min x_learn_max]);xticks(x_learn_min:x_tick_interval:x_learn_max)
+legend('BOP Output Power','SES Output Power','Total','Location','best')
+title('BOP & SES LTI, 2-hour Self-learning Stage')
+
+subplot(1,col_plot,[4:col_plot]) % dispatching
+plot(time(t_dispa), power_provided(t_dispa),'LineWidth',3,'color','#7E2F8E');hold off
+xlabel('Time (Hour)');ylabel('Power (MW)'); 
+xlim([x_dispa_min x_dispa_max]);xticks(x_dispa_min:x_tick_interval:x_dispa_max)
+legend('BOP Output Power','SES Output Power','Market Demand','Location','best')
+
+
+
+title('BOP & SES LTI, 12-hour Dispatching Stage')
+
+print('Figure_70_Contribution_LearningDispatching.png','-dpng','-r300')
+
+
 
 
 

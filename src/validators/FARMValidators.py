@@ -310,18 +310,18 @@ class FARM_Gamma_LTI(Validator):
         descr=r"""The system profile index in the parameterized matrices file. It should be an integer."""))
     component.addSub(InputData.parameterInputFactory('FirstTwoSetpoints',contentType=InputTypes.InterpretedListType,
         descr=r"""The first two setpoints used to find the nominal value and first set of ABCD matrices. 
-        It should be a list of two floating numbers or integers."""))
+        It should be a list of two floating numbers or integers separated by comma."""))
     component.addSub(InputData.parameterInputFactory('MovingWindowDuration',contentType=InputTypes.IntegerType,
         descr=r"""The moving window duration for DMDc, with the unit of seconds. It should be an integer."""))
     component.addSub(InputData.parameterInputFactory('OpConstraintsUpper',contentType=InputTypes.InterpretedListType,
         descr=r"""The upper bounds for the output variables of this component. It should be a list of
-        floating numbers or integers."""))
+        floating numbers or integers separated by comma."""))
     component.addSub(InputData.parameterInputFactory('OpConstraintsLower',contentType=InputTypes.InterpretedListType,
         descr=r"""The lower bounds for the output variables of this component. It should be a list of
-        floating numbers or integers."""))
+        floating numbers or integers separated by comma."""))
     component.addSub(InputData.parameterInputFactory('InitialState',contentType=InputTypes.InterpretedListType,
         descr=r"""The initial system state vector of this component. It should be a list of
-        floating numbers or integers. This subnode is OPTIONAL in the HERON input file, and FARM will
+        floating numbers or integers separated by comma. This subnode is OPTIONAL in the HERON input file, and FARM will
         provide a default initial system state vector if \xmlNode{InitialState} is not present."""))
 
     specs.addSub(component)
@@ -826,22 +826,22 @@ class FARM_Gamma_FMU(Validator):
     component.addSub(InputData.parameterInputFactory('FMUSimulationStep',contentType=InputTypes.FloatType,
         descr=r"""The step length of FMU simulation. It should be a floating number or an integer."""))
     component.addSub(InputData.parameterInputFactory('InputVarNames',contentType=InputTypes.InterpretedListType,
-        descr=r"""The names of FMU input variables. It should be a list of strings."""))
+        descr=r"""The names of FMU input variables. It should be a list of strings separated by comma."""))
     component.addSub(InputData.parameterInputFactory('StateVarNames',contentType=InputTypes.InterpretedListType,
-        descr=r"""The names of FMU state variables. It should be a list of strings."""))
+        descr=r"""The names of FMU state variables. It should be a list of strings separated by comma."""))
     component.addSub(InputData.parameterInputFactory('OutputVarNames',contentType=InputTypes.InterpretedListType,
-        descr=r"""The names of FMU output variables. It should be a list of strings."""))
+        descr=r"""The names of FMU output variables. It should be a list of strings separated by comma."""))
     component.addSub(InputData.parameterInputFactory('FirstTwoSetpoints',contentType=InputTypes.InterpretedListType,
         descr=r"""The first two setpoints used to find the nominal value and first set of ABCD matrices. 
-        It should be a list of two floating numbers or integers."""))
+        It should be a list of two floating numbers or integers separated by comma."""))
     component.addSub(InputData.parameterInputFactory('MovingWindowDuration',contentType=InputTypes.IntegerType,
         descr=r"""The moving window duration for DMDc, with the unit of seconds. It should be an integer."""))
     component.addSub(InputData.parameterInputFactory('OpConstraintsUpper',contentType=InputTypes.InterpretedListType,
         descr=r"""The upper bounds for the output variables of this component. It should be a list of
-        floating numbers or integers."""))
+        floating numbers or integers separated by comma."""))
     component.addSub(InputData.parameterInputFactory('OpConstraintsLower',contentType=InputTypes.InterpretedListType,
         descr=r"""The lower bounds for the output variables of this component. It should be a list of
-        floating numbers or integers."""))
+        floating numbers or integers separated by comma."""))
 
     specs.addSub(component)
 

@@ -491,7 +491,7 @@ t_dispa = time>0; x_dispa_min = floor(min(time(t_dispa))); x_dispa_max = ceil(ma
 
 subplot(1,col_plot,[1:2]) % learning
 plot(time(t_learn), power_provided(t_learn),'LineWidth',3,'color','#7E2F8E');hold off
-xlabel('Time (Hour)','FontSize',FontSize);ylabel('Power (MW)','FontSize',FontSize); 
+xlabel('Time (Hour)','FontSize',FontSize);ylabel('Power (MW)','FontSize',18); 
 xlim([x_learn_min x_learn_max]);xticks(x_learn_min:x_tick_interval:x_learn_max)
 legend('BOP Output Power','SES Output Power','Total','Location','best','FontSize',FontSize)
 title('BOP & SES LTI, 2-hour Self-learning Stage','FontSize',FontSize)
@@ -499,7 +499,7 @@ title('BOP & SES LTI, 2-hour Self-learning Stage','FontSize',FontSize)
 
 subplot(1,col_plot,[4:col_plot]) % dispatching
 plot(time(t_dispa), power_provided(t_dispa),'LineWidth',3,'color','#7E2F8E');hold off
-xlabel('Time (Hour)','FontSize',FontSize);ylabel('Power (MW)','FontSize',FontSize); 
+xlabel('Time (Hour)','FontSize',FontSize);ylabel('Power (MW)','FontSize',18); 
 xlim([x_dispa_min x_dispa_max]);xticks(x_dispa_min:x_tick_interval:x_dispa_max)
 legend('BOP Output Power','SES Output Power','Market Demand','Location','best','FontSize',FontSize)
 

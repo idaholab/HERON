@@ -2,13 +2,13 @@
 # ALL RIGHTS RESERVED
 
 from .ExampleValidator import Example
-from .FARMValidators import FARM_Beta, FARM_Gamma_LTI
+from .FARMValidators import FARM_Beta, FARM_Gamma_LTI, FARM_Gamma_FMU
 
 known = {
     'Example': Example,
     'FARM_Beta': FARM_Beta,
     'FARM_Gamma_LTI': FARM_Gamma_LTI,
-    # 'FARM_Gamma_FMU': FARM_Gamma_FMU,
+    'FARM_Gamma_FMU': FARM_Gamma_FMU,
     # ModelicaGoverner: TODO,
 }
 

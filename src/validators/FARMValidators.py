@@ -826,11 +826,11 @@ class FARM_Gamma_FMU(Validator):
     component.addSub(InputData.parameterInputFactory('FMUSimulationStep',contentType=InputTypes.FloatType,
         descr=r"""The step length of FMU simulation. It should be a floating number or an integer."""))
     component.addSub(InputData.parameterInputFactory('InputVarNames',contentType=InputTypes.InterpretedListType,
-        descr=r"""The step length of FMU simulation. It should be a floating number or an integer."""))
+        descr=r"""The names of FMU input variables. It should be a list of strings."""))
     component.addSub(InputData.parameterInputFactory('StateVarNames',contentType=InputTypes.InterpretedListType,
-        descr=r"""The step length of FMU simulation. It should be a floating number or an integer."""))
+        descr=r"""The names of FMU state variables. It should be a list of strings."""))
     component.addSub(InputData.parameterInputFactory('OutputVarNames',contentType=InputTypes.InterpretedListType,
-        descr=r"""The step length of FMU simulation. It should be a floating number or an integer."""))
+        descr=r"""The names of FMU output variables. It should be a list of strings."""))
     component.addSub(InputData.parameterInputFactory('FirstTwoSetpoints',contentType=InputTypes.InterpretedListType,
         descr=r"""The first two setpoints used to find the nominal value and first set of ABCD matrices. 
         It should be a list of two floating numbers or integers."""))

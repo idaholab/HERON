@@ -420,8 +420,8 @@ class FARM_Gamma_LTI(Validator):
         else: # when the str(unit) is in the str(comp) (e.g. "SES" in "<HERON Component "SES"">")
           """ 1. Constraints information, Set-point trajectory, and Moving window width """
           # Constraints
-          y_min = self._unitInfo[unit]['Targets_Min']
-          y_max = self._unitInfo[unit]['Targets_Max']
+          y_min = np.asarray(self._unitInfo[unit]['Targets_Min'])
+          y_max = np.asarray(self._unitInfo[unit]['Targets_Max'])
 
           # The width of moving window (seconds, centered at transient edge, for moving window DMDc)
           Moving_Window_Width = self._unitInfo[unit]['MovingWindowDuration']; #Tr_Update
@@ -468,29 +468,20 @@ class FARM_Gamma_LTI(Validator):
             # fetch y
             y_sim_internal = np.dot(C_sys,x_sys_internal).reshape(p,-1)
             y_fetch = (y_sim_internal + Y_0_sys).reshape(p,)
-            # print("y_sim_internal:",type(y_sim_internal), y_sim_internal.shape,y_sim_internal)
-            # print("y_fetch:",type(y_fetch), y_fetch.shape, y_fetch)
             
             # fetch v and x
             v_fetch = np.asarray(v_RG).reshape(m,)
             x_fetch = (x_sys_internal + X_0_sys).reshape(n,)
-            # print("v_fetch:",type(v_fetch), v_fetch.shape, v_fetch)
-            # print("x_fetch:",type(x_fetch), x_fetch.shape, x_fetch)
-
 
             self._unitInfo[unit]['t_hist'].append(t)  # input v
             self._unitInfo[unit]['v_hist'].append(v_fetch)  # input v
             self._unitInfo[unit]['x_hist'].append(x_fetch)  # state x
             self._unitInfo[unit]['y_hist'].append(y_fetch)  # output y
-            # print(y_hist)
-            # print(x_fetch)
-            # print(y_fetch)
-            # print(a)
 
-            # update x
-            # exec(statement_step_simulation_x)
+            # step update x
             x_sys_internal = np.dot(A_sys,x_sys_internal)+np.dot(B_sys,v_RG-float(U_0_sys))
             # print("x_sys_internal:",type(x_sys_internal), x_sys_internal.shape, x_sys_internal)
+            
             # time increment
             t = t + Tss
           # fetch the steady-state y variables
@@ -500,8 +491,34 @@ class FARM_Gamma_LTI(Validator):
 
           # check if steady-state y is within the [ymin, ymax]
           for i in range(len(y_0)):
-            if y_0[i]>y_max[i] or y_0[i]<y_min[i]:
-              sys.exit('ERROR:  Steady state setpoint is incompatible with y constraints. \n\tFYI: y_minimum= {};\n\tFYI: y_Steady = {};\n\tFYI: y_maximum= {}.\n\tPlease modify the steady state setpoint in r_ext[0].\n'.format(y_min,y_0,y_max))
+            if y_0[i][0]>y_max[i]:
+              exitMessage = """\n\tERROR:  Steady state output y_STEADY[{:d}] is {:.2f} HIGHER than y upper constraints. \n
+              \tFYI:      Unit = {};
+              \tFYI:  y_STEADY = {};
+              \tFYI: y_maximum = {};
+              \tFYI: y_minimum = {}.\n
+              \tPlease modify the steady state setpoint in <FirstTwoSetpoints>, Item #0.\n""".format(i, 
+              y_0[i][0]-y_max[i], str(unit), 
+              np.array2string(y_0.flatten(), formatter={'float_kind':lambda x: "%.4e" % x}),
+              np.array2string(y_max, formatter={'float_kind':lambda x: "%.4e" % x}),
+              np.array2string(y_min, formatter={'float_kind':lambda x: "%.4e" % x}),
+              )
+              print(exitMessage)
+              sys.exit(exitMessage)
+            elif y_0[i][0]<y_min[i]:
+              exitMessage = """\n\tERROR:  Steady state output y_STEADY[{:d}] is {:.2f} LOWER than y lower constraints. \n
+              \tFYI:      Unit = {};
+              \tFYI: y_maximum = {};
+              \tFYI: y_minimum = {};
+              \tFYI:  y_STEADY = {}.\n
+              \tPlease modify the steady state setpoint in <FirstTwoSetpoints>, Item #0.\n""".format(i, 
+              y_min[i]-y_0[i][0], str(unit), 
+              np.array2string(y_max, formatter={'float_kind':lambda x: "%.4e" % x}),
+              np.array2string(y_min, formatter={'float_kind':lambda x: "%.4e" % x}),
+              np.array2string(y_0.flatten(), formatter={'float_kind':lambda x: "%.4e" % x}),
+              )
+              print(exitMessage)
+              sys.exit(exitMessage)
 
 
           print("\n^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
@@ -526,32 +543,21 @@ class FARM_Gamma_LTI(Validator):
             
             # No reference governor for the first setpoint value yet
             v_RG = r_value
-            # print("v_RG:", type(v_RG))
             
             # fetch y
             y_sim_internal = np.dot(C_sys,x_sys_internal).reshape(p,-1)
             y_fetch = (y_sim_internal + Y_0_sys).reshape(p,)
-            # print("y_sim_internal:",type(y_sim_internal), y_sim_internal.shape,y_sim_internal)
-            # print("y_fetch:",type(y_fetch), y_fetch.shape, y_fetch)
             
             # fetch v and x
             v_fetch = np.asarray(v_RG).reshape(m,)
             x_fetch = (x_sys_internal + X_0_sys).reshape(n,)
-            # print("v_fetch:",type(v_fetch), v_fetch.shape, v_fetch)
-            # print("x_fetch:",type(x_fetch), x_fetch.shape, x_fetch)
-
 
             self._unitInfo[unit]['t_hist'].append(t)  # input v
             self._unitInfo[unit]['v_hist'].append(v_fetch)  # input v
             self._unitInfo[unit]['x_hist'].append(x_fetch)  # state x
             self._unitInfo[unit]['y_hist'].append(y_fetch)  # output y
-            # print(y_hist)
-            # print(x_fetch)
-            # print(y_fetch)
-            # print(a)
 
-            # update x
-            # exec(statement_step_simulation_x)
+            # step update x
             x_sys_internal = np.dot(A_sys,x_sys_internal)+np.dot(B_sys,v_RG-float(U_0_sys))
             # print("x_sys_internal:",type(x_sys_internal), x_sys_internal.shape, x_sys_internal)
             # time increment
@@ -682,12 +688,13 @@ class FARM_Gamma_LTI(Validator):
                 v_RG = float(v_RG)+float(v_0) # absolute value of electrical power (MW)
                 print("\n**************************", "\n**** RG summary Start ****","\nUnit = ", str(unit),", t = ", t, "\nr = ", r_value, "\nProfile Selected = ", profile_id, "\nv_RG = ", v_RG, "\n***** RG summary End *****","\n**************************\n")
             
-
                 # Update x_sys_internal, and keep record in v_hist and yp_hist within this hour
                 for i in range(int(Tr_Update_sec/Tss)):
+                  # fetch y
                   y_sim_internal = np.dot(C_sys,x_sys_internal).reshape(p,-1)
                   y_fetch = (y_sim_internal + Y_0_sys).reshape(p,) 
                   
+                  # fetch v and x
                   v_fetch = np.asarray(v_RG).reshape(m,)
                   x_fetch = (x_sys_internal + X_0_sys).reshape(n,)
                   
@@ -696,6 +703,7 @@ class FARM_Gamma_LTI(Validator):
                   self._unitInfo[unit]['x_hist'].append(x_fetch)  # state x
                   self._unitInfo[unit]['y_hist'].append(y_fetch)  # output y
 
+                  # step update x
                   x_sys_internal = np.dot(A_sys,x_sys_internal)+np.dot(B_sys,v_RG-float(U_0_sys))
                   t = t + Tss
 
@@ -748,7 +756,6 @@ class FARM_Gamma_LTI(Validator):
                   # print(a)
                 t_idx = t_idx+1
 
-
                 # Write up any violation to the errs:
                 if abs(current - V1) > self._tolerance*max(abs(current),abs(V1)):
                   # violation
@@ -768,7 +775,6 @@ class FARM_Gamma_LTI(Validator):
       print("*********************************************************************")
       print(" ")
 
-      
       for unit in self._unitInfo:
         t_hist = self._unitInfo[unit]['t_hist']
         v_hist = np.array(self._unitInfo[unit]['v_hist']).T
@@ -776,7 +782,6 @@ class FARM_Gamma_LTI(Validator):
         # print(str(unit),y_hist)
         for i in range(len(t_hist)):
           print(str(unit), ",t,",t_hist[i],",vp,",v_hist[0][i],",y1,",y_hist[0][i], ",y1min,",self._unitInfo[unit]['Targets_Min'][0],",y1max,",self._unitInfo[unit]['Targets_Max'][0],",y2,",y_hist[1][i], ",y2min,",self._unitInfo[unit]['Targets_Min'][1],",y2max,",self._unitInfo[unit]['Targets_Max'][1])
-
 
     return errs
 

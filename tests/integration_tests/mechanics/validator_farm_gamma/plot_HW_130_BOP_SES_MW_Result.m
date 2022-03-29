@@ -339,7 +339,7 @@ for row_idx=1:3
         plot(time(t_learn),BOP_vyminmax(t_learn,1),'Color','#0072BD')
         ylabel('Power Setpoint (MW)','FontSize',FontSize); 
         y_lb = min(BOP_vyminmax(:,1)); y_ub = max(BOP_vyminmax(:,1));
-        title("BOP LTI, 2-hour Self-learning Stage",'FontSize',FontSize)
+        title("BOP, 2-hour Self-learning Stage",'FontSize',FontSize)
     elseif row_idx==2 % power output
         plot(time(t_learn),BOP_vyminmax(t_learn,4),'--r','LineWidth',3)
         plot(time(t_learn),BOP_vyminmax(t_learn,2),'-k')
@@ -368,7 +368,7 @@ for row_idx=1:3
         plot(time(t_dispa),BOP_vyminmax(t_dispa,1),'Color','#0072BD')
         ylabel('Power Setpoint (MW)','FontSize',FontSize); 
         y_lb = min(BOP_vyminmax(:,1)); y_ub = max(BOP_vyminmax(:,1));
-        title("BOP LTI, 12-hour Dispatching Stage",'FontSize',FontSize)
+        title("BOP, 12-hour Dispatching Stage",'FontSize',FontSize)
     elseif row_idx==2 % power output
         plot(time(t_dispa),BOP_vyminmax(t_dispa,4),'--r','LineWidth',3)
         plot(time(t_dispa),BOP_vyminmax(t_dispa,2),'-k')
@@ -410,7 +410,7 @@ for row_idx=1:3
         plot(time(t_learn),SES_vyminmax(t_learn,1),'Color','#0072BD')
         ylabel('Power Setpoint (MW)','FontSize',FontSize); 
         y_lb = min(SES_vyminmax(:,1)); y_ub = max(SES_vyminmax(:,1));
-        title("SES LTI, 2-hour Self-learning Stage",'FontSize',FontSize)
+        title("SES, 2-hour Self-learning Stage",'FontSize',FontSize)
     elseif row_idx==2 % power output
         plot(time(t_learn),SES_vyminmax(t_learn,4),'--r','LineWidth',3)
         plot(time(t_learn),SES_vyminmax(t_learn,2),'-k')
@@ -439,7 +439,7 @@ for row_idx=1:3
         plot(time(t_dispa),SES_vyminmax(t_dispa,1),'Color','#0072BD')
         ylabel('Power Setpoint (MW)','FontSize',FontSize); 
         y_lb = min(SES_vyminmax(:,1)); y_ub = max(SES_vyminmax(:,1));
-        title("SES LTI, 12-hour Dispatching Stage",'FontSize',FontSize)
+        title("SES, 12-hour Dispatching Stage",'FontSize',FontSize)
     elseif row_idx==2 % power output
         plot(time(t_dispa),SES_vyminmax(t_dispa,4),'--r','LineWidth',3)
         plot(time(t_dispa),SES_vyminmax(t_dispa,2),'-k')
@@ -494,7 +494,7 @@ plot(time(t_learn), power_provided(t_learn),'LineWidth',3,'color','#7E2F8E');hol
 xlabel('Time (Hour)','FontSize',FontSize);ylabel('Power (MW)','FontSize',18); 
 xlim([x_learn_min x_learn_max]);xticks(x_learn_min:x_tick_interval:x_learn_max)
 legend('BOP Output Power','SES Output Power','Total','Location','best','FontSize',FontSize)
-title('BOP & SES LTI, 2-hour Self-learning Stage','FontSize',FontSize)
+title('BOP & SES, 2-hour Self-learning Stage','FontSize',FontSize)
 % ylim([600 1200])
 
 subplot(1,col_plot,[4:col_plot]) % dispatching
@@ -502,10 +502,7 @@ plot(time(t_dispa), power_provided(t_dispa),'LineWidth',3,'color','#7E2F8E');hol
 xlabel('Time (Hour)','FontSize',FontSize);ylabel('Power (MW)','FontSize',18); 
 xlim([x_dispa_min x_dispa_max]);xticks(x_dispa_min:x_tick_interval:x_dispa_max)
 legend('BOP Output Power','SES Output Power','Market Demand','Location','best','FontSize',FontSize)
-
-
-
-title('BOP & SES LTI, 12-hour Dispatching Stage','FontSize',FontSize)
+title('BOP & SES, 12-hour Dispatching Stage','FontSize',FontSize)
 
 print('Figure_70_Contribution_LearningDispatching.png','-dpng','-r300')
 

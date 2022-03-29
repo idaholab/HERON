@@ -11,6 +11,8 @@ import sys
 import xml.etree.ElementTree as ET
 import math
 import scipy
+from fmpy import read_model_description, extract
+from fmpy.fmi2 import FMU2Slave
 from _utils import get_heron_loc
 
 from utils import InputData, InputTypes
@@ -359,7 +361,13 @@ class FARM_Gamma_LTI(Validator):
         if farmEntry.getName() == "FirstTwoSetpoints":
           FirstTwoSetpoints = farmEntry.value
           if len(FirstTwoSetpoints) != 2:
-            sys.exit('\nERROR: <FirstTwoSetpoints> XML node needs to contain 2 floating or integer numbers.\n')         
+            sys.exit('\nERROR: <FirstTwoSetpoints> XML node needs to contain 2 floating or integer numbers.\n')   
+          elif FirstTwoSetpoints[0]==FirstTwoSetpoints[1]:
+            exitMessage = """\n\tERROR:  No transient found from the two values in <FirstTwoSetpoints>. \n
+            \tFYI: FirstTwoSetpoints[0]= {};
+            \tFYI: FirstTwoSetpoints[1]= {}.\n
+            \tPlease modify the steady state setpoint in FirstTwoSetpoints[1].\n""".format(FirstTwoSetpoints[0],FirstTwoSetpoints[0])
+            sys.exit(exitMessage)        
         if farmEntry.getName() == "MovingWindowDuration":
           MovingWindowDuration = farmEntry.value
         if farmEntry.getName() == "OpConstraintsUpper":
@@ -575,7 +583,12 @@ class FARM_Gamma_LTI(Validator):
           # Do the DMDc, and return ABCD matrices
           U1 = v_window[:,0:-1]-v_0; X1 = x_window[:, 0:-1]-x_0; X2 = x_window[:, 1:]-x_0; Y1 = y_window[:, 0:-1]-y_0
           if np.max(U1)==np.min(U1): # if there is no transient, DMDc cannot be done
-            sys.exit('ERROR:  No transient found from r_ext[0] to r_ext[1]. \n\tFYI: r_ext[0]= {};\n\tFYI: r_ext[1]= {};\n\tPlease modify the steady state setpoint in r_ext[1].\n'.format(r_ext[0],r_ext[0]))
+            exitMessage = """\n\tERROR:  No transient found from the two values in <FirstTwoSetpoints>. \n
+            \tFYI: FirstTwoSetpoints[0]= {};
+            \tFYI: FirstTwoSetpoints[1]= {}.\n
+            \tPlease modify the steady state setpoint in FirstTwoSetpoints[1].\n""".format(FirstTwoSetpoints[0],FirstTwoSetpoints[0])
+            print(exitMessage)
+            sys.exit(exitMessage)
           else:
             # print(U1.shape)
             Ad_Dc, Bd_Dc, Cd_Dc= fun_DMDc(X1, X2, U1, Y1, -1, 1e-6)
@@ -618,13 +631,14 @@ class FARM_Gamma_LTI(Validator):
           # loop through the resources in info (only one resource here - electricity)
           for res in info:
             if str(res) == "electricity":
-              # loop through the time index (tidx) and time in "times"
+              # Initiate the linear system
               if self._unitInfo[unit]['XInit']==[]:
                 x_sys_internal = np.zeros(n)
               else:
                 x_sys_internal = np.asarray(self._unitInfo[unit]['XInit'])-x_0[0]
                 # print("Step 6, x_sys_internal=",x_sys_internal)
 
+              # loop through the time index (tidx) and time in "times"
               t_idx = t_idx+1
               for tidx, time in enumerate(times):
                 # Copy the system state variable
@@ -884,7 +898,13 @@ class FARM_Gamma_FMU(Validator):
         if farmEntry.getName() == "FirstTwoSetpoints":
           FirstTwoSetpoints = farmEntry.value
           if len(FirstTwoSetpoints) != 2:
-            sys.exit('\nERROR: <FirstTwoSetpoints> XML node needs to contain 2 floating or integer numbers.\n')         
+            sys.exit('\nERROR: <FirstTwoSetpoints> XML node needs to contain 2 floating or integer numbers.\n')  
+          elif FirstTwoSetpoints[0]==FirstTwoSetpoints[1]:
+            exitMessage = """\n\tERROR:  No transient found from the two values in <FirstTwoSetpoints>. \n
+            \tFYI: FirstTwoSetpoints[0]= {};
+            \tFYI: FirstTwoSetpoints[1]= {}.\n
+            \tPlease modify the steady state setpoint in FirstTwoSetpoints[1].\n""".format(FirstTwoSetpoints[0],FirstTwoSetpoints[0])
+            sys.exit(exitMessage)   
         if farmEntry.getName() == "MovingWindowDuration":
           MovingWindowDuration = farmEntry.value
         if farmEntry.getName() == "OpConstraintsUpper":
@@ -944,7 +964,7 @@ class FARM_Gamma_FMU(Validator):
           # If the "unit" and "comp" do not match, go to the next "unit" in loop
           continue
         else: # when the str(unit) is in the str(comp) (e.g. "SES" in "<HERON Component "SES"">")
-          """ 1. Constraints information, Set-point trajectory, and Moving window width """
+          """ 1. Constraints information, and Moving window width """
           # Constraints
           y_min = np.asarray(self._unitInfo[unit]['Targets_Min'])
           y_max = np.asarray(self._unitInfo[unit]['Targets_Max'])
@@ -960,22 +980,51 @@ class FARM_Gamma_FMU(Validator):
           self._unitInfo[unit]['eig_A_list']=[]; self._unitInfo[unit]['para_list']=[]; self._unitInfo[unit]['tTran_list']=[]
            
           
-          """ 2. Read State Space XML file (generated by Raven parameterized DMDc) and generate the physical model"""
-          MatrixFile = self._unitInfo[unit]['MatrixFile']
-          Tss, n, m, p, para_array, UNorm_list, XNorm_list, XLast_list, YNorm_list, A_list, B_list, C_list, eig_A_array = read_parameterized_XML(MatrixFile)
-          # use the 8th profile as physical model
-          systemProfile = self._unitInfo[unit]['systemProfile']
-          A_sys = A_list[systemProfile]; B_sys = B_list[systemProfile]; C_sys = C_list[systemProfile]; 
-          U_0_sys = UNorm_list[systemProfile].reshape(m,-1); 
-          X_0_sys = XNorm_list[systemProfile].reshape(n,-1); 
-          Y_0_sys = YNorm_list[systemProfile].reshape(p,-1)
+          """ 2. Read FMU file to specify the physical model"""
+          fmu_filename = self._unitInfo[unit]['FMUFile']
+          Tss = self._unitInfo[unit]['FMUSimulationStep']
+          inputVarNames = self._unitInfo[unit]['InputVarNames']
+          stateVarNames = self._unitInfo[unit]['StateVarNames']
+          outputVarNames = self._unitInfo[unit]['OutputVarNames']
 
+          # Dimensions of input (m), states (n) and output (p)
+          m=len(inputVarNames); n=len(stateVarNames); p=len(outputVarNames)
+
+          # read the model description
+          model_description = read_model_description(fmu_filename)
+          
+          # collect the value references
+          vrs = {}
+          for variable in model_description.modelVariables:
+              vrs[variable.name] = variable.valueReference
+          
+          # get the value references for the variables we want to get/set
+          # Input Power Setpoint (W)
+          vr_input = [vrs[item] for item in inputVarNames]
+          # State variables and dimension
+          vr_state = [vrs[item] for item in stateVarNames]
+          # Outputs: Power Generated (W), Turbine Pressure (Pa)
+          vr_output = [vrs[item] for item in outputVarNames]
+          
+          # extract the FMU
+          unzipdir = extract(fmu_filename)
+          fmu = FMU2Slave(guid=model_description.guid,
+                          unzipDirectory=unzipdir,
+                          modelIdentifier=model_description.coSimulation.modelIdentifier,
+                          instanceName='instance1')
+          
+          # Initialize FMU
           T_delaystart = 0.
+          fmu.instantiate()
+          fmu.setupExperiment(startTime=T_delaystart)
+          fmu.enterInitializationMode()
+          fmu.exitInitializationMode()
+            
 
           """ 3 & 4. simulate the 1st setpoint, to get the steady state output """
           FirstTwoSetpoints = self._unitInfo[unit]['FirstTwoSetpoints']
           # Initialize linear model
-          x_sys_internal = np.zeros(n).reshape(n,-1) # x_sys type == <class 'numpy.ndarray'>
+          # x_sys_internal = np.zeros(n).reshape(n,-1) # x_sys type == <class 'numpy.ndarray'>
           t = -Tr_Update_sec*2 # t = -7200 s
           t_idx = 0
           
@@ -992,22 +1041,22 @@ class FARM_Gamma_FMU(Validator):
             # print("v_RG:", type(v_RG))
             
             # fetch y
-            y_sim_internal = np.dot(C_sys,x_sys_internal).reshape(p,-1)
-            y_fetch = (y_sim_internal + Y_0_sys).reshape(p,)
-            
+            y_fetch = np.asarray(fmu.getReal(vr_output))
+
             # fetch v and x
             v_fetch = np.asarray(v_RG).reshape(m,)
-            x_fetch = (x_sys_internal + X_0_sys).reshape(n,)
+            x_fetch = np.asarray(fmu.getReal(vr_state))
+
+            # set the input. The input / state / output in FMU are real-world values
+            fmu.setReal(vr_input, [v_RG])
+            # perform one step
+            fmu.doStep(currentCommunicationPoint=t, communicationStepSize=Tss)
 
             self._unitInfo[unit]['t_hist'].append(t)  # input v
             self._unitInfo[unit]['v_hist'].append(v_fetch)  # input v
             self._unitInfo[unit]['x_hist'].append(x_fetch)  # state x
             self._unitInfo[unit]['y_hist'].append(y_fetch)  # output y
 
-            # step update x
-            x_sys_internal = np.dot(A_sys,x_sys_internal)+np.dot(B_sys,v_RG-float(U_0_sys))
-            # print("x_sys_internal:",type(x_sys_internal), x_sys_internal.shape, x_sys_internal)
-            
             # time increment
             t = t + Tss
           # fetch the steady-state y variables
@@ -1052,6 +1101,7 @@ class FARM_Gamma_FMU(Validator):
           print("Unit =", str(unit), ", t =", t - Tss, "\nv_0 =\n", float(v_0), "x_0 = \n",x_0,"\ny_0 = \n",y_0)
           print("^^^^ Steady State Summary End ^^^^")
           print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n")
+
           # print("v_hist of ",str(unit), "=\n",len(self._unitInfo[unit]['v_hist']),self._unitInfo[unit]['v_hist'])
           # print(" y_hist of ",str(unit), "=\n",len(self._unitInfo[unit]['y_hist']),self._unitInfo[unit]['y_hist'])
 
@@ -1071,23 +1121,25 @@ class FARM_Gamma_FMU(Validator):
             v_RG = r_value
             
             # fetch y
-            y_sim_internal = np.dot(C_sys,x_sys_internal).reshape(p,-1)
-            y_fetch = (y_sim_internal + Y_0_sys).reshape(p,)
-            
+            y_fetch = np.asarray(fmu.getReal(vr_output))
+
             # fetch v and x
             v_fetch = np.asarray(v_RG).reshape(m,)
-            x_fetch = (x_sys_internal + X_0_sys).reshape(n,)
+            x_fetch = np.asarray(fmu.getReal(vr_state))
+
+            # set the input. The input / state / output in FMU are real-world values
+            fmu.setReal(vr_input, [v_RG])
+            # perform one step
+            fmu.doStep(currentCommunicationPoint=t, communicationStepSize=Tss)
 
             self._unitInfo[unit]['t_hist'].append(t)  # input v
             self._unitInfo[unit]['v_hist'].append(v_fetch)  # input v
             self._unitInfo[unit]['x_hist'].append(x_fetch)  # state x
             self._unitInfo[unit]['y_hist'].append(y_fetch)  # output y
 
-            # step update x
-            x_sys_internal = np.dot(A_sys,x_sys_internal)+np.dot(B_sys,v_RG-float(U_0_sys))
-            # print("x_sys_internal:",type(x_sys_internal), x_sys_internal.shape, x_sys_internal)
             # time increment
             t = t + Tss
+
           # Collect data for DMDc
           t_window = np.asarray(self._unitInfo[unit]['t_hist'][(t_idx*int(Tr_Update_sec/Tss)-math.floor(window/2)):(t_idx*int(Tr_Update_sec/Tss)+math.floor(window/2))]).reshape(1,-1)
           v_window = np.asarray(self._unitInfo[unit]['v_hist'][(t_idx*int(Tr_Update_sec/Tss)-math.floor(window/2)):(t_idx*int(Tr_Update_sec/Tss)+math.floor(window/2))]).reshape(m,-1)
@@ -1101,7 +1153,12 @@ class FARM_Gamma_FMU(Validator):
           # Do the DMDc, and return ABCD matrices
           U1 = v_window[:,0:-1]-v_0; X1 = x_window[:, 0:-1]-x_0; X2 = x_window[:, 1:]-x_0; Y1 = y_window[:, 0:-1]-y_0
           if np.max(U1)==np.min(U1): # if there is no transient, DMDc cannot be done
-            sys.exit('ERROR:  No transient found from r_ext[0] to r_ext[1]. \n\tFYI: r_ext[0]= {};\n\tFYI: r_ext[1]= {};\n\tPlease modify the steady state setpoint in r_ext[1].\n'.format(r_ext[0],r_ext[0]))
+            exitMessage = """\n\tERROR:  No transient found from the two values in <FirstTwoSetpoints>. \n
+            \tFYI: FirstTwoSetpoints[0]= {};
+            \tFYI: FirstTwoSetpoints[1]= {}.\n
+            \tPlease modify the steady state setpoint in FirstTwoSetpoints[1].\n""".format(FirstTwoSetpoints[0],FirstTwoSetpoints[0])
+            print(exitMessage)
+            sys.exit(exitMessage)
           else:
             # print(U1.shape)
             Ad_Dc, Bd_Dc, Cd_Dc= fun_DMDc(X1, X2, U1, Y1, -1, 1e-6)
@@ -1144,17 +1201,19 @@ class FARM_Gamma_FMU(Validator):
           # loop through the resources in info (only one resource here - electricity)
           for res in info:
             if str(res) == "electricity":
+              # Initialize FMU
+              fmu.instantiate()
+              fmu.setupExperiment(startTime=T_delaystart)
+              fmu.enterInitializationMode()
+              fmu.exitInitializationMode()
+              
               # loop through the time index (tidx) and time in "times"
-              if self._unitInfo[unit]['XInit']==[]:
-                x_sys_internal = np.zeros(n)
-              else:
-                x_sys_internal = np.asarray(self._unitInfo[unit]['XInit'])-x_0[0]
-                # print("Step 6, x_sys_internal=",x_sys_internal)
-
               t_idx = t_idx+1
               for tidx, time in enumerate(times):
                 # Copy the system state variable
-                x_KF = x_sys_internal
+                x_KF = np.asarray(fmu.getReal(vr_state))-x_0.reshape(n,)
+                print("time=",time,", x_KF=",x_KF)
+                # print("x_0 reshape=",x_0.reshape(n,))
                 """ Get the r_value, original actuation value """
                 current = float(dispatch.get_activity(comp, res, times[tidx]))
                 # check if TES: power = (curr. MWh energy - prev. MWh energy)/interval Hrs
@@ -1217,20 +1276,23 @@ class FARM_Gamma_FMU(Validator):
                 # Update x_sys_internal, and keep record in v_hist and yp_hist within this hour
                 for i in range(int(Tr_Update_sec/Tss)):
                   # fetch y
-                  y_sim_internal = np.dot(C_sys,x_sys_internal).reshape(p,-1)
-                  y_fetch = (y_sim_internal + Y_0_sys).reshape(p,) 
-                  
+                  y_fetch = np.asarray(fmu.getReal(vr_output))
+
                   # fetch v and x
                   v_fetch = np.asarray(v_RG).reshape(m,)
-                  x_fetch = (x_sys_internal + X_0_sys).reshape(n,)
+                  x_fetch = np.asarray(fmu.getReal(vr_state))
                   
+                  # set the input. The input / state / output in FMU are real-world values
+                  fmu.setReal(vr_input, [v_RG])
+                  # perform one step
+                  fmu.doStep(currentCommunicationPoint=t, communicationStepSize=Tss)
+
                   self._unitInfo[unit]['t_hist'].append(t)  # input v
                   self._unitInfo[unit]['v_hist'].append(v_fetch)  # input v
                   self._unitInfo[unit]['x_hist'].append(x_fetch)  # state x
                   self._unitInfo[unit]['y_hist'].append(y_fetch)  # output y
 
-                  # step update x
-                  x_sys_internal = np.dot(A_sys,x_sys_internal)+np.dot(B_sys,v_RG-float(U_0_sys))
+                  # time increment
                   t = t + Tss
 
                 # Convert to V1:

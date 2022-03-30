@@ -49,7 +49,7 @@
           <InputVarNames> SES_Demand_MW </InputVarNames>
           <StateVarNames> SES.CS.W_totalSetpoint, SES.Tf_pu.y </StateVarNames>
           <OutputVarNames> Electric_Power, Firing_Temperature </OutputVarNames>
-          <FirstTwoSetpoints> 46., 52. </FirstTwoSetpoints>
+          <FirstTwoSetpoints> 46., 15. </FirstTwoSetpoints>
           <MovingWindowDuration> 1800 </MovingWindowDuration>
           <OpConstraintsUpper> 50.0E6, 1673. </OpConstraintsUpper>
           <OpConstraintsLower> 13.5E6, 1089. </OpConstraintsLower>

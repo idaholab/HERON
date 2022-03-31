@@ -12,8 +12,7 @@ fi
 HERON_DIR=$(cd $HERON_DIRNAME; pwd)
 
 # identify RAVEN location
-RAVENFW_DIR=$(python $HERON_DIRNAME/src/_utils.py get_raven_loc)
-RAVEN_DIR=$(cd $RAVENFW_DIR/../; pwd)
+RAVEN_DIR=$(python $HERON_DIRNAME/src/_utils.py get_raven_loc)
 echo " ... RAVEN located at \"${RAVEN_DIR}\""
 # activate conda environment
 echo " ... Activating CONDA environment ..."

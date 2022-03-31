@@ -25,7 +25,7 @@ from validators.Factory import get_class as get_validator
 import _utils as hutils
 framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)
-from utils import InputData, InputTypes, xmlUtils
+from ravenframework.utils import InputData, InputTypes, xmlUtils
 
 class Case(Base):
   """

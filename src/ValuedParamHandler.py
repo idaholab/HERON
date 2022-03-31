@@ -7,13 +7,15 @@
 from __future__ import unicode_literals, print_function
 import os
 import sys
+
 import _utils as hutils
-framework_path = hutils.get_raven_loc()
-sys.path.append(framework_path)
-from utils import InputData, InputTypes
-from BaseClasses import MessageUser
 from ValuedParams import Parametric
 from ValuedParams import factory as VPFactory
+
+framework_path = hutils.get_raven_loc()
+sys.path.append(framework_path)
+from ravenframework.utils import InputData, InputTypes
+from ravenframework.BaseClasses import MessageUser
 
 class ValuedParamHandler(MessageUser):
   """

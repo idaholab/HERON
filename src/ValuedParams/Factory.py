@@ -2,8 +2,8 @@
 # Copyright 2020, Battelle Energy Alliance, LLC
 # ALL RIGHTS RESERVED
 
-from utils import InputData, InputTypes
-from EntityFactoryBase import EntityFactory
+from ravenframework.utils import InputData, InputTypes
+from ravenframework.EntityFactoryBase import EntityFactory
 
 from .SyntheticHistory import SyntheticHistory
 from .ROM import ROM

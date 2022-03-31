@@ -6,7 +6,7 @@
 """
 import numpy as np
 
-from utils import InputData, InputTypes
+from ravenframework.utils import InputData, InputTypes
 
 from .Validator import Validator
 

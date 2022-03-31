@@ -8,7 +8,6 @@
 import os
 import sys
 import time as time_mod
-from functools import partial
 import platform
 from itertools import compress
 import pprint
@@ -404,7 +403,7 @@ class Pyomo(Dispatcher):
     limits[t] = limit
     limit_type = validation['limit_type']
     prod_name = f'{comp.name}_production'
-    rule = partial(self._prod_limit_rule, prod_name, r, limits, limit_type, t)
+    rule = lambda mod: self._prod_limit_rule(prod_name, r, limits, limit_type, t, mod)
     constr = pyo.Constraint(rule=rule)
     counter = 1
     name_template = '{c}_{r}_{t}_vld_limit_constr_{{i}}'.format(c=comp.name,
@@ -518,11 +517,11 @@ class Pyomo(Dispatcher):
     r = m.resource_index_map[comp][cap_res] # production index of the governing resource
     caps, mins = self._find_production_limits(m, comp, meta)
     # capacity
-    max_rule = partial(self._capacity_rule, prod_name, r, caps)
+    max_rule = lambda mod, t: self._capacity_rule(prod_name, r, caps, mod, t)
     constr = pyo.Constraint(m.T, rule=max_rule)
     setattr(m, '{c}_{r}_capacity_constr'.format(c=comp.name, r=cap_res), constr)
     # minimum
-    min_rule = partial(self._min_prod_rule, prod_name, r, caps, mins)
+    min_rule = lambda mod, t: self._min_prod_rule(prod_name, r, caps, mins, mod, t)
     constr = pyo.Constraint(m.T, rule=min_rule)
     # set initial conditions
     for t, time in enumerate(m.Times):
@@ -584,7 +583,7 @@ class Pyomo(Dispatcher):
     for resource, ratio in ratios.items():
       r = m.resource_index_map[comp][resource]
       rule_name = '{c}_{r}_{fr}_transfer'.format(c=name, r=resource, fr=ref_name)
-      rule = partial(self._transfer_rule, ratio, r, ref_r, prod_name) # XXX
+      rule = lambda mod, t: self._transfer_rule(ratio, r, ref_r, prod_name, mod, t)
       constr = pyo.Constraint(m.T, rule=rule)
       setattr(m, rule_name, constr)
 
@@ -611,8 +610,8 @@ class Pyomo(Dispatcher):
     discharge_name = self._create_production_variable(m, comp, meta, tag='discharge', add_bounds=False, within=pyo.NonNegativeReals)
     # balance level, charge/discharge
     level_rule_name = prefix + '_level_constr'
-    rule = partial(self._level_rule, comp, level_name, charge_name, discharge_name,
-                                      initial_storage, r)
+    rule = lambda mod, t: self._level_rule(comp, level_name, charge_name, discharge_name,
+                                           initial_storage, r, mod, t)
     setattr(m, level_rule_name, pyo.Constraint(m.T, rule=rule))
     # (4) a binary variable to track whether we're charging or discharging, to prevent BOTH happening
     # -> 0 is charging, 1 is discharging
@@ -629,10 +628,10 @@ class Pyomo(Dispatcher):
       large_eps = 1e8 #0.01 * sys.float_info.max
       # charging constraint: don't charge while discharging (note the sign matters)
       charge_rule_name = prefix + '_charge_constr'
-      rule = partial(self._charge_rule, charge_name, bin_name, large_eps, r)
+      rule = lambda mod, t: self._charge_rule(charge_name, bin_name, large_eps, r, mod, t)
       setattr(m, charge_rule_name, pyo.Constraint(m.T, rule=rule))
       discharge_rule_name = prefix + '_discharge_constr'
-      rule = partial(self._discharge_rule, discharge_name, bin_name, large_eps, r)
+      rule = lambda mod, t: self._discharge_rule(discharge_name, bin_name, large_eps, r, mod, t)
       setattr(m, discharge_rule_name, pyo.Constraint(m.T, rule=rule))
 
   def _create_conservation(self, m, resources, initial_storage, meta):
@@ -645,7 +644,7 @@ class Pyomo(Dispatcher):
       @ Out, None
     """
     for res, resource in enumerate(resources):
-      rule = partial(self._conservation_rule, initial_storage, meta, resource)
+      rule = lambda mod, t: self._conservation_rule(initial_storage, meta, resource, mod, t)
       constr = pyo.Constraint(m.T, rule=rule)
       setattr(m, '{r}_conservation'.format(r=resource), constr)
 
@@ -656,8 +655,8 @@ class Pyomo(Dispatcher):
       @ In, m, pyo.ConcreteModel, associated model
       @ Out, None
     """
-    ## cashflow eval
-    rule = partial(self._cashflow_rule, meta)
+    # cashflow eval
+    rule = lambda mod: self._cashflow_rule(meta, mod)
     m.obj = pyo.Objective(rule=rule, sense=pyo.maximize)
 
   ### UTILITIES for general use
@@ -768,8 +767,8 @@ class Pyomo(Dispatcher):
         result[res] = np.fromiter((prod[comp_r, t] for t in m.T), dtype=float, count=len(m.T))
     return result
 
-  ### RULES for partial function calls
-  # these get called using "functools.partial" to make Pyomo constraints, vars, objectives, etc
+  ### RULES for lambda function calls
+  # these get called using lambda functions to make Pyomo constraints, vars, objectives, etc
 
   def _charge_rule(self, charge_name, bin_name, large_eps, r, m, t):
     """
@@ -867,6 +866,13 @@ class Pyomo(Dispatcher):
       @ In, m, pyo.ConcreteModel, associated model
       @ Out, total, float, evaluation of cost
     """
+    print('_cashflow_rule')
+    # print('self: {}'.format(self))
+    # print('meta: {}'.format(meta))
+    # print('m: {}'.format(m))
+    # print('t: {}'.format(t))
+    # for arg in args:
+    #   print('arg: {}'.format(arg))
     activity = m.Activity # dict((comp, getattr(m, f"{comp.name}_production")) for comp in m.Components)
     state_args = {'valued': False}
     total = self._compute_cashflows(m.Components, activity, m.Times, meta,

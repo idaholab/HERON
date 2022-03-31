@@ -310,9 +310,9 @@ class FARM_Gamma_LTI(Validator):
         RAVEN DMDc or other sources."""))
     component.addSub(InputData.parameterInputFactory('SystemProfile',contentType=InputTypes.IntegerType,
         descr=r"""The system profile index in the parameterized matrices file. It should be an integer."""))
-    component.addSub(InputData.parameterInputFactory('FirstTwoSetpoints',contentType=InputTypes.InterpretedListType,
-        descr=r"""The first two setpoints used to find the nominal value and first set of ABCD matrices. 
-        It should be a list of two floating numbers or integers separated by comma."""))
+    component.addSub(InputData.parameterInputFactory('LearningSetpoints',contentType=InputTypes.InterpretedListType,
+        descr=r"""The learning setpoints are used to find the nominal value and first sets of ABCD matrices. 
+        It should be a list of two or more floating numbers or integers separated by comma."""))
     component.addSub(InputData.parameterInputFactory('MovingWindowDuration',contentType=InputTypes.IntegerType,
         descr=r"""The moving window duration for DMDc, with the unit of seconds. It should be an integer."""))
     component.addSub(InputData.parameterInputFactory('OpConstraintsUpper',contentType=InputTypes.InterpretedListType,
@@ -358,15 +358,12 @@ class FARM_Gamma_LTI(Validator):
             matFile = os.path.abspath(matFile.replace('%HERON%', heron_path))
         if farmEntry.getName() == "SystemProfile":
           systemProfile = farmEntry.value
-        if farmEntry.getName() == "FirstTwoSetpoints":
-          FirstTwoSetpoints = farmEntry.value
-          if len(FirstTwoSetpoints) != 2:
-            sys.exit('\nERROR: <FirstTwoSetpoints> XML node needs to contain 2 floating or integer numbers.\n')   
-          elif FirstTwoSetpoints[0]==FirstTwoSetpoints[1]:
-            exitMessage = """\n\tERROR:  No transient found from the two values in <FirstTwoSetpoints>. \n
-            \tFYI: FirstTwoSetpoints[0]= {};
-            \tFYI: FirstTwoSetpoints[1]= {}.\n
-            \tPlease modify the steady state setpoint in FirstTwoSetpoints[1].\n""".format(FirstTwoSetpoints[0],FirstTwoSetpoints[0])
+        if farmEntry.getName() == "LearningSetpoints":
+          LearningSetpoints = farmEntry.value
+          if len(LearningSetpoints) < 2:
+            sys.exit('\nERROR: <LearningSetpoints> XML node needs to contain 2 or more floating or integer numbers.\n')   
+          elif min(LearningSetpoints)==max(LearningSetpoints):
+            exitMessage = """ERROR:  No transient found in <LearningSetpoints>. \n\tPlease modify the values in <LearningSetpoints>.\n"""
             sys.exit(exitMessage)        
         if farmEntry.getName() == "MovingWindowDuration":
           MovingWindowDuration = farmEntry.value
@@ -380,7 +377,7 @@ class FARM_Gamma_LTI(Validator):
         {name:{
           'MatrixFile':matFile,
           'systemProfile':systemProfile,
-          'FirstTwoSetpoints':FirstTwoSetpoints,
+          'LearningSetpoints':LearningSetpoints,
           'MovingWindowDuration':MovingWindowDuration,
           'Targets_Max':UpperBound,
           'Targets_Min':LowerBound,
@@ -455,17 +452,17 @@ class FARM_Gamma_LTI(Validator):
           T_delaystart = 0.
 
           """ 3 & 4. simulate the 1st setpoint, to get the steady state output """
-          FirstTwoSetpoints = self._unitInfo[unit]['FirstTwoSetpoints']
+          LearningSetpoints = self._unitInfo[unit]['LearningSetpoints']
           # Initialize linear model
           x_sys_internal = np.zeros(n).reshape(n,-1) # x_sys type == <class 'numpy.ndarray'>
-          t = -Tr_Update_sec*2 # t = -7200 s
+          t = -Tr_Update_sec*len(LearningSetpoints) # t = -7200 s
           t_idx = 0
           
           # Do the step-by-step simulation, from beginning to the first transient
-          while t < -Tr_Update_sec: # only the steady state value
+          while t < -Tr_Update_sec*(len(LearningSetpoints)-1): # only the steady state value
             # Find the current r value
             
-            r_value = float(FirstTwoSetpoints[t_idx])
+            r_value = float(LearningSetpoints[t_idx])
             # print("t_idx=", t_idx, "t=", t, "r=", r_value)
             # print(type(r_value))
             
@@ -497,6 +494,8 @@ class FARM_Gamma_LTI(Validator):
           x_0 = x_fetch.reshape(n,-1)
           y_0 = y_fetch.reshape(p,-1)
 
+          t_idx += 1
+
           # check if steady-state y is within the [ymin, ymax]
           for i in range(len(y_0)):
             if y_0[i][0]>y_max[i]:
@@ -505,7 +504,7 @@ class FARM_Gamma_LTI(Validator):
               \tFYI:  y_STEADY = {};
               \tFYI: y_maximum = {};
               \tFYI: y_minimum = {}.\n
-              \tPlease modify the steady state setpoint in <FirstTwoSetpoints>, Item #0.\n""".format(i, 
+              \tPlease modify the steady state setpoint in <LearningSetpoints>, Item #0.\n""".format(i, 
               y_0[i][0]-y_max[i], str(unit), 
               np.array2string(y_0.flatten(), formatter={'float_kind':lambda x: "%.4e" % x}),
               np.array2string(y_max, formatter={'float_kind':lambda x: "%.4e" % x}),
@@ -519,7 +518,7 @@ class FARM_Gamma_LTI(Validator):
               \tFYI: y_maximum = {};
               \tFYI: y_minimum = {};
               \tFYI:  y_STEADY = {}.\n
-              \tPlease modify the steady state setpoint in <FirstTwoSetpoints>, Item #0.\n""".format(i, 
+              \tPlease modify the steady state setpoint in <LearningSetpoints>, Item #0.\n""".format(i, 
               y_min[i]-y_0[i][0], str(unit), 
               np.array2string(y_max, formatter={'float_kind':lambda x: "%.4e" % x}),
               np.array2string(y_min, formatter={'float_kind':lambda x: "%.4e" % x}),
@@ -539,82 +538,77 @@ class FARM_Gamma_LTI(Validator):
 
           """ 5. Simulate the using the second r_ext value, to get the first guess of ABCD matrices """
           window = int(Moving_Window_Width/Tss) # window width for DMDc
-          t_idx = t_idx+1 # time index for this transient
           
-          # Do the step-by-step simulation, from beginning to the first transient
-          while t < 0: # only the steady state value
-            # Find the current r value
-            
-            r_value = float(FirstTwoSetpoints[t_idx])
-            # print("t_idx=", t_idx, "t=", t, "r=", r_value)
-            # print(type(r_value))
-            
-            # No reference governor for the first setpoint value yet
-            v_RG = r_value
-            
-            # fetch y
-            y_sim_internal = np.dot(C_sys,x_sys_internal).reshape(p,-1)
-            y_fetch = (y_sim_internal + Y_0_sys).reshape(p,)
-            
-            # fetch v and x
-            v_fetch = np.asarray(v_RG).reshape(m,)
-            x_fetch = (x_sys_internal + X_0_sys).reshape(n,)
+          while t_idx < len(LearningSetpoints):
+          
+            # Do the step-by-step simulation, from beginning to the first transient
+            while t < -Tr_Update_sec*(len(LearningSetpoints)-1-t_idx): # only the steady state value
+              # Find the current r value
+              
+              r_value = float(LearningSetpoints[t_idx])
+              # print("t_idx=", t_idx, "t=", t, "r=", r_value)
+              # print(type(r_value))
+              
+              # No reference governor for the first setpoint value yet
+              v_RG = r_value
+              
+              # fetch y
+              y_sim_internal = np.dot(C_sys,x_sys_internal).reshape(p,-1)
+              y_fetch = (y_sim_internal + Y_0_sys).reshape(p,)
+              
+              # fetch v and x
+              v_fetch = np.asarray(v_RG).reshape(m,)
+              x_fetch = (x_sys_internal + X_0_sys).reshape(n,)
 
-            self._unitInfo[unit]['t_hist'].append(t)  # input v
-            self._unitInfo[unit]['v_hist'].append(v_fetch)  # input v
-            self._unitInfo[unit]['x_hist'].append(x_fetch)  # state x
-            self._unitInfo[unit]['y_hist'].append(y_fetch)  # output y
+              self._unitInfo[unit]['t_hist'].append(t)  # input v
+              self._unitInfo[unit]['v_hist'].append(v_fetch)  # input v
+              self._unitInfo[unit]['x_hist'].append(x_fetch)  # state x
+              self._unitInfo[unit]['y_hist'].append(y_fetch)  # output y
 
-            # step update x
-            x_sys_internal = np.dot(A_sys,x_sys_internal)+np.dot(B_sys,v_RG-float(U_0_sys))
-            # print("x_sys_internal:",type(x_sys_internal), x_sys_internal.shape, x_sys_internal)
-            # time increment
-            t = t + Tss
-          # Collect data for DMDc
-          t_window = np.asarray(self._unitInfo[unit]['t_hist'][(t_idx*int(Tr_Update_sec/Tss)-math.floor(window/2)):(t_idx*int(Tr_Update_sec/Tss)+math.floor(window/2))]).reshape(1,-1)
-          v_window = np.asarray(self._unitInfo[unit]['v_hist'][(t_idx*int(Tr_Update_sec/Tss)-math.floor(window/2)):(t_idx*int(Tr_Update_sec/Tss)+math.floor(window/2))]).reshape(m,-1)
-          x_window = np.asarray(self._unitInfo[unit]['x_hist'][(t_idx*int(Tr_Update_sec/Tss)-math.floor(window/2)):(t_idx*int(Tr_Update_sec/Tss)+math.floor(window/2))]).T
-          y_window = np.asarray(self._unitInfo[unit]['y_hist'][(t_idx*int(Tr_Update_sec/Tss)-math.floor(window/2)):(t_idx*int(Tr_Update_sec/Tss)+math.floor(window/2))]).T  
-          # print(t_window.shape) # (1, 180)
-          # print(v_window.shape) # (1, 180)
-          # print(x_window.shape) # (1, 180)
-          # print(y_window.shape) # (2, 180)
+              # step update x
+              x_sys_internal = np.dot(A_sys,x_sys_internal)+np.dot(B_sys,v_RG-float(U_0_sys))
+              # print("x_sys_internal:",type(x_sys_internal), x_sys_internal.shape, x_sys_internal)
+              # time increment
+              t = t + Tss
+            # Collect data for DMDc
+            t_window = np.asarray(self._unitInfo[unit]['t_hist'][(t_idx*int(Tr_Update_sec/Tss)-math.floor(window/2)):(t_idx*int(Tr_Update_sec/Tss)+math.floor(window/2))]).reshape(1,-1)
+            v_window = np.asarray(self._unitInfo[unit]['v_hist'][(t_idx*int(Tr_Update_sec/Tss)-math.floor(window/2)):(t_idx*int(Tr_Update_sec/Tss)+math.floor(window/2))]).reshape(m,-1)
+            x_window = np.asarray(self._unitInfo[unit]['x_hist'][(t_idx*int(Tr_Update_sec/Tss)-math.floor(window/2)):(t_idx*int(Tr_Update_sec/Tss)+math.floor(window/2))]).T
+            y_window = np.asarray(self._unitInfo[unit]['y_hist'][(t_idx*int(Tr_Update_sec/Tss)-math.floor(window/2)):(t_idx*int(Tr_Update_sec/Tss)+math.floor(window/2))]).T  
+            # print(t_window.shape) # (1, 180)
+            # print(v_window.shape) # (1, 180)
+            # print(x_window.shape) # (1, 180)
+            # print(y_window.shape) # (2, 180)
 
-          # Do the DMDc, and return ABCD matrices
-          U1 = v_window[:,0:-1]-v_0; X1 = x_window[:, 0:-1]-x_0; X2 = x_window[:, 1:]-x_0; Y1 = y_window[:, 0:-1]-y_0
-          if np.max(U1)==np.min(U1): # if there is no transient, DMDc cannot be done
-            exitMessage = """\n\tERROR:  No transient found from the two values in <FirstTwoSetpoints>. \n
-            \tFYI: FirstTwoSetpoints[0]= {};
-            \tFYI: FirstTwoSetpoints[1]= {}.\n
-            \tPlease modify the steady state setpoint in FirstTwoSetpoints[1].\n""".format(FirstTwoSetpoints[0],FirstTwoSetpoints[0])
-            print(exitMessage)
-            sys.exit(exitMessage)
-          else:
-            # print(U1.shape)
-            Ad_Dc, Bd_Dc, Cd_Dc= fun_DMDc(X1, X2, U1, Y1, -1, 1e-6)
-            # Dd_Dc = np.zeros((p,m))
-            RG_Done_Flag = False
-            # print("\nt = ", t_ext[t_idx_transient], ", v = ", v_RG, "\nAd_DMDc = \n",Ad_Dc,"\n")
-            
-            # TODO: append the A,B,C,D matrices to an list
-            self._unitInfo[unit]['A_list'].append(Ad_Dc); 
-            self._unitInfo[unit]['B_list'].append(Bd_Dc); 
-            self._unitInfo[unit]['C_list'].append(Cd_Dc); 
-            self._unitInfo[unit]['para_list'].append(float(U1[:,-1]+v_0)); 
-            self._unitInfo[unit]['eig_A_list'].append(np.max(np.linalg.eig(Ad_Dc)[0]))
-            self._unitInfo[unit]['tTran_list'].append(t-Tr_Update_sec)
-            print("\n&&&&&&&&&&&&&&&&&&&&&&&&&&")
-            print("&&& DMDc summary Start &&&")
-            print("Unit = ", str(unit), ", t = ", t-Tr_Update_sec)
-            print("A_list=\n",self._unitInfo[unit]['A_list'])
-            print("B_list=\n",self._unitInfo[unit]['B_list'])
-            print("C_list=\n",self._unitInfo[unit]['C_list'])
-            print("para_list=\n",self._unitInfo[unit]['para_list'])
-            print("eig_A_list=\n",self._unitInfo[unit]['eig_A_list'])
-            print("tTran_list=\n",self._unitInfo[unit]['tTran_list'])
-            print("&&&& DMDc summary End &&&&")
-            print("&&&&&&&&&&&&&&&&&&&&&&&&&&\n")
-            # print(a)
+            # Do the DMDc, and return ABCD matrices
+            U1 = v_window[:,0:-1]-v_0; X1 = x_window[:, 0:-1]-x_0; X2 = x_window[:, 1:]-x_0; Y1 = y_window[:, 0:-1]-y_0
+            if abs(np.max(U1)-np.min(U1))>1e-6:
+              # print(U1.shape)
+              Ad_Dc, Bd_Dc, Cd_Dc= fun_DMDc(X1, X2, U1, Y1, -1, 1e-6)
+              # Dd_Dc = np.zeros((p,m))
+              RG_Done_Flag = False
+              # print("\nt = ", t_ext[t_idx_transient], ", v = ", v_RG, "\nAd_DMDc = \n",Ad_Dc,"\n")
+              
+              # TODO: append the A,B,C,D matrices to an list
+              self._unitInfo[unit]['A_list'].append(Ad_Dc); 
+              self._unitInfo[unit]['B_list'].append(Bd_Dc); 
+              self._unitInfo[unit]['C_list'].append(Cd_Dc); 
+              self._unitInfo[unit]['para_list'].append(float(U1[:,-1]+v_0)); 
+              self._unitInfo[unit]['eig_A_list'].append(np.max(np.linalg.eig(Ad_Dc)[0]))
+              self._unitInfo[unit]['tTran_list'].append(t-Tr_Update_sec)
+              print("\n&&&&&&&&&&&&&&&&&&&&&&&&&&")
+              print("&&& DMDc summary Start &&&")
+              print("Unit = ", str(unit), ", t = ", t-Tr_Update_sec)
+              print("A_list=\n",self._unitInfo[unit]['A_list'])
+              print("B_list=\n",self._unitInfo[unit]['B_list'])
+              print("C_list=\n",self._unitInfo[unit]['C_list'])
+              print("para_list=\n",self._unitInfo[unit]['para_list'])
+              print("eig_A_list=\n",self._unitInfo[unit]['eig_A_list'])
+              print("tTran_list=\n",self._unitInfo[unit]['tTran_list'])
+              print("&&&& DMDc summary End &&&&")
+              print("&&&&&&&&&&&&&&&&&&&&&&&&&&\n")
+              # print(a)
+            t_idx += 1
           
           """ 6. Simulate from the third r_ext value using RG, and update the ABCD matrices as it goes """
           # RG-related stuff:
@@ -743,7 +737,7 @@ class FARM_Gamma_LTI(Validator):
 
                 # Do the DMDc, and return ABCD matrices
                 U1 = v_window[:,0:-1]-v_0; X1 = x_window[:, 0:-1]-x_0; X2 = x_window[:, 1:]-x_0; Y1 = y_window[:, 0:-1]-y_0
-                if abs(np.max(U1)-np.min(U1))>1e-6 and t_idx!=2: # if there is transient, DMDc can be done
+                if abs(np.max(U1)-np.min(U1))>1e-6 and t_idx!=len(LearningSetpoints): # if there is transient, DMDc can be done
                   # print(U1.shape)
                   Ad_Dc, Bd_Dc, Cd_Dc= fun_DMDc(X1, X2, U1, Y1, -1, 1e-6)
                   # Dd_Dc = np.zeros((p,m))
@@ -845,9 +839,9 @@ class FARM_Gamma_FMU(Validator):
         descr=r"""The names of FMU state variables. It should be a list of strings separated by comma."""))
     component.addSub(InputData.parameterInputFactory('OutputVarNames',contentType=InputTypes.InterpretedListType,
         descr=r"""The names of FMU output variables. It should be a list of strings separated by comma."""))
-    component.addSub(InputData.parameterInputFactory('FirstTwoSetpoints',contentType=InputTypes.InterpretedListType,
-        descr=r"""The first two setpoints used to find the nominal value and first set of ABCD matrices. 
-        It should be a list of two floating numbers or integers separated by comma."""))
+    component.addSub(InputData.parameterInputFactory('LearningSetpoints',contentType=InputTypes.InterpretedListType,
+        descr=r"""The learning setpoints are used to find the nominal value and first sets of ABCD matrices. 
+        It should be a list of two or more floating numbers or integers separated by comma."""))
     component.addSub(InputData.parameterInputFactory('MovingWindowDuration',contentType=InputTypes.IntegerType,
         descr=r"""The moving window duration for DMDc, with the unit of seconds. It should be an integer."""))
     component.addSub(InputData.parameterInputFactory('OpConstraintsUpper',contentType=InputTypes.InterpretedListType,
@@ -895,16 +889,13 @@ class FARM_Gamma_FMU(Validator):
           StateVarNames = farmEntry.value
         if farmEntry.getName() == "OutputVarNames":
           OutputVarNames = farmEntry.value
-        if farmEntry.getName() == "FirstTwoSetpoints":
-          FirstTwoSetpoints = farmEntry.value
-          if len(FirstTwoSetpoints) != 2:
-            sys.exit('\nERROR: <FirstTwoSetpoints> XML node needs to contain 2 floating or integer numbers.\n')  
-          elif FirstTwoSetpoints[0]==FirstTwoSetpoints[1]:
-            exitMessage = """\n\tERROR:  No transient found from the two values in <FirstTwoSetpoints>. \n
-            \tFYI: FirstTwoSetpoints[0]= {};
-            \tFYI: FirstTwoSetpoints[1]= {}.\n
-            \tPlease modify the steady state setpoint in FirstTwoSetpoints[1].\n""".format(FirstTwoSetpoints[0],FirstTwoSetpoints[0])
-            sys.exit(exitMessage)   
+        if farmEntry.getName() == "LearningSetpoints":
+          LearningSetpoints = farmEntry.value
+          if len(LearningSetpoints) < 2:
+            sys.exit('\nERROR: <LearningSetpoints> XML node needs to contain 2 or more floating or integer numbers.\n')   
+          elif min(LearningSetpoints)==max(LearningSetpoints):
+            exitMessage = """ERROR:  No transient found in <LearningSetpoints>. \n\tPlease modify the values in <LearningSetpoints>.\n"""
+            sys.exit(exitMessage)        
         if farmEntry.getName() == "MovingWindowDuration":
           MovingWindowDuration = farmEntry.value
         if farmEntry.getName() == "OpConstraintsUpper":
@@ -919,7 +910,7 @@ class FARM_Gamma_FMU(Validator):
           'InputVarNames':InputVarNames,
           'StateVarNames':StateVarNames,
           'OutputVarNames':OutputVarNames,
-          'FirstTwoSetpoints':FirstTwoSetpoints,
+          'LearningSetpoints':LearningSetpoints,
           'MovingWindowDuration':MovingWindowDuration,
           'Targets_Max':UpperBound,
           'Targets_Min':LowerBound,
@@ -1022,17 +1013,17 @@ class FARM_Gamma_FMU(Validator):
             
 
           """ 3 & 4. simulate the 1st setpoint, to get the steady state output """
-          FirstTwoSetpoints = self._unitInfo[unit]['FirstTwoSetpoints']
+          LearningSetpoints = self._unitInfo[unit]['LearningSetpoints']
           # Initialize linear model
           # x_sys_internal = np.zeros(n).reshape(n,-1) # x_sys type == <class 'numpy.ndarray'>
-          t = -Tr_Update_sec*2 # t = -7200 s
+          t = -Tr_Update_sec*len(LearningSetpoints) # t = -7200 s
           t_idx = 0
           
           # Do the step-by-step simulation, from beginning to the first transient
-          while t < -Tr_Update_sec: # only the steady state value
+          while t < -Tr_Update_sec*(len(LearningSetpoints)-1): # only the steady state value
             # Find the current r value
             
-            r_value = float(FirstTwoSetpoints[t_idx])
+            r_value = float(LearningSetpoints[t_idx])
             # print("t_idx=", t_idx, "t=", t, "r=", r_value)
             # print(type(r_value))
             
@@ -1064,6 +1055,8 @@ class FARM_Gamma_FMU(Validator):
           x_0 = x_fetch.reshape(n,-1)
           y_0 = y_fetch.reshape(p,-1)
 
+          t_idx += 1
+          
           # check if steady-state y is within the [ymin, ymax]
           for i in range(len(y_0)):
             if y_0[i][0]>y_max[i]:
@@ -1072,7 +1065,7 @@ class FARM_Gamma_FMU(Validator):
               \tFYI:  y_STEADY = {};
               \tFYI: y_maximum = {};
               \tFYI: y_minimum = {}.\n
-              \tPlease modify the steady state setpoint in <FirstTwoSetpoints>, Item #0.\n""".format(i, 
+              \tPlease modify the steady state setpoint in <LearningSetpoints>, Item #0.\n""".format(i, 
               y_0[i][0]-y_max[i], str(unit), 
               np.array2string(y_0.flatten(), formatter={'float_kind':lambda x: "%.4e" % x}),
               np.array2string(y_max, formatter={'float_kind':lambda x: "%.4e" % x}),
@@ -1086,7 +1079,7 @@ class FARM_Gamma_FMU(Validator):
               \tFYI: y_maximum = {};
               \tFYI: y_minimum = {};
               \tFYI:  y_STEADY = {}.\n
-              \tPlease modify the steady state setpoint in <FirstTwoSetpoints>, Item #0.\n""".format(i, 
+              \tPlease modify the steady state setpoint in <LearningSetpoints>, Item #0.\n""".format(i, 
               y_min[i]-y_0[i][0], str(unit), 
               np.array2string(y_max, formatter={'float_kind':lambda x: "%.4e" % x}),
               np.array2string(y_min, formatter={'float_kind':lambda x: "%.4e" % x}),
@@ -1107,84 +1100,79 @@ class FARM_Gamma_FMU(Validator):
 
           """ 5. Simulate the using the second r_ext value, to get the first guess of ABCD matrices """
           window = int(Moving_Window_Width/Tss) # window width for DMDc
-          t_idx = t_idx+1 # time index for this transient
           
-          # Do the step-by-step simulation, from beginning to the first transient
-          while t < 0: # only the steady state value
-            # Find the current r value
-            
-            r_value = float(FirstTwoSetpoints[t_idx])
-            # print("t_idx=", t_idx, "t=", t, "r=", r_value)
-            # print(type(r_value))
-            
-            # No reference governor for the first setpoint value yet
-            v_RG = r_value
-            
-            # fetch y
-            y_fetch = np.asarray(fmu.getReal(vr_output))
+          while t_idx < len(LearningSetpoints):
 
-            # fetch v and x
-            v_fetch = np.asarray(v_RG).reshape(m,)
-            x_fetch = np.asarray(fmu.getReal(vr_state))
+            # Do the step-by-step simulation, from beginning to the first transient
+            while t < -Tr_Update_sec*(len(LearningSetpoints)-1-t_idx): # only the steady state value
+              # Find the current r value
+              
+              r_value = float(LearningSetpoints[t_idx])
+              # print("t_idx=", t_idx, "t=", t, "r=", r_value)
+              # print(type(r_value))
+              
+              # No reference governor for the first setpoint value yet
+              v_RG = r_value
+              
+              # fetch y
+              y_fetch = np.asarray(fmu.getReal(vr_output))
 
-            # set the input. The input / state / output in FMU are real-world values
-            fmu.setReal(vr_input, [v_RG])
-            # perform one step
-            fmu.doStep(currentCommunicationPoint=t, communicationStepSize=Tss)
+              # fetch v and x
+              v_fetch = np.asarray(v_RG).reshape(m,)
+              x_fetch = np.asarray(fmu.getReal(vr_state))
 
-            self._unitInfo[unit]['t_hist'].append(t)  # input v
-            self._unitInfo[unit]['v_hist'].append(v_fetch)  # input v
-            self._unitInfo[unit]['x_hist'].append(x_fetch)  # state x
-            self._unitInfo[unit]['y_hist'].append(y_fetch)  # output y
+              # set the input. The input / state / output in FMU are real-world values
+              fmu.setReal(vr_input, [v_RG])
+              # perform one step
+              fmu.doStep(currentCommunicationPoint=t, communicationStepSize=Tss)
 
-            # time increment
-            t = t + Tss
+              self._unitInfo[unit]['t_hist'].append(t)  # input v
+              self._unitInfo[unit]['v_hist'].append(v_fetch)  # input v
+              self._unitInfo[unit]['x_hist'].append(x_fetch)  # state x
+              self._unitInfo[unit]['y_hist'].append(y_fetch)  # output y
 
-          # Collect data for DMDc
-          t_window = np.asarray(self._unitInfo[unit]['t_hist'][(t_idx*int(Tr_Update_sec/Tss)-math.floor(window/2)):(t_idx*int(Tr_Update_sec/Tss)+math.floor(window/2))]).reshape(1,-1)
-          v_window = np.asarray(self._unitInfo[unit]['v_hist'][(t_idx*int(Tr_Update_sec/Tss)-math.floor(window/2)):(t_idx*int(Tr_Update_sec/Tss)+math.floor(window/2))]).reshape(m,-1)
-          x_window = np.asarray(self._unitInfo[unit]['x_hist'][(t_idx*int(Tr_Update_sec/Tss)-math.floor(window/2)):(t_idx*int(Tr_Update_sec/Tss)+math.floor(window/2))]).T
-          y_window = np.asarray(self._unitInfo[unit]['y_hist'][(t_idx*int(Tr_Update_sec/Tss)-math.floor(window/2)):(t_idx*int(Tr_Update_sec/Tss)+math.floor(window/2))]).T  
-          # print(t_window.shape) # (1, 180)
-          # print(v_window.shape) # (1, 180)
-          # print(x_window.shape) # (1, 180)
-          # print(y_window.shape) # (2, 180)
+              # time increment
+              t = t + Tss
 
-          # Do the DMDc, and return ABCD matrices
-          U1 = v_window[:,0:-1]-v_0; X1 = x_window[:, 0:-1]-x_0; X2 = x_window[:, 1:]-x_0; Y1 = y_window[:, 0:-1]-y_0
-          if np.max(U1)==np.min(U1): # if there is no transient, DMDc cannot be done
-            exitMessage = """\n\tERROR:  No transient found from the two values in <FirstTwoSetpoints>. \n
-            \tFYI: FirstTwoSetpoints[0]= {};
-            \tFYI: FirstTwoSetpoints[1]= {}.\n
-            \tPlease modify the steady state setpoint in FirstTwoSetpoints[1].\n""".format(FirstTwoSetpoints[0],FirstTwoSetpoints[0])
-            print(exitMessage)
-            sys.exit(exitMessage)
-          else:
-            # print(U1.shape)
-            Ad_Dc, Bd_Dc, Cd_Dc= fun_DMDc(X1, X2, U1, Y1, -1, 1e-6)
-            # Dd_Dc = np.zeros((p,m))
-            RG_Done_Flag = False
-            # print("\nt = ", t_ext[t_idx_transient], ", v = ", v_RG, "\nAd_DMDc = \n",Ad_Dc,"\n")
-            
-            # TODO: append the A,B,C,D matrices to an list
-            self._unitInfo[unit]['A_list'].append(Ad_Dc); 
-            self._unitInfo[unit]['B_list'].append(Bd_Dc); 
-            self._unitInfo[unit]['C_list'].append(Cd_Dc); 
-            self._unitInfo[unit]['para_list'].append(float(U1[:,-1]+v_0)); 
-            self._unitInfo[unit]['eig_A_list'].append(np.max(np.linalg.eig(Ad_Dc)[0]))
-            self._unitInfo[unit]['tTran_list'].append(t-Tr_Update_sec)
-            print("\n&&&&&&&&&&&&&&&&&&&&&&&&&&")
-            print("&&& DMDc summary Start &&&")
-            print("Unit = ", str(unit), ", t = ", t-Tr_Update_sec)
-            print("A_list=\n",self._unitInfo[unit]['A_list'])
-            print("B_list=\n",self._unitInfo[unit]['B_list'])
-            print("C_list=\n",self._unitInfo[unit]['C_list'])
-            print("para_list=\n",self._unitInfo[unit]['para_list'])
-            print("eig_A_list=\n",self._unitInfo[unit]['eig_A_list'])
-            print("tTran_list=\n",self._unitInfo[unit]['tTran_list'])
-            print("&&&& DMDc summary End &&&&")
-            print("&&&&&&&&&&&&&&&&&&&&&&&&&&\n")
-            # print(a)
+            # Collect data for DMDc
+            t_window = np.asarray(self._unitInfo[unit]['t_hist'][(t_idx*int(Tr_Update_sec/Tss)-math.floor(window/2)):(t_idx*int(Tr_Update_sec/Tss)+math.floor(window/2))]).reshape(1,-1)
+            v_window = np.asarray(self._unitInfo[unit]['v_hist'][(t_idx*int(Tr_Update_sec/Tss)-math.floor(window/2)):(t_idx*int(Tr_Update_sec/Tss)+math.floor(window/2))]).reshape(m,-1)
+            x_window = np.asarray(self._unitInfo[unit]['x_hist'][(t_idx*int(Tr_Update_sec/Tss)-math.floor(window/2)):(t_idx*int(Tr_Update_sec/Tss)+math.floor(window/2))]).T
+            y_window = np.asarray(self._unitInfo[unit]['y_hist'][(t_idx*int(Tr_Update_sec/Tss)-math.floor(window/2)):(t_idx*int(Tr_Update_sec/Tss)+math.floor(window/2))]).T  
+            # print(t_window.shape) # (1, 180)
+            # print(v_window.shape) # (1, 180)
+            # print(x_window.shape) # (1, 180)
+            # print(y_window.shape) # (2, 180)
+
+            # Do the DMDc, and return ABCD matrices
+            U1 = v_window[:,0:-1]-v_0; X1 = x_window[:, 0:-1]-x_0; X2 = x_window[:, 1:]-x_0; Y1 = y_window[:, 0:-1]-y_0
+            if abs(np.max(U1)-np.min(U1))>1e-6:
+              # print(U1.shape)
+              Ad_Dc, Bd_Dc, Cd_Dc= fun_DMDc(X1, X2, U1, Y1, -1, 1e-6)
+              # Dd_Dc = np.zeros((p,m))
+              RG_Done_Flag = False
+              # print("\nt = ", t_ext[t_idx_transient], ", v = ", v_RG, "\nAd_DMDc = \n",Ad_Dc,"\n")
+              
+              # TODO: append the A,B,C,D matrices to an list
+              self._unitInfo[unit]['A_list'].append(Ad_Dc); 
+              self._unitInfo[unit]['B_list'].append(Bd_Dc); 
+              self._unitInfo[unit]['C_list'].append(Cd_Dc); 
+              self._unitInfo[unit]['para_list'].append(float(U1[:,-1]+v_0)); 
+              self._unitInfo[unit]['eig_A_list'].append(np.max(np.linalg.eig(Ad_Dc)[0]))
+              self._unitInfo[unit]['tTran_list'].append(t-Tr_Update_sec)
+              print("\n&&&&&&&&&&&&&&&&&&&&&&&&&&")
+              print("&&& DMDc summary Start &&&")
+              print("Unit = ", str(unit), ", t = ", t-Tr_Update_sec)
+              print("A_list=\n",self._unitInfo[unit]['A_list'])
+              print("B_list=\n",self._unitInfo[unit]['B_list'])
+              print("C_list=\n",self._unitInfo[unit]['C_list'])
+              print("para_list=\n",self._unitInfo[unit]['para_list'])
+              print("eig_A_list=\n",self._unitInfo[unit]['eig_A_list'])
+              print("tTran_list=\n",self._unitInfo[unit]['tTran_list'])
+              print("&&&& DMDc summary End &&&&")
+              print("&&&&&&&&&&&&&&&&&&&&&&&&&&\n")
+              # print(a)
+            t_idx += 1
           
           """ 6. Simulate from the third r_ext value using RG, and update the ABCD matrices as it goes """
           # RG-related stuff:
@@ -1317,7 +1305,7 @@ class FARM_Gamma_FMU(Validator):
 
                 # Do the DMDc, and return ABCD matrices
                 U1 = v_window[:,0:-1]-v_0; X1 = x_window[:, 0:-1]-x_0; X2 = x_window[:, 1:]-x_0; Y1 = y_window[:, 0:-1]-y_0
-                if abs(np.max(U1)-np.min(U1))>1e-6 and t_idx!=2: # if there is transient, DMDc can be done
+                if abs(np.max(U1)-np.min(U1))>1e-6 and t_idx!=len(LearningSetpoints): # if there is transient, DMDc can be done
                   # print(U1.shape)
                   Ad_Dc, Bd_Dc, Cd_Dc= fun_DMDc(X1, X2, U1, Y1, -1, 1e-6)
                   # Dd_Dc = np.zeros((p,m))

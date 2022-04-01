@@ -38,7 +38,7 @@
           <InputVarNames> BOP_Demand_MW </InputVarNames>
           <StateVarNames> BOP.CS.W_totalSetpoint, BOP.steamTurbine.shaft_b.tau </StateVarNames>
           <OutputVarNames> Electric_Power, Turbine_Pressure </OutputVarNames>
-          <LearningSetpoints> 1100., 1075.</LearningSetpoints>
+          <LearningSetpoints> 1100., 1075. </LearningSetpoints>
           <MovingWindowDuration> 1800 </MovingWindowDuration>
           <OpConstraintsUpper> 12.0E8, 53.8E5 </OpConstraintsUpper>
           <OpConstraintsLower> 10.0E8, 51.8E5 </OpConstraintsLower>

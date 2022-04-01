@@ -530,7 +530,7 @@ class FARM_Gamma_LTI(Validator):
 
           print("\n^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
           print("^^^ Steady State Summary Start ^^^")
-          print("Unit =", str(unit), ", t =", t - Tss, "\nv_0 =\n", float(v_0), "x_0 = \n",x_0,"\ny_0 = \n",y_0)
+          print("Unit =", str(unit), ", t =", t - Tss, "\nv_0 =\n", float(v_0), "\nx_0 = \n",x_0,"\ny_0 = \n",y_0)
           print("^^^^ Steady State Summary End ^^^^")
           print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n")
           # print("v_hist of ",str(unit), "=\n",len(self._unitInfo[unit]['v_hist']),self._unitInfo[unit]['v_hist'])
@@ -598,7 +598,7 @@ class FARM_Gamma_LTI(Validator):
               self._unitInfo[unit]['tTran_list'].append(t-Tr_Update_sec)
               print("\n&&&&&&&&&&&&&&&&&&&&&&&&&&")
               print("&&& DMDc summary Start &&&")
-              print("Unit = ", str(unit), ", t = ", t-Tr_Update_sec)
+              print("Unit =", str(unit), ", t = ", t-Tr_Update_sec, ", v_window[0] =", v_window[0][0], ", v_window[-1] =", v_window[0][-1])
               print("A_list=\n",self._unitInfo[unit]['A_list'])
               print("B_list=\n",self._unitInfo[unit]['B_list'])
               print("C_list=\n",self._unitInfo[unit]['C_list'])
@@ -633,7 +633,7 @@ class FARM_Gamma_LTI(Validator):
                 # print("Step 6, x_sys_internal=",x_sys_internal)
 
               # loop through the time index (tidx) and time in "times"
-              t_idx = t_idx+1
+              # t_idx = t_idx+1
               for tidx, time in enumerate(times):
                 # Copy the system state variable
                 x_KF = x_sys_internal
@@ -752,7 +752,7 @@ class FARM_Gamma_LTI(Validator):
                   self._unitInfo[unit]['tTran_list'].append(t-Tr_Update_sec)
                   print("\n&&&&&&&&&&&&&&&&&&&&&&&&&&")
                   print("&&& DMDc summary Start &&&")
-                  print("Unit = ", str(unit), ", t = ", t-Tr_Update_sec)
+                  print("Unit =", str(unit), ", t = ", t-Tr_Update_sec, ", v_window[0] =", v_window[0][0], ", v_window[-1] =", v_window[0][-1])
                   print("A_list=\n",self._unitInfo[unit]['A_list'])
                   print("B_list=\n",self._unitInfo[unit]['B_list'])
                   print("C_list=\n",self._unitInfo[unit]['C_list'])
@@ -1091,7 +1091,7 @@ class FARM_Gamma_FMU(Validator):
 
           print("\n^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
           print("^^^ Steady State Summary Start ^^^")
-          print("Unit =", str(unit), ", t =", t - Tss, "\nv_0 =\n", float(v_0), "x_0 = \n",x_0,"\ny_0 = \n",y_0)
+          print("Unit =", str(unit), ", t =", t - Tss, "\nv_0 =\n", float(v_0), "\nx_0 = \n",x_0,"\ny_0 = \n",y_0)
           print("^^^^ Steady State Summary End ^^^^")
           print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n")
 
@@ -1162,7 +1162,7 @@ class FARM_Gamma_FMU(Validator):
               self._unitInfo[unit]['tTran_list'].append(t-Tr_Update_sec)
               print("\n&&&&&&&&&&&&&&&&&&&&&&&&&&")
               print("&&& DMDc summary Start &&&")
-              print("Unit = ", str(unit), ", t = ", t-Tr_Update_sec)
+              print("Unit =", str(unit), ", t = ", t-Tr_Update_sec, ", v_window[0] =", v_window[0][0], ", v_window[-1] =", v_window[0][-1])
               print("A_list=\n",self._unitInfo[unit]['A_list'])
               print("B_list=\n",self._unitInfo[unit]['B_list'])
               print("C_list=\n",self._unitInfo[unit]['C_list'])
@@ -1196,7 +1196,7 @@ class FARM_Gamma_FMU(Validator):
               fmu.exitInitializationMode()
               
               # loop through the time index (tidx) and time in "times"
-              t_idx = t_idx+1
+              # t_idx = t_idx+1
               for tidx, time in enumerate(times):
                 # Copy the system state variable
                 x_KF = np.asarray(fmu.getReal(vr_state))-x_0.reshape(n,)
@@ -1320,7 +1320,7 @@ class FARM_Gamma_FMU(Validator):
                   self._unitInfo[unit]['tTran_list'].append(t-Tr_Update_sec)
                   print("\n&&&&&&&&&&&&&&&&&&&&&&&&&&")
                   print("&&& DMDc summary Start &&&")
-                  print("Unit = ", str(unit), ", t = ", t-Tr_Update_sec)
+                  print("Unit =", str(unit), ", t = ", t-Tr_Update_sec, ", v_window[0] =", v_window[0][0], ", v_window[-1] =", v_window[0][-1])
                   print("A_list=\n",self._unitInfo[unit]['A_list'])
                   print("B_list=\n",self._unitInfo[unit]['B_list'])
                   print("C_list=\n",self._unitInfo[unit]['C_list'])

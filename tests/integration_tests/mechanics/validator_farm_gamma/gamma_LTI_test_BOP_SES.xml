@@ -35,7 +35,7 @@
         <ComponentForFARM name="BOP">
           <MatricesFile>%HERON%/tests/integration_tests/mechanics/validator_farm_gamma/BOP_SES_TES_Mat_Unit_MW/DMDcCxCoeff_BOP_para.xml</MatricesFile>
           <SystemProfile> 8 </SystemProfile>
-          <LearningSetpoints> 1100., 1020.</LearningSetpoints>
+          <LearningSetpoints> 1100., 1075.</LearningSetpoints>
           <MovingWindowDuration> 1800 </MovingWindowDuration>
           <OpConstraintsUpper> 12.0E8, 53.8E5 </OpConstraintsUpper>
           <OpConstraintsLower> 10.0E8, 51.8E5 </OpConstraintsLower>
@@ -44,7 +44,7 @@
         <ComponentForFARM name="SES">
           <MatricesFile>%HERON%/tests/integration_tests/mechanics/validator_farm_gamma/BOP_SES_TES_Mat_Unit_MW/DMDcCxCoeff_SES_para.xml</MatricesFile>
           <SystemProfile> 8 </SystemProfile>
-          <LearningSetpoints> 46., 15. </LearningSetpoints>
+          <LearningSetpoints> 46., 15.</LearningSetpoints>
           <MovingWindowDuration> 1800 </MovingWindowDuration>
           <OpConstraintsUpper> 50.0E6, 1673. </OpConstraintsUpper>
           <OpConstraintsLower> 13.5E6, 1089. </OpConstraintsLower>

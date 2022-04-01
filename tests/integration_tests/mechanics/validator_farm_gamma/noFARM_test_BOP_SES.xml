@@ -30,33 +30,21 @@
       </pyomo>
     </dispatcher>
     
-    <validator>
-      <FARM_Gamma_FMU>
+    <!-- <validator>
+      <FARM_Beta>
         <ComponentForFARM name="BOP">
-          <FMUFile>%HERON%/tests/integration_tests/mechanics/validator_farm_gamma/FMUs/BOP_empty_MWinput.fmu</FMUFile>
-          <FMUSimulationStep> 10. </FMUSimulationStep>
-          <InputVarNames> BOP_Demand_MW </InputVarNames>
-          <StateVarNames> BOP.CS.W_totalSetpoint, BOP.steamTurbine.shaft_b.tau </StateVarNames>
-          <OutputVarNames> Electric_Power, Turbine_Pressure </OutputVarNames>
-          <LearningSetpoints> 1100., 1150. </LearningSetpoints>
-          <MovingWindowDuration> 1800 </MovingWindowDuration>
+          <MatricesFile>%HERON%/tests/integration_tests/mechanics/validator_farm_gamma/BOP_SES_TES_Mat_Unit_MW/DMDcCxCoeff_BOP_para_alpha.xml</MatricesFile>
           <OpConstraintsUpper> 12.0E8, 53.8E5 </OpConstraintsUpper>
           <OpConstraintsLower> 10.0E8, 51.8E5 </OpConstraintsLower>
         </ComponentForFARM>
         <ComponentForFARM name="SES">
-          <FMUFile>%HERON%/tests/integration_tests/mechanics/validator_farm_gamma/FMUs/SES_empty_MWinput.fmu</FMUFile>
-          <FMUSimulationStep> 10. </FMUSimulationStep>
-          <InputVarNames> SES_Demand_MW </InputVarNames>
-          <StateVarNames> SES.CS.W_totalSetpoint, SES.Tf_pu.y </StateVarNames>
-          <OutputVarNames> Electric_Power, Firing_Temperature </OutputVarNames>
-          <LearningSetpoints> 46., 18.</LearningSetpoints>
-          <MovingWindowDuration> 1800 </MovingWindowDuration>
+          <MatricesFile>%HERON%/tests/integration_tests/mechanics/validator_farm_gamma/BOP_SES_TES_Mat_Unit_MW/DMDcCxCoeff_SES_para_alpha.xml</MatricesFile>
           <OpConstraintsUpper> 50.0E6, 1673. </OpConstraintsUpper>
           <OpConstraintsLower> 13.5E6, 1089. </OpConstraintsLower>
         </ComponentForFARM>
 
-      </FARM_Gamma_FMU>
-    </validator>
+      </FARM_Beta>
+    </validator> -->
   </Case>
 
   <Components>

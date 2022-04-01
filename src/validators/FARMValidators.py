@@ -582,14 +582,19 @@ class FARM_Gamma_LTI(Validator):
 
             # Do the DMDc, and return ABCD matrices
             U1 = v_window[:,0:-1]-v_0; X1 = x_window[:, 0:-1]-x_0; X2 = x_window[:, 1:]-x_0; Y1 = y_window[:, 0:-1]-y_0
-            if abs(np.max(U1)-np.min(U1))>1e-6:
-              # print(U1.shape)
+            Do_DMDc = False
+            if abs(np.max(U1)-np.min(U1))>1e-6: # if transient found within this window
+              if len(self._unitInfo[unit]['para_list'])==0: 
+                # if para_list is empty, do DMDc
+                Do_DMDc = True
+              elif np.min(np.abs(np.asarray(self._unitInfo[unit]['para_list']) - v_window[:,-1])) > 1.0: 
+                # if the nearest parameter is more than 1 MW apart, do DMDc
+                Do_DMDc = True
+
+            if Do_DMDc:
               Ad_Dc, Bd_Dc, Cd_Dc= fun_DMDc(X1, X2, U1, Y1, -1, 1e-6)
               # Dd_Dc = np.zeros((p,m))
-              RG_Done_Flag = False
-              # print("\nt = ", t_ext[t_idx_transient], ", v = ", v_RG, "\nAd_DMDc = \n",Ad_Dc,"\n")
-              
-              # TODO: append the A,B,C,D matrices to an list
+              # append the A,B,C,D matrices to an list
               self._unitInfo[unit]['A_list'].append(Ad_Dc); 
               self._unitInfo[unit]['B_list'].append(Bd_Dc); 
               self._unitInfo[unit]['C_list'].append(Cd_Dc); 
@@ -608,6 +613,16 @@ class FARM_Gamma_LTI(Validator):
               print("&&&& DMDc summary End &&&&")
               print("&&&&&&&&&&&&&&&&&&&&&&&&&&\n")
               # print(a)
+            else:
+              print("\n&&&&&&&&&&&&&&&&&&&&&&&&&&")
+              print("&&& DMDc was not done. &&&")
+              print("Unit =", str(unit), ", t = ", t-Tr_Update_sec, ", v_window[0] =", v_window[0][0], ", v_window[-1] =", v_window[0][-1])
+              if abs(np.max(U1)-np.min(U1))<=1e-6:
+                print("Reason: Transient is too small. v_window[0] =", v_window[0][0], ", v_window[-1] =", v_window[0][-1])
+              elif np.min(np.abs(np.asarray(self._unitInfo[unit]['para_list']) - v_window[:,-1])) <= 1.0: 
+                print("Reason: New parameter is too close to existing parameter [{}].".format(np.abs(np.asarray(self._unitInfo[unit]['para_list']) - v_window[:,-1]).argmin()))
+                print("New parameter =", v_window[:,-1], "Para_list =",self._unitInfo[unit]['para_list'])
+              print("&&&&&&&&&&&&&&&&&&&&&&&&&&\n")
             t_idx += 1
           
           """ 6. Simulate from the third r_ext value using RG, and update the ABCD matrices as it goes """
@@ -737,13 +752,17 @@ class FARM_Gamma_LTI(Validator):
 
                 # Do the DMDc, and return ABCD matrices
                 U1 = v_window[:,0:-1]-v_0; X1 = x_window[:, 0:-1]-x_0; X2 = x_window[:, 1:]-x_0; Y1 = y_window[:, 0:-1]-y_0
-                if abs(np.max(U1)-np.min(U1))>1e-6 and t_idx!=len(LearningSetpoints): # if there is transient, DMDc can be done
-                  # print(U1.shape)
+                Do_DMDc = False
+                if abs(np.max(U1)-np.min(U1))>1e-6 and t_idx!=len(LearningSetpoints): # if there is transient, DMDc can be done: # if transient found within this window
+                  if np.min(np.abs(np.asarray(self._unitInfo[unit]['para_list']) - v_window[:,-1])) > 1.0: 
+                    # if the nearest parameter is more than 1 MW apart, do DMDc
+                    Do_DMDc = True
+
+                if Do_DMDc:  # print(U1.shape)
                   Ad_Dc, Bd_Dc, Cd_Dc= fun_DMDc(X1, X2, U1, Y1, -1, 1e-6)
                   # Dd_Dc = np.zeros((p,m))
-                  # print("\nt = ", t_ext[t_idx_transient], ", v = ", v_RG, "\nAd_DMDc = \n",Ad_Dc,"\n")
                   
-                  # TODO: append the A,B,C,D matrices to an list
+                  # append the A,B,C,D matrices to an list
                   self._unitInfo[unit]['A_list'].append(Ad_Dc); 
                   self._unitInfo[unit]['B_list'].append(Bd_Dc); 
                   self._unitInfo[unit]['C_list'].append(Cd_Dc); 
@@ -762,6 +781,19 @@ class FARM_Gamma_LTI(Validator):
                   print("&&&& DMDc summary End &&&&")
                   print("&&&&&&&&&&&&&&&&&&&&&&&&&&\n")
                   # print(a)
+                else:
+                  print("\n&&&&&&&&&&&&&&&&&&&&&&&&&&")
+                  print("&&& DMDc was not done. &&&")
+                  print("Unit =", str(unit), ", t = ", t-Tr_Update_sec, ", v_window[0] =", v_window[0][0], ", v_window[-1] =", v_window[0][-1])
+                  if abs(np.max(U1)-np.min(U1))<=1e-6 or t_idx==len(LearningSetpoints):
+                    if abs(np.max(U1)-np.min(U1))<=1e-6:
+                      print("Reason: Transient is too small. v_window[0] =", v_window[0][0], ", v_window[-1] =", v_window[0][-1])
+                    if t_idx==len(LearningSetpoints):
+                      print("Reason: System is initialized at t =",t-Tr_Update_sec)
+                  elif np.min(np.abs(np.asarray(self._unitInfo[unit]['para_list']) - v_window[:,-1])) <= 1.0: 
+                    print("Reason: New parameter is too close to existing parameter [{}].".format(np.abs(np.asarray(self._unitInfo[unit]['para_list']) - v_window[:,-1]).argmin()))
+                    print("New parameter =", v_window[:,-1], "Para_list =",self._unitInfo[unit]['para_list'])
+                  print("&&&&&&&&&&&&&&&&&&&&&&&&&&\n")
                 t_idx = t_idx+1
 
                 # Write up any violation to the errs:
@@ -1146,14 +1178,19 @@ class FARM_Gamma_FMU(Validator):
 
             # Do the DMDc, and return ABCD matrices
             U1 = v_window[:,0:-1]-v_0; X1 = x_window[:, 0:-1]-x_0; X2 = x_window[:, 1:]-x_0; Y1 = y_window[:, 0:-1]-y_0
-            if abs(np.max(U1)-np.min(U1))>1e-6:
-              # print(U1.shape)
+            Do_DMDc = False
+            if abs(np.max(U1)-np.min(U1))>1e-6: # if transient found within this window
+              if len(self._unitInfo[unit]['para_list'])==0: 
+                # if para_list is empty, do DMDc
+                Do_DMDc = True
+              elif np.min(np.abs(np.asarray(self._unitInfo[unit]['para_list']) - v_window[:,-1])) > 1.0: 
+                # if the nearest parameter is more than 1 MW apart, do DMDc
+                Do_DMDc = True
+
+            if Do_DMDc:
               Ad_Dc, Bd_Dc, Cd_Dc= fun_DMDc(X1, X2, U1, Y1, -1, 1e-6)
               # Dd_Dc = np.zeros((p,m))
-              RG_Done_Flag = False
-              # print("\nt = ", t_ext[t_idx_transient], ", v = ", v_RG, "\nAd_DMDc = \n",Ad_Dc,"\n")
-              
-              # TODO: append the A,B,C,D matrices to an list
+              # append the A,B,C,D matrices to an list
               self._unitInfo[unit]['A_list'].append(Ad_Dc); 
               self._unitInfo[unit]['B_list'].append(Bd_Dc); 
               self._unitInfo[unit]['C_list'].append(Cd_Dc); 
@@ -1172,6 +1209,16 @@ class FARM_Gamma_FMU(Validator):
               print("&&&& DMDc summary End &&&&")
               print("&&&&&&&&&&&&&&&&&&&&&&&&&&\n")
               # print(a)
+            else:
+              print("\n&&&&&&&&&&&&&&&&&&&&&&&&&&")
+              print("&&& DMDc was not done. &&&")
+              print("Unit =", str(unit), ", t = ", t-Tr_Update_sec, ", v_window[0] =", v_window[0][0], ", v_window[-1] =", v_window[0][-1])
+              if abs(np.max(U1)-np.min(U1))<=1e-6:
+                print("Reason: Transient is too small. v_window[0] =", v_window[0][0], ", v_window[-1] =", v_window[0][-1])
+              elif np.min(np.abs(np.asarray(self._unitInfo[unit]['para_list']) - v_window[:,-1])) <= 1.0: 
+                print("Reason: New parameter is too close to existing parameter [{}].".format(np.abs(np.asarray(self._unitInfo[unit]['para_list']) - v_window[:,-1]).argmin()))
+                print("New parameter =", v_window[:,-1], "Para_list =",self._unitInfo[unit]['para_list'])
+              print("&&&&&&&&&&&&&&&&&&&&&&&&&&\n")
             t_idx += 1
           
           """ 6. Simulate from the third r_ext value using RG, and update the ABCD matrices as it goes """
@@ -1200,7 +1247,7 @@ class FARM_Gamma_FMU(Validator):
               for tidx, time in enumerate(times):
                 # Copy the system state variable
                 x_KF = np.asarray(fmu.getReal(vr_state))-x_0.reshape(n,)
-                print("time=",time,", x_KF=",x_KF)
+                # print("time=",time,", x_KF=",x_KF)
                 # print("x_0 reshape=",x_0.reshape(n,))
                 """ Get the r_value, original actuation value """
                 current = float(dispatch.get_activity(comp, res, times[tidx]))
@@ -1305,13 +1352,17 @@ class FARM_Gamma_FMU(Validator):
 
                 # Do the DMDc, and return ABCD matrices
                 U1 = v_window[:,0:-1]-v_0; X1 = x_window[:, 0:-1]-x_0; X2 = x_window[:, 1:]-x_0; Y1 = y_window[:, 0:-1]-y_0
-                if abs(np.max(U1)-np.min(U1))>1e-6 and t_idx!=len(LearningSetpoints): # if there is transient, DMDc can be done
-                  # print(U1.shape)
+                Do_DMDc = False
+                if abs(np.max(U1)-np.min(U1))>1e-6 and t_idx!=len(LearningSetpoints): # if there is transient, DMDc can be done: # if transient found within this window
+                  if np.min(np.abs(np.asarray(self._unitInfo[unit]['para_list']) - v_window[:,-1])) > 1.0: 
+                    # if the nearest parameter is more than 1 MW apart, do DMDc
+                    Do_DMDc = True
+
+                if Do_DMDc:  # print(U1.shape)
                   Ad_Dc, Bd_Dc, Cd_Dc= fun_DMDc(X1, X2, U1, Y1, -1, 1e-6)
                   # Dd_Dc = np.zeros((p,m))
-                  # print("\nt = ", t_ext[t_idx_transient], ", v = ", v_RG, "\nAd_DMDc = \n",Ad_Dc,"\n")
                   
-                  # TODO: append the A,B,C,D matrices to an list
+                  # append the A,B,C,D matrices to an list
                   self._unitInfo[unit]['A_list'].append(Ad_Dc); 
                   self._unitInfo[unit]['B_list'].append(Bd_Dc); 
                   self._unitInfo[unit]['C_list'].append(Cd_Dc); 
@@ -1330,6 +1381,19 @@ class FARM_Gamma_FMU(Validator):
                   print("&&&& DMDc summary End &&&&")
                   print("&&&&&&&&&&&&&&&&&&&&&&&&&&\n")
                   # print(a)
+                else:
+                  print("\n&&&&&&&&&&&&&&&&&&&&&&&&&&")
+                  print("&&& DMDc was not done. &&&")
+                  print("Unit =", str(unit), ", t = ", t-Tr_Update_sec, ", v_window[0] =", v_window[0][0], ", v_window[-1] =", v_window[0][-1])
+                  if abs(np.max(U1)-np.min(U1))<=1e-6 or t_idx==len(LearningSetpoints):
+                    if abs(np.max(U1)-np.min(U1))<=1e-6:
+                      print("Reason: Transient is too small. v_window[0] =", v_window[0][0], ", v_window[-1] =", v_window[0][-1])
+                    if t_idx==len(LearningSetpoints):
+                      print("Reason: System is initialized at t =",t-Tr_Update_sec)
+                  elif np.min(np.abs(np.asarray(self._unitInfo[unit]['para_list']) - v_window[:,-1])) <= 1.0: 
+                    print("Reason: New parameter is too close to existing parameter [{}].".format(np.abs(np.asarray(self._unitInfo[unit]['para_list']) - v_window[:,-1]).argmin()))
+                    print("New parameter =", v_window[:,-1], "Para_list =",self._unitInfo[unit]['para_list'])
+                  print("&&&&&&&&&&&&&&&&&&&&&&&&&&\n")
                 t_idx = t_idx+1
 
                 # Write up any violation to the errs:

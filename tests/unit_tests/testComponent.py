@@ -15,10 +15,9 @@ import _utils as hutils
 sys.path.pop()
 
 # Load RAVEN tools
-framework_path = hutils.get_raven_loc()
-sys.path.append(framework_path)
-from utils import InputData, xmlUtils,InputTypes
-import MessageHandler
+sys.path.append(hutils.get_raven_loc())
+from ravenframework.utils import InputData, xmlUtils,InputTypes
+import ravenframework.MessageHandler as MessageHandler
 sys.path.pop()
 
 results = {"pass":0,"fail":0}

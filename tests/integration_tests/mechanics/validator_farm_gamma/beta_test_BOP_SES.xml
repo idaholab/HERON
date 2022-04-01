@@ -33,13 +33,13 @@
     <validator>
       <FARM_Beta>
         <ComponentForFARM name="BOP">
-          <MatricesFile>%HERON%/tests/integration_tests/mechanics/validator_farm_beta/BOP_SES_TES_Mat_Unit_MW/DMDcCxCoeff_BOP_para.xml</MatricesFile>
+          <MatricesFile>%HERON%/tests/integration_tests/mechanics/validator_farm_gamma/BOP_SES_TES_Mat_Unit_MW/DMDcCxCoeff_BOP_para.xml</MatricesFile>
           <OpConstraintsUpper> 12.0E8, 53.8E5 </OpConstraintsUpper>
           <OpConstraintsLower> 10.0E8, 51.8E5 </OpConstraintsLower>
           <!-- <InitialState> 6.50034120e+07 </InitialState> -->
         </ComponentForFARM>
         <ComponentForFARM name="SES">
-          <MatricesFile>%HERON%/tests/integration_tests/mechanics/validator_farm_beta/BOP_SES_TES_Mat_Unit_MW/DMDcCxCoeff_SES_para.xml</MatricesFile>
+          <MatricesFile>%HERON%/tests/integration_tests/mechanics/validator_farm_gamma/BOP_SES_TES_Mat_Unit_MW/DMDcCxCoeff_SES_para.xml</MatricesFile>
           <OpConstraintsUpper> 50.0E6, 1673. </OpConstraintsUpper>
           <OpConstraintsLower> 13.5E6, 1089. </OpConstraintsLower>
           <!-- <InitialState> 5.00000000e+06 </InitialState> -->

@@ -50,7 +50,6 @@
           <OpConstraintsLower> 13.5E6, 1089. </OpConstraintsLower>
           <!-- <InitialState> 5.00000000e+06 </InitialState> -->
         </ComponentForFARM>
-
       </FARM_Gamma_LTI>
     </validator>
   </Case>

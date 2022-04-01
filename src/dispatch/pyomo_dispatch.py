@@ -866,13 +866,6 @@ class Pyomo(Dispatcher):
       @ In, m, pyo.ConcreteModel, associated model
       @ Out, total, float, evaluation of cost
     """
-    print('_cashflow_rule')
-    # print('self: {}'.format(self))
-    # print('meta: {}'.format(meta))
-    # print('m: {}'.format(m))
-    # print('t: {}'.format(t))
-    # for arg in args:
-    #   print('arg: {}'.format(arg))
     activity = m.Activity # dict((comp, getattr(m, f"{comp.name}_production")) for comp in m.Components)
     state_args = {'valued': False}
     total = self._compute_cashflows(m.Components, activity, m.Times, meta,

@@ -14,7 +14,7 @@ from ValuedParamHandler import ValuedParamHandler
 import _utils as hutils
 framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)
-from utils import InputData, xmlUtils,InputTypes
+from ravenframework.utils import InputData, xmlUtils,InputTypes
 
 
 class CashFlowUser:

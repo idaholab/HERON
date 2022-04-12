@@ -4,11 +4,11 @@
 """
   utilities for use within heron
 """
-import os
 import sys
 import importlib
 import xml.etree.ElementTree as ET
 import warnings
+from os import path
 
 
 def get_heron_loc():
@@ -17,7 +17,7 @@ def get_heron_loc():
     @ In, None
     @ Out, loc, string, absolute location of HERON
   """
-  return os.path.abspath(os.path.join(__file__, '..', '..'))
+  return path.abspath(path.join(__file__, '..', '..'))
 
 def get_raven_loc():
   """
@@ -26,12 +26,18 @@ def get_raven_loc():
     @ In, None
     @ Out, loc, string, absolute location of RAVEN
   """
-  config = os.path.abspath(os.path.join(os.path.dirname(__file__),'..','.ravenconfig.xml'))
-  if not os.path.isfile(config):
-    raise IOError('HERON config file not found at "{}"! Has HERON been installed as a plugin in a RAVEN installation?'
-                  .format(config))
-  loc = ET.parse(config).getroot().find('FrameworkLocation').text
-  return loc
+  config = path.abspath(path.join(path.dirname(__file__),'..','.ravenconfig.xml'))
+  if not path.isfile(config):
+    raise IOError(
+        f'HERON config file not found at "{config}"! Has HERON been installed as a plugin in a RAVEN installation?'
+    )
+  loc = ET.parse(config).getroot().find('FrameworkLocation')
+  assert loc is not None and loc.text is not None
+  # The addition of ravenframework as an installable package requires
+  # adding the raven directory to the PYTHONPATH instead of adding
+  # ravenframework. We will expect '.ravenconfig.xml' to point to
+  # raven/ravenframework always, so this is why we grab the parent dir.
+  return path.abspath(path.dirname(loc.text))
 
 def get_cashflow_loc(raven_path=None):
   """
@@ -41,7 +47,7 @@ def get_cashflow_loc(raven_path=None):
   """
   if raven_path is None:
     raven_path = get_raven_loc()
-  plugin_handler_dir = os.path.join(raven_path, '..', 'scripts')
+  plugin_handler_dir = path.join(raven_path, '..', 'scripts')
   sys.path.append(plugin_handler_dir)
   plugin_handler = importlib.import_module('plugin_handler')
   sys.path.pop()
@@ -91,7 +97,7 @@ def get_synthhist_structure(fpath):
   # TODO could this be a function of the ROM itself?
   # TODO or could we interrogate the ROM directly instead of the XML?
   raven_loc = get_raven_loc()
-  scripts_path = os.path.join(raven_loc, '..', 'scripts')
+  scripts_path = path.join(raven_loc, '..', 'scripts')
   sys.path.append(scripts_path)
   from externalROMloader import ravenROMexternal as ravenROM
   # Why should we get warnings from RAVEN when we are just trying to write an input file.

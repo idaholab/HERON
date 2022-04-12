@@ -17,7 +17,7 @@ import _utils as hutils
 
 framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)
-from utils import InputData, xmlUtils,InputTypes
+from ravenframework.utils import InputData, xmlUtils,InputTypes
 
 # TODO can we use EntityFactory from RAVEN?
 def factory(xml, method='sweep'):

@@ -17,7 +17,7 @@ import numpy as np
 import pyomo.environ as pyo
 from pyomo.opt import SolverStatus, TerminationCondition
 
-from utils import InputData, InputTypes
+from ravenframework.utils import InputData, InputTypes
 
 # allows pyomo to solve on threaded processes
 import pyutilib.subprocess.GlobalData

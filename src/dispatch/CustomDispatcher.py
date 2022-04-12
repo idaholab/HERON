@@ -8,7 +8,7 @@ import os
 import inspect
 import numpy as np
 
-from utils import utils, InputData, InputTypes
+from ravenframework.utils import utils, InputData, InputTypes
 from .Dispatcher import Dispatcher
 from .DispatchState import NumpyState
 

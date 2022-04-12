@@ -25,7 +25,7 @@ from validators.Factory import get_class as get_validator
 import _utils as hutils
 framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)
-from utils import InputData, InputTypes, xmlUtils
+from ravenframework.utils import InputData, InputTypes, xmlUtils
 
 class Case(Base):
   """
@@ -677,7 +677,7 @@ class Case(Base):
     template_name = 'template_driver'
     # import template module
     sys.path.append(heron_dir)
-    module = importlib.import_module('templates.{}'.format(template_name))
+    module = importlib.import_module('templates.{}'.format(template_name), package="HERON")
     # load template, perform actions
     template_class = module.Template(messageHandler=self.messageHandler)
     template_class.loadTemplate(template_dir)

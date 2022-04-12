@@ -15,7 +15,7 @@ import ValuedParams
 import _utils as hutils
 raven_path = hutils.get_raven_loc()
 sys.path.append(raven_path)
-from utils import xmlUtils
+from ravenframework.utils import xmlUtils
 sys.path.pop()
 
 

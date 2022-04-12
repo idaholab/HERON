@@ -21,7 +21,7 @@ import _utils as hutils
 sys.path.pop()
 
 # get raven location
-RAVEN_LOC = hutils.get_raven_loc()
+RAVEN_LOC = os.path.abspath(os.path.join(hutils.get_raven_loc(), "ravenframework"))
 CF_LOC = hutils.get_cashflow_loc(raven_path=RAVEN_LOC)
 if CF_LOC is None:
   raise RuntimeError('TEAL has not been found!\n' +
@@ -33,8 +33,8 @@ from TEAL.src import CashFlows
 sys.path.pop()
 
 sys.path.append(os.path.join(RAVEN_LOC, '..'))
-from utils import xmlUtils
-from InputTemplates.TemplateBaseClass import Template as TemplateBase
+from ravenframework.utils import xmlUtils
+from ravenframework.InputTemplates.TemplateBaseClass import Template as TemplateBase
 sys.path.pop()
 
 class Template(TemplateBase, Base):

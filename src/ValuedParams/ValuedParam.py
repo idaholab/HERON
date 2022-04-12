@@ -10,8 +10,8 @@ import sys
 import _utils as hutils
 framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)
-from utils import InputData, InputTypes
-from BaseClasses import MessageUser
+from ravenframework.utils import InputData, InputTypes
+from ravenframework.BaseClasses import MessageUser
 
 # class for potentially dynamically-evaluated quantities
 class ValuedParam(MessageUser):

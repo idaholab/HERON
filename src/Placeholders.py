@@ -14,10 +14,10 @@ from base import Base
 
 FRAMEWORK_PATH = hutils.get_raven_loc()
 sys.path.append(FRAMEWORK_PATH)
-from utils import InputData, InputTypes, utils, xmlUtils
+from ravenframework.utils import InputData, InputTypes, utils, xmlUtils
 sys.path.pop()
 
-sys.path.append(os.path.join(FRAMEWORK_PATH, os.pardir, 'scripts'))
+sys.path.append(os.path.join(FRAMEWORK_PATH, 'scripts'))
 from externalROMloader import ravenROMexternal
 sys.path.pop()
 

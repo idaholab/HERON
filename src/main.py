@@ -4,18 +4,15 @@
 """
   Runs HERON.
 """
-
-
 import os
 import sys
 import argparse
 import input_loader
 from base import Base
 import _utils as hutils
-raven_path = os.path.abspath(os.path.join(hutils.get_raven_loc(), '..')) #os.path.dirname(__file__)#'~/projects/raven/raven_framework'
-sys.path.append(raven_path)
-from MessageHandler import MessageHandler
-sys.path.pop()
+
+sys.path.append(hutils.get_raven_loc())
+from ravenframework.MessageHandler import MessageHandler
 
 
 class HERON(Base):

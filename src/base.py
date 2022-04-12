@@ -10,7 +10,7 @@ import sys
 import _utils as hutils
 raven_path = hutils.get_raven_loc()
 sys.path.append(os.path.expanduser(raven_path))
-from BaseClasses import MessageUser
+from ravenframework.BaseClasses import MessageUser
 
 
 class Base(MessageUser):

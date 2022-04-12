@@ -19,6 +19,9 @@ import Placeholders
 from dispatch.Factory import known as known_dispatchers
 from dispatch.Factory import get_class as get_dispatcher
 
+from ValuedParams import factory as vp_factory
+from ValuedParamHandler import ValuedParamHandler
+
 from validators.Factory import known as known_validators
 from validators.Factory import get_class as get_validator
 
@@ -266,6 +269,24 @@ class Case(Base):
     optimizer.addSub(type_sub)
     input_specs.addSub(optimizer)
 
+    # Add magic variables that will be passed to the outer and inner.
+    dispatch_vars = InputData.parameterInputFactory(
+        'dispatch_vars',
+        descr=r"This node defines a set containing additional variables"
+        "to sample that are not associated with a specific component."
+    )
+    value_param = vp_factory.make_input_specs(
+        'variable',
+        descr=r"This node defines the single additional dispatch variable used in the case."
+    )
+    value_param.addParam(
+        'name',
+        param_type=InputTypes.StringType,
+        descr=r"The unique name of the dispatch variable."
+    )
+    dispatch_vars.addSub(value_param)
+    input_specs.addSub(dispatch_vars)
+
     return input_specs
 
   def __init__(self, run_dir, **kwargs):
@@ -285,6 +306,7 @@ class Case(Base):
     self.dispatcher = None      # type of dispatcher to use
     self.validator_name = None  # name of dispatch validation to use
     self.validator = None       # type of dispatch validation to use
+    self.dispatch_vars = {}     # non-component optimization ValuedParams
 
     self.outerParallel = 0     # number of outer parallel runs to use
     self.innerParallel = 0     # number of inner parallel runs to use
@@ -367,6 +389,12 @@ class Case(Base):
         self.validator.read_input(vld)
       elif item.getName() == 'optimization_settings':
         self._optimization_settings = self._read_optimization_settings(item)
+      elif item.getName() == 'dispatch_vars':
+        for node in item.subparts:
+          var_name = node.parameterValues['name']
+          vp = ValuedParamHandler(var_name)
+          vp.read(var_name, node, self.get_mode())
+          self.dispatch_vars[var_name] = vp
 
     # checks
     if self._mode is None:
@@ -648,6 +676,14 @@ class Case(Base):
       @ Out, hist_len, int, length of inner histories
     """
     return self._hist_len
+
+  def get_dispatch_var(self, name):
+    """
+      Accessor
+      @ In, name, str, the name of the dispatch_var
+      @ Out, dispatch_var, ValuedParamHandler, a ValuedParam object.
+    """
+    return self.dispatch_vars[name]
 
   #### API ####
   def write_workflows(self, components, sources, loc):

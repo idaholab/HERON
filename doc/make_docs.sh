@@ -36,7 +36,7 @@ fi
 # load raven libraries
 if [[ 1 -eq $VERB ]]; then echo Loading RAVEN libraries ...; fi
 SRC_DIR=`dirname $SCRIPT_DIR`/src
-RAVEN_DIR=$(dirname $(python $SRC_DIR/_utils.py get_raven_loc))
+RAVEN_DIR=$(python $SRC_DIR/_utils.py get_raven_loc)
 source $RAVEN_DIR/scripts/establish_conda_env.sh --load --quiet
 
 
@@ -86,6 +86,7 @@ for DIR in user_manual; do
     if [[ 0 -eq $MADE ]]; then
         echo .. ... successfully made docs in $DIR
         cp pdf/*pdf ../pdfs
+        rm -rf build pdf
     else
         echo ... ... failed to make docs in $DIR
         exit -1

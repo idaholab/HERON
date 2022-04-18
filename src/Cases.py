@@ -260,10 +260,11 @@ class Case(Base):
                             \begin{itemize}
                               \item when metric is ``expectedValue,'' ``minimum,'' ``maximum,''
                               ``median,'' ``percentile,'' ``sharpeRatio,'' ``sortinoRatio,''
-                              ``gainLossRatio'' \default{max}}}
+                              ``gainLossRatio'' \default{max}
                               \item when metric is ``variance,'' ``sigma,'' ``variationCoefficient,''
                               ``skewness,'' ``kurtosis,'' ``expectedShortfall,'' ``valueAtRisk''
-                              \default{min}"""
+                              \default{min}
+                            \end{itemize}"""
     type_sub = InputData.parameterInputFactory('type', contentType=type_options, strictMode=True,
                                                descr=desc_type_options)
     optimizer.addSub(type_sub)

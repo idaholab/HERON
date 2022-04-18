@@ -26,7 +26,7 @@ rm -Rvf sqa_built_documents > /dev/null
 mkdir sqa_built_documents > /dev/null
 # load raven libraries; use utils to do this.
 RAVEN_PATH=$(python $(pwd)/../../src/_utils.py get_raven_loc)
-source $RAVEN_PATH/../scripts/establish_conda_env.sh --load --quiet
+source $RAVEN_PATH/scripts/establish_conda_env.sh --load --quiet
 
 # add custom, collective inputs to TEXINPUTS
 #

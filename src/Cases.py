@@ -338,7 +338,7 @@ class Case(Base):
     }
 
     self.data_handling = {     # data handling options
-      'inner_outer_data': 'netcdf', # how to pass inner data to outer (csv, netcdf)
+      'inner_to_outer': 'netcdf', # how to pass inner data to outer (csv, netcdf)
     }
 
     self._time_discretization = None # (start, end, number) for constructing time discretization, same as argument to np.linspace

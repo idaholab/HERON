@@ -436,6 +436,13 @@ class Template(TemplateBase, Base):
     if case.debug['enabled']:
       raven.find('outputDatabase').text = 'disp_full'
 
+    # data handling: inner to outer data format
+    if case.data_handling['inner_to_outer'] == 'csv':
+      # swap the outputDatabase to outputExportOutStreams
+      output_node = template.find('Models').find('Code').find('outputDatabase')
+      output_node.tag = 'outputExportOutStreams'
+      # no need to change name, as database and outstream have the same name
+
 
   def _modify_outer_outstreams(self, template, case, components, sources):
     """
@@ -684,6 +691,7 @@ class Template(TemplateBase, Base):
     self._modify_inner_caselabels(template, case)
     self._modify_inner_time_vars(template, case)
     self._modify_inner_optimization_settings(template, case)
+    self._modify_inner_data_handling(template, case)
     if case.debug['enabled']:
       self._modify_inner_debug(template, case, components)
     # TODO modify based on resources ... should only need if units produce multiple things, right?
@@ -936,6 +944,24 @@ class Template(TemplateBase, Base):
             if str(int(case._optimization_settings['metric']['percent'])) not in ['5', '95']:
               # update attribute
               subnode.attrib['percent'] = str(case._optimization_settings['metric']['percent'])
+
+  def _modify_inner_data_handling(self, template, case):
+    """
+      Modifies template to include data handling options
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ Out, None
+    """
+    # inner to outer
+    ## default is netCDF, and is how the templates are already set up
+    if case.data_handling['inner_to_outer'] == 'csv':
+      # change the output IOStep outstream to do CSV instead of database
+      print(
+      template.find('Steps').find(".//IOStep[@name='database']")
+      )
+      db = template.find('Steps').find('.//IOStep[@name="database"]').find('.//Output[@class="Databases"]')
+      db.attrib.update({'class': 'OutStreams', 'type': 'Print'})
+      # the database and outstream print have the same name, so don't need to change text of node
 
 
   ##### CASHFLOW #####

@@ -140,6 +140,14 @@ class Case(Base):
     # TODO HPC?
     input_specs.addSub(parallel)
 
+    data_handling = InputData.parameterInputFactory('data_handling', descr=r"""Provides options for data handling within HERON operations.""")
+    inner_outer_data = InputTypes.makeEnumType('InnerOuterData', 'InnerOuterDataType', ['csv', 'netcdf'])
+    data_handling.addSub(InputData.parameterInputFactory('inner_to_outer', contentType=inner_outer_data,
+        descr=r"""which type of data format to transfer results from inner (stochastic dispatch optimization) runs to
+                  the outer (capacity and meta-variable optimization) run. CSV is generally slower and not recommended,
+                  but may be useful for debugging. NetCDF is more generally more efficient. \default{netcdf}"""))
+    input_specs.addSub(data_handling)
+
     input_specs.addSub(InputData.parameterInputFactory('num_arma_samples', contentType=InputTypes.IntegerType,
                                                        descr=r"""provides the number of synthetic histories that should
                                                        be considered per system configuration in order to obtain a
@@ -260,10 +268,11 @@ class Case(Base):
                             \begin{itemize}
                               \item when metric is ``expectedValue,'' ``minimum,'' ``maximum,''
                               ``median,'' ``percentile,'' ``sharpeRatio,'' ``sortinoRatio,''
-                              ``gainLossRatio'' \default{max}}}
+                              ``gainLossRatio'' \default{max}
                               \item when metric is ``variance,'' ``sigma,'' ``variationCoefficient,''
                               ``skewness,'' ``kurtosis,'' ``expectedShortfall,'' ``valueAtRisk''
-                              \default{min}"""
+                              \default{min}
+                            \end{itemize}"""
     type_sub = InputData.parameterInputFactory('type', contentType=type_options, strictMode=True,
                                                descr=desc_type_options)
     optimizer.addSub(type_sub)
@@ -326,6 +335,10 @@ class Case(Base):
         'inner_samples': 1,       # how many inner realizations to sample
         'macro_steps': 1,         # how many "years" for inner realizations
         'dispatch_plot': True     # whether to output a plot in debug mode
+    }
+
+    self.data_handling = {     # data handling options
+      'inner_to_outer': 'netcdf', # how to pass inner data to outer (csv, netcdf)
     }
 
     self._time_discretization = None # (start, end, number) for constructing time discretization, same as argument to np.linspace
@@ -395,6 +408,8 @@ class Case(Base):
           vp = ValuedParamHandler(var_name)
           vp.read(var_name, node, self.get_mode())
           self.dispatch_vars[var_name] = vp
+      elif item.getName() == 'data_handling':
+        self.data_handling = self._read_data_handling(item)
 
     # checks
     if self._mode is None:
@@ -417,6 +432,23 @@ class Case(Base):
     self.dispatcher.set_validator(self.validator)
 
     self.raiseADebug('Successfully initialized Case {}.'.format(self.name))
+
+  def _read_data_handling(self, node):
+    """
+      Reads the data handling node.
+      @ In, node, InputParams.ParameterInput, data handling head node
+      @ Out, settings, dict, options for data handling
+    """
+    settings = {}
+    # read settings
+    for sub in node.subparts:
+      name = sub.getName()
+      if name == 'inner_to_outer':
+        settings['inner_to_outer'] = sub.value
+    # set defaults
+    if 'inner_to_outer' not in settings:
+      settings['inner_to_outer'] = 'netcdf'
+    return settings
 
   def _read_time_discr(self, node):
     """

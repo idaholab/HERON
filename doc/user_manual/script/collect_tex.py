@@ -44,7 +44,7 @@ def create(module, contents):
     @ Out, None
   """
   out_name = '{}.tex'.format(module)
-  intro_name = '{}_intro.tex'.format(module)
+  intro_name = '{}_intro.tex'.format(module.lower())
   intro_file = os.path.join(src_path, intro_name)
   if os.path.isfile(intro_file):
     intro = read(intro_file)

@@ -35,6 +35,9 @@
       <metric>valueAtRisk</metric>
       <type>min</type>
     </optimization_settings>
+    <data_handling>
+      <inner_to_outer>csv</inner_to_outer>
+    </data_handling>
   </Case>
 
   <Components>

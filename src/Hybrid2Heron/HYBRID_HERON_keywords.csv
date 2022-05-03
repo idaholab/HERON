@@ -1,0 +1,29 @@
+﻿HYBRID Keyword,HERON (Node or Parameter),HERON Node,HERON Subnode,HERON Subsubnode,Belong_to_same_node,Required if HYBRID keyword?,Default value for the required variable,Description
+Activity,N,CashFlow,driver,activity,3,VOM,electricity,The activity indicates that this value will be taken from the dispatched activity of this component and the activity is the main driver for this cashflow
+Amortization_lifetime,N,CashFlow,depreciate,,"1,2,3",,,The lifetime over which the the cost of the assets is reduced
+capex,N,CashFlow,reference_price,fixed_value,1,,,The Capital Expenditures cash flow reference price fixed value
+capex_inflation,P,CashFlow,inflation,,1,capex,none,Determines how inflation affects the Capital Expenditures cash flow every cycle 
+capex_multi_target,P,CashFlow,mult_target,,1,capex,FALSE,Indicates whether this parameter (Capital Expenditures cash flow) should be a target of the multiplication factor for Net Present Value matching analyses. 
+capex_name,P,CashFlow,name,,1,capex,capex,The name of this cashflow
+capex_period,P,CashFlow,period,,1,,,The period for a cash flow with the type ’repeating’ indicates whether the CashFlow repeats every time step (’hour’) or every cycle (’year’))
+capex_taxable,P,CashFlow,taxable,,1,capex,TRUE,Determines whether the Capital Expenditures cash flow is taxed every cycle
+capex_type,P,CashFlow,type,,1,capex,one-time,The type of the Capital Expenditures cash flow. The one- time type is suitable for capital expenditure cash flows
+Economies_of_scale,N,CashFlow,scaling_factor_x,fixed_value,"1,2",,,Determines the scaling factor for this CashFlow. Corresponds to X in the CashFlow equation 
+FOM,N,CashFlow,reference_price,fixed_value,2,,,The fixed operation and maintenance cash flow reference price fixed value
+FOM_inflation,P,CashFlow,inflation,,2,FOM,none,Determines how inflation affects the fixed operation and maintenance cash flow every cycle 
+FOM_multi_target,P,CashFlow,mult_target,,2,FOM,FALSE,Indicates whether this parameter (fixed operation and maintenance cash flow) should be a target of the multiplication factor for Net Present Value matching analyses. 
+FOM_name,P,CashFlow,name,,2,FOM,FOM,The name of this cashflow
+FOM_period,P,CashFlow,period,,2,,,The period for a cash flow with the type ’repeating’ indicates whether the CashFlow repeats every time step (’hour’) or every cycle (’year’))
+FOM_taxable,P,CashFlow,taxable,,2,FOM,TRUE,Determines whether the fixed operation and maintenance cash flow is taxed every cycle
+FOM_type,P,CashFlow,type,,2,FOM,repeating,The type of the fixed operation and maintenance cash flow. The repeating type is suitable for repeating costs such as operations and maintenance (fixed or variable)
+Lifetime,N,lifetime,,,0,,,The number of cycles (often years) this unit is ex- pected to operate before replacement. 
+reference_size,N,CashFlow,reference_driver,fixed_value,"1,2,3",,,The reference driver determines the number of units sold to which the reference price refers. 
+FOM_variable,N,CashFlow,driver,variable,2,FOM,source_capacity,The variable is the name of the variable from innter RAVEN variables and this variable is the main driver for this cashflow
+capex_variable,N,CashFlow,driver,variable,1,capex,source_capacity,The variable is the name of the variable from innter RAVEN variables and this variable is the main driver for this cashflow
+VOM,N,CashFlow,reference_price,fixed_value,3,,,The variable operation and maintenance cash flow reference price fixed value
+VOM_inflation,P,CashFlow,inflation,,3,VOM,none,Determines how inflation affects the variable operation and maintenance cash flow every cycle 
+VOM_multi_target,P,CashFlow,mult_target,,3,VOM,FALSE,Indicates whether this parameter (variable operation and maintenance cash flow) should be a target of the multiplication factor for Net Present Value matching analyses. 
+VOM_name,P,CashFlow,name,,3,VOM,VOM,The name of this cashflow
+VOM_period,P,CashFlow,period,,3,,,The period for a cash flow with the type ’repeating’ indicates whether the CashFlow repeats every time step (’hour’) or every cycle (’year’))
+VOM_taxable,P,CashFlow,taxable,,3,VOM,TRUE,Determines whether the variable operation and maintenance cash flow is taxed every cycle
+VOM_type,P,CashFlow,type,,3,VOM,repeating,The type of the variable operation and maintenance cash flow. The repeating type is suitable for repeating costs such as operations and maintenance (fixed or variable) 

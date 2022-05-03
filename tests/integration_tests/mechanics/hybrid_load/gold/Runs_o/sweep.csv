@@ -1,0 +1,3 @@
+source_capacity,sink_capacity,mean_NPV,std_NPV,med_NPV,max_NPV,min_NPV,perc_5_NPV,perc_95_NPV,samp_NPV,var_NPV,prefix,ProbabilityWeight-source_capacity,PointProbability,ProbabilityWeight
+1.0,-2.0,2571356875.96,0.0,2571356875.96,2571356875.96,2571356875.96,2571356875.96,2571356875.96,3.0,0.0,1,0.5,1.0,0.5
+2.0,-2.0,4984780267.38,0.0,4984780267.38,4984780267.38,4984780267.38,4984780267.38,4984780267.38,3.0,0.0,2,0.5,1.0,0.5

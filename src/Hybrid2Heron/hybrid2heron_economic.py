@@ -42,7 +42,7 @@ def relevant_info_from_hybrid(filepath):
   """
     Extracts the HYBRID keywords, corresponding values and comments.
     @ In, filepath, string, the path of the HYBRID text file that contains the component economic information
-    @ Out, all_hybrid_info, the relevant information from the HYBRID text files which includes: variables and their values and comments plus warning messages if necessary
+    @ Out, all_hybrid_info, dict, the relevant information from the HYBRID text files which includes: variables and their values and comments plus warning messages if necessary
   """
   hybrid_vars, hybrid_values, hybrid_comments = [], [], []
   with open(filepath, encoding="utf8") as f:
@@ -223,7 +223,7 @@ def heron_node_from_hybrid(economics_node, hybrid_var_list, value_list, comments
 
 
   except IndexError:
-    ...
+    pass
 
   return economics_node
 

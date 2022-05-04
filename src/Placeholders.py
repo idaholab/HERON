@@ -275,7 +275,7 @@ class Function(Placeholder):
     """
     self.__dict__ = d
     self._module = None
-    self._module_methods = {​​​​​​​​}​​​​​​​​
+    self._module_methods = {}
     target_dir = os.path.dirname(os.path.abspath(self._target_file))
     if target_dir not in sys.path:
       sys.path.append(target_dir)

@@ -8,6 +8,6 @@ Lifetime = 20 #years
 	reference_size = 7.4 #kg/s of Hydrogen
 	Economies_of_scale = 0.955
 	Amortization_lifetime= 15 #years
-  Activity = a
+	Activity = a
 
 

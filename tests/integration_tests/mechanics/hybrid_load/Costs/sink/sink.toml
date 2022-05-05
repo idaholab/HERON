@@ -3,6 +3,6 @@ Lifetime = 30 #years
 
 	[sink.Economics]
 	VOM = 0 # Just a placeholder to make sure it passes through
-  Activity = a
+	Activity = a
 
 

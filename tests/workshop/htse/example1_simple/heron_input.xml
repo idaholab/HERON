@@ -12,9 +12,9 @@
   <Case name="1_simple">
     <mode>opt</mode>
     <num_arma_samples>20</num_arma_samples>
-    <parallel>
-      <inner>2</inner>
-    </parallel>
+    <!-- <parallel>
+        <inner>2</inner>
+      </parallel> -->
     <time_discretization>
       <year_variable>YEAR</year_variable>
       <time_variable>HOUR</time_variable>

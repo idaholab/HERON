@@ -269,7 +269,7 @@ class Template(TemplateBase, Base):
     # Add component opt vars
     for comp in components:
       comp_cap_type = comp.get_capacity(None, raw=True).type
-      if comp_cap_type  not in ['Function', 'ARMA']:
+      if comp_cap_type  not in ['Function', 'ARMA', 'SyntheticHistory']:
         var_list.append(f'{comp.name}_capacity')
 
     # Add dispatch opt vars

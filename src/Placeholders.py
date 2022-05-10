@@ -264,7 +264,7 @@ class Function(Placeholder):
       @ Out, d, dict, object contents
     """
     # d = super(self, __getstate__) TODO only if super has one ...
-    d = copy.deepcopy(dict((k, v) for k, v in self.__dict__.items() if k not in ['_module']))
+    d = copy.deepcopy(dict((k, v) for k, v in self.__dict__.items() if k not in ['_module','_module_methods']))
     return d
 
   def __setstate__(self, d):
@@ -274,6 +274,11 @@ class Function(Placeholder):
       @ Out, None
     """
     self.__dict__ = d
+    self._module = None
+    self._module_methods = {}
+    target_dir = os.path.dirname(os.path.abspath(self._target_file))
+    if target_dir not in sys.path:
+      sys.path.append(target_dir)
     load_string, _ = utils.identifyIfExternalModelExists(self, self._target_file, '')
     module = utils.importFromPath(load_string, True)
     if not module:

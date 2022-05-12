@@ -67,8 +67,7 @@ def parse(xml, loc, messageHandler):
   for sub_xml in sources_node:
     typ = sub_xml.tag
     if typ == 'CSV':
-      raise NotImplementedError('Not taking histories from CSV yet. If needed, let me know.')
-      # new = Placeholders.CSV(messageHandler=messageHandler)
+      new = Placeholders.CSV(loc=loc, messageHandler=messageHandler)
     elif typ == 'ARMA':
       new = Placeholders.ARMA(loc=loc, messageHandler=messageHandler)
     elif typ == 'Function':

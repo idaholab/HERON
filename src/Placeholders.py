@@ -119,7 +119,7 @@ class Placeholder(Base):
       @ Out, is_type, bool, True if matching request
     """
     # maybe it's not anything we know about
-    if typ not in ['ARMA', 'Function', 'ROM']:
+    if typ not in ['ARMA', 'Function', 'ROM', 'CSV']:
       return False
     return eval('isinstance(self, {})'.format(typ))
 
@@ -392,42 +392,67 @@ class ROM(Placeholder):
     return result
 
 
-
-
-class Resampling_time(Placeholder):
+class CSV(Placeholder):
   """
-    Placeholder for signals coming from the ARMA
-    FIXME Probably note used any more, and should be removed.
+  Placeholder for values taken from a comma-separated file.
   """
+
   @classmethod
   def get_input_specs(cls):
     """
-      Collects input specifications for this class.
-      @ In, None
-      @ Out, specs, InputData, specs
+    Collects input specifications for this class.
+    @ In, None
+    @ Out, specs, InputData, specs
     """
-    specs = InputData.parameterInputFactory('Resampling_time', contentType=InputTypes.StringType, ordered=False, baseNode=None)
+    specs = InputData.parameterInputFactory(
+      "CSV",
+      contentType=InputTypes.StringType,
+      ordered=False,
+      baseNode=None,
+      descr="""TODO: FILL THIS IN""",
+    )
+
+    specs.addParam(
+      "name",
+      param_type=InputTypes.StringType,
+      required=True,
+      descr="""TODO: FILL THIS IN""",
+    )
+
+    specs.addParam(
+      'variable',
+      param_type=InputTypes.StringListType,
+      required=True,
+      descr="""TODO: FILL THIS IN""",
+    )
     return specs
 
   def __init__(self, **kwargs):
     """
-      Constructor.
-      @ In, kwargs, dict, passthrough arguments
-      @ Out, None
+    Constructor
+    @ In, kwargs, dict, passthrough args
+    @ Out, None
     """
-    Placeholder.__init__(self, **kwargs)
-    self._type = 'Resampling_time'
+    super().__init__(**kwargs)
+    self._type = 'CSV'
+    self._data = None
+    self.eval_mode = "full"
+    self.needs_multiyear = 1
+    self.limit_interp = 1
 
   def read_input(self, xml):
     """
-      Sets settings from input file
-      @ In, xml, xml.etree.ElementTree.Element, input from user
-      @ Out, None
+    Sets settings from input file.
+    @ In, xml, xml.etree.ElementTree.Element, input from user.
+    @ Out, None
     """
-    specs = Placeholder.read_input(self, xml)
+    specs = super().read_input(xml)
     self._var_names = specs.parameterValues['variable']
-
-
-
-
-
+    with open(self._target_file, 'r', encoding='utf-8-sig') as f:
+      headers = list(s.strip() for s in f.readline().split(','))
+    for var in self._var_names:
+      if var not in headers:
+        self.raiseAnError(
+          KeyError,
+          f'Variable {var} requested for "{self.name}" but not found in "{self._target_file}! Found: {headers}'
+        )

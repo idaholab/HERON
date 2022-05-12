@@ -531,12 +531,30 @@ class DispatchRunner:
       @ Out, all_structure, dict, structure (multiyear, cluster/segments, etc) specifications
     """
     all_structure = {'details': {}, 'summary': {}}
+    found = False
+    assert self._sources is not None
     for source in self._sources:
-      # only need ARMA information, not Functions
-      if not source.is_type('ARMA'):
-        continue
-      structure = hutils.get_synthhist_structure(source._target_file)
-      all_structure['details'][source] = structure
+      if source.is_type("ARMA"):
+        structure = hutils.get_synthhist_structure(source._target_file)
+        all_structure["details"][source] = structure
+        found = True
+        break
+
+    assert self._case is not None
+    if not found:
+      for source in self._sources:
+        if source.is_type("CSV"):
+          structure = hutils.get_csv_structure(
+              source._target_file,
+              self._case._get_year_name(),
+              self._case.get_time_name()
+          )
+          all_structure['details'][source] = structure
+          found = True
+          break
+
+    if not found:
+      raise RuntimeError('No ARMA or CSV found in sources! Temporal mapping is missing.')
 
     # TODO check consistency between ROMs?
     # for now, just summarize what we found -> take it from the first source

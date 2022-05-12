@@ -277,7 +277,7 @@ class Case(Base):
                                                descr=desc_type_options)
     optimizer.addSub(type_sub)
     persistenceSub = InputData.parameterInputFactory('persistence',contentType=InputTypes.IntegerType,
-                                                      decr=r"""provides the number of consecutive times convergence should be reached before a trajectory
+                                                      descr=r"""provides the number of consecutive times convergence should be reached before a trajectory
                                                       is considered fully converged. This helps in preventing early false convergence.""" )
     optimizer.addSub(persistenceSub)
     input_specs.addSub(optimizer)

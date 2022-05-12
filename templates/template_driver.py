@@ -591,7 +591,7 @@ class Template(TemplateBase, Base):
       convergence = opt_node.find('convergence')
       persistence_node = convergence.find('persistence')
       try:
-        persistence_node.text = case._optimization_settings['persistence']
+        persistence_node.text = str(case._optimization_settings['persistence'])
       except KeyError:
         # persistence was not provided, so use the default value
         pass

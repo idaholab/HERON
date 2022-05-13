@@ -276,6 +276,10 @@ class Case(Base):
     type_sub = InputData.parameterInputFactory('type', contentType=type_options, strictMode=True,
                                                descr=desc_type_options)
     optimizer.addSub(type_sub)
+    persistenceSub = InputData.parameterInputFactory('persistence',contentType=InputTypes.IntegerType,
+                                                      descr=r"""provides the number of consecutive times convergence should be reached before a trajectory
+                                                      is considered fully converged. This helps in preventing early false convergence.""" )
+    optimizer.addSub(persistenceSub)
     input_specs.addSub(optimizer)
 
     # Add magic variables that will be passed to the outer and inner.

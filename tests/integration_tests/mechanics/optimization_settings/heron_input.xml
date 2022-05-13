@@ -34,6 +34,7 @@
     <optimization_settings>
       <metric>valueAtRisk</metric>
       <type>min</type>
+      <persistence>5</persistence>
     </optimization_settings>
     <data_handling>
       <inner_to_outer>csv</inner_to_outer>

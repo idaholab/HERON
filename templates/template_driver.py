@@ -587,6 +587,14 @@ class Template(TemplateBase, Base):
         # type was not provided, so use the default value
         metric_raven_name = case._optimization_settings['metric']['name']
         type_node.text = case.optimization_metrics_mapping[metric_raven_name]['default']
+      # swap out convergence values (only persistence implemented now)
+      convergence = opt_node.find('convergence')
+      persistence_node = convergence.find('persistence')
+      try:
+        persistence_node.text = str(case._optimization_settings['persistence'])
+      except KeyError:
+        # persistence was not provided, so use the default value
+        pass
 
   def _modify_outer_steps(self, template, case, components, sources):
     """

@@ -100,6 +100,7 @@
         <Strict/>
       </acceptance>
       <convergence>
+        <persistence>1</persistence>
         <gradient>1e-4</gradient>
         <objective>1e-8</objective>
       </convergence>

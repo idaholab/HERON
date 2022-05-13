@@ -5,7 +5,7 @@
     <created>2020-10-16</created>
     <!--This file was modified by Botros Hanna on 2022-04-29 for the sake of testing-->
     <!--This original file is in HERON/tests/integration_tests/mechanics/cashflows-->
-      <!--You cannot run this file directly by HERON. You have to autoload it firstly using the python script: "hybrid2herin_economic.py"-->
+      <!--You cannot run this file directly by HERON. You have to autoload it firstly using the python script: "hybrid2heron_economic.py"-->
     <description>
       Tests various kinds of cashflows
     </description>

@@ -342,7 +342,7 @@ class Template(TemplateBase, Base):
     elif case.get_mode() == 'opt':
       self._remove_by_name(DOs, ['grid'])
     # update optimization settings if provided
-    if (case.get_mode() == 'opt') and (case._optimization_settings is not None) and (not case.debug['enabled']):
+    if (case.get_mode() == 'opt') and (case._optimization_settings is not None) and (not case.debug['enabled']):  # TODO there should be a better way to handle the debug case
       new_opt_objective = self._build_opt_metric_out_name(case)
       # check if the metric in 'opt_eval' needs to be changed
       opt_eval_output_node = DOs.find(".//PointSet[@name='opt_eval']").find('Output')
@@ -570,7 +570,7 @@ class Template(TemplateBase, Base):
     """
 
     # only modify if optimization_settings is in Case
-    if (case.get_mode() == 'opt') and (case._optimization_settings is not None) and (not case.debug['enabled']):
+    if (case.get_mode() == 'opt') and (case._optimization_settings is not None) and (not case.debug['enabled']):  # TODO there should be a better way to handle the debug case
       # TODO will the optimizer always be GradientDescent?
       opt_node = template.find('Optimizers').find(".//GradientDescent[@name='cap_opt']")
       new_opt_objective = self._build_opt_metric_out_name(case)

@@ -282,6 +282,22 @@ class Case(Base):
     optimizer.addSub(persistenceSub)
     input_specs.addSub(optimizer)
 
+    convergence = InputData.parameterInputFactory('convergence',
+                                                  descr=r"""defines the optimization convergence criteria.""")
+    gradient_sub = InputData.parameterInputFactory('gradient',
+                                                    descr=r"""termination criterion for the gradient
+                                                              \default{1e-4}""")
+    convergence.addSub(gradient_sub)
+    objective_sub = InputData.parameterInputFactory('objective',
+                                                    descr=r"""termination criterion for the objective function
+                                                              \default{1e-8}""")
+    convergence.addSub(objective_sub)
+    stepsize_sub = InputData.parameterInputFactory('stepSize',
+                                                    descr=r"""termination criterion for the design space step size""")
+    convergence.addSub(stepsize_sub)
+
+    optimizer.addSub(convergence)
+
     # Add magic variables that will be passed to the outer and inner.
     dispatch_vars = InputData.parameterInputFactory(
         'dispatch_vars',
@@ -506,7 +522,6 @@ class Case(Base):
       @ In, node, InputParams.ParameterInput, optimization settings head node
       @ Out, opt_settings, dict, optimization settings as dictionary
     """
-
     opt_settings = {}
     for sub in node.subparts:
       sub_name = sub.getName()
@@ -531,6 +546,10 @@ class Case(Base):
             opt_settings[sub_name]['threshold'] = sub.parameterValues['threshold']
           except KeyError:
             opt_settings[sub_name]['threshold'] = 0.05
+      elif sub_name == 'convergence':
+        opt_settings[sub_name] = {}
+        for ssub in sub.subparts:
+          opt_settings[sub_name][ssub.getName()] = ssub.value
       else:
         # add other information to opt_settings dictionary (type is only information implemented)
         opt_settings[sub_name] = sub.value

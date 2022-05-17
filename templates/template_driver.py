@@ -342,7 +342,7 @@ class Template(TemplateBase, Base):
     elif case.get_mode() == 'opt':
       self._remove_by_name(DOs, ['grid'])
     # update optimization settings if provided
-    if (case.get_mode() == 'opt') and (case._optimization_settings is not None):
+    if (case.get_mode() == 'opt') and (case._optimization_settings is not None) and (not case.debug['enabled']):  # TODO there should be a better way to handle the debug case
       new_opt_objective = self._build_opt_metric_out_name(case)
       # check if the metric in 'opt_eval' needs to be changed
       opt_eval_output_node = DOs.find(".//PointSet[@name='opt_eval']").find('Output')
@@ -570,7 +570,7 @@ class Template(TemplateBase, Base):
     """
 
     # only modify if optimization_settings is in Case
-    if (case.get_mode() == 'opt') and (case._optimization_settings is not None):
+    if (case.get_mode() == 'opt') and (case._optimization_settings is not None) and (not case.debug['enabled']):  # TODO there should be a better way to handle the debug case
       # TODO will the optimizer always be GradientDescent?
       opt_node = template.find('Optimizers').find(".//GradientDescent[@name='cap_opt']")
       new_opt_objective = self._build_opt_metric_out_name(case)
@@ -587,6 +587,7 @@ class Template(TemplateBase, Base):
         # type was not provided, so use the default value
         metric_raven_name = case._optimization_settings['metric']['name']
         type_node.text = case.optimization_metrics_mapping[metric_raven_name]['default']
+
       # swap out convergence values (only persistence implemented now)
       convergence = opt_node.find('convergence')
       persistence_node = convergence.find('persistence')
@@ -595,6 +596,15 @@ class Template(TemplateBase, Base):
       except KeyError:
         # persistence was not provided, so use the default value
         pass
+
+      # update convergence criteria, adding nodes as necessary
+      convergence_settings = case._optimization_settings.get('convergence', {})
+      for k, v in convergence_settings.items():
+        node = convergence.find(k)  # will return None if subnode is not found
+        if node is None:
+          convergence.append(ET.Element(k))
+          node = convergence.find(k)
+        node.text = v
 
   def _modify_outer_steps(self, template, case, components, sources):
     """

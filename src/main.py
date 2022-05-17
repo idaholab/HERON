@@ -10,6 +10,7 @@ import argparse
 import input_loader
 from base import Base
 import _utils as hutils
+from NetworkPlot import NetworkPlot
 
 sys.path.append(hutils.get_raven_loc())
 from ravenframework.MessageHandler import MessageHandler
@@ -77,6 +78,12 @@ class HERON(Base):
     for source in self._sources:
       source.print_me(tabs=tabs+1, tab=tab)
 
+  def plot_me(self):
+    if self._case.debug['enabled']:  # TODO do this every time?
+      graph = NetworkPlot(self._components)
+      # graph.save('graph.png')
+      graph.show()
+
   def create_raven_workflow(self, case=None):
     """
       Loads, modifies, and writes a RAVEN template workflow based on the Case.
@@ -97,6 +104,8 @@ if __name__ == '__main__':
   sim.read_input(args.xml_input_file) # TODO expand to use arguments?
   # print details
   sim.print_me()
+  print('***** Calling sim.plot_me()')
+  sim.plot_me()
   sim.create_raven_workflow()
   # TODO someday? sim.run()
 

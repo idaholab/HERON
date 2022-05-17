@@ -15,6 +15,12 @@
 
   <Case name="Opt_Runs">
     <mode>opt</mode>
+    <optimization_settings>
+      <convergence>
+        <gradient>1e-4</gradient>
+        <objective>1e-8</objective>
+      </convergence>
+    </optimization_settings>
     <num_arma_samples>3</num_arma_samples>
     <time_discretization>
       <time_variable>Time</time_variable>

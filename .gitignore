@@ -39,6 +39,7 @@ __pycache__
 *outer.xml
 *inner.xml
 *cash.xml
+*romMeta.xml
 /tests/integration_tests/ARMA/Sine/synthetic.*
 /tests/integration_tests/workflows/MOPED/*/*.csv
 /tests/*/**/write_inner.py

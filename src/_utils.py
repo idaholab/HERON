@@ -176,19 +176,12 @@ def get_csv_structure(fpath, macro_var, micro_var):
   # make light wrapper to treat as single cluster with all the data inside
   structure = {'clusters': {}}
   for year in years:
-    structure['clusters'][year]
-  # struct:    key: year:  [info for each cluster]
-  # -> year is 0
-  # -> one cluster, so list is length 1 with a single dictionary entry
-  structure = {
-    'clusters': {
-      0: [{
-        'id': 0,
-        'indices': ['0', str(data.shape[0])],
-        'represents': ['0'],
-      }]
-    }
-  }
+    structure['clusters'][year] = [{
+      'id': 0,
+      'indices': ['0', str(data.shape[0])],
+      'represents': ['0'],
+    }]
+  return structure
 
 
 

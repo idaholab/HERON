@@ -546,7 +546,7 @@ class DispatchRunner:
         if source.is_type("CSV"):
           structure = hutils.get_csv_structure(
               source._target_file,
-              self._case._get_year_name(),
+              self._case.get_year_name(),
               self._case.get_time_name()
           )
           all_structure['details'][source] = structure

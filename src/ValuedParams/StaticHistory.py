@@ -70,8 +70,7 @@ class StaticHistory(ValuedParam):
       @ Out, value, dict, dictionary of resulting evaluation as {vars: vals}
       @ Out, meta, dict, dictionary of meta (possibly changed during evaluation)
     """
-    if aliases is None:
-      aliases = {}
+    aliases = {} if aliases is None else aliases
     # set the outgoing name for the evaluation results
     key = self._var_name if not target_var else target_var
     # allow aliasing of complex variable names
@@ -81,16 +80,17 @@ class StaticHistory(ValuedParam):
     t = inputs['HERON']['time_index']
     try:
       value = inputs['HERON']['RAVEN_vars'][var_name][t]
-    except KeyError as e:
+    except KeyError:
       self.raiseAnError(
         RuntimeError,
         f'variable "{var_name}" was not found among the RAVEN variables!'
       )
-    except IndexError as e:
+    except IndexError:
       val = inputs['HERON']['RAVEN_vars'][var_name]
       self.raiseAnError(
         RuntimeError,
         f'Attempted to access variable "{var_name}" beyond the end of its length! ' +
         f'Requested index {t} but max index is {len(val)-1}'
       )
-    return {key: value}, inputs
+    else:
+      return {key: value}, inputs

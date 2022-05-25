@@ -82,7 +82,7 @@ class Component(Base, CashFlowUser):
       @ In, None
       @ Out, __repr__, string representation
     """
-    return '<HERON Component "{}"">'.format(self.name)
+    return '<HERON Component "{}">'.format(self.name)
 
   def read_input(self, xml, mode):
     """

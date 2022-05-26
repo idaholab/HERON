@@ -206,8 +206,10 @@ class ARMA(Placeholder):
       # if interpolated, needs more checking
       interp_years = structure['macro']['num']
       if interp_years >= project_life:
-        self.raiseADebug(f'"{self.name}" interpolates {interp_years} macro steps,' +
-                           f'and project life is {project_life}, so histories will be trunctated.')
+        self.raiseADebug(
+            f'"{self.name}" interpolates {interp_years} macro steps,' +
+            f'and project life is {project_life}, so histories will be trunctated.'
+        )
         self.limit_interp = project_life
       else:
         self.raiseAnError(

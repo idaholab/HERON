@@ -407,6 +407,8 @@ class Case(Base):
       elif item.getName() == 'economics':
         for sub in item.subparts:
           self._global_econ[sub.getName()] = sub.value
+          if self.debug['enabled'] and sub.getName() == "ProjectTime":
+            self._global_econ[sub.getName()] = self.debug['macro_steps']
       elif item.getName() == 'dispatcher':
         # instantiate a dispatcher object.
         inp = item.subparts[0]

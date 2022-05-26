@@ -21,6 +21,10 @@ if farm_loc is not None:
   import FARM
   from FARM.src.FARMValidatorsForHeron import FARM_Beta, FARM_Gamma_LTI, FARM_Gamma_FMU
 
+# for Paul to replicate the issue with "get_cashflow_loc"
+cashflow_path = os.path.abspath(os.path.join(hutils.get_cashflow_loc(raven_path=raven_path), '..'))
+print("\n ** cashflow_path =",cashflow_path,"\n")
+
 known = {
     'Example': Example,
     # ModelicaGoverner: TODO,

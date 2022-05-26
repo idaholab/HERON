@@ -47,14 +47,14 @@ def get_cashflow_loc(raven_path=None):
   """
   if raven_path is None:
     raven_path = get_raven_loc()
-  plugin_handler_dir = path.join(raven_path, 'scripts') 
+  plugin_handler_dir = path.join(raven_path, 'scripts')
   sys.path.append(plugin_handler_dir)
   plugin_handler = importlib.import_module('plugin_handler')
   sys.path.pop()
   cf_loc = plugin_handler.getPluginLocation('TEAL')
   return cf_loc
 
-def get_farm_loc(raven_path=None): # Added by Haoyu Wang, May 25, 2022
+def get_farm_loc(raven_path=None):
   """
     Get FARM location in installed RAVEN
     @ In, raven_path, string, optional, if given then start with this path

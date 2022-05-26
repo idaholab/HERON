@@ -47,7 +47,7 @@ def get_cashflow_loc(raven_path=None):
   """
   if raven_path is None:
     raven_path = get_raven_loc()
-  plugin_handler_dir = path.join(raven_path, '..', 'scripts') # Haoyu's note: the '..' needs to be removed
+  plugin_handler_dir = path.join(raven_path, 'scripts') 
   sys.path.append(plugin_handler_dir)
   plugin_handler = importlib.import_module('plugin_handler')
   sys.path.pop()
@@ -62,7 +62,6 @@ def get_farm_loc(raven_path=None): # Added by Haoyu Wang, May 25, 2022
   """
   if raven_path is None:
     raven_path = get_raven_loc()
-  # plugin_handler_dir = path.join(raven_path, '..', 'scripts')
   plugin_handler_dir = path.join(raven_path, 'scripts')
   sys.path.append(plugin_handler_dir)
   plugin_handler = importlib.import_module('plugin_handler')

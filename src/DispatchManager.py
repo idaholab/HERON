@@ -23,7 +23,7 @@ raven_path = hutils.get_raven_loc()
 sys.path.append(raven_path)
 sys.path.pop()
 
-cashflow_path = os.path.abspath(os.path.join(hutils.get_cashflow_loc(raven_path=raven_path), '..'))
+cashflow_path = os.path.abspath(hutils.get_cashflow_loc(raven_path=raven_path))
 sys.path.append(cashflow_path)
 import TEAL
 from TEAL.src import CashFlows

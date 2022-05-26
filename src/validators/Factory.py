@@ -13,9 +13,6 @@ raven_path = hutils.get_raven_loc()
 sys.path.append(raven_path)
 sys.path.pop()
 
-# for Paul to replicate the issue with "get_cashflow_loc". Line 17 of this file is identical to Line 26 of src/DispatchManager.py
-cashflow_path = os.path.abspath(os.path.join(hutils.get_cashflow_loc(raven_path=raven_path), '..'))
-print("\n ** cashflow_path =",cashflow_path,"\n")
 
 # set up path of farm
 farm_loc = hutils.get_farm_loc(raven_path=raven_path)

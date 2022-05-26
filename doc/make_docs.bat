@@ -25,14 +25,14 @@ pdflatex -interaction=nonstopmode HERON_user_manual.tex
 pdflatex -interaction=nonstopmode HERON_user_manual.tex
 cd ..
 ECHO moving user manual to pdf folder
-COPY /Y build\HERON_user_manual.pdf pdf\HERON_user_manual.pdf
-COPY /Y pdf\HERON_user_manual.pdf ..\pdfs\HERON_user_manual.pdf
+COPY /Y build\HERON_user_manual.pdf ..\pdfs\HERON_user_manual.pdf
 ECHO User manual build complete.
 ECHO Cleaning build
-RD /S/Q build pdf
+RD /S/Q build
 ECHO Done with user manual
 cd ..
 ECHO User manual can be found in %cd%\pdfs
+PAUSE
 
 ECHO Building Software Quality Assurance documents ...
 cd sqa

@@ -15,7 +15,7 @@ def electric_consume(data, meta):
     @ Out, meta, dict, additional info (possibly modified, possibly not)
   """
   activity = meta['HERON']['activity']
-  amount = -1 * activity['electricity']
+  amount = -1 * activity['production']['electricity']
   data = {'driver': amount}
   return data, meta
 
@@ -44,7 +44,7 @@ def electric_prod(data, meta):
     @ Out, meta, dict, additional info (possibly modified, possibly not)
   """
   activity = meta['HERON']['activity']
-  amount = 1 * activity['electricity']
+  amount = 1 * activity['production']['electricity']
   data = {'driver': amount}
   return data, meta
 

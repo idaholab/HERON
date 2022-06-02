@@ -1030,46 +1030,54 @@ class Template(TemplateBase, Base):
       @ Out, template, xml.etree.ElementTree.Element, modified template
     """
     for component in components:
-      subComp = xmlUtils.newNode('Component', attrib={'name': component.name}, text='')
+      subComp = xmlUtils.newNode("Component", attrib={"name": component.name}, text="")
       subEconomics = component.get_economics()
       Life_time = subEconomics._lifetime
       subComp.append(xmlUtils.newNode('Life_time', text=str(Life_time)))
-      cfs=xmlUtils.newNode('CashFlows')
-      for subCash in subEconomics._cash_flows:
-        driverName  = self.namingTemplates['cashfname'].format(component=subCash._component.name, cashname=subCash._driver.name)
-        driverType   = subCash._driver.type
 
-        inflation    = subCash._inflation
-        mult_target  = subCash._mult_target
-        name         = subCash.name
-        tax          = subCash._taxable
+      cfs = xmlUtils.newNode('CashFlows')
+      for subCash in subEconomics._cash_flows:
+        driver_name = self.namingTemplates['cashfname'].format(
+          component=subCash._component.name,
+          cashname=subCash._driver.name
+        )
+
+        name = subCash.name
+        tax = subCash._taxable
+        inflation = subCash._inflation
+        driver_type = subCash._driver.type
+        mult_target = subCash._mult_target
         depreciation = subCash._depreciate
+        cf_attr = {
+          "name": f"{name}",
+          "tax": tax,
+          "inflation": inflation,
+          "mult_target": mult_target
+        }
+
         if subCash._type == 'one-time':
-          cfNode =  xmlUtils.newNode('Capex', text='', attrib={'name':'{name}'.format(name = name),
-                                                                'tax':tax,
-                                                                'inflation': inflation,
-                                                                'mult_target': mult_target
-                                                                })
-          cfNode.append(xmlUtils.newNode('driver',text = driverName))
-          cfNode.append(xmlUtils.newNode('alpha',text = subCash._alpha.get_value()))
-          cfNode.append(xmlUtils.newNode('reference',text = subCash._reference.get_value()))
-          cfNode.append(xmlUtils.newNode('X',text = subCash._scale.get_value()))
+          cfNode =  xmlUtils.newNode("Capex", text="", attrib=cf_attr)
+          cfNode.append(xmlUtils.newNode("driver", text=driver_name))
+          try:
+            cfNode.append(xmlUtils.newNode("alpha", text=subCash._alpha.get_value()))
+            cfNode.append(xmlUtils.newNode("reference", text=subCash._reference.get_value()))
+            cfNode.append(xmlUtils.newNode("X", text=subCash._scale.get_value()))
+          except AttributeError:
+            cfNode.append(xmlUtils.newNode("alpha", text="-1.0"))
           if depreciation:
-            cfNode.append(xmlUtils.newNode('depreciation',attrib={'scheme':'MACRS'}, text = depreciation))
+            cfNode.append(xmlUtils.newNode('depreciation', attrib={'scheme': 'MACRS'}, text=depreciation))
           cfs.append(cfNode)
         else:
-          cfNode =  xmlUtils.newNode('Recurring', text='', attrib={'name':'{name}'.format(name = name),
-                                                                   'tax':tax,
-                                                                   'inflation': inflation,
-                                                                   'mult_target': mult_target
-                                                                    })
-          cfNode.append(xmlUtils.newNode('driver',
-          text = self.namingTemplates['re_cash'].format(period=subCash._period,
-                                                        driverType = driverType,
-                                                        driverName ='_{comp}_{name}'.format(comp = component.name ,name = name))))
-
-          cfNode.append(xmlUtils.newNode('alpha',text = '-1.0'))
+          cfNode = xmlUtils.newNode("Recurring", text="", attrib=cf_attr)
+          cf_text = self.namingTemplates["re_cash"].format(
+            period=subCash._period,
+            driverType=driver_type,
+            driverName = f"_{component.name}_{name}"
+          )
+          cfNode.append(xmlUtils.newNode("driver", text=cf_text))
+          cfNode.append(xmlUtils.newNode("alpha", text="-1.0"))
           cfs.append(cfNode)
+
       subComp.append(cfs)
       template.append(subComp)
 

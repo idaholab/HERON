@@ -15,6 +15,7 @@ import _utils as hutils
 framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)
 from ravenframework.utils import InputData, xmlUtils,InputTypes
+from ravenframework.BaseClasses import MessageUser
 
 
 class CashFlowUser:
@@ -288,7 +289,7 @@ class CashFlowGroup:
 
 
 
-class CashFlow:
+class CashFlow(MessageUser):
   """
     Hold the economics for a single cash flow, C = m * a * (D/D')^x
     where:
@@ -374,6 +375,7 @@ class CashFlow:
       @ In, component, CashFlowUser instance, cash flow user to which this cash flow belongs
       @ Out, None
     """
+    super().__init__()
     # assert component is not None # TODO is this necessary? What if it's not a component-based cash flow?
     self._component = component # component instance to whom this cashflow belongs, if any
     # equation values
@@ -392,6 +394,10 @@ class CashFlow:
     # other members
     self._signals = set()     # variable values needed for this cash flow
     self._crossrefs = defaultdict(dict)
+
+  def __repr__(self):
+    msg = f"<CashFlow {self.name}>"
+    return msg
 
   def read_input(self, item):
     """
@@ -420,19 +426,22 @@ class CashFlow:
         self._depreciate = sub.value
 
       else:
-        raise IOError('Unrecognized "CashFlow" node: "{}"'.format(sub.getName()))
+        self.raiseAnError(IOError, f'Unrecognized "CashFlow" node: "{sub.getName()}"')
 
     # driver is required!
     if self._driver is None:
-      raise IOError('No <driver> node provided for CashFlow {}!'.format(self.name))
+      self.raiseAnError(IOError, f"No <driver> node provided for CashFlow {self.name}!")
     if self._alpha is None:
-      raise IOError('No <reference_price> node provided for CashFlow {}!'.format(self.name))
+      self.raiseAnError(IOError, f"No <reference_price> node provided for CashFlow {self.name}!")
 
     # defaults
     var_names = ['_reference', '_scale']
-    for name in var_names:
+    input_names = ['reference_driver', 'scaling_factor_x']
+    for ref, name in zip(input_names, var_names):
       if getattr(self, name) is None:
-        # TODO raise a warning?
+        self.raiseAMessage(
+          f'CashFlow node not found: "<{ref}>"; defaulting to a fixed value of 1.0.'
+        )
         self._set_fixed_param(name, 1)
 
   @property
@@ -567,15 +576,17 @@ class CashFlow:
       @ In, None,
       @ Out, ext, multiplier for "alpha" values based on CashFlow type
     """
-    life = self._component.get_economics().get_lifetime()
+    life = self._component.economics.lifetime
+    ext = np.zeros(life+1, dtype=np.float64)
     if self._type == 'one-time':
-      ext = np.zeros(life+1, dtype=float)
       ext[0] = 1.0
     elif self._type == 'repeating':
-      ext = np.ones(life+1, dtype=float)
       ext[0] = 0.0
     else:
-      raise NotImplementedError('type is: {}'.format(self._type))
+      self.raiseAnError(
+        NotImplementedError,
+        f'Cashflow type "{self._type}" is not allowed! Please choose from ["one-time", "repeating"]'
+      )
     return ext
 
   def get_crossrefs(self):

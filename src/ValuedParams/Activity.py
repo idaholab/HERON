@@ -73,7 +73,7 @@ class Activity(ValuedParam):
     ok_trackers = interaction.get_tracking_vars()
     if self._tracking_var is None:
       self._tracking_var = ok_trackers[0]
-      self.raiseAMessage(f'Tracking variable not specified; using "{self._tracking_var}" ...')
+      self.raiseAMessage(f'Tracking variable not specified by resource "{self._resource}"; using "{self._tracking_var}" ...')
     else:
       if self._tracking_var not in ok_trackers:
         self.raiseAnError(f'Tracking variable "{self._tracking_var}" is not one of the variables ' +

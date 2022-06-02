@@ -993,7 +993,7 @@ class Template(TemplateBase, Base):
       @ Out, template, xml.etree.ElementTree.Element, modified template
     """
     self._modify_cash_Global(template, case)
-    self._modify_cash_components(template, case, components)
+    self._modify_cash_components(template, components)
     return template
 
   def _modify_cash_Global(self, template, case):
@@ -1021,33 +1021,31 @@ class Template(TemplateBase, Base):
     if projectTime is not None:
       cash_global.append(xmlUtils.newNode('ProjectTime', text=str(projectTime)))
 
-  def _modify_cash_components(self, template, case, components):
+  def _modify_cash_components(self, template, components):
     """
       Defines modifications to Components of cash.xml extension to RAVEN input file.
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
-      @ In, case, HERON Case, defining Case instance
       @ In, components, list, list of HERON Component instances for this run
       @ Out, template, xml.etree.ElementTree.Element, modified template
     """
     for component in components:
-      subComp = xmlUtils.newNode("Component", attrib={"name": component.name}, text="")
-      subEconomics = component.get_economics()
-      Life_time = subEconomics._lifetime
-      subComp.append(xmlUtils.newNode('Life_time', text=str(Life_time)))
+      sub_comp = xmlUtils.newNode("Component", attrib={"name": component.name}, text="")
+      sub_economics = component.economics
+      sub_comp.append(xmlUtils.newNode('Life_time', text=str(sub_economics.lifetime)))
 
       cfs = xmlUtils.newNode('CashFlows')
-      for subCash in subEconomics._cash_flows:
+      for subcash in sub_economics.cashflows:
         driver_name = self.namingTemplates['cashfname'].format(
-          component=subCash._component.name,
-          cashname=subCash._driver.name
+          component=subcash.component.name,
+          cashname=subcash.driver.name
         )
 
-        name = subCash.name
-        tax = subCash._taxable
-        inflation = subCash._inflation
-        driver_type = subCash._driver.type
-        mult_target = subCash._mult_target
-        depreciation = subCash._depreciate
+        name = subcash.name
+        tax = subcash.taxable
+        inflation = subcash.inflation
+        driver_type = subcash.driver.type
+        mult_target = subcash.mult_target
+        depreciation = subcash.depreciate
         cf_attr = {
           "name": f"{name}",
           "tax": tax,
@@ -1055,33 +1053,39 @@ class Template(TemplateBase, Base):
           "mult_target": mult_target
         }
 
-        if subCash._type == 'one-time':
-          cfNode =  xmlUtils.newNode("Capex", text="", attrib=cf_attr)
-          cfNode.append(xmlUtils.newNode("driver", text=driver_name))
-          try:
-            cfNode.append(xmlUtils.newNode("alpha", text=subCash._alpha.get_value()))
-            cfNode.append(xmlUtils.newNode("reference", text=subCash._reference.get_value()))
-            cfNode.append(xmlUtils.newNode("X", text=subCash._scale.get_value()))
-          except AttributeError:
-            cfNode.append(xmlUtils.newNode("alpha", text="-1.0"))
+        if subcash._type == 'one-time':
+          cf_node = xmlUtils.newNode("Capex", text="", attrib=cf_attr)
+          cf_node.append(xmlUtils.newNode("driver", text=driver_name))
+
+          # Users can specify: Parametric, Function, SyntheticHistory
+          # ValuedParams (VP) for any cashflow input parameter.
+          # If the user selects a Parametric VP we'll want to write
+          # its actual value to cash.xml. Otherwise we'll create a
+          # placeholder value. *Only Parametric VPs have .get_value()*
+          for title, vp in zip(("alpha", "reference", "X"), (subcash.alpha, subcash.reference, subcash.scale)):
+            try:
+              cf_text = vp.get_value()
+            except AttributeError:
+              cf_text = f"_ot_{driver_type}_{component.name}_{name}_{title}"
+            cf_node.append(xmlUtils.newNode(title, text=cf_text))
+
           if depreciation:
-            cfNode.append(xmlUtils.newNode('depreciation', attrib={'scheme': 'MACRS'}, text=depreciation))
-          cfs.append(cfNode)
+            cf_node.append(xmlUtils.newNode('depreciation', attrib={'scheme': 'MACRS'}, text=depreciation))
+
         else:
-          cfNode = xmlUtils.newNode("Recurring", text="", attrib=cf_attr)
+          cf_node = xmlUtils.newNode("Recurring", text="", attrib=cf_attr)
           cf_text = self.namingTemplates["re_cash"].format(
-            period=subCash._period,
+            period=subcash.period,
             driverType=driver_type,
-            driverName = f"_{component.name}_{name}"
+            driverName=f"_{component.name}_{name}"
           )
-          cfNode.append(xmlUtils.newNode("driver", text=cf_text))
-          cfNode.append(xmlUtils.newNode("alpha", text="-1.0"))
-          cfs.append(cfNode)
+          cf_node.append(xmlUtils.newNode("driver", text=cf_text))
+          cf_node.append(xmlUtils.newNode("alpha", text="-1.0"))
 
-      subComp.append(cfs)
-      template.append(subComp)
+        cfs.append(cf_node)
 
-
+      sub_comp.append(cfs)
+      template.append(sub_comp)
 
   ##### OTHER UTILS #####
   def _add_arma_to_ensemble(self, template, source):

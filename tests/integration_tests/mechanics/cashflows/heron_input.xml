@@ -43,8 +43,8 @@
               <Function method="capacity">functions</Function>
             </driver>
             <reference_price>
-              <fixed_value>10000.0</fixed_value>
-              <multiplier>-1</multiplier>
+              <!-- testing to make sure we can use Functions in non-repeating cashflows -->
+              <Function method="compute_price">functions</Function>
             </reference_price>
             <reference_driver>
               <fixed_value>10.0</fixed_value>

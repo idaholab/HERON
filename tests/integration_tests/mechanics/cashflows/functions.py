@@ -4,6 +4,10 @@
   Implements transfer functions
 """
 
+def compute_price(data, meta):
+  data = {'reference_price': -10000.0}
+  return data, meta
+
 def capacity(data, meta):
   """
     return unit capacity

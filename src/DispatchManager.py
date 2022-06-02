@@ -456,13 +456,13 @@ class DispatchRunner:
               final_comp._cashFlows.extend(deprs)
         elif cf_cf.type == 'Recurring':
           # yearly recurring only need setting up once per year
-          if heron_cf.get_period() == 'year':
+          if heron_cf.period == 'year':
             if s == 0:
               params = heron_cf.calculate_params(specific_meta) # a, D, Dp, x, cost
               contrib = params['cost']
               final_cf._yearlyCashflow[year + 1] += contrib
           # hourly recurring need iteration over time
-          elif heron_cf.get_period() == 'hour':
+          elif heron_cf.period == 'hour':
             for t, time in enumerate(times):
               # fill in the specific activity for this time stamp
               for track_var in comp.get_tracking_vars():

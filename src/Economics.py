@@ -88,6 +88,15 @@ class CashFlowUser:
     """
     return self.get_economics().evaluate_cfs(activity, meta, marginal=marginal)
 
+  @property
+  def economics(self):
+    """
+      Return economics for cash flow user
+      @ In, None
+      @ Out, None
+    """
+    return self._economics
+
   def get_economics(self):
     """
       Accessor for economics.
@@ -198,11 +207,20 @@ class CashFlowGroup:
       # FIXME why is it "repeating" and not "Recurring"?
       cost = dict((cf.name, cf.evaluate_cost(activity, meta))
                     for cf in self.get_cashflows()
-                    if (cf._type == 'repeating' and cf.get_period() != 'year'))
+                    if (cf._type == 'repeating' and cf.period != 'year'))
     else:
       cost = dict((cf.name, cf.evaluate_cost(activity, meta))
                     for cf in self.get_cashflows())
     return cost
+
+  @property
+  def cashflows(self):
+    """
+      Return cashflows member variable
+      @ In, None
+      @ Out, cashflow, list, ordered cash flows cashflow group
+    """
+    return self._cash_flows
 
   def get_cashflows(self):
     """
@@ -219,6 +237,15 @@ class CashFlowGroup:
       @ Out, component, CashFlowUser instance, owner
     """
     return self._component
+
+  @property
+  def lifetime(self):
+    """
+      Return lifetime of cash flow user.
+      @ In, None
+      @ Out, lifetime, int, private var
+    """
+    return self._lifetime
 
   def get_lifetime(self):
     """
@@ -408,14 +435,104 @@ class CashFlow:
         # TODO raise a warning?
         self._set_fixed_param(name, 1)
 
-  # Not none set it to default 1
-  def get_period(self):
+  @property
+  def type(self):
     """
-      Getter for Recurring cashflow period type.
+      Returns Cashflow component
       @ In, None
-      @ Out, period, str, 'hourly' or 'yearly'
+      @ Out, type, str, Cashflow type
+    """
+    return self._type
+
+  @property
+  def component(self):
+    """
+      Returns Cashflow component
+      @ In, None
+      @ Out, component, Component, Cashflow component
+    """
+    return self._component
+
+  @property
+  def driver(self):
+    """
+      Returns Cashflow driver variable
+      @ In, None
+      @ Out, driver, ValuedParam, Cashflow 'driver'
+    """
+    return self._driver
+
+  @property
+  def alpha(self):
+    """
+      Returns Cashflow alpha variable
+      @ In, None
+      @ Out, alpha, ValuedParam, Cashflow 'reference_price'
+    """
+    return self._alpha
+
+  @property
+  def reference(self):
+    """
+      Returns Cashflow reference driver variable
+      @ In, None
+      @ Out, reference, ValuedParam, Cashflow 'reference_driver'
+    """
+    return self._reference
+
+  @property
+  def scale(self):
+    """
+      Returns Cashflow scaling factor
+      @ In, None
+      @ Out, scale, ValuedParam, Cashflow 'scaling_factor_x'
+    """
+    return self._scale
+
+  @property
+  def depreciate(self):
+    """
+      Returns Cashflow depreciation value
+      @ In, None
+      @ Out, depreciate, int, Cashflow 'depreciate'
+    """
+    return self._depreciate
+
+  @property
+  def period(self):
+    """
+      Returns Cashflow period
+      @ In, None
+      @ Out, period, str, Cashflow 'period' attr
     """
     return self._period
+
+  @property
+  def mult_target(self):
+    """
+      Returns Cashflow multiple target bool
+      @ In, None
+      @ Out, mult_target, bool, Cashflow 'mult_target' attr
+    """
+    return self._mult_target
+
+  @property
+  def inflation(self):
+    """
+      Returns Cashflow inflation attribute
+      @ In, None
+      @ Out, inflation, str, Cashflow 'inflation' attr
+    """
+    return self._inflation
+
+  @property
+  def taxable(self):
+    """
+      Returns Cashflow taxable attribute
+      @ In, None
+      @ Out, taxable, bool, Cashflow 'taxable' attr
+    """
+    return self._taxable
 
   def _set_fixed_param(self, name, value):
     """

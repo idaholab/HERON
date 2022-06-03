@@ -65,6 +65,10 @@ class Placeholder(Base):
       # magic word for "relative to HERON root"
       heron_path = hutils.get_heron_loc()
       self._target_file = os.path.abspath(self._source.replace('%HERON%', heron_path))
+    elif self._source.startswith('%FARM%'):
+      # magic word for "relative to FARM root"
+      farm_path = hutils.get_farm_loc()
+      self._target_file = os.path.abspath(self._source.replace('%FARM%', farm_path))
     else:
       # check absolute path
       rel_interp = os.path.abspath(os.path.join(self._workingDir, self._source))

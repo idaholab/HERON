@@ -2,7 +2,6 @@
 # ALL RIGHTS RESERVED
 
 from .ExampleValidator import Example
-
 import os
 import sys
 
@@ -10,9 +9,6 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import _utils as hutils
 raven_path = hutils.get_raven_loc()
-sys.path.append(raven_path)
-sys.path.pop()
-
 
 # set up path of farm
 farm_loc = hutils.get_farm_loc(raven_path=raven_path)
@@ -22,11 +18,13 @@ if farm_loc is not None:
   import FARM
   from FARM.src.FARMValidatorsForHeron import FARM_Beta, FARM_Gamma_LTI, FARM_Gamma_FMU
 
+# default known validators
 known = {
     'Example': Example,
     # ModelicaGoverner: TODO,
 }
 
+# add farm validators to the known dictionary
 if farm_loc is not None:
   known['FARM_Beta'] = FARM_Beta
   known['FARM_Gamma_LTI'] = FARM_Gamma_LTI

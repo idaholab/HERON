@@ -12,6 +12,7 @@
 
   <Case name="wind">
     <mode>sweep</mode>
+    <debug/>
     <num_arma_samples>20</num_arma_samples>
     <time_discretization>
       <year_variable>YEAR</year_variable>
@@ -68,7 +69,8 @@
     <Component name="ngcc">
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <sweep_values>10, 40, 70</sweep_values> <!-- GW -->
+          <sweep_values debug_value="10">10, 20, 30, 40, 50</sweep_values>
+          <!-- <opt_bounds>30, 50</opt_bounds> -->
         </capacity>
       </produces>
       <economics>
@@ -80,7 +82,7 @@
           </driver>
           <reference_price>
             <!-- 1000 $/kW * 1e6 kW/GW = 1e9 est cost for 1 GW NGCC -->
-            <fixed_value>-1e5</fixed_value>
+            <fixed_value>-1e9</fixed_value>
           </reference_price>
           <!-- <depreciate>15</depreciate> -->
         </CashFlow>
@@ -107,6 +109,15 @@
       </demands>
       <economics>
         <lifetime>1</lifetime>
+        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <fixed_value>150e3</fixed_value>
+          </reference_price>
+        </CashFlow>
       </economics>
     </Component>
 
@@ -126,7 +137,7 @@
           </driver>
           <reference_price>
             <!-- ballpark $100/MWh -->
-            <fixed_value>100e3</fixed_value>
+            <fixed_value>900e3</fixed_value>
           </reference_price>
         </CashFlow>
       </economics>
@@ -146,10 +157,11 @@
             <activity>electricity</activity>
           </driver>
           <reference_price>
-            <fixed_value>100e3</fixed_value>
+            <fixed_value>900e3</fixed_value>
           </reference_price>
         </CashFlow>
       </economics>
+    </Component>
   </Components>
 
 

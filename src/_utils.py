@@ -167,22 +167,30 @@ def get_csv_structure(fpath, macro_var, micro_var):
   # load CSV data
   # if multiyear, note macro details
   data = pd.read_csv(fpath)
-  if macro_var in data.columns and micro_var in data.columns:
-    years = data[macro_var].values
-    data.set_index([macro_var, micro_var], inplace=True)
-  elif micro_var in data.columns:
-    years = [0]
-    data.set_index(micro_var)
-  # make light wrapper to treat as single cluster with all the data inside
-  structure = {'clusters': {}}
-  for year in years:
-    structure['clusters'][year] = [{
-      'id': 0,
-      'indices': ['0', str(data.shape[0])],
-      'represents': ['0'],
-    }]
-  return structure
+  assert micro_var in data.columns
+  
+  structure = {}
+  if macro_var in data.columns:
+    macro_steps = pd.unique(data[macro_var].values)
+    structure['macro'] = {
+      'id': macro_var,
+      'num': len(macro_steps) + 1,
+      'first': min(macro_steps),
+      'last': max(macro_steps)
+    }
+  else:
+    data[macro_var] = 0
 
+  structure['clusters'] = {}
+  for macro_step, df in data.groupby(macro_var):
+    structure['clusters'][macro_step] = [{
+      'id': 0, 
+      'indices': [0, len(df[micro_var].values)],
+      'represents': ['0']
+    }]
+  
+  structure['segments'] = {}  # TODO
+  return structure
 
 
 if __name__ == '__main__':

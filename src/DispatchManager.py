@@ -89,21 +89,28 @@ class DispatchRunner:
     history_structure = {}
     # investigate sources for required ARMA information
     for source in self._sources:
-      if source.is_type('ARMA'):
+      if source.is_type('ARMA') or source.is_type("CSV"):
         # get structure of ARMA
         vars_needed = source.get_variable()
         for v in vars_needed:
           pass_vars[v] = getattr(raven, v)
+        
+        # if not hasattr(raven, '_indexMap'):
+        #   pass_vars['_indexMap'] = {
+        #     var: [self._case.get_time_name(), self._case.get_year_name(), '_ROM_Cluster'] 
+        #     for var in source.get_variable()
+        #   }
+        #   setattr(raven, '_indexMap', [pass_vars['_indexMap']])
 
     # get the key to mapping RAVEN multidimensional variables
     if hasattr(raven, '_indexMap'):
       pass_vars['_indexMap'] = raven._indexMap[0] # 0 is only because of how RAVEN EnsembleModel handles variables
       # collect all indices # TODO limit to those needed by sources?
       for target, required_indices in pass_vars['_indexMap'].items():
-        for index in (i for i in required_indices if i not in pass_vars):
+        for index in filter(lambda idx: idx not in pass_vars, required_indices):
           pass_vars[index] = getattr(raven, index)
     else:
-      # NOTE this should ONLY BE POSSIBLE if no ARMAs are in use!
+      # NOTE this should ONLY BE POSSIBLE if no ARMAs or CSVs are in use!
       pass
 
     # variable for "time" discretization, if present
@@ -566,7 +573,7 @@ class DispatchRunner:
     all_structure['summary'] = {'interpolated': interpolated,
                                 'clusters': clusters,
                                 'segments': 0, # FIXME XXX
-                                'macro_info': summary_info['macro'],
+                                'macro_info': summary_info['macro'] if 'macro' in summary_info else {},
                                 'cluster_info': first_year_clusters,
                                 } # TODO need to add index/representivity references!
     return all_structure

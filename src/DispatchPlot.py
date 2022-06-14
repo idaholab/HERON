@@ -10,7 +10,13 @@ mpl.use('Agg') # Prevents the script from blocking while plotting
 import matplotlib.pyplot as plt
 from typing import List, Dict
 
-from ravenframework.PluginBaseClasses.OutStreamPlotPlugin import PlotPlugin, InputTypes, InputData
+try:
+  from ravenframework.PluginBaseClasses.OutStreamPlotPlugin import PlotPlugin, InputTypes, InputData
+except ModuleNotFoundError:
+  import sys
+  from . import _utils
+  sys.path.append(_utils.get_raven_loc())
+  from ravenframework.PluginBaseClasses.OutStreamPlotPlugin import PlotPlugin, InputTypes, InputData
 
 
 # Matplotlib Global Settings

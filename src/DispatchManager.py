@@ -15,9 +15,9 @@ import numpy as np
 from typing_extensions import final
 
 # set up path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import _utils as hutils
-import SerializationManager
+#sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import HERON.src._utils as hutils
+from HERON.src import SerializationManager
 
 raven_path = hutils.get_raven_loc()
 sys.path.append(raven_path)

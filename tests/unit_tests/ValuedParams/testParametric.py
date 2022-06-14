@@ -9,12 +9,12 @@ import sys
 import xml.etree.ElementTree as ET
 
 # Load HERON tools
-HERON_LOC = os.path.abspath(os.path.join(os.path.dirname(__file__), *[os.pardir]*3, 'src'))
+HERON_LOC = os.path.abspath(os.path.join(os.path.dirname(__file__), *[os.pardir]*4))
 sys.path.append(HERON_LOC)
 
-from ValuedParams import factory
-import ValuedParams
-import _utils as hutils
+from HERON.src.ValuedParams import factory
+from HERON.src import ValuedParams
+from HERON.src import _utils as hutils
 sys.path.pop()
 
 # Load RAVEN tools

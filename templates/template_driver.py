@@ -15,9 +15,9 @@ import numpy as np
 import dill as pk
 
 # load utils
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
-from base import Base
-import _utils as hutils
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+from HERON.src.base import Base
+import HERON.src._utils as hutils
 sys.path.pop()
 
 # get raven location

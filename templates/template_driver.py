@@ -700,7 +700,10 @@ class Template(TemplateBase, Base):
     input_filepath = os.path.abspath((os.path.dirname(__file__)))
     input_filepath = input_filepath+'/../src/DispatchManager'
     ext_model = template.find('Models').find('ExternalModel')
-    ext_model.set('ModuleToLoad', input_filepath)
+    #ext_model.set('ModuleToLoad', input_filepath)
+    if 'ModuleToLoad' in ext_model.attrib:
+      ext_model.attrib.pop('ModuleToLoad')
+    ext_model.set('subType','HERON.DispatchManager')
     self._modify_inner_runinfo(template, case)
     self._modify_inner_sources(template, case, components, sources)
     # NOTE: this HAS to come before modify_inner_denoisings,

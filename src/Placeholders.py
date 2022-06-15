@@ -454,7 +454,7 @@ class CSV(Placeholder):
       if var not in headers:
         self.raiseAnError(
           KeyError,
-          f'Variable {var} requested for "{self.name}" but not found in "{self._target_file}! Found: {headers}'
+          f'Variable {var} requested for "{self.name}" but not found in "{self._target_file}"! Found: {headers}'
         )
 
   def checkValid(self, case, components, sources):

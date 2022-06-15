@@ -163,12 +163,13 @@ def get_synthhist_structure(fpath):
 
 def get_csv_structure(fpath, macro_var, micro_var):
   """
+    Returns CSV structure in a way RAVEN & HERON understand
+    @ In, fpath, str, file path to CSV file
+    @ In, macro_var, str, Macro Variable name - typically 'Year'
+    @ In, micro_var, str, Micro Variable name - typically 'Time'
+    @ Out, structure, dict, Nested structure of the CSV dataframe.
   """
-  # load CSV data
-  # if multiyear, note macro details
   data = pd.read_csv(fpath)
-  assert micro_var in data.columns
-  
   structure = {}
   if macro_var in data.columns:
     macro_steps = pd.unique(data[macro_var].values)

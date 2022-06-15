@@ -18,7 +18,7 @@
         <num_steps>21</num_steps>
       </time_discretization>
       <economics>
-        <ProjectTime>30</ProjectTime>
+        <ProjectTime>3</ProjectTime>
         <DiscountRate>0.08</DiscountRate>
         <tax>0.0</tax>
         <inflation>0.03</inflation>
@@ -102,7 +102,7 @@
     </Components>
 
     <DataGenerators>
-      <CSV name='flex' variable="Signal">%HERON%/tests/integration_tests/ARMA/Sine30yr/Data_0.csv</CSV>
+      <CSV name='flex' variable="Signal">%HERON%/tests/integration_tests/mechanics/static_history/Static.csv</CSV>
       <Function name="functions">functions.py</Function>
     </DataGenerators>
 </HERON>

@@ -12,7 +12,7 @@
 
   <Case name="wind">
     <mode>sweep</mode>
-    <debug/>
+    <!-- <debug/> -->
     <num_arma_samples>20</num_arma_samples>
     <time_discretization>
       <year_variable>YEAR</year_variable>
@@ -45,7 +45,7 @@
           <!-- NOTE: if you change this multiplier, also change the capex driver
                      fixed value for this component!
           -->
-          <multiplier>10</multiplier>
+          <multiplier>70</multiplier>
         </capacity>
       </produces>
       <economics>
@@ -53,12 +53,12 @@
         <!-- construction cost -->
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
           <driver>
-            <fixed_value>10</fixed_value>
+            <fixed_value>70</fixed_value>
           </driver>
           <reference_price>
-            <!-- 35 $/MW * 1e3 MW/GW = 35e3 est cost for 1 GW wind
-                 land-based, nrel.gov/docs/fy22osti/81209.pdf -->
-            <fixed_value>-35e3</fixed_value>
+            <!-- 1470 $/kW * 1e6 kW/GW = 1.47e9 est cost for 1 GW wind -->
+            <!-- adjust for short project length-->
+            <fixed_value>-1.47e8</fixed_value>
           </reference_price>
           <!-- <depreciate>15</depreciate> -->
         </CashFlow>
@@ -66,10 +66,10 @@
     </Component>
 
 
-    <Component name="ngcc">
+    <Component name="npp">
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <sweep_values debug_value="10">10, 20, 30, 40, 50</sweep_values>
+          <sweep_values debug_value="10">20, 40, 60</sweep_values>
           <!-- <opt_bounds>30, 50</opt_bounds> -->
         </capacity>
       </produces>
@@ -78,11 +78,11 @@
         <!-- construction cost -->
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
           <driver>
-            <variable>ngcc_capacity</variable>
+            <variable>npp_capacity</variable>
           </driver>
           <reference_price>
-            <!-- 1000 $/kW * 1e6 kW/GW = 1e9 est cost for 1 GW NGCC -->
-            <fixed_value>-1e9</fixed_value>
+            <!-- $3000/kW * 1e6 kW/GW, but note reduced project length -->
+            <fixed_value>-3e8</fixed_value>
           </reference_price>
           <!-- <depreciate>15</depreciate> -->
         </CashFlow>
@@ -115,7 +115,7 @@
             <multiplier>-1</multiplier>
           </driver>
           <reference_price>
-            <fixed_value>150e3</fixed_value>
+            <fixed_value>50e3</fixed_value>
           </reference_price>
         </CashFlow>
       </economics>
@@ -136,8 +136,7 @@
             <multiplier>-1</multiplier>
           </driver>
           <reference_price>
-            <!-- ballpark $100/MWh -->
-            <fixed_value>900e3</fixed_value>
+            <fixed_value>1e6</fixed_value>
           </reference_price>
         </CashFlow>
       </economics>
@@ -157,7 +156,7 @@
             <activity>electricity</activity>
           </driver>
           <reference_price>
-            <fixed_value>900e3</fixed_value>
+            <fixed_value>1e6</fixed_value>
           </reference_price>
         </CashFlow>
       </economics>

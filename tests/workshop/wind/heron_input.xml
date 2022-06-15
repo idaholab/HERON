@@ -43,7 +43,7 @@
           <ARMA variable="WIND">synth</ARMA>
           <!-- NOTE: if you change this multiplier, also change the capex driver
                      fixed value for this component!  -->
-        <multiplier>90</multiplier> <!-- CHANGE ME -->
+        <multiplier>0</multiplier> <!-- CHANGE ME -->
       </capacity>
     </produces>
     <economics>
@@ -51,7 +51,7 @@
       <!-- construction cost -->
       <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
         <driver>
-          <fixed_value>90</fixed_value> <!-- CHANGE ME TOO -->
+          <fixed_value>0</fixed_value> <!-- CHANGE ME TOO -->
         </driver>
         <reference_price>
           <!-- 1470 $/kW * 1e6 kW/GW = 1.47e9 est cost for 1 GW wind -->
@@ -87,8 +87,8 @@
           <multiplier>-1</multiplier>
         </driver>
         <reference_price>
-          <!-- ballpark $5/MWh -->
-          <fixed_value>5e3</fixed_value>
+          <!-- ballpark $/MWh -->
+          <fixed_value>13e3</fixed_value>
         </reference_price>
       </CashFlow>
     </economics>

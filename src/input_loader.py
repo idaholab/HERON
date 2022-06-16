@@ -88,7 +88,7 @@ def parse(xml, loc, messageHandler):
         kind, name = info.get_source()
         # if not looking for a DataGenerator placeholder, then nothing more to do
         # if using "activity", also nothing to do
-        if kind not in ['Function', 'ARMA', 'ROM']:
+        if kind not in ['Function', 'ARMA', 'ROM', 'CSV']:
           continue
         # find it
         for source in sources:

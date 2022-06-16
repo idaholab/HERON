@@ -10,6 +10,7 @@ import copy
 import shutil
 import time
 import xml.etree.ElementTree as ET
+import itertools as it
 
 import numpy as np
 import dill as pk
@@ -825,13 +826,13 @@ class Template(TemplateBase, Base):
       self.raiseAMessage("Using Static History - replacing EnsembleModel with CustomSampler strategy")
       models.remove(models.find('.//EnsembleModel[@name="sample_and_dispatch"]'))
 
+      self.raiseAMessage(f'Using Static History - removing unneeded post-processor statistics "sigma" & "variance"')
       post_proc = models.find(".//PostProcessor")
-      for sigma_node in post_proc.findall(".//sigma"):
-        self.raiseAMessage(f'Using Static History - removing unneeded post-processor statistics "{sigma_node.tag}"')
+      for sigma_node in it.chain(post_proc.findall(".//sigma"), post_proc.findall(".//variance")):
         post_proc.remove(sigma_node)
-      for var_node in post_proc.findall(".//variance"):
-        self.raiseAMessage(f'Using Static History - removing unneeded post-processor statistics "{var_node.tag}"')
-        post_proc.remove(var_node)
+      # for var_node in post_proc.findall(".//variance"):
+      #   self.raiseAMessage(f'Using Static History - removing unneeded post-processor statistics "{var_node.tag}"')
+      #   post_proc.remove(var_node)
 
       # Modify <Samplers> to get rid of MonteCarlo reference in favor of CustomSampler
       samps = template.find("Samplers")

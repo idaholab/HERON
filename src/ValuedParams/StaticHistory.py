@@ -11,8 +11,7 @@ from .ValuedParam import ValuedParam, InputData, InputTypes
 # class for potentially dynamically-evaluated quantities
 class StaticHistory(ValuedParam):
   """
-    Represents a ValuedParam that takes values directly from synthetic histories
-    sampled in RAVEN.
+    Represents a ValuedParam that takes values directly from a static CSV file.
   """
 
   @classmethod
@@ -41,12 +40,12 @@ class StaticHistory(ValuedParam):
       @ Out, None
     """
     super().__init__()
-    self._var_name = None # name of the variable within the synth hist
-    self._source_kind = 'ARMA'
+    self._var_name = None # name of the variable within the static hist
+    self._source_kind = 'CSV'
 
   def read(self, comp_name, spec, mode, alias_dict=None):
     """
-      Used to read valued param from XML input
+      Used to read ValuedParam from XML input
       @ In, comp_name, str, name of component that this valued param will be attached to; only used for print messages
       @ In, spec, InputData params, input specifications
       @ In, mode, type of simulation calculation
@@ -54,9 +53,7 @@ class StaticHistory(ValuedParam):
       @ Out, needs, list, signals needed to evaluate this ValuedParam at runtime
     """
     super().read(comp_name, spec, mode, alias_dict=None)
-    # aliases get used to convert variable names, notably for the cashflow's "capacity"
-    if alias_dict is None:
-      alias_dict = {}
+    alias_dict = {} if alias_dict is None else alias_dict
     self._source_name = spec.value
     self._var_name = spec.parameterValues['variable']
     return [self._var_name]

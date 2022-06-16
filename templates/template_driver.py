@@ -764,23 +764,22 @@ class Template(TemplateBase, Base):
     self._modify_inner_data_handling(template, case)
     if case.debug['enabled']:
       self._modify_inner_debug(template, case, components)
-    self._modify_inner_static_history(template, case, components, sources)
+    self._modify_inner_static_history(template, case, sources)
     # TODO modify based on resources ... should only need if units produce multiple things, right?
     # TODO modify CashFlow input ... this will be a big undertaking with changes to the inner.
     ## Maybe let the user change them? but then we don't control the variable names. We probably have to do it.
     return template
 
-  def _modify_inner_static_history(self, template, case, components, sources):
+  def _modify_inner_static_history(self, template, case, sources):
     """
-      Modify entire Inner file if using StaticHistory.
+      Modify entire Inner template if using StaticHistory.
 
-      This changes many different aspects of the outer and inner file.
-      This function assumes that it will only find ONE csv in sources,
-      otherwise it will make the modifications twice and could cause errors.
+      Using a static history changes many different aspects of the outer and
+      inner templates. This function assumes that it will only find ONE csv in
+      sources, otherwise it will make the modifications twice and could cause errors.
 
       @ In, template, ET.Element, root of XML template to modify
       @ In, case, HERON.Case, case object of current simulation
-      @ In, components, HERON.Component, component object of current simulation
       @ In, sources, List[HERON.Placeholders], data generator sources for current simulation.
       @ Out, None
     """
@@ -799,6 +798,7 @@ class Template(TemplateBase, Base):
       new_step.append(self._assemblerNode('Output', 'DataObjects', 'DataSet', 'input'))
       template.find('Steps').append(new_step)
 
+      # Change ExternalModel type in MultiRun Steps
       multi_run = template.find('.//Steps/MultiRun[@name="arma_sampling"]')
       multi_run.find("Sampler").attrib["type"] = "CustomSampler"
       multi_run.find('.//Model[@type="EnsembleModel"]').text = "dispatch"
@@ -826,19 +826,18 @@ class Template(TemplateBase, Base):
       self.raiseAMessage("Using Static History - replacing EnsembleModel with CustomSampler strategy")
       models.remove(models.find('.//EnsembleModel[@name="sample_and_dispatch"]'))
 
+      # Remove PP Statistics that are no longer needed
       self.raiseAMessage(f'Using Static History - removing unneeded post-processor statistics "sigma" & "variance"')
       post_proc = models.find(".//PostProcessor")
       for sigma_node in it.chain(post_proc.findall(".//sigma"), post_proc.findall(".//variance")):
         post_proc.remove(sigma_node)
-      # for var_node in post_proc.findall(".//variance"):
-      #   self.raiseAMessage(f'Using Static History - removing unneeded post-processor statistics "{var_node.tag}"')
-      #   post_proc.remove(var_node)
 
       # Modify <Samplers> to get rid of MonteCarlo reference in favor of CustomSampler
       samps = template.find("Samplers")
       monte_carlo = samps.find('.//MonteCarlo[@name="mc_arma_dispatch"]')
       monte_carlo.insert(0, self._assemblerNode("Source", "DataObjects", "DataSet", "input"))
-      for var in [case.get_year_name(), case.get_time_name()] + source.get_variable():
+      for var in it.chain([case.get_year_name(), case.get_time_name()], source.get_variable()):
+        # We make the bold assumption here that our CSV contains a "Year" and "Time" variable.
         var_node = xmlUtils.newNode("variable", attrib={"name": var})
         monte_carlo.append(var_node)
       monte_carlo.remove(monte_carlo.find(".//samplerInit"))

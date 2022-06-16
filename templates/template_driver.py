@@ -437,9 +437,14 @@ class Template(TemplateBase, Base):
     # using Static Histories instead of a Synthetic History.
     if any(x.is_type("CSV") for x in sources):
       text = 'Samplers|CustomSampler@name:mc_arma_dispatch|constant@name:{}'
+      # Remove anything having to do with 'denoises', it's no longer needed.
       raven.remove(raven.find(".//alias[@variable='denoises']"))
       denoises_parent = template.find(".//constant[@name='denoises']/..")
       denoises_parent.remove(denoises_parent.find(".//constant[@name='denoises']"))
+      # Remove any GRO_final_return vars that compute Sigma or Var (e.g. var_NPV)
+      final_return_vars = template.find('.//VariableGroups/Group[@name="GRO_outer_results"]')
+      new_final_return_vars = [var for var in final_return_vars.text.split(", ") if "std" not in var and "var" not in var]
+      final_return_vars.text = ', '.join(new_final_return_vars)
     else:
       text = 'Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:{}'
 
@@ -535,8 +540,11 @@ class Template(TemplateBase, Base):
       init = xmlUtils.newNode('samplerInit')
       init.append(xmlUtils.newNode('limit', text=1))
       samps_node.append(init)
-    if samps_node.find('constant[@name="denoises"]'):
-      samps_node.find('constant[@name="denoises"]').text = str(case.get_num_samples())
+
+    # NOTE: There is a chance we removed the denoises variable earlier.
+    # If it was removed, that means we are using a StaticHistory.
+    if samps_node.find('.//constant[@name="denoises"]') is not None:
+      samps_node.find('.//constant[@name="denoises"]').text = str(case.get_num_samples())
     # add sweep variables to input
 
     ## TODO: Refactor this portion with the below portion to handle
@@ -763,19 +771,44 @@ class Template(TemplateBase, Base):
 
   def _modify_inner_static_history(self, template, case, components, sources):
     """
-    """
-    for source in filter(lambda x: x.is_type("CSV"), sources):
+      Modify entire Inner file if using StaticHistory.
 
+      This changes many different aspects of the outer and inner file.
+      This function assumes that it will only find ONE csv in sources,
+      otherwise it will make the modifications twice and could cause errors.
+
+      @ In, template, ET.Element, root of XML template to modify
+      @ In, case, HERON.Case, case object of current simulation
+      @ In, components, HERON.Component, component object of current simulation
+      @ In, sources, List[HERON.Placeholders], data generator sources for current simulation.
+      @ Out, None
+    """
+    # If no CSV found, this won't run
+    for source in filter(lambda x: x.is_type("CSV"), sources):
+      # Add CSV file reference to <Files>
       csv_file = xmlUtils.newNode('Input', attrib={'name': source.name}, text=source._target_file)
       template.find("Files").append(csv_file)
 
+      # Update <Sequence> to read the csv into memory first
       self._updateCommaSeperatedList(template.find(".//RunInfo/Sequence"), "read_static", position=0)
 
+      # Create a new <IOStep> that is the instructions <Sequence> will run
       new_step = xmlUtils.newNode('IOStep', attrib={'name': 'read_static'})
       new_step.append(self._assemblerNode('Input', 'Files', '', source.name))
       new_step.append(self._assemblerNode('Output', 'DataObjects', 'DataSet', 'input'))
       template.find('Steps').append(new_step)
 
+      multi_run = template.find('.//Steps/MultiRun[@name="arma_sampling"]')
+      multi_run.find("Sampler").attrib["type"] = "CustomSampler"
+      multi_run.find('.//Model[@type="EnsembleModel"]').text = "dispatch"
+      multi_run.find('.//Model[@type="EnsembleModel"]').attrib['type'] = "ExternalModel"
+
+      # Modify <Group> node containing PP statistics. Remove all STD and VAR variables.
+      gro_final_return = template.find('.//VariableGroups/Group[@name="GRO_final_return"]')
+      new_return_vars = [var for var in gro_final_return.text.split(", ") if "std" not in var and "var" not in var]
+      gro_final_return.text = ', '.join(new_return_vars)
+
+      # Create a new <DataObject> that will store the csv data
       data_objs = template.find("DataObjects")
       new_data_set = xmlUtils.newNode("DataSet", attrib={"name": "input"})
       new_data_set.append(xmlUtils.newNode("Input", text=', '.join([case.get_time_name(), case.get_year_name()])))
@@ -784,13 +817,23 @@ class Template(TemplateBase, Base):
         new_data_set.append(xmlUtils.newNode("Index", attrib={"var": var}, text=', '.join(source.get_variable())))
       data_objs.append(new_data_set)
 
+      # Modify <Models> by removing EnsembleModel and changing ExternalModel
       models = template.find("Models")
       for var in source.get_variable():
         self._updateCommaSeperatedList(models.find('.//ExternalModel[@name="dispatch"]/variables'), var)
 
-      self.raiseAMessage("Using Static History - replacing Ensemble Model with Custom Sampler")
+      self.raiseAMessage("Using Static History - replacing EnsembleModel with CustomSampler strategy")
       models.remove(models.find('.//EnsembleModel[@name="sample_and_dispatch"]'))
 
+      post_proc = models.find(".//PostProcessor")
+      for sigma_node in post_proc.findall(".//sigma"):
+        self.raiseAMessage(f'Using Static History - removing unneeded post-processor statistics "{sigma_node.tag}"')
+        post_proc.remove(sigma_node)
+      for var_node in post_proc.findall(".//variance"):
+        self.raiseAMessage(f'Using Static History - removing unneeded post-processor statistics "{var_node.tag}"')
+        post_proc.remove(var_node)
+
+      # Modify <Samplers> to get rid of MonteCarlo reference in favor of CustomSampler
       samps = template.find("Samplers")
       monte_carlo = samps.find('.//MonteCarlo[@name="mc_arma_dispatch"]')
       monte_carlo.insert(0, self._assemblerNode("Source", "DataObjects", "DataSet", "input"))
@@ -799,12 +842,6 @@ class Template(TemplateBase, Base):
         monte_carlo.append(var_node)
       monte_carlo.remove(monte_carlo.find(".//samplerInit"))
       monte_carlo.tag = "CustomSampler"
-
-      multi_run = template.find('.//Steps/MultiRun[@name="arma_sampling"]')
-      multi_run.find("Sampler").attrib["type"] = "CustomSampler"
-      multi_run.find('.//Model[@type="EnsembleModel"]').text = "dispatch"
-      multi_run.find('.//Model[@type="EnsembleModel"]').attrib['type'] = "ExternalModel"
-
 
   def _modify_inner_caselabels(self, template, case):
     """
@@ -874,7 +911,7 @@ class Template(TemplateBase, Base):
       Defines modifications to the inner.xml RAVEN input file due to Sources/Placeholders.
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
       @ In, case, HERON Case, defining Case instance
-      @ In, components, list, list of HERON Component instances for this run
+      @ In, components, list, list of HERON Cogit mponent instances for this run
       @ In, sources, list, list of HERON Placeholder instances for this run
       @ Out, None
     """

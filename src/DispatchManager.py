@@ -656,6 +656,10 @@ class DispatchRunner:
 
 
 class DispatchManager(ExternalModelPluginBase):
+  """
+    A plugin to run heron.lib
+  """
+
   def initialize(self, container, runInfoDict, inputFiles):
     """
       Method to initialize the DispatchManager plugin.
@@ -664,12 +668,8 @@ class DispatchManager(ExternalModelPluginBase):
       @ In, inputFiles, list, not used
       @ Out, None
     """
-    #settings = container._globalSettings
-    #components = container._components
+    pass
 
-  ################
-  # RAVEN methods
-  ################
   def _readMoreXML(self, raven, xml):
     """
       Reads additional inputs for DispatchManager

@@ -7,7 +7,7 @@
   a wide variety of different sources and may not be valued until run time.
 """
 import sys
-import _utils as hutils
+from HERON.src import _utils as hutils
 framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)
 from ravenframework.utils import InputData, InputTypes

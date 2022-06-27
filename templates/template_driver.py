@@ -15,9 +15,9 @@ import numpy as np
 import dill as pk
 
 # load utils
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
-from base import Base
-import _utils as hutils
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+from HERON.src.base import Base
+import HERON.src._utils as hutils
 sys.path.pop()
 
 # get raven location
@@ -700,7 +700,10 @@ class Template(TemplateBase, Base):
     input_filepath = os.path.abspath((os.path.dirname(__file__)))
     input_filepath = input_filepath+'/../src/DispatchManager'
     ext_model = template.find('Models').find('ExternalModel')
-    ext_model.set('ModuleToLoad', input_filepath)
+    #ModuleToLoad not needed for HERON.DispatchManager plugin
+    if 'ModuleToLoad' in ext_model.attrib:
+      ext_model.attrib.pop('ModuleToLoad')
+    ext_model.set('subType','HERON.DispatchManager')
     self._modify_inner_runinfo(template, case)
     self._modify_inner_sources(template, case, components, sources)
     # NOTE: this HAS to come before modify_inner_denoisings,

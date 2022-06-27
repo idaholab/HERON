@@ -9,8 +9,8 @@ import sys
 import abc
 import copy
 
-import _utils as hutils
-from base import Base
+import HERON.src._utils as hutils
+from HERON.src.base import Base
 
 FRAMEWORK_PATH = hutils.get_raven_loc()
 sys.path.append(FRAMEWORK_PATH)

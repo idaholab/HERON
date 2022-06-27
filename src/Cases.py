@@ -12,20 +12,20 @@ import importlib
 
 import numpy as np
 
-from base import Base
-import Components
-import Placeholders
+from HERON.src.base import Base
+from HERON.src import Components
+from HERON.src import Placeholders
 
-from dispatch.Factory import known as known_dispatchers
-from dispatch.Factory import get_class as get_dispatcher
+from HERON.src.dispatch.Factory import known as known_dispatchers
+from HERON.src.dispatch.Factory import get_class as get_dispatcher
 
-from ValuedParams import factory as vp_factory
-from ValuedParamHandler import ValuedParamHandler
+from HERON.src.ValuedParams import factory as vp_factory
+from HERON.src.ValuedParamHandler import ValuedParamHandler
 
-from validators.Factory import known as known_validators
-from validators.Factory import get_class as get_validator
+from HERON.src.validators.Factory import known as known_validators
+from HERON.src.validators.Factory import get_class as get_validator
 
-import _utils as hutils
+import HERON.src._utils as hutils
 framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)
 from ravenframework.utils import InputData, InputTypes, xmlUtils

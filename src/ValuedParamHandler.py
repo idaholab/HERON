@@ -8,9 +8,9 @@ from __future__ import unicode_literals, print_function
 import os
 import sys
 
-import _utils as hutils
-from ValuedParams import Parametric
-from ValuedParams import factory as VPFactory
+from HERON.src import _utils as hutils
+from HERON.src.ValuedParams import Parametric
+from HERON.src.ValuedParams import factory as VPFactory
 
 framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)
@@ -187,7 +187,7 @@ class ValuedParamHandler(MessageUser):
       @ In, func, function, transfer function
       @ Out, None
     """
-    from Placeholders import Function
+    from HERON.src.Placeholders import Function
     self._vp = VPFactory.returnInstance('Function')
     self._vp.evaluate = func
 

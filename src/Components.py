@@ -8,12 +8,12 @@ from __future__ import unicode_literals, print_function
 import sys
 from collections import defaultdict
 import numpy as np
-from base import Base
+from HERON.src.base import Base
 import xml.etree.ElementTree as ET
-from Economics import CashFlowUser
-from ValuedParams import factory as vp_factory
-from ValuedParamHandler import ValuedParamHandler
-import _utils as hutils
+from HERON.src.Economics import CashFlowUser
+from HERON.src.ValuedParams import factory as vp_factory
+from HERON.src.ValuedParamHandler import ValuedParamHandler
+from HERON.src import _utils as hutils
 
 framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)

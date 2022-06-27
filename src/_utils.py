@@ -49,7 +49,9 @@ def get_cashflow_loc(raven_path=None):
     raven_path = get_raven_loc()
   plugin_handler_dir = path.join(raven_path, 'scripts')
   sys.path.append(plugin_handler_dir)
+  sys.path.append(path.join(raven_path, 'scripts'))
   plugin_handler = importlib.import_module('plugin_handler')
+  sys.path.pop()
   sys.path.pop()
   cf_loc = plugin_handler.getPluginLocation('TEAL')
   return cf_loc

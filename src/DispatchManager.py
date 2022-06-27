@@ -14,8 +14,6 @@ from time import time as run_clock
 import numpy as np
 from typing_extensions import final
 
-# set up path
-#sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from . import _utils as hutils
 from . import SerializationManager
 

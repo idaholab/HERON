@@ -700,7 +700,7 @@ class Template(TemplateBase, Base):
     input_filepath = os.path.abspath((os.path.dirname(__file__)))
     input_filepath = input_filepath+'/../src/DispatchManager'
     ext_model = template.find('Models').find('ExternalModel')
-    #ext_model.set('ModuleToLoad', input_filepath)
+    #ModuleToLoad not needed for HERON.DispatchManager plugin
     if 'ModuleToLoad' in ext_model.attrib:
       ext_model.attrib.pop('ModuleToLoad')
     ext_model.set('subType','HERON.DispatchManager')

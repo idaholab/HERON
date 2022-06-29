@@ -5,8 +5,17 @@
   Runs HERON.
 """
 import os
+from queue import Empty
 import sys
 import argparse
+<<<<<<< HEAD
+=======
+import input_loader
+from base import Base
+import _utils as hutils
+import Moped
+
+>>>>>>> 2ef0da6 (adding Moped to HERON, more work and testing required before a PR is made)
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 import HERON.src._utils as hutils
@@ -93,6 +102,27 @@ class HERON(Base):
     assert case is not None
     case.write_workflows(self._components, self._sources, self._input_dir)
 
+  def run_moped_workflow(self, case = None, components = None, sources = None):
+    """
+      Runs MOPED workflow for generating pyomo problem and solves it
+      @ In, case, HERON case object with necessary run settings
+      @ Out, None
+    """
+    if case is None:
+      case = self._case
+    if components is None:
+      components = self._components
+    if sources is None:
+      sources = self._sources
+    assert case is not None and components is not None and sources is not None
+    moped = Moped.MOPED()
+    print("*******************************************************************************")
+    print("You are running MOPED(Monolithic Optimizer for Probabilistic Economic Dispatch)")
+    print("*******************************************************************************")
+    moped.setInitialParams(case, components, sources)
+    moped.buildEconSettings()
+    moped.initializeMeta()
+
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Holistic Energy Resource Optimization Network (HERON)')
   parser.add_argument('xml_input_file', help='HERON XML input file')
@@ -101,6 +131,28 @@ if __name__ == '__main__':
   sim.read_input(args.xml_input_file) # TODO expand to use arguments?
   # print details
   sim.print_me()
-  sim.create_raven_workflow()
+  # print("Components: ", sim._components, '\n', "Sources: ", sim._sources, "\n", "Case: ", sim._case)
+  # print(dir(sim._components[0]))
+  # print(sim._components[0]._produces[0]._capacity)
+  # print(dir(sim._components[0]._produces[0]._capacity))
+  # print(sim._components[0]._produces[0]._capacity._vp)
+  # print(dir(sim._components[0]._produces[0]._capacity._vp))
+  # print(sim._components[0]._produces[0]._capacity._vp._parametric)
+  # print(sim._components[1]._produces[0]._capacity._vp._parametric)
+  # print(dir(sim._components[2]._demands[0]._capacity._vp))
+  # print(dir(sim._components[0]._economics._cash_flows[0]))
+  # print(sim._components[0]._economics._cash_flows[0]._type)
+  # print(dir(sim._components[0]._produces[0]))
+  # print(sim._components[0]._produces[0]._consumes)
+  # print(sim._components[2]._demands[0]._capacity_var)
+  # print(dir(sim._components[0]._produces[0]._capacity))
+  # print(sim._components[0]._produces[0]._capacity)
+  if sim._case._workflow == 'standard':
+    sim.create_raven_workflow()
+  elif sim._case._workflow == 'MOPED':
+    sim.run_moped_workflow()
+  elif sim._case._workflow == 'combined':
+    sim.run_moped_workflow()
+    sim.create_raven_workflow()
   # TODO someday? sim.run()
 

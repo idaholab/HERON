@@ -120,8 +120,7 @@ class HERON(Base):
     print("You are running MOPED(Monolithic Optimizer for Probabilistic Economic Dispatch)")
     print("*******************************************************************************")
     moped.setInitialParams(case, components, sources)
-    moped.buildEconSettings()
-    moped.initializeMeta()
+    moped.run()
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Holistic Energy Resource Optimization Network (HERON)')
@@ -131,22 +130,6 @@ if __name__ == '__main__':
   sim.read_input(args.xml_input_file) # TODO expand to use arguments?
   # print details
   sim.print_me()
-  # print("Components: ", sim._components, '\n', "Sources: ", sim._sources, "\n", "Case: ", sim._case)
-  # print(dir(sim._components[0]))
-  # print(sim._components[0]._produces[0]._capacity)
-  # print(dir(sim._components[0]._produces[0]._capacity))
-  # print(sim._components[0]._produces[0]._capacity._vp)
-  # print(dir(sim._components[0]._produces[0]._capacity._vp))
-  # print(sim._components[0]._produces[0]._capacity._vp._parametric)
-  # print(sim._components[1]._produces[0]._capacity._vp._parametric)
-  # print(dir(sim._components[2]._demands[0]._capacity._vp))
-  # print(dir(sim._components[0]._economics._cash_flows[0]))
-  # print(sim._components[0]._economics._cash_flows[0]._type)
-  # print(dir(sim._components[0]._produces[0]))
-  # print(sim._components[0]._produces[0]._consumes)
-  # print(sim._components[2]._demands[0]._capacity_var)
-  # print(dir(sim._components[0]._produces[0]._capacity))
-  # print(sim._components[0]._produces[0]._capacity)
   if sim._case._workflow == 'standard':
     sim.create_raven_workflow()
   elif sim._case._workflow == 'MOPED':

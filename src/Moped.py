@@ -328,12 +328,39 @@ class MOPED():
         """
           Generates dispatch vars and value arrays to build components
           @ In, comp, HERON component
-          @ Out, None
+          @ Out, template_array, array of pyo.values used for TEAL cfs
         """
-        print(self._components[0]._economics._lifetime)
-        exit()
-        life = comp
-
+        # Lifetimes for each component can vary
+        life = comp._economics._lifetime
+        template_array = np.zeros((self._case._num_samples, life, self._yearly_hours), dtype=object)
+        capacity = self._component_meta[comp.name]['Capacity']
+        # Checking for type of capacity is necessary
+        self._m.dummy = pyo.Var()
+        self._m.placeholder = pyo.Param()
+        dummy_type = type(self._m.dummy)
+        placeholder_type = type(self._m.placeholder)
+        self.verbosityPrint(f'Preparing dispatch container for {comp.name}...')
+        for real in range(self._case._num_samples):
+            for year in range(life):
+                # TODO account for other variations of component settings
+                if isinstance(capacity,(dummy_type, placeholder_type)):
+                    print('This is okay')
+                    var = pyo.Var(self._m.c, self._m.t,
+                      initialize=lambda m, c, t: 0,
+                      domain=pyo.NonNegativeReals
+                      )
+                    setattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}',var)
+                    template_array[real, year, :] = np.array(list(var.values()))
+                    print(template_array)
+                    exit()
+                else:
+                    print('This is not okay')
+                    param = pyo.Param(self._m.c, self._m.t,
+                      initialize=lambda m, c, t: capacity[f'Realization_{real+1}'][year, c, t]
+                      )
+                    setattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}',param)
+                    template_array[real, year, :] = np.array(list(param.values()))
+        return template_array
 
     def run(self):
         """
@@ -346,7 +373,9 @@ class MOPED():
         self.buildCashflowMeta()
         self.collectResources()
         for comp in self._components:
-            self.buildDispatchVariables(comp)
+            dispatch = self.buildDispatchVariables(comp)
+            print(dispatch)
+            exit()
 
     #===========================
     # UTILITIES

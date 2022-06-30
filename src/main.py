@@ -8,14 +8,6 @@ import os
 from queue import Empty
 import sys
 import argparse
-<<<<<<< HEAD
-=======
-import input_loader
-from base import Base
-import _utils as hutils
-import Moped
-
->>>>>>> 2ef0da6 (adding Moped to HERON, more work and testing required before a PR is made)
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 import HERON.src._utils as hutils
@@ -23,7 +15,7 @@ sys.path.append(hutils.get_raven_loc())
 
 from HERON.src import input_loader
 from HERON.src.base import Base
-
+from HERON.src import Moped
 
 from ravenframework.MessageHandler import MessageHandler
 

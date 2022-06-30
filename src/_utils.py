@@ -185,11 +185,11 @@ def get_csv_structure(fpath, macro_var, micro_var):
   structure['clusters'] = {}
   for macro_step, df in data.groupby(macro_var):
     structure['clusters'][macro_step] = [{
-      'id': 0, 
+      'id': 0,
       'indices': [0, len(df[micro_var].values)],
       'represents': ['0']
     }]
-  
+
   structure['segments'] = {}  # TODO
   return structure
 

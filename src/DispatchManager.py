@@ -36,9 +36,10 @@ class DispatchRunner:
     Manages the interface between RAVEN and running the dispatch
   """
   # TODO move naming templates to a common place for consistency!
-  naming_template = {'comp capacity': '{comp}_capacity',
-                     'dispatch var': 'Dispatch__{comp}__{tracker}__{res}',
-                    }
+  naming_template = {
+    'comp capacity': '{comp}_capacity',
+    'dispatch var': 'Dispatch__{comp}__{tracker}__{res}',
+  }
 
   def __init__(self):
     """
@@ -94,10 +95,10 @@ class DispatchRunner:
         vars_needed = source.get_variable()
         for v in vars_needed:
           pass_vars[v] = getattr(raven, v)
-        
+
         # if not hasattr(raven, '_indexMap'):
         #   pass_vars['_indexMap'] = {
-        #     var: [self._case.get_time_name(), self._case.get_year_name(), '_ROM_Cluster'] 
+        #     var: [self._case.get_time_name(), self._case.get_year_name(), '_ROM_Cluster']
         #     for var in source.get_variable()
         #   }
         #   setattr(raven, '_indexMap', [pass_vars['_indexMap']])

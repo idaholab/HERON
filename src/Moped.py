@@ -6,11 +6,13 @@
   a monolithic solve that utilizes TEAL cashflows, RAVEN ROM(s), and pyomo optimization.
 """
 import os
+from socket import herror
 import sys
 import pyomo.environ as pyo
 from pyomo.opt import SolverFactory
 import _utils as hutils
 import numpy as np
+from functools import partial
 # Getting raven location
 path_to_raven = hutils.get_raven_loc()
 # Access to externalROMloader
@@ -21,7 +23,7 @@ sys.path.append(os.path.abspath(os.path.join(path_to_raven, 'plugins')))
 sys.path.append(path_to_raven)
 import externalROMloader as ROMloader
 from TEAL.src import CashFlows
-import TEAL
+from TEAL.src import main as RunCashFlow
 #from TEAL.src import CashFlow as RunCashFlow
 
 class MOPED():
@@ -38,11 +40,10 @@ class MOPED():
           # organizes important information for problem construction
         self._cf_meta = {} # Secondary data structure for MOPED, contains cashflow info
         self._resources = [] # List of resources used in this analysis
-        self._dispatch_variables = []
-        self._roms = []
         self._verbosity = True # Verbosity setting for MOPED run
         self._solver = SolverFactory('ipopt') # Solver for optimization solve, default is 'ipopt'
-        self._objective = None
+        self._cf_components = [] # List of TEAL.Components objects generated for analysis
+        self._dispatch = [] # List of pyomo vars/params for each realization and year
         self._constraints = []
 
     def buildActivity(self):
@@ -258,7 +259,7 @@ class MOPED():
         cf.setParams(cfParams)
         return cf
 
-    def createRecurringYearly(comp, alpha, driver):
+    def createRecurringYearly(self, comp, alpha, driver):
         """
           Constructs the parameters for capital expenditures
           @ In, comp, TEAL.src.CashFlows.Component, main structure to add component cash flows
@@ -266,7 +267,8 @@ class MOPED():
           @ In, driver, pyomo.core.base.var.ScalarVar, quantity sold to populate
           @ Out, cf, TEAL.src.CashFlows.Component, cashflow sale for the recurring yearly
         """
-        life = comp.getLifetime()
+        # Necessary to make life integer valued for numpy
+        life = int(self._case._global_econ['ProjectTime'])
         cf = CashFlows.Recurring()
         cfFarams = {'name': 'FixedOM',
                     'X': 1,
@@ -290,7 +292,8 @@ class MOPED():
           @ In, driver, numpy array of pyomo.var.values that drive cost
           @ Out, cf, TEAL cashflow
         """
-        life = comp.getLifetime()
+        # Necessary to make integer for numpy arrays
+        life = int(self._case._global_econ['ProjectTime'])
         print('Lifetime of ', f'{comp.name} is {life}')
         cf = CashFlows.Recurring()
         cfParams = {'name': 'Hourly',
@@ -328,39 +331,149 @@ class MOPED():
         """
           Generates dispatch vars and value arrays to build components
           @ In, comp, HERON component
-          @ Out, template_array, array of pyo.values used for TEAL cfs
+          @ Out, template_array, np.array, array of pyo.values used for TEAL cfs
+          @ Out, capacity, np.array/pyomo.var, capacity variable for the component
         """
-        # Lifetimes for each component can vary
-        life = comp._economics._lifetime
-        template_array = np.zeros((self._case._num_samples, life, self._yearly_hours), dtype=object)
+        # Assumes that all components will remain functional for project life
+        project_life = int(self._case._global_econ['ProjectTime'])
+        template_array = np.zeros((self._case._num_samples, project_life, self._yearly_hours), dtype=object)
         capacity = self._component_meta[comp.name]['Capacity']
-        # Checking for type of capacity is necessary
+        # Checking for type of capacity is necessary to build dispatch variable
         self._m.dummy = pyo.Var()
         self._m.placeholder = pyo.Param()
         dummy_type = type(self._m.dummy)
         placeholder_type = type(self._m.placeholder)
         self.verbosityPrint(f'Preparing dispatch container for {comp.name}...')
         for real in range(self._case._num_samples):
-            for year in range(life):
+            for year in range(project_life):
                 # TODO account for other variations of component settings
                 if isinstance(capacity,(dummy_type, placeholder_type)):
-                    print('This is okay')
                     var = pyo.Var(self._m.c, self._m.t,
                       initialize=lambda m, c, t: 0,
                       domain=pyo.NonNegativeReals
                       )
                     setattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}',var)
                     template_array[real, year, :] = np.array(list(var.values()))
-                    print(template_array)
-                    exit()
                 else:
-                    print('This is not okay')
                     param = pyo.Param(self._m.c, self._m.t,
                       initialize=lambda m, c, t: capacity[f'Realization_{real+1}'][year, c, t]
                       )
                     setattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}',param)
                     template_array[real, year, :] = np.array(list(param.values()))
-        return template_array
+        return capacity, template_array
+
+    def createCashflowComponent(self, comp, capacity, dispatch):
+        """
+          Builds TEAL component using pyomo dispatch and capacity variables
+          @ In, capacity, pyomo.var/pyomo.param, primary driver
+          @ In, life, int, number of years the component operates without replacement
+          @ In, dispatch, np.array, pyomo values for dispatch variables
+          @ Out, component, TEAL.Component
+        """
+        # Need to have TEAL component for cashflow functionality
+        component = CashFlows.Component()
+        params = {'name':comp.name}
+        cfs = []
+        # Using read meta to evaluate possible cashflows
+        for cf, value in self._cf_meta[comp.name].items():
+            if cf == 'Lifetime':
+                self.verbosityPrint(f'Setting component lifespan for {comp.name}')
+                params['Life_time'] = value
+                component.setParams(params)
+            elif cf == 'Cap':
+                # Capex is the most complex to handle generally due to amort
+                self.verbosityPrint(f'Generating Capex cashflow for {comp.name}')
+                capex = self.createCapex(component, value, capacity)
+                cfs.append(capex)
+                # FIXME how to generalize this, currently hardcoded
+                capex.setAmortization('custom', [0.33, 0.45])
+                amorts = component._createDepreciation(capex)
+                cfs.extend(amorts)
+            elif cf == 'Yearly':
+                self.verbosityPrint(f'Generating Yearly OM cashflow for {comp.name}')
+                yearly = self.createRecurringYearly(component, value, capacity)
+                cfs.append(yearly)
+            elif cf == 'Hourly':
+                # Here value can be a np.array as well for ARMA grid pricing
+                self.verbosityPrint(f'Generating dispatch OM cashflow for {comp.name}')
+                var_om = self.createRecurringHourly(component, value, dispatch)
+                cfs.append(var_om)
+            else:
+                raise IOError(f'Unexpected cashflow type received: {cf}')
+        component.addCashflows(cfs)
+        return component
+
+    def conserveResource(self, resource, real, year, M, c, t):
+        """
+          Generates pyomo constraints for resource conservation
+          @ In, resource, string, name of resource we are conserving
+          @ In, real, int, the current realization
+          @ In, year, int, the current year
+          @ In, M, pyomo.ConcreteModel
+          @ In, c, int, index from pyomo set self._m.c
+          @ In, t, int, index from pyomo set self._m.t
+          @ Out, rule, boolean expression
+        """
+        # Initializing production and demand trackers
+        produced = 0
+        demanded = 0
+        # Necessary to check all components involved in the analysis
+        for comp in self._components:
+            comp_meta = self._component_meta[comp.name]
+            # Conservation constrains the dispatch decisions
+            dispatch_value = getattr(self._m, f'{comp.name}_dispatch_{real + 1}_{year + 1}')
+            for key, value in comp_meta.items():
+                if key == 'Produces' and value == resource:
+                    produced += dispatch_value[(c,t)]
+                elif key == 'Demands' and value == resource:
+                    demanded += dispatch_value[(c,t)]
+                # TODO consider consumption and incorrect input information
+        return produced == demanded
+
+    def upper(self, comp, real, year, M, c, t):
+        """
+          Restricts independently dispatched compononents based on their capacity
+          @ In, comp, HERON comp object
+          @ In, real, int, current realization
+          @ In, year, int, current year
+          @ In, M, pyomo model object, MOPED pyomo ConcreteModel
+          @ In, c, int, index for cluster
+          @ In, t, int, index for hour within cluster
+          @ Out, rule, boolean expression for upper bounding
+        """
+        # This is allows for the capacity to be an upper bound and decision variable
+        upper_bound = getattr(self._m, f'{comp.name}')
+        dispatch_value = getattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}')
+        return dispatch_value[(c,t)] <= upper_bound
+
+    def buildConstraints(self):
+        """
+          Builds all necessary constraints for pyomo object
+          @ In, None
+          @ Out, None
+        """
+        # Convert to int to make range() viable
+        project_life = int(self._case._global_econ['ProjectTime'])
+        # Type variables used for checking capacity type, based on pyomo vars
+        # Defined as part of the self._m pyomo model
+        dummy_type = type(self._m.dummy)
+        placeholder_type = type(self._m.placeholder)
+        self.verbosityPrint(f'Building necessary constraints for {self._case.name}')
+        for real in range(self._case._num_samples):
+            for year in range(project_life):
+                # Separating constraints makes sense
+                # Resource conservation
+                for resource in self._resources:
+                    con = pyo.Constraint(self._m.c, self._m.t,
+                      rule = partial(self.conserveResource, resource, real, year))
+                    setattr(self._m, f'{resource}_con_{real+1}_{year+1}', con)
+                # Bounding constraints on dispatches
+                for comp in self._components:
+                    capacity = self._component_meta[comp.name]['Capacity']
+                    if isinstance(capacity,(dummy_type, placeholder_type)):
+                        con = pyo.Constraint(self._m.c, self._m.t,
+                          rule = partial(self.upper, comp, real, year))
+                        setattr(self._m, f'{comp.name}_upper_{real+1}_{year+1}', con)
 
     def run(self):
         """
@@ -373,9 +486,13 @@ class MOPED():
         self.buildCashflowMeta()
         self.collectResources()
         for comp in self._components:
-            dispatch = self.buildDispatchVariables(comp)
-            print(dispatch)
-            exit()
+            capacity, dispatch = self.buildDispatchVariables(comp)
+            cf_comp = self.createCashflowComponent(comp, capacity, dispatch)
+            self._cf_components.append(cf_comp)
+        self.verbosityPrint(f'Building pyomo cash flow expression for {self._case.name}')
+        metrics = RunCashFlow.run(self._econ_settings, self._cf_components, {}, pyomoVar=True)
+        self.buildConstraints()
+
 
     #===========================
     # UTILITIES

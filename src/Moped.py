@@ -492,8 +492,22 @@ class MOPED():
         self.verbosityPrint(f'Building pyomo cash flow expression for {self._case.name}')
         metrics = RunCashFlow.run(self._econ_settings, self._cf_components, {}, pyomoVar=True)
         self.buildConstraints()
-
-
+        self._m.NPV = pyo.Objective(expr=metrics['NPV'], sense = pyo.maximize)
+        self._m.NPV.pprint()
+        self._m.ngcc_dispatch_1_1.pprint()
+        self._m.import_dispatch_1_1.pprint()
+        self._m.electricity_con_1_1.pprint()
+        print(f'{self._m.grid_dispatch_1_1[0,0]} = {self._m.ngcc_dispatch_1_1[0,0].value + self._m.import_dispatch_1_1[0,0].value}')
+        exit()
+        results = self._solver.solve(self._m)
+        print(results)
+        self._m.ngcc.pprint()
+        for comp in self._components:
+            if comp.name != 'grid':
+                h = getattr(self._m, f'{comp.name}_dispatch_1_1')
+                h.pprint()
+        NPV = pyo.value(self._m.NPV)
+        print("The final NPV is: ", NPV)
     #===========================
     # UTILITIES
     #===========================

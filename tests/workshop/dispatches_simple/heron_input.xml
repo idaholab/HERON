@@ -9,7 +9,7 @@
     <classesTested>HERON</classesTested>
   </TestInfo>
 
-  <Case name="1_simple">
+  <Case name="trying_something">
     <mode>opt</mode>
     <verbosity>all</verbosity>
     <num_arma_samples>20</num_arma_samples>
@@ -35,7 +35,7 @@
     </dispatcher>
   </Case>
 
-
+<!-- add economics to hydrolyzer, h2_tank, and h2_turb -->
   <Components>
     <Component name="npp">
 
@@ -70,12 +70,46 @@
           </reference_price>
         </CashFlow>
       </economics>
+
     </Component>
 
     <Component name="electrolyzer">
+      <consumes resource="electricity">
+      </consumes>
 
-      <produces resource="h2" dispatch="independent">
-        <capacity resource="h2">
+      <transfer>
+        <linear>
+          <rate resource="electricity"> 18.342 </rate> <!-- (MW-hr/kg)^-1 -->
+        </linear>
+      </transfer>
+
+      <produces resource="hydrogen" dispatch="independent">
+        <capacity resource="hydrogen">
+          <opt_bounds>0,10</opt_bounds> <!-- ?? -->
+        </capacity>
+      </produces>
+    </Component>
+
+    <Component name="h2tank">
+      <stores resource="hydrogen" dispatch="independent">
+        <capacity resource="hydrogen">
+          <opt_bounds>0,10</opt_bounds> <!-- ?? -->
+        </capacity>
+      </stores>
+    </Component>
+
+    <Component name="h2turb">
+      <consumes resource="hydrogen">
+      </consumes>
+
+      <transfer>
+        <linear>
+          <rate resource="hydrogen"> 0.0125 </rate> <!-- MW-hr/kg -->
+        </linear>
+      </transfer>
+
+      <produces resource="electricity">
+        <capacity resource="electricity">
           <opt_bounds>0,10</opt_bounds> <!-- ?? -->
         </capacity>
       </produces>
@@ -105,7 +139,6 @@
       </economics>
     </Component>
 
-
     <Component name="grid">
       <demands resource="electricity" dispatch="fixed">
         <capacity>
@@ -113,6 +146,13 @@
           <multiplier>-1</multiplier>
         </capacity>
       </demands>
+
+      <demands resource="hydrogen" dispatch="fixed">
+        <capacity>
+          <fixed_value> 1000 </fixed_value>
+        </capacity>
+      </demands>
+
       <economics>
         <lifetime>1</lifetime>
       </economics>

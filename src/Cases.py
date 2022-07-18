@@ -104,7 +104,8 @@ class Case(Base):
     desc_workflow_options = r"""determines the desired workflow(s) for the HERON analysis. \default{standard}.
                             If ``standard'' runs HERON as usual (writes outer/inner for RAVEN workflow).
                             If ``MOPED'' runs monolithic solver MOPED using the information in xml input.
-                            If ``combined'' runs both workflows, setting up RAVEN workflow and solving with MOPED."""
+                            If ``combined'' runs both workflows, setting up RAVEN workflow and solving with MOPED.
+                            See appendix: Workflow Options for more details"""
     input_specs.addSub(InputData.parameterInputFactory('workflow', contentType=workflow_options,
                                                        strictMode=True, descr=desc_workflow_options))
 

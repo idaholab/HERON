@@ -13,6 +13,7 @@
     <mode>opt</mode>
     <verbosity>all</verbosity>
     <num_arma_samples>20</num_arma_samples>
+    <workflow>MOPED</workflow>
     <!-- <parallel>
         <inner>2</inner>
       </parallel> -->

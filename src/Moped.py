@@ -34,7 +34,8 @@ class MOPED():
         self._econ_settings = None # TEAL global settings used for building cashflows
         self._m = None # Pyomo model to be solved
         self._producers = [] # List of pyomo var/params of producing components
-        self._eval_mode = 'clustered' # clusterEvalMode to feed the externalROMloader
+        self._eval_mode = 'full' # clusterEvalMode to feed the externalROMloader (full or clustered)
+          # clustered is better for testing and speed, full gives a more realistic NPV result
         self._yearly_hours = 24*365 # Number of hours in a year to handle dispatch, based on clustering
         self._component_meta = {} # Primary data structure for MOPED,
           # organizes important information for problem construction
@@ -44,7 +45,6 @@ class MOPED():
         self._solver = SolverFactory('ipopt') # Solver for optimization solve, default is 'ipopt'
         self._cf_components = [] # List of TEAL.Components objects generated for analysis
         self._dispatch = [] # List of pyomo vars/params for each realization and year
-        self._constraints = []
 
     def buildActivity(self):
         """
@@ -57,12 +57,13 @@ class MOPED():
             #TODO Does this need to be expanded on?
             for cf in comp._economics._cash_flows:
                 if cf._type == 'one-time':
-                    type_name = 'Cap'
+                    activity.append(f'{comp.name}|Cap')
                 elif cf._type == 'year':
-                    type_name = 'Yearly'
+                    activity.append(f'{comp.name}|Yearly')
                 elif cf._type == 'repeating':
-                    type_name = 'Hourly'
-                activity.append(f'{comp.name}|{type_name}')
+                    # Necessary to have activity indicator account for multiple dispatch realizations
+                    for real in range(self._case._num_samples):
+                        activity.append(f'{comp.name}|Hourly_{real+1}')
         self.verbosityPrint(f'|Built activity Indicator: {activity}|')
         return activity
 
@@ -132,24 +133,23 @@ class MOPED():
         runner.setAdditionalParams(nodes)
         synthetic_data = {}
         for real in range(self._case._num_samples):
+            self.verbosityPrint(f'|Loading synthetic history for signal: {signal}|')
             name = f'Realization_{real + 1}'
             current_realization = runner.evaluate(inp)[0]
-            # TODO check for multipliers other than one
-            # Necessary for wind and solar at the very least
+            if self._eval_mode == 'full':
+                # reshape so that a filler cluster index is made
+                current_realization[signal] = np.expand_dims(current_realization[signal], axis = 1)
+            # TODO check for multipliers other than one necessary for wind and solar at the very least
             synthetic_data[name] = current_realization[signal]
-        # Defining pyomo indexing based off of evaluation mode
-        # Necessary for including full evaluation for validation
-        if self._eval_mode == 'clustered':
-            cluster_count = synthetic_data['Realization_1'].shape[1]
-            self._m.c = pyo.Set(initialize = np.arange(cluster_count))
-        elif self._eval_mode == 'full':
-            # TODO check for the number of days in the dataset instead
-            cluster_count = 365
-            self._m.c = pyo.Set(initialize = np.arange(cluster_count))
-        else:
+        cluster_count = synthetic_data['Realization_1'].shape[1]
+        hour_count = synthetic_data['Realization_1'].shape[2]
+        self._m.c = pyo.Set(initialize = np.arange(cluster_count))
+        if self._eval_mode not in ['clustered', 'full']:
             raise IOError('Improper ROM evaluation mode detected, try "clustered" or "full".')
-        self._yearly_hours = 24 * cluster_count
-        self._m.t = pyo.Set(initialize = np.arange(24))
+        # How many dispatch points we will have for each year
+        self._yearly_hours = hour_count * cluster_count
+        # TODO consider different segment lengths?
+        self._m.t = pyo.Set(initialize = np.arange(hour_count))
         return synthetic_data
 
     def setCapacityMeta(self, mode, resource, comp, element, consumes=False):
@@ -231,6 +231,8 @@ class MOPED():
                 value = multiplier * alpha
                 if cf._type == 'one-time':
                     self._cf_meta[comp.name]['Cap'] = value
+                    # Necessary if capex has depreciation and amortization
+                    self._cf_meta[comp.name]['Deprec'] = cf._depreciate
                 elif cf._type == 'yearly':
                     self._cf_meta[comp.name]['Yearly'] = value
                 elif cf._type == 'repeating':
@@ -270,11 +272,11 @@ class MOPED():
         # Necessary to make life integer valued for numpy
         life = int(self._case._global_econ['ProjectTime'])
         cf = CashFlows.Recurring()
-        cfFarams = {'name': 'FixedOM',
+        cfParams = {'name': 'FixedOM',
                     'X': 1,
                     'mult_target': None,
                     'inflation': False}
-        cf.setParams(cfFarams)
+        cf.setParams(cfParams)
         # 0 for first year (build year) -> TODO couldn't this be automatic?
         alphas = np.ones(life+1, dtype=object) * alpha
         drivers = np.ones(life+1, dtype=object) * driver
@@ -284,30 +286,31 @@ class MOPED():
         cf.computeYearlyCashflow(alphas, drivers)
         return cf
 
-    def createRecurringHourly(self, comp, alpha, driver):
+    def createRecurringHourly(self, comp, alpha, driver, real):
         """
           Generates recurring hourly cashflows, mostly for dispatch and sales
           @ In, comp, TEAL component
-          @ In, alpha, float, reference price of sale
+          @ In, alpha, float/np.array, reference price of sale
           @ In, driver, numpy array of pyomo.var.values that drive cost
+          @ In, real, int, current realization number
           @ Out, cf, TEAL cashflow
         """
         # Necessary to make integer for numpy arrays
         life = int(self._case._global_econ['ProjectTime'])
-        print('Lifetime of ', f'{comp.name} is {life}')
         cf = CashFlows.Recurring()
-        cfParams = {'name': 'Hourly',
+        cfParams = {'name': f'Hourly_{real+1}',
                     'X': 1,
                     'mult_target': False,
                     'inflation': None}
         cf.setParams(cfParams)
         cf.initParams(life, pyomoVar=True)
-        for real in range(self._case._num_samples):
-            for year in range(life):
-                if isinstance(alpha, float):
-                    cf.computeIntrayearCashflow(year, alpha, driver[real, year, :])
-                else:
-                    cf.computeIntrayearCashflow(year, alpha[real, year, :], driver[real, year, :])
+
+        # Necessary to shift year index by one since no recurring cashflows on first build year
+        for year in range(life + 1):
+            if isinstance(alpha, float):
+                cf.computeIntrayearCashflow(year, alpha, driver[year, :])
+            else:
+                cf.computeIntrayearCashflow(year, alpha[year, :], driver[year, :])
         return cf
 
     def collectResources(self):
@@ -334,9 +337,11 @@ class MOPED():
           @ Out, template_array, np.array, array of pyo.values used for TEAL cfs
           @ Out, capacity, np.array/pyomo.var, capacity variable for the component
         """
-        # Assumes that all components will remain functional for project life
+        # NOTE Assumes that all components will remain functional for project life
         project_life = int(self._case._global_econ['ProjectTime'])
-        template_array = np.zeros((self._case._num_samples, project_life, self._yearly_hours), dtype=object)
+        # Necessary to make year index one larger than project life so that year zero
+        # Can be empty for recurring cashflows
+        template_array = np.zeros((self._case._num_samples, project_life + 1, self._yearly_hours), dtype=object)
         capacity = self._component_meta[comp.name]['Capacity']
         # Checking for type of capacity is necessary to build dispatch variable
         self._m.dummy = pyo.Var()
@@ -344,22 +349,32 @@ class MOPED():
         dummy_type = type(self._m.dummy)
         placeholder_type = type(self._m.placeholder)
         self.verbosityPrint(f'Preparing dispatch container for {comp.name}...')
+        ####
+        # print(self._component_meta)
+        # exit()
+        ####
         for real in range(self._case._num_samples):
             for year in range(project_life):
-                # TODO account for other variations of component settings
+                # TODO account for other variations of component settings, specifically if dispatchable
                 if isinstance(capacity,(dummy_type, placeholder_type)):
                     var = pyo.Var(self._m.c, self._m.t,
                       initialize=lambda m, c, t: 0,
                       domain=pyo.NonNegativeReals
                       )
                     setattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}',var)
-                    template_array[real, year, :] = np.array(list(var.values()))
+                    # Shifting index such that year 0 remains 0
+                    # Weighting each dispatch by the number of realizations (equal weight for each realization)
+                    ## This corrects the NPV value
+                    template_array[real, year + 1, :] = (1/self._case._num_samples)*np.array(list(var.values()))
                 else:
                     param = pyo.Param(self._m.c, self._m.t,
                       initialize=lambda m, c, t: capacity[f'Realization_{real+1}'][year, c, t]
                       )
                     setattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}',param)
-                    template_array[real, year, :] = np.array(list(param.values()))
+                    # Shifting index such that year 0 remains 0
+                    # Weighting each dispatch by the number of realizations (equal weight for each realization)
+                    ## This corrects the NPV value
+                    template_array[real, year + 1, :] = (1/self._case._num_samples)*np.array(list(param.values()))
         return capacity, template_array
 
     def createCashflowComponent(self, comp, capacity, dispatch):
@@ -374,30 +389,37 @@ class MOPED():
         component = CashFlows.Component()
         params = {'name':comp.name}
         cfs = []
+        cf_meta = self._cf_meta[comp.name]
         # Using read meta to evaluate possible cashflows
-        for cf, value in self._cf_meta[comp.name].items():
+        for cf, value in cf_meta.items():
             if cf == 'Lifetime':
                 self.verbosityPrint(f'Setting component lifespan for {comp.name}')
                 params['Life_time'] = value
                 component.setParams(params)
             elif cf == 'Cap':
                 # Capex is the most complex to handle generally due to amort
-                self.verbosityPrint(f'Generating Capex cashflow for {comp.name}')
+                self.verbosityPrint(f'|Generating Capex cashflow for {comp.name}|')
                 capex = self.createCapex(component, value, capacity)
                 cfs.append(capex)
-                # FIXME how to generalize this, currently hardcoded
-                capex.setAmortization('custom', [0.33, 0.45])
-                amorts = component._createDepreciation(capex)
-                cfs.extend(amorts)
+                depreciation = cf_meta['Deprec']
+                if depreciation is not None:
+                    capex.setAmortization('MACRS', depreciation)
+                    amorts = component._createDepreciation(capex)
+                    cfs.extend(amorts)
+            # Necessary to avoid error message from expected inputs
+            elif cf == 'Deprec':
+                continue
             elif cf == 'Yearly':
-                self.verbosityPrint(f'Generating Yearly OM cashflow for {comp.name}')
+                self.verbosityPrint(f'|Generating Yearly OM cashflow for {comp.name}|')
                 yearly = self.createRecurringYearly(component, value, capacity)
                 cfs.append(yearly)
             elif cf == 'Hourly':
                 # Here value can be a np.array as well for ARMA grid pricing
-                self.verbosityPrint(f'Generating dispatch OM cashflow for {comp.name}')
-                var_om = self.createRecurringHourly(component, value, dispatch)
-                cfs.append(var_om)
+                self.verbosityPrint(f'|Generating dispatch OM cashflow for {comp.name}|')
+                # Necessary to create a unique cash flow for each dispatch realization
+                for real in range(self._case._num_samples):
+                    var_om = self.createRecurringHourly(component, value, dispatch[real, :, :], real)
+                    cfs.append(var_om)
             else:
                 raise IOError(f'Unexpected cashflow type received: {cf}')
         component.addCashflows(cfs)
@@ -475,39 +497,57 @@ class MOPED():
                           rule = partial(self.upper, comp, real, year))
                         setattr(self._m, f'{comp.name}_upper_{real+1}_{year+1}', con)
 
+    def solveAndDisplay(self):
+        """
+          Presents results of the optimization run
+          @ In, None
+          @ Out, None
+        """
+        # Results provide run times and optimizer final status
+        results = self._solver.solve(self._m)
+        self.verbosityPrint(f'Optimizer has finished running, here are the results\n{results}')
+        for comp in self._components:
+            # Not all components will have a pyomo variable
+            try:
+                comp_print = getattr(self._m, f'{comp.name}')
+                self.verbosityPrint(f'Here is the optimized capacity for {comp.name}')
+                comp_print.pprint()
+            except:
+                self.verbosityPrint(f'{comp.name} does not have a standard capacity')
+        NPV = pyo.value(self._m.NPV)
+        self.verbosityPrint(f"The final NPV is: {NPV}")
+
+    #===========================
+    # MAIN WORKFLOW
+    #===========================
     def run(self):
         """
           Runs the workflow
           @ In, None
           @ Out, None
         """
+        # Settings and metas help to build pyomo problem with cashflows
         self.buildEconSettings()
         self.buildComponentMeta()
         self.buildCashflowMeta()
         self.collectResources()
+        # Each component will have dispatch and cashflow associated
         for comp in self._components:
             capacity, dispatch = self.buildDispatchVariables(comp)
             cf_comp = self.createCashflowComponent(comp, capacity, dispatch)
             self._cf_components.append(cf_comp)
         self.verbosityPrint(f'Building pyomo cash flow expression for {self._case.name}')
+        # TEAL is our cost function generator here
         metrics = RunCashFlow.run(self._econ_settings, self._cf_components, {}, pyomoVar=True)
-        self.buildConstraints()
         self._m.NPV = pyo.Objective(expr=metrics['NPV'], sense = pyo.maximize)
-        self._m.NPV.pprint()
-        self._m.ngcc_dispatch_1_1.pprint()
-        self._m.import_dispatch_1_1.pprint()
-        self._m.electricity_con_1_1.pprint()
-        print(f'{self._m.grid_dispatch_1_1[0,0]} = {self._m.ngcc_dispatch_1_1[0,0].value + self._m.import_dispatch_1_1[0,0].value}')
+        # Constraints need to be built for conservation and bounds of dispatch
+        self.buildConstraints()
+        # NOTE this currently displays just optimizer info and capacities and cost funtion
+        # TODO does this need to present information about dispatches, how to do this?
+        self.verbosityPrint(f'Running Optimizer...')
+        self.solveAndDisplay()
         exit()
-        results = self._solver.solve(self._m)
-        print(results)
-        self._m.ngcc.pprint()
-        for comp in self._components:
-            if comp.name != 'grid':
-                h = getattr(self._m, f'{comp.name}_dispatch_1_1')
-                h.pprint()
-        NPV = pyo.value(self._m.NPV)
-        print("The final NPV is: ", NPV)
+
     #===========================
     # UTILITIES
     #===========================

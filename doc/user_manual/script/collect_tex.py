@@ -13,10 +13,6 @@ src_path = os.path.abspath(os.path.join(build_path, '..', 'src'))
 
 sys.path.append(heron_path)
 from HERON.src import Cases, Components, Placeholders
-# import _utils as hutils
-# framework_path = hutils.get_raven_loc()
-# sys.path.append(framework_path)
-# from utils import InputData
 
 specs_to_load = {'Cases': ['Case'],
                  'Components': ['Component'],

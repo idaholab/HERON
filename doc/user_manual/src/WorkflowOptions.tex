@@ -1,14 +1,39 @@
 \section{Workflow Options}
-HERON has the capability to run different workflows, which expands the flexibility and capabilities of this plugin. Currently, HERON inputs control the workflow selection via
-
-\xmlNode{workflow}, which exists as a subnode of \xmlNode{case}. Each workflow approaches the Technoeconomic Analysis(TEA) with a unique problem formulation and solution
-
-technique.
+HERON has the capability to run different workflows, which expand the flexibility and capabilities of this plugin. Currently, HERON input files control the workflow selection via the \xmlNode{workflow} node, which is a subnode of the \xmlNode{case} node. Each workflow approaches the Techno-economic Analysis (TEA) with a unique problem formulation and solution technique.
 
 \subsection{Default}
-The default HERON workflow primarily utilizes RAVEN. In this workflow, RAVEN runs RAVEN to solve a two-level representation of the TEA by utilizing both pyomo and RAVEN's
+The default HERON workflow primarily utilizes RAVEN. In this workflow, RAVEN runs RAVEN to solve a two-level representation of the TEA by utilizing both pyomo and RAVEN's gradient descent optimizer. To run this workflow, insert "standard" into the \xmlNode{workflow} node, or simply do not define this node.
 
-gradient descent optimizer. To run this workflow, insert "standard" into \xmlNode{workflow} or simply do not define this node as this workflow will remain the default.
+\subsection{Monolithic Optimizer for Probabilistic Economic Dispatch (MOPED)}
+This workflow formulates the problem as a single-level optimization problem. More specifically, MOPED utilizes TEAL and RAVEN's externalROMloader to generate and solve a pyomo object. To run this workflow, insert "MOPED" into the \xmlNode{workflow} node.
+\noindent MOPED provides an alternate approach to solving the TEA provided by the input file. The solutions MOPED and the default workflow provide should be similar in standard cases.
 
-\subsection{Monolithic Optimizer for Probabilistic Economic Dispatch(MOPED)}
+\subsubsection{Motivations}
+The primary motivations and potential benefits of MOPED include:
+\begin{itemize}
+    \item \textbf{Computational time:} In cases where the IES in question is following a cooperative dispatch heuristic (The standard dipatcher for the default workflow applies here), the single level formulation maintains the advantage of utilizing a more deterministic optimization algorithm
+          ('ipopt') than gradient search. This results from the gradient descent treating the NPV cost function as a black box with capacities as input and NPV as output. In constrast, MOPED's pyomo object has an algebraic expression generated with TEAL, allowing for more direct application of optimization techniques.
+    \item \textbf{Seeding for more complicated scenarios:} In future versions of HERON, FARM will be available as a validation tool for HERON. FARM introduces new constraints that limit aspects of dispatch, such as ramping and setpoints, to ensure physical feasibility of the system's operation.
+          For this use of HERON, MOPED could provide an initial solution input to FARM. This may reduce the number of iterations required to meet the validation criteria of the analysis.
+    \item \textbf{Validation of default workflow/Confirmation of bilevel-monolithic equivalence:} Comparing the results between these two workflows provides a litmus test for the validity of either.
+\end{itemize}
+
+\subsubsection{Limitations}
+MOPED is limited to the TEA's where the dispatch and capacity selection agents are cooperative. In other words, MOPED cannot solve analyses where maximizing dispatch value reduces the total NPV value. Possible scenarios include deregulated markets, direct competition, and agent-based dispatch.
+
+Additionally, MOPED has limitations in terms of acceptable inputs, which currently include:
+\begin{itemize}
+    \item Capacities for VRE's (Wind/Solar)
+    \item Reference prices from Synthetic Histories
+    \item Components that consume one resource to produce another
+    \item Storage components
+    \item Dispatch plotting
+    \item Custom functions for prices, VRE capacities, demand, etc.
+    \item Components that do not start operation at project start
+    \item Components with (component life x rebuild count $<$ project life)
+\end{itemize}
+Development is focussed on reducing the number of items on this list. The end goal of MOPED is to maintain the same capabilities as the default workflow.
+
+\subsection{DISPATCHES}
+The DISPATCHES workflow builds a monolithic pyomo object with cost functions from TEAL, which is similar to MOPED. In constrast, this workflow utilizes IDAES modeling to include physics within the pyomo model.
 

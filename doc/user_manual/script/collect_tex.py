@@ -7,12 +7,12 @@
 import os
 import sys
 
-heron_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'src'))
+heron_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', '..'))
 build_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'build'))
 src_path = os.path.abspath(os.path.join(build_path, '..', 'src'))
 
 sys.path.append(heron_path)
-import Cases, Components, Placeholders
+from HERON.src import Cases, Components, Placeholders
 # import _utils as hutils
 # framework_path = hutils.get_raven_loc()
 # sys.path.append(framework_path)

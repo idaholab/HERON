@@ -1,0 +1,14 @@
+\section{Workflow Options}
+HERON has the capability to run different workflows, which expands the flexibility and capabilities of this plugin. Currently, HERON inputs control the workflow selection via
+
+\xmlNode{workflow}, which exists as a subnode of \xmlNode{case}. Each workflow approaches the Technoeconomic Analysis(TEA) with a unique problem formulation and solution
+
+technique.
+
+\subsection{Default}
+The default HERON workflow primarily utilizes RAVEN. In this workflow, RAVEN runs RAVEN to solve a two-level representation of the TEA by utilizing both pyomo and RAVEN's
+
+gradient descent optimizer. To run this workflow, insert "standard" into \xmlNode{workflow} or simply do not define this node as this workflow will remain the default.
+
+\subsection{Monolithic Optimizer for Probabilistic Economic Dispatch(MOPED)}
+

@@ -13,6 +13,8 @@ from pyomo.opt import SolverFactory
 import _utils as hutils
 import numpy as np
 from functools import partial
+from HERON.src.base import Base
+
 # Getting raven location
 path_to_raven = hutils.get_raven_loc()
 # Access to externalROMloader
@@ -21,13 +23,15 @@ sys.path.append(os.path.abspath(os.path.join(path_to_raven, 'scripts')))
 sys.path.append(os.path.abspath(os.path.join(path_to_raven, 'plugins')))
 # General access to RAVEN
 sys.path.append(path_to_raven)
+from ravenframework.MessageHandler import MessageHandler
 import externalROMloader as ROMloader
 from TEAL.src import CashFlows
 from TEAL.src import main as RunCashFlow
 #from TEAL.src import CashFlow as RunCashFlow
 
-class MOPED():
+class MOPED(Base):
     def __init__(self):
+        super().__init__()
         self._components = [] # List of components objects from heron input
         self._sources = [] # List of sources objects from heron input
         self._case = None # Case object that contains the case parameters
@@ -41,10 +45,11 @@ class MOPED():
           # organizes important information for problem construction
         self._cf_meta = {} # Secondary data structure for MOPED, contains cashflow info
         self._resources = [] # List of resources used in this analysis
-        self._verbosity = True # Verbosity setting for MOPED run
         self._solver = SolverFactory('ipopt') # Solver for optimization solve, default is 'ipopt'
         self._cf_components = [] # List of TEAL.Components objects generated for analysis
         self._dispatch = [] # List of pyomo vars/params for each realization and year
+
+        self.messageHandler = MessageHandler()
 
     def buildActivity(self):
         """
@@ -64,7 +69,7 @@ class MOPED():
                     # Necessary to have activity indicator account for multiple dispatch realizations
                     for real in range(self._case._num_samples):
                         activity.append(f'{comp.name}|Hourly_{real+1}')
-        self.verbosityPrint(f'|Built activity Indicator: {activity}|')
+        self.raiseADebug(f'Built activity Indicator: {activity}')
         return activity
 
     def buildEconSettings(self, verbosity=0):
@@ -77,17 +82,17 @@ class MOPED():
         params = self._case._global_econ
         params['Indicator']['active'] = activity
         params['verbosity'] = verbosity
-        self.verbosityPrint('|Building economic settings...|')
+        self.raiseADebug('Building economic settings...')
         valid_params = ['ProjectTime', 'DiscountRate',
                         'tax', 'inflation', 'verbosity', 'Indicator']
         for k,v in params.items():
             if k != 'Indicator' and k in valid_params:
-                self.verbosityPrint(f'|{k}: {v}|')
+                self.raiseADebug(f'{k}: {v}')
             elif k == 'Indicator':
-                self.verbosityPrint(f'|Indicator dictionary: {params["Indicator"]}|')
+                self.raiseADebug(f'Indicator dictionary: {params["Indicator"]}')
             else:
                 raise IOError(f'{k} is not a valid economic setting')
-        self.verbosityPrint('|Finished building economic settings!|')
+        self.raiseADebug('Finished building economic settings!')
         self._econ_settings = CashFlows.GlobalSettings()
         self._econ_settings.setParams(params)
 
@@ -133,7 +138,7 @@ class MOPED():
         runner.setAdditionalParams(nodes)
         synthetic_data = {}
         for real in range(self._case._num_samples):
-            self.verbosityPrint(f'|Loading synthetic history for signal: {signal}|')
+            self.raiseAMessage(f'Loading synthetic history for signal: {signal}')
             name = f'Realization_{real + 1}'
             current_realization = runner.evaluate(inp)[0]
             if self._eval_mode == 'full':
@@ -173,9 +178,9 @@ class MOPED():
         self._component_meta[comp.name]['Dispatch'] = element._dispatchable
         # Different possible capacity value definitions for a component
         if mode == 'OptBounds':
-            self.verbosityPrint(
-              f'|Building pyomo capacity variable for '
-              f'{comp.name}|'
+            self.raiseADebug(
+              f'Building pyomo capacity variable for '
+              f'{comp.name}'
               )
             opt_bounds = element._capacity._vp._parametric
             # This is a capacity we make a decision on
@@ -184,18 +189,18 @@ class MOPED():
         elif mode == 'SweepValues': # TODO Add capability to handle sweepvalues, maybe multiple pyo.Params?
             raise IOError('MOPED does not currently support sweep values option')
         elif mode == 'FixedValue':
-            self.verbosityPrint(
-              f'|Building pyomo capacity parameter for '
-              f'{comp.name}|'
+            self.raiseADebug(
+              f'Building pyomo capacity parameter for '
+              f'{comp.name}'
               )
             # Params represent constant value components of the problem
             value = element._capacity._vp._parametric
             param = pyo.Param(initialize = value)
             setattr(self._m, f'{comp.name}', param)
         elif mode == 'SyntheticHistory':
-            self.verbosityPrint(
-              f'|Building pyomo parameter with synthetic histories for '
-              f'{comp.name}|'
+            self.raiseADebug(
+              f'Building pyomo parameter with synthetic histories for '
+              f'{comp.name}'
               )
             # This method runs external ROM loader and defines some pyomo sets
             capacity = self.loadSyntheticHistory(element._capacity._vp._var_name)
@@ -218,7 +223,7 @@ class MOPED():
         """
         # NOTE assumes that each component can only have one cap, yearly, and repeating
         for comp in self._components:
-            self.verbosityPrint(f'Retrieving cashflow information for {comp.name}')
+            self.raiseADebug(f'Retrieving cashflow information for {comp.name}')
             self._cf_meta[comp.name] = {}
             self._cf_meta[comp.name]['Lifetime'] = comp._economics._lifetime
             for cf in comp._economics._cash_flows:
@@ -350,7 +355,7 @@ class MOPED():
         self._m.placeholder = pyo.Param()
         dummy_type = type(self._m.dummy)
         placeholder_type = type(self._m.placeholder)
-        self.verbosityPrint(f'Preparing dispatch container for {comp.name}...')
+        self.raiseADebug(f'Preparing dispatch container for {comp.name}...')
         for real in range(self._case._num_samples):
             for year in range(project_life):
                 # TODO account for other variations of component settings, specifically if dispatchable
@@ -417,12 +422,12 @@ class MOPED():
         # Using read meta to evaluate possible cashflows
         for cf, value in cf_meta.items():
             if cf == 'Lifetime':
-                self.verbosityPrint(f'Setting component lifespan for {comp.name}')
+                self.raiseADebug(f'Setting component lifespan for {comp.name}')
                 params['Life_time'] = value
                 component.setParams(params)
             elif cf == 'Cap':
                 # Capex is the most complex to handle generally due to amort
-                self.verbosityPrint(f'|Generating Capex cashflow for {comp.name}|')
+                self.raiseADebug(f'Generating Capex cashflow for {comp.name}')
                 capex = self.createCapex(component, value, capacity)
                 cfs.append(capex)
                 depreciation = cf_meta['Deprec']
@@ -434,12 +439,12 @@ class MOPED():
             elif cf == 'Deprec':
                 continue
             elif cf == 'Yearly':
-                self.verbosityPrint(f'|Generating Yearly OM cashflow for {comp.name}|')
+                self.raiseADebug(f'Generating Yearly OM cashflow for {comp.name}')
                 yearly = self.createRecurringYearly(component, value, capacity)
                 cfs.append(yearly)
             elif cf == 'Hourly':
                 # Here value can be a np.array as well for ARMA grid pricing
-                self.verbosityPrint(f'|Generating dispatch OM cashflow for {comp.name}|')
+                self.raiseADebug(f'Generating dispatch OM cashflow for {comp.name}')
                 # Necessary to create a unique cash flow for each dispatch realization
                 for real in range(self._case._num_samples):
                     var_om = self.createRecurringHourly(component, value, dispatch[real, :, :], real)
@@ -504,7 +509,7 @@ class MOPED():
         # Defined as part of the self._m pyomo model
         dummy_type = type(self._m.dummy)
         placeholder_type = type(self._m.placeholder)
-        self.verbosityPrint(f'Building necessary constraints for {self._case.name}')
+        self.raiseAMessage(f'Building necessary constraints for {self._case.name}')
         for real in range(self._case._num_samples):
             for year in range(project_life):
                 # Separating constraints makes sense
@@ -529,17 +534,17 @@ class MOPED():
         """
         # Results provide run times and optimizer final status
         results = self._solver.solve(self._m)
-        self.verbosityPrint(f'Optimizer has finished running, here are the results\n{results}')
+        self.raiseAMessage(f'Optimizer has finished running, here are the results\n{results}')
         for comp in self._components:
             # Not all components will have a pyomo variable
             try:
                 comp_print = getattr(self._m, f'{comp.name}')
-                self.verbosityPrint(f'Here is the optimized capacity for {comp.name}')
+                self.raiseAMessage(f'Here is the optimized capacity for {comp.name}')
                 comp_print.pprint()
             except:
-                self.verbosityPrint(f'{comp.name} does not have a standard capacity')
+                self.raiseAMessage(f'{comp.name} does not have a standard capacity')
         NPV = pyo.value(self._m.NPV)
-        self.verbosityPrint(f"The final NPV is: {NPV}")
+        self.raiseAMessage(f"The final NPV is: {NPV}")
 
     #===========================
     # MAIN WORKFLOW
@@ -560,7 +565,7 @@ class MOPED():
             capacity, dispatch = self.buildDispatchVariables(comp)
             cf_comp = self.createCashflowComponent(comp, capacity, dispatch)
             self._cf_components.append(cf_comp)
-        self.verbosityPrint(f'Building pyomo cash flow expression for {self._case.name}')
+        self.raiseAMessage(f'Building pyomo cash flow expression for {self._case.name}')
         # TEAL is our cost function generator here
         metrics = RunCashFlow.run(self._econ_settings, self._cf_components, {}, pyomoVar=True)
         self._m.NPV = pyo.Objective(expr=metrics['NPV'], sense = pyo.maximize)
@@ -568,7 +573,7 @@ class MOPED():
         self.buildConstraints()
         # NOTE this currently displays just optimizer info and capacities and cost funtion
         # TODO does this need to present information about dispatches, how to do this?
-        self.verbosityPrint(f'Running Optimizer...')
+        self.raiseAMessage(f'Running Optimizer...')
         self.solveAndDisplay()
 
     #===========================
@@ -585,7 +590,11 @@ class MOPED():
         self.setCase(case)
         self.setComponents(components)
         self.setSources(sources)
-        self.verbosityPrint('|Sucessfully set the input parameters for MOPED run|')
+        self.messageHandler.initialize({'verbosity': self._case._verbosity,
+                                         'callerLength': 18,
+                                         'tagLength': 7,
+                                         'suppressErrs': False,})
+        self.raiseAMessage('Sucessfully set the input parameters for MOPED run')
 
     def setCase(self, case):
         """
@@ -594,7 +603,7 @@ class MOPED():
           @ Out, None
         """
         self._case = case
-        self.verbosityPrint(f'|Setting MOPED case variable to {case}|')
+        self.raiseADebug(f'Setting MOPED case variable to {case}')
 
     def setComponents(self, components):
         """
@@ -603,7 +612,7 @@ class MOPED():
           @ Out, None
         """
         self._components = components
-        self.verbosityPrint(f'|Setting MOPED components variable to {components}|')
+        self.raiseADebug(f'Setting MOPED components variable to {components}')
 
     def setSources(self, sources):
         """
@@ -612,7 +621,7 @@ class MOPED():
           @ Out, None
         """
         self._sources = sources
-        self.verbosityPrint(f'|Setting MOPED sources variable to {sources}|')
+        self.raiseADebug(f'Setting MOPED sources variable to {sources}')
 
     def setSolver(self, solver):
         """
@@ -621,7 +630,7 @@ class MOPED():
           @ Out, None
         """
         self._solver = SolverFactory(solver)
-        self.verbosityPrint(f'|Set optimizer to be {solver}|')
+        self.raiseADebug(f'Set optimizer to be {solver}')
 
     def getTargetParams(self, target='all'):
         """
@@ -647,14 +656,3 @@ class MOPED():
         else:
             raise IOError(f'Your {target} is not a valid attribute for MOPED.',
                           f'Please select from {acceptable_targets}')
-
-    def verbosityPrint(self, debugStatement):
-        """
-          Utility for printing information about MOPED run if desired
-          @ In, debugStatement, nonspecified type, what to print
-          @ Out, None
-        """
-        # Shorter var name
-        v = self._verbosity
-        if v == True or v == 1 or v == 'all':
-            print('#### DEBUG MODE ####', f'{debugStatement}')

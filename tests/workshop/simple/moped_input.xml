@@ -1,10 +1,10 @@
 <HERON>
   <TestInfo>
-    <name>1_simple</name>
-    <author>talbpaul</author>
-    <created>2022-01-17</created>
+    <name>MOPED_simple</name>
+    <author>grifanthoney</author>
+    <created>2022-07-18</created>
     <description>
-      First workshop case, a very simple demand-met-by-production case.
+      Simple test for MOPED, a very basic demand-met-by-production case.
     </description>
     <classesTested>HERON</classesTested>
   </TestInfo>
@@ -14,9 +14,6 @@
     <verbosity>all</verbosity>
     <num_arma_samples>2</num_arma_samples>
     <workflow>MOPED</workflow>
-    <!-- <parallel>
-        <inner>2</inner>
-      </parallel> -->
     <time_discretization>
       <year_variable>YEAR</year_variable>
       <time_variable>HOUR</time_variable>

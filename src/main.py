@@ -108,9 +108,9 @@ class HERON(Base):
       sources = self._sources
     assert case is not None and components is not None and sources is not None
     moped = Moped.MOPED()
-    print("*******************************************************************************")
-    print("You are running MOPED(Monolithic Optimizer for Probabilistic Economic Dispatch)")
-    print("*******************************************************************************")
+    self.raiseAMessage("*******************************************************************************")
+    self.raiseAMessage("You are running MOPED(Monolithic Optimizer for Probabilistic Economic Dispatch)")
+    self.raiseAMessage("*******************************************************************************")
     moped.setInitialParams(case, components, sources)
     moped.run()
 
@@ -126,8 +126,5 @@ if __name__ == '__main__':
     sim.create_raven_workflow()
   elif sim._case._workflow == 'MOPED':
     sim.run_moped_workflow()
-  elif sim._case._workflow == 'combined':
-    sim.run_moped_workflow()
-    sim.create_raven_workflow()
   # TODO someday? sim.run()
 

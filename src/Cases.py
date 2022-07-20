@@ -362,7 +362,7 @@ class Case(Base):
     self._labels = {}           # extra information pertaining to current case
     self.debug = {              # debug options, as enabled by the user (defaults included)
         'enabled': False,         # whether to enable debug mode
-        'inner_samples': 1,       # how many inner realizations to sample specifically for the debug run (not the same as self._num_samples)
+        'inner_samples': 1,       # how many inner realizations to sample specifically for the debug run
         'macro_steps': 1,         # how many "years" for inner realizations
         'dispatch_plot': True     # whether to output a plot in debug mode
     }

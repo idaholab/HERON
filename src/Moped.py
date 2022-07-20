@@ -6,15 +6,15 @@
   a monolithic solve that utilizes TEAL cashflows, RAVEN ROM(s), and pyomo optimization.
 """
 import os
-from socket import herror
 import sys
+
+from functools import partial
+import itertools as it
 import pyomo.environ as pyo
 from pyomo.opt import SolverFactory
-import _utils as hutils
 import numpy as np
-from functools import partial
-from HERON.src.base import Base
 
+import _utils as hutils
 # Getting raven location
 path_to_raven = hutils.get_raven_loc()
 # Access to externalROMloader
@@ -23,31 +23,29 @@ sys.path.append(os.path.abspath(os.path.join(path_to_raven, 'scripts')))
 sys.path.append(os.path.abspath(os.path.join(path_to_raven, 'plugins')))
 # General access to RAVEN
 sys.path.append(path_to_raven)
+from HERON.src.base import Base
 from ravenframework.MessageHandler import MessageHandler
 import externalROMloader as ROMloader
 from TEAL.src import CashFlows
 from TEAL.src import main as RunCashFlow
-#from TEAL.src import CashFlow as RunCashFlow
 
 class MOPED(Base):
     def __init__(self):
         super().__init__()
-        self._components = [] # List of components objects from heron input
-        self._sources = [] # List of sources objects from heron input
-        self._case = None # Case object that contains the case parameters
-        self._econ_settings = None # TEAL global settings used for building cashflows
-        self._m = None # Pyomo model to be solved
-        self._producers = [] # List of pyomo var/params of producing components
-        self._eval_mode = 'clustered' # clusterEvalMode to feed the externalROMloader (full or clustered)
-          # clustered is better for testing and speed, full gives a more realistic NPV result
-        self._yearly_hours = 24*365 # Number of hours in a year to handle dispatch, based on clustering
-        self._component_meta = {} # Primary data structure for MOPED,
-          # organizes important information for problem construction
-        self._cf_meta = {} # Secondary data structure for MOPED, contains cashflow info
-        self._resources = [] # List of resources used in this analysis
-        self._solver = SolverFactory('ipopt') # Solver for optimization solve, default is 'ipopt'
-        self._cf_components = [] # List of TEAL.Components objects generated for analysis
-        self._dispatch = [] # List of pyomo vars/params for each realization and year
+        self._components = []                 # List of components objects from heron input
+        self._sources = []                    # List of sources objects from heron input
+        self._case = None                     # Case object that contains the case parameters
+        self._econ_settings = None            # TEAL global settings used for building cashflows
+        self._m = None                        # Pyomo model to be solved
+        self._producers = []                  # List of pyomo var/params of producing components
+        self._eval_mode = 'clustered'         # (full or clustered) clustered is better for testing and speed, full gives a more realistic NPV result
+        self._yearly_hours = 24*365           # Number of hours in a year to handle dispatch, based on clustering
+        self._component_meta = {}             # Primary data structure for MOPED, organizes important information for problem construction
+        self._cf_meta = {}                    # Secondary data structure for MOPED, contains cashflow info
+        self._resources = []                  # List of resources used in this analysis
+        self._solver = SolverFactory('ipopt') # Solver for optimization solve, default is 'ipopt', TODO allow user to specify
+        self._cf_components = []              # List of TEAL.Components objects generated for analysis
+        self._dispatch = []                   # List of pyomo vars/params for each realization and year
 
         self.messageHandler = MessageHandler()
 
@@ -62,13 +60,14 @@ class MOPED(Base):
             #TODO Does this need to be expanded on?
             for cf in comp._economics._cash_flows:
                 if cf._type == 'one-time':
-                    activity.append(f'{comp.name}|Cap')
-                elif cf._type == 'year':
-                    activity.append(f'{comp.name}|Yearly')
+                    activity.append(f'{comp.name}|Capex')
                 elif cf._type == 'repeating':
+                    if cf._period =='year':
+                        activity.append(f'{comp.name}|Yearly')
+                        continue
                     # Necessary to have activity indicator account for multiple dispatch realizations
                     for real in range(self._case._num_samples):
-                        activity.append(f'{comp.name}|Hourly_{real+1}')
+                        activity.append(f'{comp.name}|Dispatching_{real+1}')
         self.raiseADebug(f'Built activity Indicator: {activity}')
         return activity
 
@@ -85,13 +84,13 @@ class MOPED(Base):
         self.raiseADebug('Building economic settings...')
         valid_params = ['ProjectTime', 'DiscountRate',
                         'tax', 'inflation', 'verbosity', 'Indicator']
-        for k,v in params.items():
-            if k != 'Indicator' and k in valid_params:
-                self.raiseADebug(f'{k}: {v}')
-            elif k == 'Indicator':
+        for param_name, param_value in params.items():
+            if param_name != 'Indicator' and param_name in valid_params:
+                self.raiseADebug(f'{param_name}: {param_value}')
+            elif param_name == 'Indicator':
                 self.raiseADebug(f'Indicator dictionary: {params["Indicator"]}')
             else:
-                raise IOError(f'{k} is not a valid economic setting')
+                raise IOError(f'{param_name} is not a valid economic setting')
         self.raiseADebug('Finished building economic settings!')
         self._econ_settings = CashFlows.GlobalSettings()
         self._econ_settings.setParams(params)
@@ -199,7 +198,7 @@ class MOPED(Base):
             setattr(self._m, f'{comp.name}', param)
         elif mode == 'SyntheticHistory':
             self.raiseADebug(
-              f'Building pyomo parameter with synthetic histories for '
+              f'Building capacity with synthetic histories for '
               f'{comp.name}'
               )
             # This method runs external ROM loader and defines some pyomo sets
@@ -235,14 +234,14 @@ class MOPED(Base):
                     multiplier = 1
                 value = multiplier * alpha
                 if cf._type == 'one-time':
-                    self._cf_meta[comp.name]['Cap'] = value
+                    self._cf_meta[comp.name]['Capex'] = value
                     # Necessary if capex has depreciation and amortization
                     self._cf_meta[comp.name]['Deprec'] = cf._depreciate
                 elif cf._type == 'repeating':
                     if cf._period == 'year':
                         self._cf_meta[comp.name]['Yearly'] = value
                         continue
-                    self._cf_meta[comp.name]['Hourly'] = value
+                    self._cf_meta[comp.name]['Dispatching'] = value
 
     def createCapex(self, comp, alpha, capacity):
         """
@@ -254,9 +253,9 @@ class MOPED(Base):
         """
         life = comp.getLifetime()
         cf = CashFlows.Capex()
-        cf.name = 'Cap'
+        cf.name = 'Capex'
         cf.initParams(life)
-        cfParams = {'name': 'Cap',
+        cfParams = {'name': 'Capex',
                     'alpha': alpha,
                     'driver': capacity,
                     'reference': 1.0,
@@ -278,7 +277,7 @@ class MOPED(Base):
         # Necessary to make life integer valued for numpy
         life = int(self._case._global_econ['ProjectTime'])
         cf = CashFlows.Recurring()
-        cfParams = {'name': 'FixedOM',
+        cfParams = {'name': 'Yearly',
                     'X': 1,
                     'mult_target': None,
                     'inflation': False}
@@ -304,7 +303,7 @@ class MOPED(Base):
         # Necessary to make integer for numpy arrays
         life = int(self._case._global_econ['ProjectTime'])
         cf = CashFlows.Recurring()
-        cfParams = {'name': f'Hourly_{real+1}',
+        cfParams = {'name': f'Dispatching_{real+1}',
                     'X': 1,
                     'mult_target': False,
                     'inflation': None}
@@ -425,7 +424,7 @@ class MOPED(Base):
                 self.raiseADebug(f'Setting component lifespan for {comp.name}')
                 params['Life_time'] = value
                 component.setParams(params)
-            elif cf == 'Cap':
+            elif cf == 'Capex':
                 # Capex is the most complex to handle generally due to amort
                 self.raiseADebug(f'Generating Capex cashflow for {comp.name}')
                 capex = self.createCapex(component, value, capacity)
@@ -442,7 +441,7 @@ class MOPED(Base):
                 self.raiseADebug(f'Generating Yearly OM cashflow for {comp.name}')
                 yearly = self.createRecurringYearly(component, value, capacity)
                 cfs.append(yearly)
-            elif cf == 'Hourly':
+            elif cf == 'Dispatching':
                 # Here value can be a np.array as well for ARMA grid pricing
                 self.raiseADebug(f'Generating dispatch OM cashflow for {comp.name}')
                 # Necessary to create a unique cash flow for each dispatch realization

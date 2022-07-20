@@ -5,7 +5,6 @@
   Runs HERON.
 """
 import os
-from queue import Empty
 import sys
 import argparse
 
@@ -94,7 +93,7 @@ class HERON(Base):
     assert case is not None
     case.write_workflows(self._components, self._sources, self._input_dir)
 
-  def run_moped_workflow(self, case = None, components = None, sources = None):
+  def run_moped_workflow(self, case=None, components=None, sources=None):
     """
       Runs MOPED workflow for generating pyomo problem and solves it
       @ In, case, HERON case object with necessary run settings

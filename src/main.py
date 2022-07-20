@@ -107,9 +107,7 @@ class HERON(Base):
       sources = self._sources
     assert case is not None and components is not None and sources is not None
     moped = Moped.MOPED()
-    self.raiseAMessage("*******************************************************************************")
-    self.raiseAMessage("You are running MOPED(Monolithic Optimizer for Probabilistic Economic Dispatch)")
-    self.raiseAMessage("*******************************************************************************")
+    self.raiseAMessage("***** You are running MOPED (Monolithic Optimizer for Probabilistic Economic Dispatch) *****")
     moped.setInitialParams(case, components, sources)
     moped.run()
 

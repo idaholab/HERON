@@ -14,7 +14,7 @@ sys.path.append(hutils.get_raven_loc())
 
 from HERON.src import input_loader
 from HERON.src.base import Base
-from HERON.src import Moped
+from HERON.src.Moped import MOPED
 
 from ravenframework.MessageHandler import MessageHandler
 
@@ -106,7 +106,7 @@ class HERON(Base):
     if sources is None:
       sources = self._sources
     assert case is not None and components is not None and sources is not None
-    moped = Moped.MOPED()
+    moped = MOPED()
     self.raiseAMessage("***** You are running Monolithic Optimizer for Probabilistic Economic Dispatch (MOPED) *****")
     moped.setInitialParams(case, components, sources)
     moped.run()

@@ -103,6 +103,15 @@
       </demands>
       <economics>
         <lifetime>1</lifetime>
+        <CashFlow name='e_sales' type='repeating' taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <fixed_value>50e3</fixed_value>
+          </reference_price>
+        </CashFlow>
       </economics>
     </Component>
 

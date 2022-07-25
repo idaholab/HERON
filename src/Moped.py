@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # Copyright 2022, Battelle Energy Alliance, LLC
 # ALL RIGHTS RESERVED
 """
@@ -7,9 +6,9 @@
 """
 import os
 import sys
-
 from functools import partial
 import itertools as it
+
 import pyomo.environ as pyo
 from pyomo.opt import SolverFactory
 import numpy as np
@@ -19,9 +18,7 @@ import _utils as hutils
 path_to_raven = hutils.get_raven_loc()
 # Access to externalROMloader
 sys.path.append(os.path.abspath(os.path.join(path_to_raven, 'scripts')))
-# Access to TEAL
 sys.path.append(os.path.abspath(os.path.join(path_to_raven, 'plugins')))
-# General access to RAVEN
 sys.path.append(path_to_raven)
 from HERON.src.base import Base
 from ravenframework.MessageHandler import MessageHandler
@@ -38,7 +35,7 @@ class MOPED(Base):
         self._econ_settings = None            # TEAL global settings used for building cashflows
         self._m = None                        # Pyomo model to be solved
         self._producers = []                  # List of pyomo var/params of producing components
-        self._eval_mode = 'clustered'         # (full or clustered) clustered is better for testing and speed, full gives a more realistic NPV result
+        self._eval_mode = 'full'         # (full or clustered) clustered is better for testing and speed, full gives a more realistic NPV result
         self._yearly_hours = 24*365           # Number of hours in a year to handle dispatch, based on clustering
         self._component_meta = {}             # Primary data structure for MOPED, organizes important information for problem construction
         self._cf_meta = {}                    # Secondary data structure for MOPED, contains cashflow info
@@ -240,6 +237,10 @@ class MOPED(Base):
             for cf in comp._economics._cash_flows:
                 # Using reference prices for cashflows
                 alpha = cf._alpha._vp._parametric
+                # This corrects sign for MOPED from user inputs for demanding cashflows
+                # Allows MOPED and default HERON to follow same sign conventions for inputs
+                if len(comp._demands) > 0:
+                    alpha *= -1
                 multiplier = cf._driver._multiplier
                 driver_type = cf._driver.type
                 # Default mult should be 1
@@ -352,9 +353,8 @@ class MOPED(Base):
         """
         for comp in self._components:
             for prod in comp._produces:
-                resource = prod._capacity_var
-                if resource not in self._resources:
-                    self._resources.append(resource)
+                if prod._capacity_var not in self._resources:
+                    self._resources.append(prod._capacity_var)
                 # TODO add for consuming components
             for dem in comp._demands:
                 resource = dem._capacity_var
@@ -388,9 +388,9 @@ class MOPED(Base):
                     # Currently independent and dependent are interchangable
                     if dispatch_type in ['independent', 'dependent']:
                         var = pyo.Var(self._m.c, self._m.t,
-                        initialize=lambda m, c, t: 0,
-                        domain=pyo.NonNegativeReals
-                        )
+                                      initialize=lambda m, c, t: 0,
+                                      domain=pyo.NonNegativeReals
+                                      )
                         setattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}',var)
                         # Shifting index such that year 0 remains 0
                         # Weighting each dispatch by the number of realizations (equal weight for each realization)
@@ -398,11 +398,10 @@ class MOPED(Base):
                         template_array[real, year + 1, :] = (1/self._case._num_samples)*np.array(list(var.values()))
                     elif dispatch_type == 'fixed':
                         param = pyo.Var(self._m.c, self._m.t,
-                          initialize = lambda m, c, t: capacity.value,
-                          domain = pyo.NonNegativeReals,)
+                                        initialize = lambda m, c, t: capacity.value,
+                                        domain = pyo.NonNegativeReals,)
                         setattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}',param)
-                        con = pyo.Constraint(self._m.c, self._m.t,
-                          expr = lambda m, c, t: param[(c,t)] == capacity)
+                        con = pyo.Constraint(self._m.c, self._m.t, expr = lambda m, c, t: param[(c,t)] == capacity)
                         setattr(self._m, f'{comp.name}_fixed_{real+1}_{year+1}',con)
                         # Shifting index such that year 0 remains 0
                         # Weighting each dispatch by the number of realizations (equal weight for each realization)
@@ -412,9 +411,10 @@ class MOPED(Base):
                     # Currently independent and dependent are interchangable
                     if dispatch_type in ['independent', 'dependent']:
                         var = pyo.Var(self._m.c, self._m.t,
-                          initialize = lambda m, c, t: 0,
-                          domain = pyo.NonNegativeReals,
-                          bounds = lambda m, c, t: (0, capacity[f'Realization_{real+1}'][year, c, t]))
+                                      initialize = lambda m, c, t: 0,
+                                      domain = pyo.NonNegativeReals,
+                                      bounds = lambda m, c, t: (0, capacity[f'Realization_{real+1}'][year, c, t])
+                                      )
                         setattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}',var)
                         # Shifting index such that year 0 remains 0
                         # Weighting each dispatch by the number of realizations (equal weight for each realization)
@@ -422,8 +422,8 @@ class MOPED(Base):
                         template_array[real, year + 1, :] = (1/self._case._num_samples)*np.array(list(var.values()))
                     elif dispatch_type == 'fixed':
                         param = pyo.Param(self._m.c, self._m.t,
-                        initialize=lambda m, c, t: capacity[f'Realization_{real+1}'][year, c, t]
-                        )
+                                          initialize=lambda m, c, t: capacity[f'Realization_{real+1}'][year, c, t]
+                                          )
                         setattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}',param)
                         # Shifting index such that year 0 remains 0
                         # Weighting each dispatch by the number of realizations (equal weight for each realization)

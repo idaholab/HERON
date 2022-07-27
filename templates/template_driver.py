@@ -911,7 +911,7 @@ class Template(TemplateBase, Base):
       Defines modifications to the inner.xml RAVEN input file due to Sources/Placeholders.
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
       @ In, case, HERON Case, defining Case instance
-      @ In, components, list, list of HERON Cogit mponent instances for this run
+      @ In, components, list, list of HERON Component instances for this run
       @ In, sources, list, list of HERON Placeholder instances for this run
       @ Out, None
     """

@@ -96,13 +96,6 @@ class DispatchRunner:
         for v in vars_needed:
           pass_vars[v] = getattr(raven, v)
 
-        # if not hasattr(raven, '_indexMap'):
-        #   pass_vars['_indexMap'] = {
-        #     var: [self._case.get_time_name(), self._case.get_year_name(), '_ROM_Cluster']
-        #     for var in source.get_variable()
-        #   }
-        #   setattr(raven, '_indexMap', [pass_vars['_indexMap']])
-
     # get the key to mapping RAVEN multidimensional variables
     if hasattr(raven, '_indexMap'):
       pass_vars['_indexMap'] = raven._indexMap[0] # 0 is only because of how RAVEN EnsembleModel handles variables

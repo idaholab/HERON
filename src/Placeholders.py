@@ -394,15 +394,15 @@ class ROM(Placeholder):
 
 class CSV(Placeholder):
   """
-  Placeholder for values taken from a comma-separated file.
+    Placeholder for values taken from a comma-separated file.
   """
 
   @classmethod
   def get_input_specs(cls):
     """
-    Collects input specifications for this class.
-    @ In, None
-    @ Out, specs, InputData, specs
+      Collects input specifications for this class.
+      @ In, None
+      @ Out, specs, InputData, specs
     """
     specs = InputData.parameterInputFactory(
       "CSV",
@@ -429,9 +429,9 @@ class CSV(Placeholder):
 
   def __init__(self, **kwargs):
     """
-    Constructor
-    @ In, kwargs, dict, passthrough args
-    @ Out, None
+      Constructor
+      @ In, kwargs, dict, passthrough args
+      @ Out, None
     """
     super().__init__(**kwargs)
     self._type = 'CSV'
@@ -442,9 +442,9 @@ class CSV(Placeholder):
 
   def read_input(self, xml):
     """
-    Sets settings from input file.
-    @ In, xml, xml.etree.ElementTree.Element, input from user.
-    @ Out, None
+      Sets settings from input file.
+      @ In, xml, xml.etree.ElementTree.Element, input from user.
+      @ Out, None
     """
     specs = super().read_input(xml)
     self._var_names = specs.parameterValues['variable']

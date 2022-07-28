@@ -14,6 +14,9 @@ COPY user_manual\src\HERON_user_manual.tex %cd%\user_manual\build\HERON_user_man
 COPY user_manual\src\HERON_user_manual.bib %cd%\user_manual\build\HERON_user_manual.bib
 :: run python script to generate .tex files
 cd user_manual
+:: activate raven_libraries environment to ensure all necessary Python packages are available
+:: when running script/generate_user_manual.py 
+call conda activate raven_libraries
 python script/generate_user_manual.py
 :: build pdf from .tex files
 cd build
@@ -93,4 +96,5 @@ pdflatex -interaction=nonstopmode heron_software_requirements_specifications_and
 COPY /Y *.pdf ..\sqa_built_documents\
 :: clean up
 DEL /Q *.aux *.log *.out *.pdf *.toc ..\srs\requirements.tex ..\rtr\traceability_matrix.tex
-PAUSE
+:: deactivate conda environment before finishing
+call conda deactivate

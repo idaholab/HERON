@@ -17,6 +17,8 @@ from HERON.src import input_loader
 from HERON.src.base import Base
 from HERON.src import Moped
 
+from HERON.src import Herd
+
 from ravenframework.MessageHandler import MessageHandler
 
 
@@ -114,6 +116,26 @@ class HERON(Base):
     moped.setInitialParams(case, components, sources)
     moped.run()
 
+  def run_dispatches_workflow(self, case = None, components = None, sources = None):
+    """
+      Runs DISPATCHES workflow for creating framework and running with IDAES
+      @ In, case, HERON case object with necessary run settings
+      @ Out, None
+    """
+    if case is None:
+      case = self._case
+    if components is None:
+      components = self._components
+    if sources is None:
+      sources = self._sources
+    assert case is not None and components is not None and sources is not None
+    dispatches = Herd.HERD()
+    print("*******************************************************************************")
+    print("HERON is Running DISPATCHES")
+    print("*******************************************************************************")
+    dispatches.setInitialParams(case, components, sources)
+    dispatches.run()
+
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Holistic Energy Resource Optimization Network (HERON)')
   parser.add_argument('xml_input_file', help='HERON XML input file')
@@ -129,5 +151,7 @@ if __name__ == '__main__':
   elif sim._case._workflow == 'combined':
     sim.run_moped_workflow()
     sim.create_raven_workflow()
+  elif sim._case._workflow == 'DISPATCHES':
+    sim.run_dispatches_workflow()
   # TODO someday? sim.run()
 

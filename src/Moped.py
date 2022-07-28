@@ -137,6 +137,8 @@ class MOPED():
             # TODO check for multipliers other than one
             # Necessary for wind and solar at the very least
             synthetic_data[name] = current_realization[signal]
+        # New addition: get year data
+        synthetic_data["years"] = current_realization['YEAR']
         # Defining pyomo indexing based off of evaluation mode
         # Necessary for including full evaluation for validation
         if self._eval_mode == 'clustered':

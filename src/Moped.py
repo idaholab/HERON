@@ -41,6 +41,7 @@ class MOPED(Base):
     self._solver = SolverFactory('ipopt') # Solver for optimization solve, default is 'ipopt', TODO allow user to specify
     self._cf_components = []              # List of TEAL.Components objects generated for analysis
     self._dispatch = []                   # List of pyomo vars/params for each realization and year
+    self._multiplicity_meta = {}          # Dictionary of analysis years, clusters, and associated multiplicity
 
     self.messageHandler = MessageHandler()
 
@@ -108,6 +109,25 @@ class MOPED(Base):
         resource = dem._capacity_var
         mode = dem._capacity.type
         self.setCapacityMeta(mode, resource, comp, dem)
+
+  def buildMultiplicityMeta(self):
+    """
+      Loads source structure and builds appropriate multiplicity data
+      @ In, None
+      @ Out, None
+    """
+    structure = hutils.get_synthhist_structure(self._sources[0]._target_file)
+    cluster_years = sorted(structure['clusters'])
+    for i in range(len(cluster_years)):
+      self._multiplicity_meta[i+1] = {}
+      # Necessary to still allow full eval mode
+      if self._eval_mode == 'full':
+        self._multiplicity_meta[i+1][0] = 1
+        continue
+      cluster_data = structure['clusters'][cluster_years[i]]
+      for cluster_info in cluster_data:
+        self._multiplicity_meta[i+1][cluster_info['id']] = len(cluster_info['represents'])
+    self._multiplicity_meta['Index Map'] = '[Year][Cluster][Multiplicity]'
 
   def loadSyntheticHistory(self, signal, multiplier):
     """
@@ -407,10 +427,8 @@ class MOPED(Base):
                 'driver': capacity,
                 'reference': 1.0,
                 'X': 1.0,
-                'depreciate': 3,
                 'mult_target': unique_params['mult_target'],
-                'inflation': unique_params['inflation'],
-                'tax': False}
+                }
     cf.setParams(cfParams)
     return cf
 
@@ -429,8 +447,7 @@ class MOPED(Base):
     cfParams = {'name': 'Yearly',
                 'X': 1,
                 'mult_target': unique_params['mult_target'],
-                'inflation': unique_params['inflation'],
-                'tax': False}
+                }
     cf.setParams(cfParams)
     # 0 for first year (build year) -> TODO couldn't this be automatic?
     alphas = np.ones(life + 1, dtype=object) * alpha
@@ -457,8 +474,7 @@ class MOPED(Base):
     cfParams = {'name': f'Dispatching_{real+1}',
                 'X': 1,
                 'mult_target': unique_params['mult_target'],
-                'inflation': unique_params['inflation'],
-                'tax': True}
+                }
     cf.setParams(cfParams)
     cf.initParams(life, pyomoVar=True)
     # Necessary to shift year index by one since no recurring cashflows on first build year
@@ -485,6 +501,25 @@ class MOPED(Base):
         if resource not in self._resources:
             self._resources.append(resource)
 
+  def buildMultiplicityVariables(self):
+    """
+      Generates pyomo params for applying multiplicity to dispatch vars/params
+      @ In, None
+      @ Out, None
+    """
+    if self._eval_mode == 'clustered':
+      self.raiseADebug('Building multiplicity vector for clustered ROM evaluation...')
+    else:
+      self.raiseADebug('Building multiplicity filler for full ROM evaluation...')
+    project_life = int(self._case._global_econ['ProjectTime'])
+    for year in range(project_life):
+      # Multiplicity used to scaled dispatches based on cluster and year
+      mult = pyo.Param(self._m.c, self._m.t,
+                          initialize=lambda m, c, t: self._multiplicity_meta[year+1][c],
+                          domain=pyo.NonNegativeReals
+                          )
+      setattr(self._m, f'multiplicity_{year+1}',mult)
+
   def buildDispatchVariables(self, comp):
     """
       Generates dispatch vars and value arrays to build components
@@ -507,6 +542,7 @@ class MOPED(Base):
     self.raiseADebug(f'Preparing dispatch container for {comp.name}...')
     for real in range(self._case._num_samples):
       for year in range(project_life):
+        mult = getattr(self._m,f'multiplicity_{year+1}')
         # TODO account for other variations of component settings, specifically if dispatchable
         if isinstance(capacity, (dummy_type, placeholder_type)):
           # Currently independent and dependent are interchangable
@@ -519,7 +555,7 @@ class MOPED(Base):
             # Shifting index such that year 0 remains 0
             # Weighting each dispatch by the number of realizations (equal weight for each realization)
             # This corrects the NPV value
-            template_array[real, year + 1, :] = (1 / self._case._num_samples) * np.array(list(var.values()))
+            template_array[real, year + 1, :] = (1 / self._case._num_samples) * np.array(list(var.values())) * np.array(list(mult.values()))
           elif dispatch_type == 'fixed':
             param = pyo.Var(self._m.c, self._m.t,
                             initialize=lambda m, c, t: capacity.value,
@@ -527,12 +563,8 @@ class MOPED(Base):
             setattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}', param)
             con = pyo.Constraint(self._m.c, self._m.t, expr=lambda m, c, t: param[(c, t)] == capacity)
             setattr(self._m, f'{comp.name}_fixed_{real+1}_{year+1}', con)
-            # Shifting index such that year 0 remains 0
-            # Weighting each dispatch by the number of realizations (equal weight for each realization)
-            # This corrects the NPV value
-            template_array[real, year + 1, :] = (1 / self._case._num_samples) * np.array(list(param.values()))
+            template_array[real, year + 1, :] = (1 / self._case._num_samples) * np.array(list(param.values())) * np.array(list(mult.values()))
         else:
-          # Currently independent and dependent are interchangable
           if dispatch_type in ['independent', 'dependent']:
             var = pyo.Var(self._m.c, self._m.t,
                           initialize=lambda m, c, t: 0,
@@ -540,19 +572,13 @@ class MOPED(Base):
                           bounds=lambda m, c, t: (0, capacity[f'Realization_{real+1}'][year, c, t])
                           )
             setattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}', var)
-            # Shifting index such that year 0 remains 0
-            # Weighting each dispatch by the number of realizations (equal weight for each realization)
-            # This corrects the NPV value
-            template_array[real, year + 1, :] = (1 / self._case._num_samples) * np.array(list(var.values()))
+            template_array[real, year + 1, :] = (1 / self._case._num_samples) * np.array(list(var.values())) * np.array(list(mult.values()))
           elif dispatch_type == 'fixed':
             param = pyo.Param(self._m.c, self._m.t,
                               initialize=lambda m, c, t: capacity[f'Realization_{real+1}'][year, c, t]
                               )
             setattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}', param)
-            # Shifting index such that year 0 remains 0
-            # Weighting each dispatch by the number of realizations (equal weight for each realization)
-            # This corrects the NPV value
-            template_array[real, year + 1, :] = (1 / self._case._num_samples) * np.array(list(param.values()))
+            template_array[real, year + 1, :] = (1 / self._case._num_samples) * np.array(list(param.values())) * np.array(list(mult.values()))
     return capacity, template_array
 
   def createCashflowComponent(self, comp, capacity, dispatch):
@@ -745,7 +771,9 @@ class MOPED(Base):
     self.buildEconSettings()
     self.buildComponentMeta()
     self.buildCashflowMeta()
+    self.buildMultiplicityMeta()
     self.collectResources()
+    self.buildMultiplicityVariables()
     # Each component will have dispatch and cashflow associated
     for comp in self._components:
       capacity, dispatch = self.buildDispatchVariables(comp)

@@ -13,7 +13,7 @@
     <mode>opt</mode>
     <verbosity>debug</verbosity>
     <num_arma_samples>2</num_arma_samples>
-    <workflow>MOPED</workflow>
+    <!-- <workflow>MOPED</workflow> -->
     <time_discretization>
       <year_variable>YEAR</year_variable>
       <time_variable>HOUR</time_variable>

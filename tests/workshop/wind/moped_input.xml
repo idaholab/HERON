@@ -15,7 +15,7 @@
     <!-- <debug></debug> -->
     <workflow>MOPED</workflow>
     <verbosity>debug</verbosity>
-    <num_arma_samples>2</num_arma_samples>
+    <num_arma_samples>20</num_arma_samples>
     <time_discretization>
       <year_variable>YEAR</year_variable>
       <time_variable>HOUR</time_variable>
@@ -71,7 +71,7 @@
       <capacity resource="electricity">
         <!-- <sweep_values debug_value="10">0, 20, 40, 60</sweep_values> -->
         <opt_bounds debug_value='33'>10,60</opt_bounds>
-        <!-- <sweep_values>23.95,30.28</sweep_values> -->
+        <!-- <sweep_values>0,10,20,24.18,25,30,32.85</sweep_values> -->
       </capacity>
     </produces>
     <economics>

@@ -110,53 +110,6 @@ class MOPED(Base):
         mode = dem._capacity.type
         self.setCapacityMeta(mode, resource, comp, dem)
 
-<<<<<<< HEAD
-    def loadSyntheticHistory(self, signal, multiplier):
-        """
-          Loads synthetic history for a specified signal,
-          also sets yearly hours and pyomo indexing sets
-          @ In, signal, string, name of signal to sample
-          @ In, multiplier, int/float, value to multiply synthetic history evaluations by
-          @ Out, synthetic_data, dict, contains data from evaluated ROM
-        """
-        # NOTE self._sources[0]._var_names are the user assigned signal names in DataGenerators
-        if signal not in self._sources[0]._var_names:
-            raise IOError('The requested signal name is not available'
-                          'from the synthetic history, check DataGenerators node in input')
-        # Initializing ravenROMexternal object gives PATH access to xmlUtils
-        runner = ROMloader.ravenROMexternal(self._sources[0]._target_file,
-                                            hutils.get_raven_loc())
-        from ravenframework.utils import xmlUtils
-        inp = {'scaling':[1]}
-        # TODO expand to change other pickledROM settings withing this method
-        nodes = []
-        node = xmlUtils.newNode('ROM', attrib={'name':'SyntheticHistory', 'subType':'pickledRom'})
-        node.append(xmlUtils.newNode('clusterEvalMode', text=self._eval_mode))
-        nodes.append(node)
-        runner.setAdditionalParams(nodes)
-        synthetic_data = {}
-        for real in range(self._case._num_samples):
-            self.raiseAMessage(f'Loading synthetic history for signal: {signal}')
-            name = f'Realization_{real + 1}'
-            current_realization = runner.evaluate(inp)[0]
-            # applying mult to each realization is easier than iteration through dict object later
-            current_realization[signal] *= multiplier
-            if self._eval_mode == 'full':
-                # reshape so that a filler cluster index is made
-                current_realization[signal] = np.expand_dims(current_realization[signal], axis = 1)
-            # TODO check for multipliers other than one necessary for wind and solar at the very least
-            synthetic_data[name] = current_realization[signal]
-        cluster_count = synthetic_data['Realization_1'].shape[1]
-        hour_count = synthetic_data['Realization_1'].shape[2]
-        self._m.c = pyo.Set(initialize = np.arange(cluster_count))
-        if self._eval_mode not in ['clustered', 'full']:
-            raise IOError('Improper ROM evaluation mode detected, try "clustered" or "full".')
-        # How many dispatch points we will have for each year
-        self._yearly_hours = hour_count * cluster_count
-        # TODO consider different segment lengths?
-        self._m.t = pyo.Set(initialize = np.arange(hour_count))
-        return synthetic_data
-=======
   def buildMultiplicityMeta(self):
     """
       Loads source structure and builds appropriate multiplicity data
@@ -175,7 +128,6 @@ class MOPED(Base):
       for cluster_info in cluster_data:
         self._multiplicity_meta[i+1][cluster_info['id']] = len(cluster_info['represents'])
     self._multiplicity_meta['Index Map'] = '[Year][Cluster][Multiplicity]'
->>>>>>> MOPED2-SyntheticAlpha
 
   def loadSyntheticHistory(self, signal, multiplier):
     """
@@ -189,6 +141,7 @@ class MOPED(Base):
     if signal not in self._sources[0]._var_names:
       raise IOError('The requested signal name is not available'
                     'from the synthetic history, check DataGenerators node in input')
+    # Initializing ravenROMexternal object gives PATH access to xmlUtils
     runner = ROMloader.ravenROMexternal(self._sources[0]._target_file,
                                         hutils.get_raven_loc())
     from ravenframework.utils import xmlUtils
@@ -392,16 +345,6 @@ class MOPED(Base):
     cf.computeYearlyCashflow(alphas, drivers)
     return cf
 
-<<<<<<< HEAD
-        # Necessary to shift year index by one since no recurring cashflows on first build year
-        for year in range(life + 1):
-            # Alpha can be a fixed single value price or an array of prices for each timestep
-            if isinstance(alpha, float):
-                cf.computeIntrayearCashflow(year, alpha, driver[year, :])
-            else:
-                cf.computeIntrayearCashflow(year, alpha[year, :], driver[year, :])
-        return cf
-=======
   def createRecurringHourly(self, comp, alpha, driver, real, unique_params):
     """
       Generates recurring hourly cashflows, mostly for dispatch and sales
@@ -423,12 +366,12 @@ class MOPED(Base):
     cf.initParams(life, pyomoVar=True)
     # Necessary to shift year index by one since no recurring cashflows on first build year
     for year in range(life + 1):
+      # Alpha can be a fixed single value price or an array of prices for each timestep
       if isinstance(alpha, float):
         cf.computeIntrayearCashflow(year, alpha, driver[year, :])
       else:
         cf.computeIntrayearCashflow(year, alpha[year, :], driver[year, :])
     return cf
->>>>>>> MOPED2-SyntheticAlpha
 
   def collectResources(self):
     """

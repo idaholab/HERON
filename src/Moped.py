@@ -121,6 +121,7 @@ class MOPED(Base):
         if signal not in self._sources[0]._var_names:
             raise IOError('The requested signal name is not available'
                           'from the synthetic history, check DataGenerators node in input')
+        # Initializing ravenROMexternal object gives PATH access to xmlUtils
         runner = ROMloader.ravenROMexternal(self._sources[0]._target_file,
                                             hutils.get_raven_loc())
         from ravenframework.utils import xmlUtils
@@ -331,6 +332,7 @@ class MOPED(Base):
 
         # Necessary to shift year index by one since no recurring cashflows on first build year
         for year in range(life + 1):
+            # Alpha can be a fixed single value price or an array of prices for each timestep
             if isinstance(alpha, float):
                 cf.computeIntrayearCashflow(year, alpha, driver[year, :])
             else:

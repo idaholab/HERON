@@ -257,7 +257,10 @@ class MOPED(Base):
         # This is used later in cashflow object generation, can be unique to each cf a comp has
         params = {'tax':cf._taxable,
                   'inflation':cf._inflation,
-                  'mult_target':cf._mult_target}
+                  'mult_target':cf._mult_target,
+                  'reference':cf._reference.get_value(),
+                  'X':cf._scale.get_value(),
+                  }
         if params['inflation'] == 'none':
           params['inflation'] = None
         multiplier = cf._driver._multiplier
@@ -317,8 +320,8 @@ class MOPED(Base):
     cfParams = {'name': 'Capex',
                 'alpha': alpha,
                 'driver': capacity,
-                'reference': 1.0,
-                'X': 1.0,
+                'reference': unique_params['reference'],
+                'X': unique_params['X'],
                 'mult_target': unique_params['mult_target'],
                 }
     cf.setParams(cfParams)
@@ -337,7 +340,7 @@ class MOPED(Base):
     life = int(self._case._global_econ['ProjectTime'])
     cf = CashFlows.Recurring()
     cfParams = {'name': 'Yearly',
-                'X': 1,
+                'X': unique_params['X'],
                 'mult_target': unique_params['mult_target'],
                 }
     cf.setParams(cfParams)
@@ -364,7 +367,7 @@ class MOPED(Base):
     life = int(self._case._global_econ['ProjectTime'])
     cf = CashFlows.Recurring()
     cfParams = {'name': f'Dispatching_{real+1}',
-                'X': 1,
+                'X': unique_params['X'],
                 'mult_target': unique_params['mult_target'],
                 }
     cf.setParams(cfParams)

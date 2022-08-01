@@ -48,15 +48,15 @@ class Case(Base):
                      'median': {'prefix': 'med', 'optimization_default': 'max'},
                      'variance': {'prefix': 'var', 'optimization_default': 'min'},
                      'sigma': {'prefix': 'std', 'optimization_default': 'min'},
-                     'percentile': {'prefix': 'perc', 'optimization_default': 'max', 'percent': [0.05, 0.95]},
+                     'percentile': {'prefix': 'perc', 'optimization_default': 'max', 'percent': ['5', '95']},
                      'variationCoefficient': {'prefix': 'varCoeff', 'optimization_default': 'min'},
                      'skewness': {'prefix': 'skew', 'optimization_default': 'min'},
                      'kurtosis': {'prefix': 'kurt', 'optimization_default': 'min'},
                      'sharpeRatio': {'prefix': 'sharpe', 'optimization_default': 'max'},
                      'sortinoRatio': {'prefix': 'sortino', 'optimization_default': 'max', 'threshold': 'zero'},
                      'gainLossRatio': {'prefix': 'glr', 'optimization_default': 'max', 'threshold': 'zero'},
-                     'expectedShortfall': {'prefix': 'es', 'optimization_default': 'min', 'threshold': 0.05},
-                     'valueAtRisk': {'prefix': 'VaR', 'optimization_default': 'min', 'threshold': 0.05}}
+                     'expectedShortfall': {'prefix': 'es', 'optimization_default': 'min', 'threshold': ['0.05']},
+                     'valueAtRisk': {'prefix': 'VaR', 'optimization_default': 'min', 'threshold': ['0.05']}}
 
   #### INITIALIZATION ####
   @classmethod
@@ -612,7 +612,6 @@ class Case(Base):
           result_statistics[sub_name] = self.metrics_mapping[sub_name]['threshold']
       else:
         result_statistics[sub_name] = None
-    print(f'result_statistics: {result_statistics}')
 
     return result_statistics
 

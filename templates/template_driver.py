@@ -278,11 +278,30 @@ class Template(TemplateBase, Base):
     caps.text = ', '.join(var_list)
 
     # outer results
+    group_outer_results = var_groups.find(".//Group[@name='GRO_outer_results']")
+    # user provided statistics they would like to see in results, make sure they get there
+    if case._result_statistics is not None:
+      stats_list = self._build_result_statistic_names(case)
+      for stat_name in stats_list:
+        self._updateCommaSeperatedList(group_outer_results, stat_name)
+    # sweep mode has default variable names
+    elif case._mode == 'sweep':
+      sweep_default = ['mean_NPV', 'std_NPV', 'med_NPV', 'max_NPV', 'min_NPV', 'perc_5_NPV', 'perc_95_NPV', 'samp_NPV', 'var_NPV']
+      for sweep_name in sweep_default:
+        self._updateCommaSeperatedList(group_outer_results, sweep_name)
+    # opt mode uses optimization variable if no other stats are given, this is handled below
     if case._optimization_settings is not None:
-      group_outer_results = var_groups.find(".//Group[@name='GRO_outer_results']")
       new_metric_outer_results = self._build_opt_metric_out_name(case)
-      if (new_metric_outer_results != 'missing') and (new_metric_outer_results not in group_outer_results.text):
+      if group_outer_results.text is None:
+        # no additional results statistics have been requested
         self._updateCommaSeperatedList(group_outer_results, new_metric_outer_results, position=0)
+      elif (new_metric_outer_results != 'missing') and (new_metric_outer_results not in group_outer_results.text):
+        # additional results statistics have been requested, add this metric if not already present
+        self._updateCommaSeperatedList(group_outer_results, new_metric_outer_results, position=0)
+    elif (case._mode == 'opt') and (case._optimization_settings is None):
+      # need to add default 'mean_NPV' to GRO_outer_results since nothing has been specified
+      self._updateCommaSeperatedList(group_outer_results, 'mean_NPV')
+    
     # labels group
     if case.get_labels():
       case_labels = ET.SubElement(var_groups, 'Group', attrib={'name': 'GRO_case_labels'})
@@ -1278,3 +1297,29 @@ class Template(TemplateBase, Base):
       opt_out_metric_name = 'missing'
 
     return opt_out_metric_name
+  
+  def _build_result_statistic_names(self, case):
+    """
+      Constructs the names of the statistics requested for output
+      @ In, case, HERON Case, defining Case instance
+      @ Out, names, list, list of names of statistics requested for output
+    """
+    names = []
+    for name in case._result_statistics.keys():
+      out_name = case.metrics_mapping[name]['prefix']
+      # do I need to add percent or threshold?
+      if name == 'percentile':
+        # multiple percents may be specified
+        for percent in case._result_statistics[name]:
+          names.append(out_name+'_'+percent+'_NPV')
+      elif name in ['valueAtRisk', 'expectedShortfall']:
+        # multiple thresholds may be specified
+        for threshold in case._result_statistics[name]:
+          names.append(out_name+'_'+threshold+'_NPV')
+      elif name in ['sortinoRatio', 'gainLossRatio']:
+        names.append(out_name+'_'+case._result_statistics[name]+'_NPV')
+      else:
+        out_name += '_NPV'
+        names.append(out_name)
+    
+    return names

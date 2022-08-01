@@ -13,14 +13,12 @@ import pyomo.environ as pyo
 from pyomo.opt import SolverFactory
 import numpy as np
 
-import _utils as hutils
-# Getting raven location
+from HERON.src import _utils as hutils
+from HERON.src.base import Base
 path_to_raven = hutils.get_raven_loc()
-# Access to externalROMloader
 sys.path.append(os.path.abspath(os.path.join(path_to_raven, 'scripts')))
 sys.path.append(os.path.abspath(os.path.join(path_to_raven, 'plugins')))
 sys.path.append(path_to_raven)
-from HERON.src.base import Base
 from ravenframework.MessageHandler import MessageHandler
 import externalROMloader as ROMloader
 from TEAL.src import CashFlows
@@ -35,7 +33,7 @@ class MOPED(Base):
         self._econ_settings = None            # TEAL global settings used for building cashflows
         self._m = None                        # Pyomo model to be solved
         self._producers = []                  # List of pyomo var/params of producing components
-        self._eval_mode = 'full'         # (full or clustered) clustered is better for testing and speed, full gives a more realistic NPV result
+        self._eval_mode = 'clustered'         # (full or clustered) clustered is better for testing and speed, full gives a more realistic NPV result
         self._yearly_hours = 24*365           # Number of hours in a year to handle dispatch, based on clustering
         self._component_meta = {}             # Primary data structure for MOPED, organizes important information for problem construction
         self._cf_meta = {}                    # Secondary data structure for MOPED, contains cashflow info
@@ -164,7 +162,7 @@ class MOPED(Base):
           @ In, resource, string, resource produced or demanded
           @ In, comp, HERON component
           @ In, element, HERON produces/demands node
-          @ In, consumes, bool, does this component consume resources
+          @ In, consumes, bool, does this component consume resources, defaults to False
           @ Out, None
         """
         # Multiplier plays important role in capacity node, especially for VRE's
@@ -176,7 +174,6 @@ class MOPED(Base):
             capacity_mult *= -1
         # Organizing important aspects of problem for later access
         if isinstance(element, type(self._components[0]._produces[0])): # Assumes first comp is a producer
-        #if isinstance(type, type(self._components[0]._produces[0])):
             self._component_meta[comp.name]['Produces'] = resource
         else:
             self._component_meta[comp.name]['Demands'] = resource
@@ -184,10 +181,8 @@ class MOPED(Base):
         self._component_meta[comp.name]['Dispatch'] = element._dispatchable
         # Different possible capacity value definitions for a component
         if mode == 'OptBounds':
-            self.raiseADebug(
-              f'Building pyomo capacity variable for '
-              f'{comp.name}'
-              )
+            self.raiseADebug(f'Building pyomo capacity variable for '
+                             f'{comp.name}')
             opt_bounds = element._capacity._vp._parametric
             opt_bounds *= capacity_mult
             # This is a capacity we make a decision on
@@ -196,20 +191,16 @@ class MOPED(Base):
         elif mode == 'SweepValues': # TODO Add capability to handle sweepvalues, maybe multiple pyo.Params?
             raise IOError('MOPED does not currently support sweep values option')
         elif mode == 'FixedValue':
-            self.raiseADebug(
-              f'Building pyomo capacity parameter for '
-              f'{comp.name}'
-              )
+            self.raiseADebug(f'Building pyomo capacity parameter for '
+                             f'{comp.name}')
             # Params represent constant value components of the problem
             value = element._capacity._vp._parametric
             value *= capacity_mult
             param = pyo.Param(initialize = value)
             setattr(self._m, f'{comp.name}', param)
         elif mode == 'SyntheticHistory':
-            self.raiseADebug(
-              f'Building capacity with synthetic histories for '
-              f'{comp.name}'
-              )
+            self.raiseADebug(f'Building capacity with synthetic histories for '
+                             f'{comp.name}')
             # This method runs external ROM loader and defines some pyomo sets
             capacity = self.loadSyntheticHistory(element._capacity._vp._var_name, capacity_mult)
             # TODO how to better handle capacities based on Synth Histories
@@ -234,6 +225,7 @@ class MOPED(Base):
             self.raiseADebug(f'Retrieving cashflow information for {comp.name}')
             self._cf_meta[comp.name] = {}
             self._cf_meta[comp.name]['Lifetime'] = comp._economics._lifetime
+            # TODO Refactor this to equivalent code
             for cf in comp._economics._cash_flows:
                 # Using reference prices for cashflows
                 alpha = cf._alpha._vp._parametric

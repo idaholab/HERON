@@ -201,8 +201,7 @@ class MOPED(Base):
     # Different possible capacity value definitions for a component
     if mode == 'OptBounds':
       self.raiseADebug(f'Building pyomo capacity variable for '
-                       f'{comp.name}'
-                       )
+                       f'{comp.name}')
       opt_bounds = element._capacity._vp._parametric
       opt_bounds *= capacity_mult
       # This is a capacity we make a decision on
@@ -211,20 +210,16 @@ class MOPED(Base):
     elif mode == 'SweepValues':  # TODO Add capability to handle sweepvalues, maybe multiple pyo.Params?
       raise IOError('MOPED does not currently support sweep values option')
     elif mode == 'FixedValue':
-      self.raiseADebug(
-          f'Building pyomo capacity parameter for '
-          f'{comp.name}'
-      )
+      self.raiseADebug(f'Building pyomo capacity parameter for '
+                       f'{comp.name}')
       # Params represent constant value components of the problem
       value = element._capacity._vp._parametric
       value *= capacity_mult
       param = pyo.Param(initialize=value)
       setattr(self._m, f'{comp.name}', param)
     elif mode == 'SyntheticHistory':
-      self.raiseADebug(
-          f'Building capacity with synthetic histories for '
-          f'{comp.name}'
-      )
+      self.raiseADebug(f'Building capacity with synthetic histories for '
+                       f'{comp.name}')
       # This method runs external ROM loader and defines some pyomo sets
       capacity = self.loadSyntheticHistory(element._capacity._vp._var_name, capacity_mult)
       # TODO how to better handle capacities based on Synth Histories

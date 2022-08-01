@@ -12,9 +12,10 @@
 
   <Case name="wind">
     <mode>opt</mode>
+    <!-- <debug></debug> -->
     <workflow>MOPED</workflow>
     <verbosity>debug</verbosity>
-    <num_arma_samples>2</num_arma_samples>
+    <num_arma_samples>20</num_arma_samples>
     <time_discretization>
       <year_variable>YEAR</year_variable>
       <time_variable>HOUR</time_variable>
@@ -59,7 +60,7 @@
           <!-- adjust for short project length-->
           <fixed_value>-1.47e8</fixed_value>
         </reference_price>
-        <depreciate>3</depreciate>
+        <!-- <depreciate>3</depreciate> -->
       </CashFlow>
     </economics>
   </Component>
@@ -69,7 +70,8 @@
     <produces resource="electricity" dispatch="independent">
       <capacity resource="electricity">
         <!-- <sweep_values debug_value="10">0, 20, 40, 60</sweep_values> -->
-        <fixed_value>25</fixed_value>
+        <opt_bounds debug_value='33'>10,60</opt_bounds>
+        <!-- <sweep_values>0,10,20,24.18,25,30,32.85</sweep_values> -->
       </capacity>
     </produces>
     <economics>
@@ -144,7 +146,8 @@
   <Component name="export">
     <demands resource="electricity" dispatch="independent">
       <capacity>
-        <fixed_value>100</fixed_value> <!-- GW -->
+        <fixed_value>100</fixed_value>
+        <multiplier>-1</multiplier> <!-- GW -->
       </capacity>
     </demands>
     <economics>

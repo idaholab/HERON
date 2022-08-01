@@ -38,7 +38,8 @@
 
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <opt_bounds>10, 40</opt_bounds> <!-- GW -->
+          <opt_bounds>10, 40</opt_bounds> <!--GW-->
+          <!-- <sweep_values>0,21.69,23.73,24.5</sweep_values> -->
         </capacity>
       </produces>
 
@@ -51,7 +52,7 @@
           </driver>
           <reference_price>
             <!-- 1000 $/kW * 1e6 kW/GW = 1e9 est cost for 1 GW NGCC -->
-            <fixed_value>-1e5</fixed_value>
+            <fixed_value>-1e8</fixed_value>
           </reference_price>
           <!-- <depreciate>15</depreciate> -->
         </CashFlow>
@@ -103,22 +104,22 @@
       </demands>
       <economics>
         <lifetime>1</lifetime>
-        <CashFlow name='e_sales' type='repeating' taxable="True" inflation="none" mult_target="False">
+        <!-- <CashFlow name='e_sales' type='repeating' taxable="True" inflation="none" mult_target="False">
           <driver>
             <activity>electricity</activity>
-            <multiplier>-1</multiplier>
+            <multiplier>-15e3</multiplier>
           </driver>
           <reference_price>
-            <fixed_value>50e3</fixed_value>
+            <ARMA variable="SOLAR">synth</ARMA>
           </reference_price>
-        </CashFlow>
+        </CashFlow> -->
       </economics>
     </Component>
 
   </Components>
 
   <DataGenerators>
-    <ARMA name='synth' variable="TOTALLOAD">../arma_202112_nyiso_def.pk</ARMA>
+    <ARMA name='synth' variable="TOTALLOAD,SOLAR">../arma_202112_nyiso_def.pk</ARMA>
   </DataGenerators>
 
 </HERON>

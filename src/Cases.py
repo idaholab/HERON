@@ -36,23 +36,27 @@ class Case(Base):
     TODO this case is for "sweep-opt", need to make a superclass for generic
   """
 
-  # metrics that can be used for objective in optimization mapped from RAVEN name to result name (prefix)
-  # 'default' is the default type of optimization (min/max)
-  optimization_metrics_mapping = {'expectedValue': {'prefix': 'mean', 'default': 'max'},
-                                  'minimum': {'prefix': 'min', 'default': 'max'},
-                                  'maximum': {'prefix': 'max', 'default': 'max'},
-                                  'median': {'prefix': 'med', 'default': 'max'},
-                                  'variance': {'prefix': 'var', 'default': 'min'},
-                                  'sigma': {'prefix': 'std', 'default': 'min'},
-                                  'percentile': {'prefix': 'perc', 'default': 'max'},
-                                  'variationCoefficient': {'prefix': 'varCoeff', 'default': 'min'},
-                                  'skewness': {'prefix': 'skew', 'default': 'min'},
-                                  'kurtosis': {'prefix': 'kurt', 'default': 'min'},
-                                  'sharpeRatio': {'prefix': 'sharpe', 'default': 'max'},
-                                  'sortinoRatio': {'prefix': 'sortino', 'default': 'max'},
-                                  'gainLossRatio': {'prefix': 'glr', 'default': 'max'},
-                                  'expectedShortfall': {'prefix': 'es', 'default': 'min'},
-                                  'valueAtRisk': {'prefix': 'VaR', 'default': 'min'}}
+  # metrics that can be used for objective in optimization or returned with results
+  # each metric contains a dictionary with the following keys:
+  # 'prefix' - printed result name
+  # 'optimization_default' - 'min' or 'max' for optimization
+  # 'percent' (only for percentile) - list of percentiles to return
+  # 'threshold' (only for sortinoRatio, gainLossRatio, expectedShortfall, valueAtRisk) - threshold value for calculation
+  metrics_mapping = {'expectedValue': {'prefix': 'mean', 'optimization_default': 'max'},
+                     'minimum': {'prefix': 'min', 'optimization_default': 'max'},
+                     'maximum': {'prefix': 'max', 'optimization_default': 'max'},
+                     'median': {'prefix': 'med', 'optimization_default': 'max'},
+                     'variance': {'prefix': 'var', 'optimization_default': 'min'},
+                     'sigma': {'prefix': 'std', 'optimization_default': 'min'},
+                     'percentile': {'prefix': 'perc', 'optimization_default': 'max', 'percent': [0.05, 0.95]},
+                     'variationCoefficient': {'prefix': 'varCoeff', 'optimization_default': 'min'},
+                     'skewness': {'prefix': 'skew', 'optimization_default': 'min'},
+                     'kurtosis': {'prefix': 'kurt', 'optimization_default': 'min'},
+                     'sharpeRatio': {'prefix': 'sharpe', 'optimization_default': 'max'},
+                     'sortinoRatio': {'prefix': 'sortino', 'optimization_default': 'max', 'threshold': 'zero'},
+                     'gainLossRatio': {'prefix': 'glr', 'optimization_default': 'max', 'threshold': 'zero'},
+                     'expectedShortfall': {'prefix': 'es', 'optimization_default': 'min', 'threshold': 0.05},
+                     'valueAtRisk': {'prefix': 'VaR', 'optimization_default': 'min', 'threshold': 0.05}}
 
   #### INITIALIZATION ####
   @classmethod
@@ -228,7 +232,7 @@ class Case(Base):
     optimizer = InputData.parameterInputFactory('optimization_settings',
                                                 descr=r"""node that defines the settings to be used for the optimizer in
                                                 the ``outer'' run.""")
-    metric_options = InputTypes.makeEnumType('MetricOptions', 'MetricOptionsType', list(cls.optimization_metrics_mapping.keys()))
+    metric_options = InputTypes.makeEnumType('MetricOptions', 'MetricOptionsType', list(cls.metrics_mapping.keys()))
     desc_metric_options = r"""determines the statistical metric (calculated by RAVEN BasicStatistics
                           or EconomicRatio PostProcessors) from the ``inner'' run to be used as the
                           objective in the ``outer'' optimization.

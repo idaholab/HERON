@@ -586,7 +586,7 @@ class Template(TemplateBase, Base):
       except KeyError:
         # type was not provided, so use the default value
         metric_raven_name = case._optimization_settings['metric']['name']
-        type_node.text = case.optimization_metrics_mapping[metric_raven_name]['default']
+        type_node.text = case.metrics_mapping[metric_raven_name]['optimization_default']
 
       # swap out convergence values (only persistence implemented now)
       convergence = opt_node.find('convergence')
@@ -936,7 +936,7 @@ class Template(TemplateBase, Base):
       if new_objective != 'missing':
         pp_node = template.find('Models').find(".//PostProcessor[@name='statistics']")
         raven_metric_name = case._optimization_settings['metric']['name']
-        prefix = case.optimization_metrics_mapping[raven_metric_name]['prefix']
+        prefix = case.metrics_mapping[raven_metric_name]['prefix']
         if pp_node.find(raven_metric_name) is None:
           # add subnode to PostProcessor
           if 'threshold' in case._optimization_settings['metric'].keys():
@@ -1262,7 +1262,7 @@ class Template(TemplateBase, Base):
       # metric name in RAVEN
       metric_raven_name = case._optimization_settings['metric']['name']
       # potential metric name to add to VariableGroups, DataObjects, Optimizers
-      opt_out_metric_name = case.optimization_metrics_mapping[metric_raven_name]['prefix']
+      opt_out_metric_name = case.metrics_mapping[metric_raven_name]['prefix']
       # do I need to add a percent or threshold to this name?
       if metric_raven_name == 'percentile':
         opt_out_metric_name += '_' + str(case._optimization_settings['metric']['percent'])

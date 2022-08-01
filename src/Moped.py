@@ -161,7 +161,6 @@ class MOPED(Base):
       if self._eval_mode == 'full':
         # reshape so that a filler cluster index is made
         current_realization[signal] = np.expand_dims(current_realization[signal], axis=1)
-      # TODO check for multipliers other than one necessary for wind and solar at the very least
       synthetic_data[name] = current_realization[signal]
     cluster_count = synthetic_data['Realization_1'].shape[1]
     hour_count = synthetic_data['Realization_1'].shape[2]
@@ -170,119 +169,9 @@ class MOPED(Base):
       raise IOError('Improper ROM evaluation mode detected, try "clustered" or "full".')
     # How many dispatch points we will have for each year
     self._yearly_hours = hour_count * cluster_count
-    # TODO consider different segment lengths?
     self._m.t = pyo.Set(initialize=np.arange(hour_count))
     return synthetic_data
 
-<<<<<<< HEAD
-    def setCapacityMeta(self, mode, resource, comp, element, consumes=False):
-        """
-          Checks the capacity type, dispatch type, and resources involved for each component
-          to build component_meta
-          @ In, mode, string, type of capacity definition for component
-          @ In, resource, string, resource produced or demanded
-          @ In, comp, HERON component
-          @ In, element, HERON produces/demands node
-          @ In, consumes, bool, does this component consume resources, defaults to False
-          @ Out, None
-        """
-        # Multiplier plays important role in capacity node, especially for VRE's
-        capacity_mult = element._capacity._multiplier
-        # For MOPED we treat all capacities and dispatches as positive values
-        if capacity_mult is None:
-            capacity_mult = 1
-        elif capacity_mult < 0:
-            capacity_mult *= -1
-        # Organizing important aspects of problem for later access
-        if isinstance(element, type(self._components[0]._produces[0])): # Assumes first comp is a producer
-            self._component_meta[comp.name]['Produces'] = resource
-        else:
-            self._component_meta[comp.name]['Demands'] = resource
-        self._component_meta[comp.name]['Consumes'] = None
-        self._component_meta[comp.name]['Dispatch'] = element._dispatchable
-        # Different possible capacity value definitions for a component
-        if mode == 'OptBounds':
-            self.raiseADebug(f'Building pyomo capacity variable for '
-                             f'{comp.name}')
-            opt_bounds = element._capacity._vp._parametric
-            opt_bounds *= capacity_mult
-            # This is a capacity we make a decision on
-            var = pyo.Var(initialize = 0.5*opt_bounds[1], bounds = (opt_bounds[0], opt_bounds[1]))
-            setattr(self._m, f'{comp.name}', var)
-        elif mode == 'SweepValues': # TODO Add capability to handle sweepvalues, maybe multiple pyo.Params?
-            raise IOError('MOPED does not currently support sweep values option')
-        elif mode == 'FixedValue':
-            self.raiseADebug(f'Building pyomo capacity parameter for '
-                             f'{comp.name}')
-            # Params represent constant value components of the problem
-            value = element._capacity._vp._parametric
-            value *= capacity_mult
-            param = pyo.Param(initialize = value)
-            setattr(self._m, f'{comp.name}', param)
-        elif mode == 'SyntheticHistory':
-            self.raiseADebug(f'Building capacity with synthetic histories for '
-                             f'{comp.name}')
-            # This method runs external ROM loader and defines some pyomo sets
-            capacity = self.loadSyntheticHistory(element._capacity._vp._var_name, capacity_mult)
-            # TODO how to better handle capacities based on Synth Histories
-            self._component_meta[comp.name]['Capacity'] = capacity
-        if mode != 'SyntheticHistory':
-            # TODO smarter way to do this check?
-            self._component_meta[comp.name]['Capacity'] = getattr(self._m, f'{comp.name}')
-        if consumes == True:
-            # NOTE not all producers consume
-            # TODO should we handle transfer functions here?
-            for con in element._consumes:
-                self._component_meta[comp.name]['Consumes'][con] = element._transfer
-
-    def buildCashflowMeta(self):
-        """
-          Builds cashflow meta used in cashflow component construction
-          @ In, None
-          @ Out, None
-        """
-        # NOTE assumes that each component can only have one cap, yearly, and repeating
-        for comp in self._components:
-            self.raiseADebug(f'Retrieving cashflow information for {comp.name}')
-            self._cf_meta[comp.name] = {}
-            self._cf_meta[comp.name]['Lifetime'] = comp._economics._lifetime
-            # TODO Refactor this to equivalent code
-            for cf in comp._economics._cash_flows:
-                # Using reference prices for cashflows
-                alpha = cf._alpha._vp._parametric
-                # This corrects sign for MOPED from user inputs for demanding cashflows
-                # Allows MOPED and default HERON to follow same sign conventions for inputs
-                if len(comp._demands) > 0:
-                    alpha *= -1
-                multiplier = cf._driver._multiplier
-                driver_type = cf._driver.type
-                # Default mult should be 1
-                if multiplier == None:
-                    multiplier = 1
-                value = multiplier * alpha
-                if cf._type == 'one-time':
-                    # TODO consider other driver types
-                    if driver_type == 'FixedValue':
-                        self._cf_meta[comp.name]['Capex Driver'] = cf._driver._vp._parametric
-                    else:
-                        self._cf_meta[comp.name]['Capex Driver'] = None
-                    self._cf_meta[comp.name]['Capex'] = value
-                    # Necessary if capex has depreciation and amortization
-                    self._cf_meta[comp.name]['Deprec'] = cf._depreciate
-                elif cf._type == 'repeating':
-                    if cf._period == 'year':
-                        if driver_type == 'FixedValue':
-                            self._cf_meta[comp.name]['Yearly Driver'] = cf._driver._vp._parametric
-                        else:
-                            self._cf_meta[comp.name]['Yearly Driver'] = None
-                        self._cf_meta[comp.name]['Yearly'] = value
-                        continue
-                    if driver_type == 'FixedValue':
-                        self._cf_meta[comp.name]['Dispatch Driver'] = cf._driver._vp._parametric
-                    else:
-                        self._cf_meta[comp.name]['Dispatch Driver'] = None
-                    self._cf_meta[comp.name]['Dispatching'] = value
-=======
   def setCapacityMeta(self, mode, resource, comp, element, consumes=False):
     """
       Checks the capacity type, dispatch type, and resources involved for each component
@@ -348,7 +237,6 @@ class MOPED(Base):
       # TODO should we handle transfer functions here?
       for con in element._consumes:
           self._component_meta[comp.name]['Consumes'][con] = element._transfer
->>>>>>> 469b3dd (Synthetic cashflows are working. MOPED now reads cf params/settings directly from the input file. However, still in the middle of hammering out issues with with cashflow settings to verify MOPED against default HERON.)
 
   def buildCashflowMeta(self):
     """

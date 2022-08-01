@@ -230,7 +230,7 @@ class Case(Base):
 
     # optimization settings
     optimizer = InputData.parameterInputFactory('optimization_settings',
-                                                descr=r"""node that defines the settings to be used for the optimizer in
+                                                descr=r"""This node defines the settings to be used for the optimizer in
                                                 the ``outer'' run.""")
     metric_options = InputTypes.makeEnumType('MetricOptions', 'MetricOptionsType', list(cls.metrics_mapping.keys()))
     desc_metric_options = r"""determines the statistical metric (calculated by RAVEN BasicStatistics
@@ -319,6 +319,28 @@ class Case(Base):
     )
     dispatch_vars.addSub(value_param)
     input_specs.addSub(dispatch_vars)
+
+    # result statistics
+    result_stats = InputData.parameterInputFactory('result_statistics',
+                                                   descr=r"""This node defines the statistics to be returned with the results.""")
+    metric_descriptions = r"""The name of each node is the requested statistic to return with the results. The following statistics
+                              may be returned: \textbf{"""
+    metric_descriptions += r""", """.join(cls.metrics_mapping.keys())
+    metric_descriptions += r"""}. Additional attributes may be provided. These include:
+                            \begin{itemize}
+                              \item \textit{percent} - requested percentile (a floating point value between 0.0 and 100.0).
+                              Available when node is ``percentile.''
+                              \default{[5, 95]}
+                              \item \textit{threshold} - requested threshold (`median' or `zero'). Available when
+                                node is ``sortinoRatio'' or ``gainLossRatio.''
+                                \default{`zero'}
+                              \item \textit{threshold} - requested $ \alpha $ value (a floating point value between 0.0
+                                and 1.0). Available when node is ``expectedShortfall'' or ``valueAtRisk.'' \default{0.05}
+                            \end{itemize}"""
+
+    metric_detail = InputData.parameterInputFactory('"metric"', descr=metric_descriptions)
+    result_stats.addSub(metric_detail)
+    input_specs.addSub(result_stats)
 
     return input_specs
 

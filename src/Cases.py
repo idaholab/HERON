@@ -322,24 +322,22 @@ class Case(Base):
 
     # result statistics
     result_stats = InputData.parameterInputFactory('result_statistics',
-                                                   descr=r"""This node defines the statistics to be returned with the results.""")
-    metric_descriptions = r"""The name of each node is the requested statistic to return with the results. The following statistics
-                              may be returned: \textbf{"""
-    metric_descriptions += r""", """.join(cls.metrics_mapping.keys())
-    metric_descriptions += r"""}. Additional attributes may be provided. These include:
-                            \begin{itemize}
-                              \item \textit{percent} - requested percentile (a floating point value between 0.0 and 100.0).
-                              Available when node is ``percentile.''
-                              \default{[5, 95]}
-                              \item \textit{threshold} - requested threshold (`median' or `zero'). Available when
-                                node is ``sortinoRatio'' or ``gainLossRatio.''
-                                \default{`zero'}
-                              \item \textit{threshold} - requested $ \alpha $ value (a floating point value between 0.0
-                                and 1.0). Available when node is ``expectedShortfall'' or ``valueAtRisk.'' \default{0.05}
-                            \end{itemize}"""
-
-    metric_detail = InputData.parameterInputFactory('"metric"', descr=metric_descriptions)
-    result_stats.addSub(metric_detail)
+                                                   descr=r"""This node defines the statistics to be returned with the results. Each
+                                                   subnode is the name of the desired return statistic.""")
+    for stat in cls.metrics_mapping.keys():
+      statistic = InputData.parameterInputFactory(stat, descr=r"""{} uses the prefix ``{}'' in the result output.""".format(stat, cls.metrics_mapping[stat]['prefix']))
+      if stat == 'percentile':
+        statistic.addParam('percent', param_type=InputTypes.StringListType,
+                           descr=r"""requested percentile (a floating point value between 0.0 and 100.0).""",
+                           default="[5, 95]")
+      elif stat in ['sortinoRatio', 'gainLossRatio']:
+        statistic.addParam('threshold', param_type=InputTypes.StringType,
+                           descr=r"""requested threshold ('median' or 'zero').""", default='zero')
+      elif stat in ['expectedShortfall', 'valueAtRisk']:
+        statistic.addParam('threshold', param_type=InputTypes.StringListType,
+                           descr=r"""requested threshold (a floating point value between 0.0 and 1.0).""",
+                           default="0.05")
+      result_stats.addSub(statistic)
     input_specs.addSub(result_stats)
 
     return input_specs
@@ -351,45 +349,46 @@ class Case(Base):
       @ Out, None
     """
     Base.__init__(self, **kwargs)
-    self.name = None            # case name
-    self._mode = None           # extrema to find: opt, sweep
-    self._metric = 'NPV'        # UNUSED (future work); economic metric to focus on: lcoe, profit, cost
-    self.run_dir = run_dir      # location of HERON input file
-    self._verbosity = 'all'     # default verbosity for RAVEN inner/outer
+    self.name = None                   # case name
+    self._mode = None                  # extrema to find: opt, sweep
+    self._metric = 'NPV'               # UNUSED (future work); economic metric to focus on: lcoe, profit, cost
+    self.run_dir = run_dir             # location of HERON input file
+    self._verbosity = 'all'            # default verbosity for RAVEN inner/outer
 
-    self.dispatch_name = None   # name of dispatcher to use
-    self.dispatcher = None      # type of dispatcher to use
-    self.validator_name = None  # name of dispatch validation to use
-    self.validator = None       # type of dispatch validation to use
-    self.dispatch_vars = {}     # non-component optimization ValuedParams
+    self.dispatch_name = None          # name of dispatcher to use
+    self.dispatcher = None             # type of dispatcher to use
+    self.validator_name = None         # name of dispatch validation to use
+    self.validator = None              # type of dispatch validation to use
+    self.dispatch_vars = {}            # non-component optimization ValuedParams
 
-    self.outerParallel = 0     # number of outer parallel runs to use
-    self.innerParallel = 0     # number of inner parallel runs to use
+    self.outerParallel = 0             # number of outer parallel runs to use
+    self.innerParallel = 0             # number of inner parallel runs to use
 
-    self._diff_study = None     # is this only a differential study?
-    self._num_samples = 1       # number of ARMA stochastic samples to use ("denoises")
-    self._hist_interval = None  # time step interval, time between production points
-    self._hist_len = None       # total history length, in same units as _hist_interval
-    self._num_hist = None       # number of history steps, hist_len / hist_interval
-    self._global_econ = {}      # global economics settings, as a pass-through
-    self._increments = {}       # stepwise increments for resource balancing
-    self._time_varname = 'time' # name of the time-variable throughout simulation
-    self._year_varname = 'Year' # name of the year-variable throughout simulation
-    self._labels = {}           # extra information pertaining to current case
-    self.debug = {              # debug options, as enabled by the user (defaults included)
-        'enabled': False,         # whether to enable debug mode
-        'inner_samples': 1,       # how many inner realizations to sample
-        'macro_steps': 1,         # how many "years" for inner realizations
-        'dispatch_plot': True     # whether to output a plot in debug mode
+    self._diff_study = None            # is this only a differential study?
+    self._num_samples = 1              # number of ARMA stochastic samples to use ("denoises")
+    self._hist_interval = None         # time step interval, time between production points
+    self._hist_len = None              # total history length, in same units as _hist_interval
+    self._num_hist = None              # number of history steps, hist_len / hist_interval
+    self._global_econ = {}             # global economics settings, as a pass-through
+    self._increments = {}              # stepwise increments for resource balancing
+    self._time_varname = 'time'        # name of the time-variable throughout simulation
+    self._year_varname = 'Year'        # name of the year-variable throughout simulation
+    self._labels = {}                  # extra information pertaining to current case
+    self.debug = {                     # debug options, as enabled by the user (defaults included)
+        'enabled': False,              # whether to enable debug mode
+        'inner_samples': 1,            # how many inner realizations to sample
+        'macro_steps': 1,              # how many "years" for inner realizations
+        'dispatch_plot': True          # whether to output a plot in debug mode
     }
 
-    self.data_handling = {     # data handling options
-      'inner_to_outer': 'netcdf', # how to pass inner data to outer (csv, netcdf)
+    self.data_handling = {             # data handling options
+      'inner_to_outer': 'netcdf',      # how to pass inner data to outer (csv, netcdf)
     }
 
-    self._time_discretization = None # (start, end, number) for constructing time discretization, same as argument to np.linspace
-    self._Resample_T = None    # user-set increments for resources
+    self._time_discretization = None   # (start, end, number) for constructing time discretization, same as argument to np.linspace
+    self._Resample_T = None            # user-set increments for resources
     self._optimization_settings = None # optimization settings dictionary for outer optimization loop
+    self._result_statistics = None     # desired result statistics dictionary 
 
     # clean up location
     self.run_dir = os.path.abspath(os.path.expanduser(self.run_dir))
@@ -458,6 +457,8 @@ class Case(Base):
           self.dispatch_vars[var_name] = vp
       elif item.getName() == 'data_handling':
         self.data_handling = self._read_data_handling(item)
+      elif item.getName() == 'result_statistics':
+        self._result_statistics = self._read_result_statistics(item)
 
     # checks
     if self._mode is None:
@@ -583,6 +584,37 @@ class Case(Base):
         opt_settings[sub_name] = sub.value
 
     return opt_settings
+
+  def _read_result_statistics(self, node):
+    """
+      Reads result statistics node
+      @ In, node, InputParams.ParameterInput, result statistics head node
+      @ Out, result_statistics, dict, result statistics settings as dictionary
+    """
+    # result_statistics keys are statistic name value is percent, threshold value, or None
+    result_statistics = {}
+    for sub in node.subparts:
+      sub_name = sub.getName()
+      if sub_name == 'percentile':
+        try:
+          result_statistics[sub_name] = sub.parameterValues['percent']
+        except KeyError:
+          result_statistics[sub_name] = self.metrics_mapping[sub_name]['percent']
+      elif sub_name in ['sortinoRatio', 'gainLossRatio']:
+        try:
+          result_statistics[sub_name] = sub.parameterValues['threshold']
+        except KeyError:
+          result_statistics[sub_name] = self.metrics_mapping[sub_name]['threshold']
+      elif sub_name in ['expectedShortfall', 'valueAtRisk']:
+        try:
+          result_statistics[sub_name] = sub.parameterValues['threshold']
+        except KeyError:
+          result_statistics[sub_name] = self.metrics_mapping[sub_name]['threshold']
+      else:
+        result_statistics[sub_name] = None
+    print(f'result_statistics: {result_statistics}')
+
+    return result_statistics
 
   def initialize(self, components, sources):
     """

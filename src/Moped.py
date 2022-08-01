@@ -104,11 +104,11 @@ class MOPED(Base):
       for prod in comp._produces:  # NOTE Cannot handle components that produce multiple things
         resource = prod._capacity_var
         mode = prod._capacity.type
-        self.setCapacityMeta(mode, resource, comp, prod, True)
+        self.setCapacityMeta(mode, resource, comp, prod, True, True)
       for dem in comp._demands:  # NOTE Cannot handle components that demand multiple things
         resource = dem._capacity_var
         mode = dem._capacity.type
-        self.setCapacityMeta(mode, resource, comp, dem)
+        self.setCapacityMeta(mode, resource, comp, dem, False)
 
   def buildMultiplicityMeta(self):
     """
@@ -173,7 +173,7 @@ class MOPED(Base):
     self._m.t = pyo.Set(initialize=np.arange(hour_count))
     return synthetic_data
 
-  def setCapacityMeta(self, mode, resource, comp, element, consumes=False):
+  def setCapacityMeta(self, mode, resource, comp, element, produces=True, consumes=False):
     """
       Checks the capacity type, dispatch type, and resources involved for each component
       to build component_meta
@@ -181,7 +181,8 @@ class MOPED(Base):
       @ In, resource, string, resource produced or demanded
       @ In, comp, HERON component
       @ In, element, HERON produces/demands node
-      @ In, consumes, bool, does this component consume resources
+      @ In, produces, bool, does this component produce, default is True
+      @ In, consumes, bool, does this component consume resources, default is False
       @ Out, None
     """
     # Multiplier plays important role in capacity node, especially for VRE's
@@ -191,12 +192,13 @@ class MOPED(Base):
       capacity_mult = 1
     elif capacity_mult < 0:
       capacity_mult *= -1
+    self._component_meta[comp.name]['Capacity Resource'] = resource
     # Organizing important aspects of problem for later access
-    if isinstance(element, type(self._components[0]._produces[0])):  # FIXME Assumes first comp is a producer
-      # if isinstance(type, type(self._components[0]._produces[0])):
-      self._component_meta[comp.name]['Produces'] = resource
+    # TODO considering lists of produce and demand
+    if produces:
+      self._component_meta[comp.name]['Produces'] = element._produces[0]
     else:
-      self._component_meta[comp.name]['Demands'] = resource
+      self._component_meta[comp.name]['Demands'] = element._demands[0]
     self._component_meta[comp.name]['Consumes'] = None
     self._component_meta[comp.name]['Dispatch'] = element._dispatchable
     # Different possible capacity value definitions for a component
@@ -229,10 +231,11 @@ class MOPED(Base):
       # TODO smarter way to do this check?
       self._component_meta[comp.name]['Capacity'] = getattr(self._m, f'{comp.name}')
     if consumes == True:
-      # NOTE not all producers consume
       # TODO should we handle transfer functions here?
       for con in element._consumes:
-          self._component_meta[comp.name]['Consumes'][con] = element._transfer
+        transfer_values = element.get_transfer().get_coefficients()
+        self._component_meta[comp.name]['Consumes'] = con
+        self._component_meta[comp.name]['Transfer'] = abs(transfer_values[con]) / abs(transfer_values[element._produces[0]])
 
   def buildCashflowMeta(self):
     """
@@ -422,6 +425,14 @@ class MOPED(Base):
     template_array = np.zeros((self._case._num_samples, project_life + 1, self._yearly_hours), dtype=object)
     capacity = self._component_meta[comp.name]['Capacity']
     dispatch_type = self._component_meta[comp.name]['Dispatch']
+    # What to have user be able to define consuming components capacity in terms of either resource
+    # This allows dispatch to be in terms of producing resource and capacity be in terms of consumption resource
+    # Only applies to fixed dispatch here due to pyomo construction
+    if self._component_meta[comp.name]['Consumes'] is not None:
+      if self._component_meta[comp.name]['Consumes'] == self._component_meta[comp.name]['Capacity Resource']:
+        reverse_transfer = 1 / self._component_meta[comp.name]['Transfer']
+    else:
+      reverse_transfer = 1
     # Checking for type of capacity is necessary to build dispatch variable
     self._m.dummy = pyo.Var()
     self._m.placeholder = pyo.Param()
@@ -449,7 +460,7 @@ class MOPED(Base):
                             initialize=lambda m, c, t: capacity.value,
                             domain=pyo.NonNegativeReals,)
             setattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}', param)
-            con = pyo.Constraint(self._m.c, self._m.t, expr=lambda m, c, t: param[(c, t)] == capacity)
+            con = pyo.Constraint(self._m.c, self._m.t, expr=lambda m, c, t: param[(c, t)] == reverse_transfer*capacity)
             setattr(self._m, f'{comp.name}_fixed_{real+1}_{year+1}', con)
             template_array[real, year + 1, :] = (1 / self._case._num_samples) * np.array(list(param.values())) * np.array(list(mult.values()))
         else:
@@ -463,7 +474,7 @@ class MOPED(Base):
             template_array[real, year + 1, :] = (1 / self._case._num_samples) * np.array(list(var.values())) * np.array(list(mult.values()))
           elif dispatch_type == 'fixed':
             param = pyo.Param(self._m.c, self._m.t,
-                              initialize=lambda m, c, t: capacity[f'Realization_{real+1}'][year, c, t]
+                              initialize=lambda m, c, t: reverse_transfer*capacity[f'Realization_{real+1}'][year, c, t]
                               )
             setattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}', param)
             template_array[real, year + 1, :] = (1 / self._case._num_samples) * np.array(list(param.values())) * np.array(list(mult.values()))
@@ -582,20 +593,27 @@ class MOPED(Base):
     return produced == demanded
 
   def upper(self, comp, real, year, M, c, t):
-      """
-        Restricts independently dispatched compononents based on their capacity
-        @ In, comp, HERON comp object
-        @ In, real, int, current realization
-        @ In, year, int, current year
-        @ In, M, pyomo model object, MOPED pyomo ConcreteModel
-        @ In, c, int, index for cluster
-        @ In, t, int, index for hour within cluster
-        @ Out, rule, boolean expression for upper bounding
-      """
+    """
+      Restricts independently dispatched compononents based on their capacity
+      @ In, comp, HERON comp object
+      @ In, real, int, current realization
+      @ In, year, int, current year
+      @ In, M, pyomo model object, MOPED pyomo ConcreteModel
+      @ In, c, int, index for cluster
+      @ In, t, int, index for hour within cluster
+      @ Out, rule, boolean expression for upper bounding
+    """
+    # What to have user be able to define consuming components capacity in terms of either resource
+    # This allows dispatch to be in terms of producing resource and capacity be in terms of consumption resource
+    if self._component_meta[comp.name]['Consumes'] is not None:
+      if self._component_meta[comp.name]['Consumes'] == self._component_meta[comp.name]['Capacity Resource']:
+        reverse_transfer = 1 / self._component_meta[comp.name]['Transfer']
+    else:
+      reverse_transfer = 1
       # This is allows for the capacity to be an upper bound and decision variable
-      upper_bound = getattr(self._m, f'{comp.name}')
-      dispatch_value = getattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}')
-      return dispatch_value[(c, t)] <= upper_bound
+    upper_bound = reverse_transfer*getattr(self._m, f'{comp.name}')
+    dispatch_value = getattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}')
+    return dispatch_value[(c, t)] <= upper_bound
 
   def buildConstraints(self):
     """

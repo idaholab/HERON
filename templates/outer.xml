@@ -36,7 +36,7 @@
 
   <VariableGroups>
     <Group name='GRO_capacities'></Group>
-    <Group name='GRO_outer_results'>mean_NPV, std_NPV, med_NPV, max_NPV, min_NPV, perc_5_NPV, perc_95_NPV, samp_NPV, var_NPV</Group>
+    <Group name='GRO_outer_results'></Group>
     <Group name='GRO_outer_debug_dispatch'></Group>
     <Group name='GRO_outer_debug_synthetics'></Group>
   </VariableGroups>
@@ -52,7 +52,7 @@
     </PointSet>
     <PointSet name='opt_soln'>
       <Input>trajID</Input>
-      <Output>iteration, accepted, GRO_capacities, mean_NPV</Output>
+      <Output>iteration, accepted, GRO_capacities, GRO_outer_results</Output>
     </PointSet>
   </DataObjects>
 

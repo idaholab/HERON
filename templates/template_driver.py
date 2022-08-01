@@ -724,6 +724,7 @@ class Template(TemplateBase, Base):
       ext_model.attrib.pop('ModuleToLoad')
     ext_model.set('subType','HERON.DispatchManager')
     self._modify_inner_runinfo(template, case)
+    self._modify_inner_vargroups(template, case)
     self._modify_inner_sources(template, case, components, sources)
     # NOTE: this HAS to come before modify_inner_denoisings,
     #       because we'll be copy-pasting these for each denoising --> or wait, maybe that's for the Outer to do!
@@ -949,7 +950,9 @@ class Template(TemplateBase, Base):
       new_objective = self._build_opt_metric_out_name(case)
       # add optimization objective name to VariableGroups 'GRO_final_return' if not already there
       group = template.find('VariableGroups').find(".//Group[@name='GRO_final_return']")
-      if (new_objective != 'missing') and (new_objective not in group.text):
+      if group.text is None:
+        self._updateCommaSeperatedList(group, new_objective, postion=0)
+      elif (new_objective != 'missing') and (new_objective not in group.text):
         self._updateCommaSeperatedList(group, new_objective, position=0)
       # add optimization objective to PostProcessor list if not already there
       if new_objective != 'missing':
@@ -984,6 +987,39 @@ class Template(TemplateBase, Base):
             if str(int(case._optimization_settings['metric']['percent'])) not in ['5', '95']:
               # update attribute
               subnode.attrib['percent'] = str(case._optimization_settings['metric']['percent'])
+  
+  def _modify_inner_vargroups(self, template, case):
+    """
+      Defines modifications to the VariableGroups of outer.xml RAVEN input file.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ Out, None
+    """
+    var_groups = template.find('VariableGroups')
+    # outer results
+    group_final_return = var_groups.find(".//Group[@name='GRO_final_return']")
+    # user provided statistics they would like to see in results, make sure they get there
+    if case._result_statistics is not None:
+      stats_list = self._build_result_statistic_names(case)
+      for stat_name in stats_list:
+        self._updateCommaSeperatedList(group_final_return, stat_name)
+    # sweep mode has default variable names
+    elif case._mode == 'sweep':
+      sweep_default = ['mean_NPV', 'std_NPV', 'med_NPV', 'max_NPV', 'min_NPV', 'perc_5_NPV', 'perc_95_NPV', 'samp_NPV', 'var_NPV']
+      for sweep_name in sweep_default:
+        self._updateCommaSeperatedList(group_final_return, sweep_name)
+    # opt mode uses optimization variable if no other stats are given, this is handled below
+    if case._optimization_settings is not None:
+      new_metric_opt_results = self._build_opt_metric_out_name(case)
+      if group_final_return.text is None:
+        # no additional results statistics have been requested
+        self._updateCommaSeperatedList(group_final_return, new_metric_opt_results, position=0)
+      elif (new_metric_opt_results != 'missing') and (new_metric_opt_results not in group_final_return.text):
+        # additional results statistics have been requested, add this metric if not already present
+        self._updateCommaSeperatedList(group_final_return, new_metric_opt_results, position=0)
+    elif (case._mode == 'opt') and (case._optimization_settings is None):
+      # need to add default 'mean_NPV' to GRO_final_return since nothing has been specified
+      self._updateCommaSeperatedList(group_final_return, 'mean_NPV')
 
   def _modify_inner_data_handling(self, template, case):
     """

@@ -279,16 +279,22 @@ class Template(TemplateBase, Base):
 
     # outer results
     group_outer_results = var_groups.find(".//Group[@name='GRO_outer_results']")
-    # user provided statistics beyond defaults they would like to see in results, make sure they get there
-    if any(stat not in ['sigma', 'expectedValue', 'median'] for stat in case._result_statistics.keys()):
+    # add required defaults
+    default_stats = ['mean_NPV', 'std_NPV', 'med_NPV']
+    for stat in default_stats:
+      self._updateCommaSeperatedList(group_outer_results, stat)
+    # make sure user provided statistics beyond defaults get there
+    if any(stat not in ['expectedValue', 'sigma', 'median'] for stat in case._result_statistics.keys()):
       stats_list = self._build_result_statistic_names(case)
       for stat_name in stats_list:
-        self._updateCommaSeperatedList(group_outer_results, stat_name)
+        if stat_name not in default_stats:
+          self._updateCommaSeperatedList(group_outer_results, stat_name)
     # sweep mode has default variable names
     elif case._mode == 'sweep':
       sweep_default = ['mean_NPV', 'std_NPV', 'med_NPV', 'max_NPV', 'min_NPV', 'perc_5_NPV', 'perc_95_NPV', 'samp_NPV', 'var_NPV']
       for sweep_name in sweep_default:
-        self._updateCommaSeperatedList(group_outer_results, sweep_name)
+        if sweep_name not in default_stats:
+          self._updateCommaSeperatedList(group_outer_results, sweep_name)
     # opt mode uses optimization variable if no other stats are given, this is handled below
     if case._optimization_settings is not None:
       new_metric_outer_results = self._build_opt_metric_out_name(case)
@@ -1030,31 +1036,45 @@ class Template(TemplateBase, Base):
     var_groups = template.find('VariableGroups')
     # final return variable group (sent to outer)
     group_final_return = var_groups.find(".//Group[@name='GRO_final_return']")
-    # user provided statistics beyond defaults they would like to see in results, make sure they get there
+    # add required defaults
+    default_stats = ['mean_NPV', 'std_NPV', 'med_NPV']
+    for stat in default_stats:
+      self._updateCommaSeperatedList(group_final_return, stat)
+    # make sure user provided statistics beyond defaults get there
     if any(stat not in ['expectedValue', 'sigma', 'median'] for stat in case._result_statistics.keys()):
       stats_list = self._build_result_statistic_names(case)
       for stat_name in stats_list:
-        self._updateCommaSeperatedList(group_final_return, stat_name)
+        if stat_name not in default_stats:
+          self._updateCommaSeperatedList(group_final_return, stat_name)
     # sweep mode has default variable names
     elif case._mode == 'sweep':
       sweep_default = ['mean_NPV', 'std_NPV', 'med_NPV', 'max_NPV', 'min_NPV', 'perc_5_NPV', 'perc_95_NPV', 'samp_NPV', 'var_NPV']
       for sweep_name in sweep_default:
-        self._updateCommaSeperatedList(group_final_return, sweep_name)
+        if sweep_name not in default_stats:
+          self._updateCommaSeperatedList(group_final_return, sweep_name)
     # opt mode uses optimization variable if no other stats are given, this is handled below
     if case._optimization_settings is not None:
       new_metric_opt_results = self._build_opt_metric_out_name(case)
-      if group_final_return.text is None:
-        # no additional results statistics have been requested
-        self._updateCommaSeperatedList(group_final_return, new_metric_opt_results, position=0)
-      elif (new_metric_opt_results != 'missing') and (new_metric_opt_results not in group_final_return.text):
+      # if group_final_return.text is None:
+      #   # no additional results statistics have been requested
+      #   self._updateCommaSeperatedList(group_final_return, new_metric_opt_results, position=0)
+      if (new_metric_opt_results != 'missing') and (new_metric_opt_results not in group_final_return.text):
         # additional results statistics have been requested, add this metric if not already present
         self._updateCommaSeperatedList(group_final_return, new_metric_opt_results, position=0)
-    elif (case._mode == 'opt') and (case._optimization_settings is None):
-      # need to add default 'mean_NPV' to GRO_final_return since nothing has been specified
-      self._updateCommaSeperatedList(group_final_return, 'mean_NPV')
+    # elif (case._mode == 'opt') and (case._optimization_settings is None):
+    #   # need to add default 'mean_NPV' to GRO_final_return since nothing has been specified
+    #   self._updateCommaSeperatedList(group_final_return, 'mean_NPV')
     
     # fill out PostProcessor nodes
     pp_node = template.find('Models').find(".//PostProcessor[@name='statistics']")
+    # add default statistics
+    # mean_NPV
+    pp_node.append(xmlUtils.newNode('expectedValue', text='NPV', attrib={'prefix': 'mean'}))
+    # std_NPV
+    pp_node.append(xmlUtils.newNode('sigma', text='NPV', attrib={'prefix': 'std'}))
+    # med_NPV
+    pp_node.append(xmlUtils.newNode('median', text='NPV', attrib={'prefix': 'med'}))
+    # add any user supplied statistics beyond defaults
     if any(stat not in ['expectedValue', 'sigma', 'median'] for stat in case._result_statistics.keys()):
       for raven_metric_name in case._result_statistics.keys():
         prefix = case.metrics_mapping[raven_metric_name]['prefix']
@@ -1085,14 +1105,8 @@ class Template(TemplateBase, Base):
         else:
           pp_node.append(xmlUtils.newNode(raven_metric_name, text='NPV',
                                           attrib={'prefix': prefix}))
-    # if not specified, "sweep" mode has defaults
+    # if not specified, "sweep" mode has additional defaults
     elif case._mode == 'sweep':
-      # mean_NPV
-      pp_node.append(xmlUtils.newNode('expectedValue', text='NPV', attrib={'prefix': 'mean'}))
-      # std_NPV
-      pp_node.append(xmlUtils.newNode('sigma', text='NPV', attrib={'prefix': 'std'}))
-      # med_NPV
-      pp_node.append(xmlUtils.newNode('median', text='NPV', attrib={'prefix': 'med'}))
       # max_NPV
       pp_node.append(xmlUtils.newNode('maximum', text='NPV', attrib={'prefix': 'max'}))
       # min_NPV

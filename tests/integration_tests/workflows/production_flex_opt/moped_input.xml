@@ -1,21 +1,20 @@
 <HERON>
   <TestInfo>
-    <name>production</name>
-    <author>talbpaul</author>
-    <created>2020-06-15</created>
+    <name>consumption</name>
+    <author>grifanthoney</author>
+    <created>2022-08-01</created>
     <description>
-      Demonstrates using an optimization strategy on a simple system, instead of a sweep strategy.
-      A steam source feeds a generator, which then sells electricity to a low-capacity high-value
-      market and a high-capacity negative-value market. The size of the steam source and high-capacity
-      market are optimized. The market size is irrelevant; the optimal steam source size is equal
-      to the high-value market size.
+      Demonstrates ability for MOPED to handled consuming components (generator) with multiple
+      resources (electricity and steam).
     </description>
     <classesTested>HERON</classesTested>
   </TestInfo>
 
   <Case name="Opt_Runs">
     <mode>opt</mode>
-    <workflow>MOPED</workflow>
+    <!-- <workflow>MOPED</workflow> -->
+    <verbosity>debug</verbosity>
+    <!-- <debug></debug> -->
     <num_arma_samples>3</num_arma_samples>
     <time_discretization>
       <time_variable>Time</time_variable>
@@ -38,7 +37,7 @@
     <Component name="steamer">
       <produces resource="steam" dispatch="fixed">
         <capacity resource="steam">
-          <opt_bounds>1, 10</opt_bounds>
+          <opt_bounds debug_value='4'>1, 10</opt_bounds>
         </capacity>
       </produces>
       <economics>
@@ -50,7 +49,7 @@
       <produces resource="electricity" dispatch="independent">
         <consumes>steam</consumes>
         <capacity resource="steam">
-          <fixed_value>100</fixed_value>
+          <fixed_value>-100</fixed_value>
         </capacity>
         <transfer>
           <linear>
@@ -65,9 +64,9 @@
     </Component>
 
     <Component name="electr_market">
-      <demands resource="electricity" dispatch="dependent">
+      <demands resource="electricity" dispatch="independent">
         <capacity>
-          <fixed_value>2</fixed_value>
+          <fixed_value>-2</fixed_value>
         </capacity>
       </demands>
       <economics>
@@ -75,10 +74,30 @@
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
           <driver>
             <activity>electricity</activity>
-            <multiplier>-1</multiplier>
+            <multiplier>-10000</multiplier>
           </driver>
           <reference_price>
             <ARMA variable='Signal'>Price</ARMA>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="steam_market">
+      <demands resource="steam" dispatch="dependent">
+        <capacity>
+          <fixed_value>-5</fixed_value>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>30</lifetime>
+        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>steam</activity>
+            <multiplier>-10000</multiplier>
+          </driver>
+          <reference_price>
+            <fixed_value>5</fixed_value>>
           </reference_price>
         </CashFlow>
       </economics>

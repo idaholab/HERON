@@ -206,6 +206,9 @@ class MOPED(Base):
       self.raiseADebug(f'Building pyomo capacity variable for '
                        f'{comp.name}')
       opt_bounds = element._capacity._vp._parametric
+      # Considering user inputs for default heron sign convention
+      if opt_bounds[1] < 1:
+        opt_bounds *= -1
       opt_bounds *= capacity_mult
       # This is a capacity we make a decision on
       var = pyo.Var(initialize=0.5 * opt_bounds[1], bounds=(opt_bounds[0], opt_bounds[1]))
@@ -217,6 +220,9 @@ class MOPED(Base):
                        f'{comp.name}')
       # Params represent constant value components of the problem
       value = element._capacity._vp._parametric
+      # Considering user inputs for default heron sign convention
+      if value < 1:
+        value *= -1
       value *= capacity_mult
       param = pyo.Param(initialize=value)
       setattr(self._m, f'{comp.name}', param)
@@ -480,6 +486,26 @@ class MOPED(Base):
             template_array[real, year + 1, :] = (1 / self._case._num_samples) * np.array(list(param.values())) * np.array(list(mult.values()))
     return capacity, template_array
 
+  def buildConsumptionVariables(self, comp):
+    """
+      Builds consumption pyomo variables that are dependent on the output of the same components dispatch
+      @ In, comp, HERON component object
+      @ Out, None
+    """
+    # NOTE Assumes that all components will remain functional for project life
+    project_life = int(self._case._global_econ['ProjectTime'])
+    transfer = self._component_meta[comp.name]['Transfer']
+    for real in range(self._case._num_samples):
+      for year in range(project_life):
+        dispatch = getattr(self._m,f'{comp.name}_dispatch_{real+1}_{year+1}')
+        var = pyo.Var(self._m.c, self._m.t,
+                      initialize=lambda m, c, t: 0,
+                      domain=pyo.NonNegativeReals)
+        setattr(self._m,f'{comp.name}_consume_{real+1}_{year+1}',var)
+        con = pyo.Constraint(self._m.c,self._m.t,
+                             rule=lambda m, c, t: var[(c,t)] == transfer*dispatch[(c,t)])
+        setattr(self._m,f'{comp.name}_consumption_limit_{real+1}_{year+1}',con)
+
   def createCashflowComponent(self, comp, capacity, dispatch):
     """
       Builds TEAL component using pyomo dispatch and capacity variables
@@ -579,18 +605,23 @@ class MOPED(Base):
     # Initializing production and demand trackers
     produced = 0
     demanded = 0
+    consumed = 0
     # Necessary to check all components involved in the analysis
     for comp in self._components:
       comp_meta = self._component_meta[comp.name]
       # Conservation constrains the dispatch decisions
       dispatch_value = getattr(self._m, f'{comp.name}_dispatch_{real + 1}_{year + 1}')
+      if comp_meta['Consumes'] is not None:
+        consumption_value = getattr(self._m,f'{comp.name}_consume_{real+1}_{year+1}')
       for key, value in comp_meta.items():
         if key == 'Produces' and value == resource:
-          produced += dispatch_value[(c, t)]
+          produced += dispatch_value[(c,t)]
         elif key == 'Demands' and value == resource:
-          demanded += dispatch_value[(c, t)]
+          demanded += dispatch_value[(c,t)]
+        elif key == 'Consumes' and value == resource:
+          consumed += consumption_value[(c,t)]
         # TODO consider consumption and incorrect input information
-    return produced == demanded
+    return produced == demanded + consumed
 
   def upper(self, comp, real, year, M, c, t):
     """
@@ -684,6 +715,8 @@ class MOPED(Base):
     for comp in self._components:
       capacity, dispatch = self.buildDispatchVariables(comp)
       cf_comp = self.createCashflowComponent(comp, capacity, dispatch)
+      if self._component_meta[comp.name]['Consumes'] is not None:
+        self.buildConsumptionVariables(comp)
       self._cf_components.append(cf_comp)
     self.raiseAMessage(f'Building pyomo cash flow expression for {self._case.name}')
     # TEAL is our cost function generator here
@@ -695,6 +728,14 @@ class MOPED(Base):
     # TODO does this need to present information about dispatches, how to do this?
     self.raiseAMessage(f'Running Optimizer...')
     self.solveAndDisplay()
+    # self._m.steamer_dispatch_1_1.pprint()
+    # self._m.generator_dispatch_1_1.pprint()
+    # self._m.generator_consume_1_1.pprint()
+    # self._m.electr_market_dispatch_1_1.pprint()
+    # self._m.steam_market_dispatch_1_1.pprint()
+    # self._m.steam_sink_dispatch_1_1.pprint()
+    # self._m.steam_con_1_1.pprint()
+    # self._m.electricity_con_1_1.pprint()
 
   # ===========================
   # UTILITIES

@@ -724,13 +724,13 @@ class Template(TemplateBase, Base):
       ext_model.attrib.pop('ModuleToLoad')
     ext_model.set('subType','HERON.DispatchManager')
     self._modify_inner_runinfo(template, case)
-    self._modify_inner_vargroups(template, case)
     self._modify_inner_sources(template, case, components, sources)
     # NOTE: this HAS to come before modify_inner_denoisings,
     #       because we'll be copy-pasting these for each denoising --> or wait, maybe that's for the Outer to do!
     self._modify_inner_components(template, case, components)
     self._modify_inner_caselabels(template, case)
     self._modify_inner_time_vars(template, case)
+    self._modify_inner_result_statistics(template, case)
     self._modify_inner_optimization_settings(template, case)
     self._modify_inner_data_handling(template, case)
     if case.debug['enabled']:
@@ -955,8 +955,8 @@ class Template(TemplateBase, Base):
       elif (new_objective != 'missing') and (new_objective not in group.text):
         self._updateCommaSeperatedList(group, new_objective, position=0)
       # add optimization objective to PostProcessor list if not already there
+      pp_node = template.find('Models').find(".//PostProcessor[@name='statistics']")
       if new_objective != 'missing':
-        pp_node = template.find('Models').find(".//PostProcessor[@name='statistics']")
         raven_metric_name = case._optimization_settings['metric']['name']
         prefix = case.metrics_mapping[raven_metric_name]['prefix']
         if pp_node.find(raven_metric_name) is None:
@@ -970,6 +970,11 @@ class Template(TemplateBase, Base):
             new_node = xmlUtils.newNode(raven_metric_name, text='NPV',
                                         attrib={'prefix': prefix,
                                                 'threshold': threshold})
+          elif 'percent' in case._optimization_settings['metric'].keys():
+            percent = str(case._optimization_settings['metric']['percent'])
+            new_node = xmlUtils.newNode(raven_metric_name, text='NPV',
+                                        attrib={'prefix': prefix,
+                                                'percent': percent})
           else:
             # TODO should NPV be the only metric available?
             new_node = xmlUtils.newNode(raven_metric_name, text='NPV',
@@ -983,20 +988,47 @@ class Template(TemplateBase, Base):
             subnode.attrib['prefix'] = prefix
           # percentile has additional parameter to check
           if 'percent' in case._optimization_settings['metric'].keys():
-            # defaults to 5 or 95 percentile
-            if str(int(case._optimization_settings['metric']['percent'])) not in ['5', '95']:
-              # update attribute
-              subnode.attrib['percent'] = str(case._optimization_settings['metric']['percent'])
+            # see if percentile already has what we need
+            if str(int(case._optimization_settings['metric']['percent'])) not in subnode.attrib['percent']:
+              # nope, need to add the percent to the existing attribute
+              subnode.attrib['percent'] += ','+str(case._optimization_settings['metric']['percent'])
+          if 'threshold' in case._optimization_settings['metric'].keys():
+            # see if the threshold is already there
+            if str(case._optimization_settings['metric']['threshold']) not in subnode.attrib['threshold']:
+              # nope, need to add the threshold to existing attribute
+              subnode.attrib['threshold'] += ','+str(case._optimization_settings['metric']['threshold'])
+      else:
+        # new_objective is missing, use mean_NPV
+        if pp_node.find('expectedValue') is None:
+          pp_node.append(xmlUtils.newNode('expectedValue', text='NPV',
+                                          attrib={'prefix': 'mean'}))
+        else:
+          # check that the subnode has the correct values
+          subnode = pp_node.find('expectedValue')
+          if 'mean' != subnode.attrib['prefix']:
+            subnode.attrib['prefix'] = 'mean'
+    # if no optimization settings specified, make sure mean_NPV is in PostProcessor node
+    elif case.get_mode() == 'opt':
+      pp_node = template.find('Models').find(".//PostProcessor[@name='statistics']")
+      if pp_node.find('expectedValue') is None:
+        pp_node.append(xmlUtils.newNode('expectedValue', text='NPV',
+                                        attrib={'prefix': 'mean'}))
+      else:
+        # check that the subnode has the correct values
+        subnode = pp_node.find('expectedValue')
+        if 'mean' != subnode.attrib['prefix']:
+          subnode.attrib['prefix'] = 'mean'
   
-  def _modify_inner_vargroups(self, template, case):
+  def _modify_inner_result_statistics(self, template, case):
     """
-      Defines modifications to the VariableGroups of outer.xml RAVEN input file.
+      Modifies template to include result statistics
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
       @ In, case, HERON Case, defining Case instance
       @ Out, None
     """
+    # handle VariableGroups
     var_groups = template.find('VariableGroups')
-    # outer results
+    # final return variable group (sent to outer)
     group_final_return = var_groups.find(".//Group[@name='GRO_final_return']")
     # user provided statistics they would like to see in results, make sure they get there
     if case._result_statistics is not None:
@@ -1020,6 +1052,51 @@ class Template(TemplateBase, Base):
     elif (case._mode == 'opt') and (case._optimization_settings is None):
       # need to add default 'mean_NPV' to GRO_final_return since nothing has been specified
       self._updateCommaSeperatedList(group_final_return, 'mean_NPV')
+    
+    # fill out PostProcessor nodes
+    pp_node = template.find('Models').find(".//PostProcessor[@name='statistics']")
+    if case._result_statistics is not None:
+      for raven_metric_name in case._result_statistics.keys():
+        prefix = case.metrics_mapping[raven_metric_name]['prefix']
+        # add subnode to PostProcessor
+        if raven_metric_name == 'percentile':
+          # add percent attribute
+          percent = case._result_statistics[raven_metric_name]
+          if isinstance(percent, list):
+            percent = ",".join(percent)
+          new_node = xmlUtils.newNode(raven_metric_name, text='NPV',
+                                      attrib={'prefix': prefix,
+                                              'percent': percent})
+        elif raven_metric_name in ['valueAtRisk', 'expectedShortfall', 'sortinoRatio', 'gainLossRatio']:
+          threshold = case._result_statistics[raven_metric_name]
+          if isinstance(threshold, list):
+            threshold = ",".join(threshold)
+          new_node = xmlUtils.newNode(raven_metric_name, text='NPV',
+                                      attrib={'prefix': prefix,
+                                              'threshold': threshold})
+        else:
+          new_node = xmlUtils.newNode(raven_metric_name, text='NPV',
+                                      attrib={'prefix': prefix})
+        pp_node.append(new_node)
+    # if not specified, "sweep" mode has defaults
+    elif case._mode == 'sweep':
+      # mean_NPV
+      pp_node.append(xmlUtils.newNode('expectedValue', text='NPV', attrib={'prefix': 'mean'}))
+      # std_NPV
+      pp_node.append(xmlUtils.newNode('sigma', text='NPV', attrib={'prefix': 'std'}))
+      # med_NPV
+      pp_node.append(xmlUtils.newNode('median', text='NPV', attrib={'prefix': 'med'}))
+      # max_NPV
+      pp_node.append(xmlUtils.newNode('maximum', text='NPV', attrib={'prefix': 'max'}))
+      # min_NPV
+      pp_node.append(xmlUtils.newNode('minimum', text='NPV', attrib={'prefix': 'min'}))
+      # perc_5_NPV and perc_95_NPV
+      pp_node.append(xmlUtils.newNode('percentile', text='NPV', attrib={'prefix': 'perc'}))
+      # samp_NPV
+      pp_node.append(xmlUtils.newNode('samples', text='NPV', attrib={'prefix': 'samp'}))
+      # var_NPV
+      pp_node.append(xmlUtils.newNode('variance', text='NPV', attrib={'prefix': 'var'}))
+    # if not specified, "opt" mode is handled in _modify_inner_optimization_settings
 
   def _modify_inner_data_handling(self, template, case):
     """

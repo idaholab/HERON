@@ -100,14 +100,6 @@
     </EnsembleModel>
 
     <PostProcessor name="statistics" subType="EconomicRatio">
-      <expectedValue prefix="mean">NPV</expectedValue>
-      <sigma prefix="std">NPV</sigma>
-      <median prefix="med">NPV</median>
-      <maximum prefix="max">NPV</maximum>
-      <minimum prefix="min">NPV</minimum>
-      <percentile prefix="perc">NPV</percentile>
-      <samples prefix="samp">NPV</samples>
-      <variance prefix="var">NPV</variance>
     </PostProcessor>
   </Models>
 

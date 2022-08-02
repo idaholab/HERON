@@ -279,10 +279,9 @@ class Template(TemplateBase, Base):
 
     # outer results
     group_outer_results = var_groups.find(".//Group[@name='GRO_outer_results']")
-    # user provided statistics they would like to see in results, make sure they get there
-    if case._result_statistics is not None:
+    # user provided statistics beyond defaults they would like to see in results, make sure they get there
+    if any(stat not in ['sigma', 'expectedValue', 'median'] for stat in case._result_statistics.keys()):
       stats_list = self._build_result_statistic_names(case)
-      print(f'stats_list: {stats_list}')
       for stat_name in stats_list:
         self._updateCommaSeperatedList(group_outer_results, stat_name)
     # sweep mode has default variable names
@@ -1031,8 +1030,8 @@ class Template(TemplateBase, Base):
     var_groups = template.find('VariableGroups')
     # final return variable group (sent to outer)
     group_final_return = var_groups.find(".//Group[@name='GRO_final_return']")
-    # user provided statistics they would like to see in results, make sure they get there
-    if case._result_statistics is not None:
+    # user provided statistics beyond defaults they would like to see in results, make sure they get there
+    if any(stat not in ['expectedValue', 'sigma', 'median'] for stat in case._result_statistics.keys()):
       stats_list = self._build_result_statistic_names(case)
       for stat_name in stats_list:
         self._updateCommaSeperatedList(group_final_return, stat_name)

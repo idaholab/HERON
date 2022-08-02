@@ -282,6 +282,7 @@ class Template(TemplateBase, Base):
     # user provided statistics they would like to see in results, make sure they get there
     if case._result_statistics is not None:
       stats_list = self._build_result_statistic_names(case)
+      print(f'stats_list: {stats_list}')
       for stat_name in stats_list:
         self._updateCommaSeperatedList(group_outer_results, stat_name)
     # sweep mode has default variable names
@@ -360,18 +361,18 @@ class Template(TemplateBase, Base):
       self._remove_by_name(DOs, ['opt_eval', 'opt_soln'])
     elif case.get_mode() == 'opt':
       self._remove_by_name(DOs, ['grid'])
-    # update optimization settings if provided
-    if (case.get_mode() == 'opt') and (case._optimization_settings is not None) and (not case.debug['enabled']):  # TODO there should be a better way to handle the debug case
-      new_opt_objective = self._build_opt_metric_out_name(case)
-      # check if the metric in 'opt_eval' needs to be changed
-      opt_eval_output_node = DOs.find(".//PointSet[@name='opt_eval']").find('Output')
-      if (new_opt_objective != 'missing') and (new_opt_objective != opt_eval_output_node.text):
-        opt_eval_output_node.text = new_opt_objective
-      # check if the metric in 'opt_soln' needs to be changed
-      opt_soln_output = DOs.find(".//PointSet[@name='opt_soln']").find('Output')
-      if (new_opt_objective != 'missing') and (new_opt_objective not in opt_soln_output.text):
-        # remove mean_NPV and replace with new_opt_objective
-        opt_soln_output.text = opt_soln_output.text.replace('mean_NPV', new_opt_objective)
+    # # update optimization settings if provided
+    # if (case.get_mode() == 'opt') and (case._optimization_settings is not None) and (not case.debug['enabled']):  # TODO there should be a better way to handle the debug case
+    #   new_opt_objective = self._build_opt_metric_out_name(case)
+    #   # check if the metric in 'opt_eval' needs to be changed
+    #   opt_eval_output_node = DOs.find(".//PointSet[@name='opt_eval']").find('Output')
+    #   if (new_opt_objective != 'missing') and (new_opt_objective != opt_eval_output_node.text):
+    #     opt_eval_output_node.text = new_opt_objective
+    #   # check if the metric in 'opt_soln' needs to be changed
+    #   opt_soln_output = DOs.find(".//PointSet[@name='opt_soln']").find('Output')
+    #   if (new_opt_objective != 'missing') and (new_opt_objective not in opt_soln_output.text):
+    #     # remove mean_NPV and replace with new_opt_objective
+    #     opt_soln_output.text = opt_soln_output.text.replace('mean_NPV', new_opt_objective)
     # debug mode
     if case.debug['enabled']:
       # add debug dispatch output dataset
@@ -1430,12 +1431,18 @@ class Template(TemplateBase, Base):
       # do I need to add percent or threshold?
       if name == 'percentile':
         # multiple percents may be specified
-        for percent in case._result_statistics[name]:
-          names.append(out_name+'_'+percent+'_NPV')
+        if isinstance(case._result_statistics[name], list):
+          for percent in case._result_statistics[name]:
+            names.append(out_name+'_'+percent+'_NPV')
+        else:
+          names.append(out_name+'_'+case._result_statistics[name]+'_NPV')
       elif name in ['valueAtRisk', 'expectedShortfall']:
         # multiple thresholds may be specified
-        for threshold in case._result_statistics[name]:
-          names.append(out_name+'_'+threshold+'_NPV')
+        if isinstance(case._result_statistics[name], list):
+          for threshold in case._result_statistics[name]:
+            names.append(out_name+'_'+threshold+'_NPV')
+        else:
+          names.append(out_name+'_'+case._result_statistics[name]+'_NPV')
       elif name in ['sortinoRatio', 'gainLossRatio']:
         names.append(out_name+'_'+case._result_statistics[name]+'_NPV')
       else:

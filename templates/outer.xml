@@ -48,7 +48,7 @@
     </PointSet>
     <PointSet name='opt_eval'>
       <Input>GRO_capacities</Input>
-      <Output>mean_NPV</Output>
+      <Output>GRO_outer_results</Output>
     </PointSet>
     <PointSet name='opt_soln'>
       <Input>trajID</Input>

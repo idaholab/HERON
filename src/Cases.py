@@ -389,7 +389,10 @@ class Case(Base):
     self._time_discretization = None   # (start, end, number) for constructing time discretization, same as argument to np.linspace
     self._Resample_T = None            # user-set increments for resources
     self._optimization_settings = None # optimization settings dictionary for outer optimization loop
-    self._result_statistics = None     # desired result statistics dictionary 
+    self._result_statistics = {        # desired result statistics (keys) dictionary with attributes (values) 
+        'sigma': None,
+        'expectedValue': None, 
+        'median': None}     
 
     # clean up location
     self.run_dir = os.path.abspath(os.path.expanduser(self.run_dir))
@@ -459,8 +462,9 @@ class Case(Base):
       elif item.getName() == 'data_handling':
         self.data_handling = self._read_data_handling(item)
       elif item.getName() == 'result_statistics':
-        self._result_statistics = self._read_result_statistics(item)
-
+        new_result_statistics = self._read_result_statistics(item)
+        self._result_statistics.update(new_result_statistics)
+    print(f'self._result_statistics: {self._result_statistics}')
     # checks
     if self._mode is None:
       self.raiseAnError('No <mode> node was provided in the <Case> node!')
@@ -593,7 +597,9 @@ class Case(Base):
       @ Out, result_statistics, dict, result statistics settings as dictionary
     """
     # result_statistics keys are statistic name value is percent, threshold value, or None
-    result_statistics = {}
+    result_statistics = {'expectedValue': None,
+                         'sigma': None,
+                         'median': None}
     for sub in node.subparts:
       sub_name = sub.getName()
       if sub_name == 'percentile':
@@ -631,7 +637,7 @@ class Case(Base):
           result_statistics[sub_name] = self.metrics_mapping[sub_name]['threshold']
       else:
         result_statistics[sub_name] = None
-
+    print(f'result_statistics: {result_statistics}')
     return result_statistics
 
   def initialize(self, components, sources):

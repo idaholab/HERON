@@ -1063,21 +1063,28 @@ class Template(TemplateBase, Base):
           # add percent attribute
           percent = case._result_statistics[raven_metric_name]
           if isinstance(percent, list):
-            percent = ",".join(percent)
-          new_node = xmlUtils.newNode(raven_metric_name, text='NPV',
-                                      attrib={'prefix': prefix,
-                                              'percent': percent})
+            for p in percent:
+              pp_node.append(xmlUtils.newNode(raven_metric_name, text='NPV',
+                                              attrib={'prefix': prefix,
+                                                      'percent': p}))
+          else:
+            pp_node.append(xmlUtils.newNode(raven_metric_name, text='NPV',
+                                            attrib={'prefix': prefix,
+                                                    'percent': percent}))
         elif raven_metric_name in ['valueAtRisk', 'expectedShortfall', 'sortinoRatio', 'gainLossRatio']:
           threshold = case._result_statistics[raven_metric_name]
           if isinstance(threshold, list):
-            threshold = ",".join(threshold)
-          new_node = xmlUtils.newNode(raven_metric_name, text='NPV',
-                                      attrib={'prefix': prefix,
-                                              'threshold': threshold})
+            for t in threshold:
+              pp_node.append(xmlUtils.newNode(raven_metric_name, text='NPV',
+                                              attrib={'prefix': prefix,
+                                                      'threshold': t}))
+          else:
+            pp_node.append(xmlUtils.newNode(raven_metric_name, text='NPV',
+                                            attrib={'prefix': prefix,
+                                                    'threshold': threshold}))
         else:
-          new_node = xmlUtils.newNode(raven_metric_name, text='NPV',
-                                      attrib={'prefix': prefix})
-        pp_node.append(new_node)
+          pp_node.append(xmlUtils.newNode(raven_metric_name, text='NPV',
+                                          attrib={'prefix': prefix}))
     # if not specified, "sweep" mode has defaults
     elif case._mode == 'sweep':
       # mean_NPV

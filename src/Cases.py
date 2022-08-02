@@ -321,20 +321,21 @@ class Case(Base):
     input_specs.addSub(dispatch_vars)
 
     # result statistics
-    result_stats = InputData.parameterInputFactory('result_statistics',
+    result_stats = InputData.parameterInputFactory('result_statistics', 
                                                    descr=r"""This node defines the statistics to be returned with the results. Each
                                                    subnode is the name of the desired return statistic.""")
     for stat in cls.metrics_mapping.keys():
-      statistic = InputData.parameterInputFactory(stat, descr=r"""{} uses the prefix ``{}'' in the result output.""".format(stat, cls.metrics_mapping[stat]['prefix']))
+      statistic = InputData.parameterInputFactory(stat, strictMode=True,
+                                                  descr=r"""{} uses the prefix ``{}'' in the result output.""".format(stat, cls.metrics_mapping[stat]['prefix']))
       if stat == 'percentile':
-        statistic.addParam('percent', param_type=InputTypes.StringListType,
-                           descr=r"""requested percentile (a floating point value between 0.0 and 100.0).""",
-                           default="[5, 95]")
+        statistic.addParam('percent', param_type=InputTypes.StringType,
+                           descr=r"""requested percentile (a floating point value between 0.0 and 100.0). Default returns both 5th and 95th percentiles.""",
+                           default="5")
       elif stat in ['sortinoRatio', 'gainLossRatio']:
         statistic.addParam('threshold', param_type=InputTypes.StringType,
                            descr=r"""requested threshold ('median' or 'zero').""", default='zero')
       elif stat in ['expectedShortfall', 'valueAtRisk']:
-        statistic.addParam('threshold', param_type=InputTypes.StringListType,
+        statistic.addParam('threshold', param_type=InputTypes.StringType,
                            descr=r"""requested threshold (a floating point value between 0.0 and 1.0).""",
                            default="0.05")
       result_stats.addSub(statistic)
@@ -597,7 +598,16 @@ class Case(Base):
       sub_name = sub.getName()
       if sub_name == 'percentile':
         try:
-          result_statistics[sub_name] = sub.parameterValues['percent']
+          percent = sub.parameterValues['percent']
+          # if multiple percents are given, set as a list
+          if sub_name in result_statistics:
+            if isinstance(result_statistics[sub_name], list):
+              if percent not in result_statistics[sub_name]:
+                result_statistics[sub_name].append(percent)
+            else:
+              result_statistics[sub_name] = [result_statistics[sub_name], percent]
+          else:
+            result_statistics[sub_name] = percent
         except KeyError:
           result_statistics[sub_name] = self.metrics_mapping[sub_name]['percent']
       elif sub_name in ['sortinoRatio', 'gainLossRatio']:
@@ -607,7 +617,16 @@ class Case(Base):
           result_statistics[sub_name] = self.metrics_mapping[sub_name]['threshold']
       elif sub_name in ['expectedShortfall', 'valueAtRisk']:
         try:
-          result_statistics[sub_name] = sub.parameterValues['threshold']
+          threshold = sub.parameterValues['threshold']
+          # if multiple thresholds are given, set as a list
+          if sub_name in result_statistics:
+            if isinstance(result_statistics[sub_name], list):
+              if threshold not in result_statistics[sub_name]:
+                result_statistics[sub_name].append(threshold)
+            else:
+              result_statistics[sub_name] = [result_statistics[sub_name], threshold]
+          else:
+            result_statistics[sub_name] = sub.parameterValues['threshold']
         except KeyError:
           result_statistics[sub_name] = self.metrics_mapping[sub_name]['threshold']
       else:

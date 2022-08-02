@@ -1055,7 +1055,7 @@ class Template(TemplateBase, Base):
     
     # fill out PostProcessor nodes
     pp_node = template.find('Models').find(".//PostProcessor[@name='statistics']")
-    if case._result_statistics is not None:
+    if any(stat not in ['expectedValue', 'sigma', 'median'] for stat in case._result_statistics.keys()):
       for raven_metric_name in case._result_statistics.keys():
         prefix = case.metrics_mapping[raven_metric_name]['prefix']
         # add subnode to PostProcessor

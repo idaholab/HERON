@@ -15,7 +15,7 @@ farm_loc = hutils.get_farm_loc(raven_path=raven_path)
 if farm_loc is not None:
   farm_path = os.path.abspath(os.path.join(farm_loc))
   sys.path.append(farm_path)
-  from FARM.src.FARMValidatorsForHeron import FARM_Beta, FARM_Gamma_LTI, FARM_Gamma_FMU
+  from FARM.src.FARMValidatorsForHeron import FARM_Beta, FARM_Gamma_LTI, FARM_Gamma_FMU, FARM_Delta_FMU
 
 # default known validators
 known = {
@@ -28,6 +28,7 @@ if farm_loc is not None:
   known['FARM_Beta'] = FARM_Beta
   known['FARM_Gamma_LTI'] = FARM_Gamma_LTI
   known['FARM_Gamma_FMU'] = FARM_Gamma_FMU
+  known['FARM_Delta_FMU'] = FARM_Delta_FMU
 
 def get_class(typ):
   """

@@ -15,8 +15,7 @@ sys.path.append(hutils.get_raven_loc())
 
 from HERON.src import input_loader
 from HERON.src.base import Base
-from HERON.src import Moped
-
+from HERON.src.Moped import MOPED
 from HERON.src import Herd
 
 from ravenframework.MessageHandler import MessageHandler
@@ -96,7 +95,7 @@ class HERON(Base):
     assert case is not None
     case.write_workflows(self._components, self._sources, self._input_dir)
 
-  def run_moped_workflow(self, case = None, components = None, sources = None):
+  def run_moped_workflow(self, case=None, components=None, sources=None):
     """
       Runs MOPED workflow for generating pyomo problem and solves it
       @ In, case, HERON case object with necessary run settings
@@ -109,10 +108,8 @@ class HERON(Base):
     if sources is None:
       sources = self._sources
     assert case is not None and components is not None and sources is not None
-    moped = Moped.MOPED()
-    print("*******************************************************************************")
-    print("You are running MOPED(Monolithic Optimizer for Probabilistic Economic Dispatch)")
-    print("*******************************************************************************")
+    moped = MOPED()
+    self.raiseAMessage("***** You are running Monolithic Optimizer for Probabilistic Economic Dispatch (MOPED) *****")
     moped.setInitialParams(case, components, sources)
     moped.run()
 
@@ -148,9 +145,6 @@ if __name__ == '__main__':
     sim.create_raven_workflow()
   elif sim._case._workflow == 'MOPED':
     sim.run_moped_workflow()
-  elif sim._case._workflow == 'combined':
-    sim.run_moped_workflow()
-    sim.create_raven_workflow()
   elif sim._case._workflow == 'DISPATCHES':
     sim.run_dispatches_workflow()
   # TODO someday? sim.run()

@@ -100,20 +100,12 @@ class Case(Base):
                                                        strictMode=True, descr=desc_verbosity_options))
 
     workflow_options = InputTypes.makeEnumType('WorkflowOptions', 'WorkflowOptionsType',
-<<<<<<< HEAD
                                                ['standard', 'MOPED', 'combined', 'DISPATCHES'])
-    desc_workflow_options = r"""determines the desired workflow(s) for the HERON analysis. \default{standard}.
-                            If ``standard'' runs HERON as usual (writes outer/inner for RAVEN workflow).
-                            If ``MOPED'' runs monolithic solver MOPED using the information in xml input.
-                            If ``combined'' runs both workflows, setting up RAVEN workflow and solving with MOPED."""
-=======
-                                               ['standard', 'MOPED', 'combined'])
     desc_workflow_options = r"""determines the desired workflow(s) for the HERON analysis. \default{standard}.
                             If ``standard'' runs HERON as usual (writes outer/inner for RAVEN workflow).
                             If ``MOPED'' runs monolithic solver MOPED using the information in xml input.
                             If ``combined'' runs both workflows, setting up RAVEN workflow and solving with MOPED.
                             See Workflow Options section in user guide for more details"""
->>>>>>> MOPED2
     input_specs.addSub(InputData.parameterInputFactory('workflow', contentType=workflow_options,
                                                        strictMode=True, descr=desc_workflow_options))
 
@@ -370,11 +362,7 @@ class Case(Base):
     self._labels = {}           # extra information pertaining to current case
     self.debug = {              # debug options, as enabled by the user (defaults included)
         'enabled': False,         # whether to enable debug mode
-<<<<<<< HEAD
-        'inner_samples': 1,       # how many inner realizations to sample specifically for the debug run (not the same as self._num_samples)
-=======
         'inner_samples': 1,       # how many inner realizations to sample specifically for the debug run
->>>>>>> MOPED2
         'macro_steps': 1,         # how many "years" for inner realizations
         'dispatch_plot': True     # whether to output a plot in debug mode
     }

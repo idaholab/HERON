@@ -7,14 +7,11 @@
 from __future__ import unicode_literals, print_function
 import os
 import sys
-import copy
 import importlib
 
 import numpy as np
 
 from HERON.src.base import Base
-from HERON.src import Components
-from HERON.src import Placeholders
 
 from HERON.src.dispatch.Factory import known as known_dispatchers
 from HERON.src.dispatch.Factory import get_class as get_dispatcher
@@ -28,7 +25,7 @@ from HERON.src.validators.Factory import get_class as get_validator
 import HERON.src._utils as hutils
 framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)
-from ravenframework.utils import InputData, InputTypes, xmlUtils
+from ravenframework.utils import InputData, InputTypes 
 
 class Case(Base):
   """
@@ -321,16 +318,15 @@ class Case(Base):
     input_specs.addSub(dispatch_vars)
 
     # result statistics
-    result_stats = InputData.parameterInputFactory('result_statistics', 
+    result_stats = InputData.parameterInputFactory('result_statistics',
                                                    descr=r"""This node defines the statistics to be returned with the results. Each
                                                    subnode is the name of the desired return statistic.""")
-    for stat in cls.metrics_mapping.keys():
+    for stat in cls.metrics_mapping:
       statistic = InputData.parameterInputFactory(stat, strictMode=True,
                                                   descr=r"""{} uses the prefix ``{}'' in the result output.""".format(stat, cls.metrics_mapping[stat]['prefix']))
       if stat == 'percentile':
         statistic.addParam('percent', param_type=InputTypes.StringType,
-                           descr=r"""requested percentile (a floating point value between 0.0 and 100.0). Default returns both 5th and 95th percentiles.""",
-                           default="5")
+                           descr=r"""requested percentile (a floating point value between 0.0 and 100.0). Default returns both 5th and 95th percentiles.""")
       elif stat in ['sortinoRatio', 'gainLossRatio']:
         statistic.addParam('threshold', param_type=InputTypes.StringType,
                            descr=r"""requested threshold ('median' or 'zero').""", default='zero')
@@ -352,7 +348,7 @@ class Case(Base):
     Base.__init__(self, **kwargs)
     self.name = None                   # case name
     self._mode = None                  # extrema to find: opt, sweep
-    self._metric = 'NPV'               # UNUSED (future work); economic metric to focus on: lcoe, profit, cost
+    self._metric = 'NPV'               # TODO: future work - economic metric to focus on: lcoe, profit, cost
     self.run_dir = run_dir             # location of HERON input file
     self._verbosity = 'all'            # default verbosity for RAVEN inner/outer
 
@@ -389,10 +385,10 @@ class Case(Base):
     self._time_discretization = None   # (start, end, number) for constructing time discretization, same as argument to np.linspace
     self._Resample_T = None            # user-set increments for resources
     self._optimization_settings = None # optimization settings dictionary for outer optimization loop
-    self._result_statistics = {        # desired result statistics (keys) dictionary with attributes (values) 
-        'sigma': None,
-        'expectedValue': None, 
-        'median': None}     
+    self._result_statistics = {        # desired result statistics (keys) dictionary with attributes (values)
+        'sigma': None,                 # user can specify additional result statistics
+        'expectedValue': None,
+        'median': None}
 
     # clean up location
     self.run_dir = os.path.abspath(os.path.expanduser(self.run_dir))
@@ -464,7 +460,7 @@ class Case(Base):
       elif item.getName() == 'result_statistics':
         new_result_statistics = self._read_result_statistics(item)
         self._result_statistics.update(new_result_statistics)
-    print(f'self._result_statistics: {self._result_statistics}')
+    
     # checks
     if self._mode is None:
       self.raiseAnError('No <mode> node was provided in the <Case> node!')
@@ -485,7 +481,7 @@ class Case(Base):
     self.dispatcher.set_time_discr(self._time_discretization)
     self.dispatcher.set_validator(self.validator)
 
-    self.raiseADebug('Successfully initialized Case {}.'.format(self.name))
+    self.raiseADebug(f'Successfully initialized Case {self.name}.')
 
   def _read_data_handling(self, node):
     """
@@ -597,9 +593,7 @@ class Case(Base):
       @ Out, result_statistics, dict, result statistics settings as dictionary
     """
     # result_statistics keys are statistic name value is percent, threshold value, or None
-    result_statistics = {'expectedValue': None,
-                         'sigma': None,
-                         'median': None}
+    result_statistics = {}
     for sub in node.subparts:
       sub_name = sub.getName()
       if sub_name == 'percentile':
@@ -637,7 +631,7 @@ class Case(Base):
           result_statistics[sub_name] = self.metrics_mapping[sub_name]['threshold']
       else:
         result_statistics[sub_name] = None
-    print(f'result_statistics: {result_statistics}')
+    
     return result_statistics
 
   def initialize(self, components, sources):
@@ -661,7 +655,7 @@ class Case(Base):
     """
     return '<HERON Case>'
 
-  def print_me(self, tabs=0, tab='  '):
+  def print_me(self, tabs=0, tab='  ', **kwargs):
     """
       Prints info about self
       @ In, tabs, int, number of tabs to insert before print
@@ -695,8 +689,8 @@ class Case(Base):
     elif which == 'inner':
       io = 'i'
     else:
-      raise NotImplementedError('Unrecognized working dir request: "{}"'.format(which))
-    return '{case}_{io}'.format(case=self.name, io=io)
+      raise NotImplementedError(f'Unrecognized working dir request: "{which}"')
+    return f'{self.name}_{io}'
 
   def load_econ(self, components):
     """
@@ -713,7 +707,7 @@ class Case(Base):
         comp_name = comp.name
         for cf in comp.get_cashflows():
           cf_name = cf.name
-          indic['active'].append('{}|{}'.format(comp_name, cf_name))
+          indic['active'].append(f'{comp_name}|{cf_name}')
       self._global_econ['Indicator'] = indic
 
   def get_econ(self, components):
@@ -852,7 +846,7 @@ class Case(Base):
     template_name = 'template_driver'
     # import template module
     sys.path.append(heron_dir)
-    module = importlib.import_module('templates.{}'.format(template_name), package="HERON")
+    module = importlib.import_module(f'templates.{template_name}', package="HERON")
     # load template, perform actions
     template_class = module.Template(messageHandler=self.messageHandler)
     template_class.loadTemplate(template_dir)

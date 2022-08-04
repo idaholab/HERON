@@ -51,8 +51,8 @@ class Case(Base):
                      'kurtosis': {'prefix': 'kurt', 'optimization_default': 'min'},
                      'samples': {'prefix': 'samp'},
                      'sharpeRatio': {'prefix': 'sharpe', 'optimization_default': 'max'},
-                     'sortinoRatio': {'prefix': 'sortino', 'optimization_default': 'max', 'threshold': 'zero'},
-                     'gainLossRatio': {'prefix': 'glr', 'optimization_default': 'max', 'threshold': 'zero'},
+                     'sortinoRatio': {'prefix': 'sortino', 'optimization_default': 'max', 'threshold': 'median'},
+                     'gainLossRatio': {'prefix': 'glr', 'optimization_default': 'max', 'threshold': 'median'},
                      'expectedShortfall': {'prefix': 'es', 'optimization_default': 'min', 'threshold': ['0.05']},
                      'valueAtRisk': {'prefix': 'VaR', 'optimization_default': 'min', 'threshold': ['0.05']}}
 
@@ -320,22 +320,29 @@ class Case(Base):
 
     # result statistics
     result_stats = InputData.parameterInputFactory('result_statistics',
-                                                   descr=r"""This node defines the statistics to be returned with the results. Each
-                                                   subnode is the name of the desired return statistic.""")
+                                                   descr=r"""This node defines the additional statistics
+                                                   to be returned with the results. The statistics
+                                                   \texttt{expectedValue} (prefix ``mean''),
+                                                   \texttt{sigma} (prefix ``std''), and \texttt{median}
+                                                   (prefix ``med'') are always returned with the results.
+                                                   Each subnode is the RAVEN-style name of the desired
+                                                   return statistic.""")
     for stat in cls.metrics_mapping:
-      statistic = InputData.parameterInputFactory(stat, strictMode=True,
-                                                  descr=r"""{} uses the prefix ``{}'' in the result output.""".format(stat, cls.metrics_mapping[stat]['prefix']))
-      if stat == 'percentile':
-        statistic.addParam('percent', param_type=InputTypes.StringType,
-                           descr=r"""requested percentile (a floating point value between 0.0 and 100.0). Default returns both 5th and 95th percentiles.""")
-      elif stat in ['sortinoRatio', 'gainLossRatio']:
-        statistic.addParam('threshold', param_type=InputTypes.StringType,
-                           descr=r"""requested threshold ('median' or 'zero').""", default='zero')
-      elif stat in ['expectedShortfall', 'valueAtRisk']:
-        statistic.addParam('threshold', param_type=InputTypes.StringType,
-                           descr=r"""requested threshold (a floating point value between 0.0 and 1.0).""",
-                           default="0.05")
-      result_stats.addSub(statistic)
+      if stat not in ['expectedValue', 'sigma', 'median']:
+        statistic = InputData.parameterInputFactory(stat, strictMode=True,
+                                                    descr=r"""{} uses the prefix ``{}'' in the result output.""".format(stat, cls.metrics_mapping[stat]['prefix']))
+        if stat == 'percentile':
+          statistic.addParam('percent', param_type=InputTypes.StringType,
+                            descr=r"""requested percentile (a floating point value between 0.0 and 100.0).
+                            When no percent is given, returns both 5th and 95th percentiles.""")
+        elif stat in ['sortinoRatio', 'gainLossRatio']:
+          statistic.addParam('threshold', param_type=InputTypes.StringType,
+                            descr=r"""requested threshold (``median" or ``zero").""", default='``median"')
+        elif stat in ['expectedShortfall', 'valueAtRisk']:
+          statistic.addParam('threshold', param_type=InputTypes.StringType,
+                            descr=r"""requested threshold (a floating point value between 0.0 and 1.0).""",
+                            default='``0.05"')
+        result_stats.addSub(statistic)
     input_specs.addSub(result_stats)
 
     return input_specs

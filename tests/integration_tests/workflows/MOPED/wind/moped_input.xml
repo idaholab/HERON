@@ -15,7 +15,7 @@
     <mode>opt</mode>
     <workflow>MOPED</workflow>
     <verbosity>debug</verbosity>
-    <num_arma_samples>200</num_arma_samples>
+    <num_arma_samples>20</num_arma_samples>
     <time_discretization>
       <year_variable>YEAR</year_variable>
       <time_variable>HOUR</time_variable>

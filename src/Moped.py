@@ -728,14 +728,6 @@ class MOPED(Base):
     # TODO does this need to present information about dispatches, how to do this?
     self.raiseAMessage(f'Running Optimizer...')
     self.solveAndDisplay()
-    # self._m.steamer_dispatch_1_1.pprint()
-    # self._m.generator_dispatch_1_1.pprint()
-    # self._m.generator_consume_1_1.pprint()
-    # self._m.electr_market_dispatch_1_1.pprint()
-    # self._m.steam_market_dispatch_1_1.pprint()
-    # self._m.steam_sink_dispatch_1_1.pprint()
-    # self._m.steam_con_1_1.pprint()
-    # self._m.electricity_con_1_1.pprint()
 
   # ===========================
   # UTILITIES

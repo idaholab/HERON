@@ -163,6 +163,7 @@ class MOPED(Base):
         # reshape so that a filler cluster index is made
         current_realization[signal] = np.expand_dims(current_realization[signal], axis=1)
       synthetic_data[name] = current_realization[signal]
+    synthetic_data['years'] = current_realization['YEAR']
     cluster_count = synthetic_data['Realization_1'].shape[1]
     hour_count = synthetic_data['Realization_1'].shape[2]
     self._m.c = pyo.Set(initialize=np.arange(cluster_count))

@@ -6,6 +6,7 @@
 """
 import os
 import sys
+import operator
 from itertools import compress
 import pyomo.environ as pyo
 from pyomo.opt import SolverFactory
@@ -18,6 +19,8 @@ from dispatches.models.nuclear_case.flowsheets.nuclear_flowsheet import fix_dof_
 # Import function for the construction of the multiperiod model
 from dispatches.models.nuclear_case.flowsheets.multiperiod import build_multiperiod_design
 
+from idaes.core.solvers import get_solver
+
 # append path with RAVEN location
 path_to_raven = hutils.get_raven_loc()
 sys.path.append(os.path.abspath(os.path.join(path_to_raven, 'scripts')))
@@ -28,32 +31,65 @@ from TEAL.src import CashFlows
 from TEAL.src import main as RunCashFlow
 from HERON.src.Moped import MOPED
 
-
 dispatches_model_component_meta={
   "Nuclear-Hydrogen IES: H2 Production, Storage, and Combustion": {
     "npp":{ # currently, this only produces baseload electricity
-        "Produces": 'electricity',
-        "Consumes": {},
+      "Produces": 'electricity',
+      "Consumes": {},
+      "Cashflows":{
+        "Capacity":{
+          "Expressions": 'np_power_split.electricity_in',
+        },
+        "Dispatch":{
+          "Expressions": 'np_power_split.np_to_grid_port.electricity'
+        },
+      },
     },
     "pem":{ # will require some transfer function
-        "Produces": 'hydrogen',
-        "Consumes": 'electricity',
+      "Produces": 'hydrogen',
+      "Consumes": 'electricity',
+      "Cashflows":{
+        "Capacity":{
+          "Expressions": 'pem_capacity',
+        },
+        "Dispatch":{
+          "Expressions": ['pem.electricity'],
+        },
+      },
     },
     "h2tank":{
-        "Stores":   'hydrogen',
-        "Consumes": {},
+      "Stores": 'hydrogen',
+      "Consumes": {},
+      "Cashflows":{
+        "Capacity":{
+          "Expressions": 'tank_capacity',
+        },
+        "Dispatch":{
+          "Expressions": ['h2_tank.outlet_to_pipeline.flow_mol'],
+        },
+      },
     },
     "h2turbine":{ # TODO: technically also consumes air, will need to revisit
-        "Produces": 'electricity',
-        "Consumes": 'hydrogen',
+      "Produces": 'electricity',
+      "Consumes": 'hydrogen',
+      "Cashflows":{
+        "Capacity":{
+          "Expressions": 'h2_turbine_capacity',
+        },
+        "Dispatch":{
+          "Expressions": ['h2_turbine.turbine.work_mechanical',
+            'h2_turbine.compressor.work_mechanical'],
+          "Multiplier":  [-1, -1]
+        },
+      }
     },
     "electricity_market":{
-        "Demands":  'electricity',
-        "Consumes": {},
+      "Demands":  'electricity',
+      "Consumes": {},
     },
     "h2_market":{
-        "Demands":  'hydrogen',
-        "Consumes": {},
+      "Demands":  'hydrogen',
+      "Consumes": {},
     },
   },
 }
@@ -71,42 +107,6 @@ class HERD(MOPED):
     # running the init for MOPED first to initialize empty params
     super().__init__()
     self._dmdl = None # Pyomo model specific to DISPATCHES (different from _m)
-
-  # def buildCashflowMeta(self):
-  #   """
-  #     Builds cashflow meta used in cashflow component construction
-  #     @ In, None
-  #     @ Out, None
-  #   """
-  #   # NOTE MOPED version assumes that each component can only have one cap, yearly, and repeating
-  #   #   here we keep all cashflows even if there are multipler for cap, yearly, or repeating
-  #   for comp in self._components:
-  #     self.verbosityPrint(f'Retrieving cashflow information for {comp.name}')
-
-  #     # setting up empty dict, getting Lifetime in years
-  #     econ = getattr(comp, "_economics")
-  #     self._cf_meta[comp.name] = {}
-  #     self._cf_meta[comp.name]['Lifetime'] = getattr(econ, "_lifetime")
-
-  #     # loop through all cash flows for given component
-  #     cashflows = getattr(econ, "_cash_flows")
-  #     for cf in cashflows:
-  #       # Using reference prices for cashflows (getting annoying warnings about protected members)
-  #       alpha    = getattr(cf, "_alpha")
-  #       alpha_vp = getattr(alpha, "_vp") # valued param object
-  #       alpha_v  = getattr(alpha_vp, "_parametric") # alpha value
-  #       driver   = getattr(cf, "_driver")
-  #       multiplier = getattr(driver, "_multiplier") # default of 1
-  #       multiplier = 1 if multiplier is None else multiplier
-  #       value = multiplier * alpha_v
-
-  #       # getting cashflow type, making sure it is within accepted types
-  #       cf_type = getattr(cf, "_type")
-  #       if cf_type not in ['one-time', 'yearly', 'repeating']:
-  #         raise IOError("Cashflow type not currently supported in HERD")
-
-  #       # deviation from MOPED, storing type and given name
-  #       self._cf_meta[comp.name][f'{cf_type}|{cf.name}'] = value
 
   def buildComponentMeta(self):
     """
@@ -142,6 +142,11 @@ class HERD(MOPED):
 
     consumes = bool(getattr(action, "_consumes")) if hasattr(action, "_consumes") else False
 
+    # Multiplier plays important role in capacity node, especially for VRE's
+    capmult = getattr(capacity, '_multiplier')
+    capacity_mult = 1 if capmult is None else capmult
+    # capacity_mult = -1*capacity_mult if capacity_mult<0 else capacity_mult #NOTE: need this?
+
     # saving resource under action type, e.g. "Produces": "electricity"
     self._component_meta[comp.name][action_type] = resource
     self._component_meta[comp.name]['Consumes'] = {}
@@ -149,13 +154,13 @@ class HERD(MOPED):
 
     # save optimization parameters
     if mode in ('OptBounds', 'FixedValue'):
-      self.verbosityPrint(f'|Building pyomo capacity {mode} for {comp.name}|')
-      self._component_meta[comp.name][mode] = getattr(value, "_parametric")
+      self.raiseADebug(f'|Building pyomo capacity {mode} for {comp.name}|')
+      self._component_meta[comp.name][mode] = getattr(value, "_parametric") * capacity_mult
 
     # sample synthetic histories
     elif mode == 'SyntheticHistory':
-      self.verbosityPrint(f'|Building pyomo parameter with synthetic histories for {comp.name}|')
-      synthHist = self.loadSyntheticHistory( getattr(value, "_var_name") ) # runs external ROM load
+      self.raiseADebug(f'|Building pyomo parameter with synthetic histories for {comp.name}|')
+      synthHist = self.loadSyntheticHistory( getattr(value, "_var_name"), capacity_mult ) # runs external ROM load
       self._component_meta[comp.name][mode] = synthHist
 
     # cannot do sweep values yet
@@ -168,7 +173,7 @@ class HERD(MOPED):
       for con in getattr(action, "_consumes"):
         self._component_meta[comp.name]['Consumes'][con] = getattr(action, "_transfer")
 
-  def loadSyntheticHistory(self, signal):
+  def loadSyntheticHistory(self, signal, multiplier):
     """
       Loads synthetic history for a specified signal,
       also sets yearly hours and pyomo indexing sets.
@@ -178,7 +183,7 @@ class HERD(MOPED):
       @ Out, synthetic_data, dict, contains data from evaluated ROM
     """
     # calling parent method for loading synthetic history
-    synthHist = super().loadSyntheticHistory(signal)
+    synthHist = super().loadSyntheticHistory(signal, multiplier)
 
     # extracting inner data array shapes
     realizations = list( synthHist.keys() )
@@ -187,7 +192,7 @@ class HERD(MOPED):
     n_years, n_clusters, n_hours = synthHist[realizations[0]].shape
 
     # some time sets to describe synthetic histories
-    set_scenarios = range(len(realizations))
+    set_scenarios = range(sum(["Realization" in entry for entry in realizations]))
     set_years = list(synthHist['years'])
     set_days  = range(1, n_clusters + 1) # to appease Pyomo, indexing starts at 1
     set_time  = range(1, n_hours + 1)    # to appease Pyomo, indexing starts at 1
@@ -236,11 +241,12 @@ class HERD(MOPED):
     """
     # TODO: check for financial params/inputs?
     heron_comp_list = list( self._component_meta.keys() ) # current list of HERON components
-    self.verbosityPrint(f'|Checking compatibility between HERON and available DISPATCHES cases|')
+    self.raiseADebug(f'|Checking compatibility between HERON and available DISPATCHES cases|')
 
     # check that HERON input file contains all components needed to run DISPATCHES case
     # using naming convention: d___ corresponds to DISPATCHES, h___ corresponds to HERON
-    for dName, dModel in dispatches_model_component_meta.items():
+    dispatches_model_template = dispatches_model_component_meta.copy()
+    for dName, dModel in dispatches_model_template.items():
       dispatches_comp_list    = list( dModel.keys() )
       incompatible_components = [dComp not in heron_comp_list for dComp in dispatches_comp_list]
 
@@ -256,6 +262,9 @@ class HERD(MOPED):
       # now let's check individual component actions
       for dComp in dispatches_comp_list:
         hCompDict = self._component_meta[dComp]  # HERON component dict, same name as DISPATCHES
+        #FIXME: temp fix to not check for Cashflows just yet
+        if 'Cashflows' in dModel[dComp].keys():
+          del dModel[dComp]['Cashflows']
         dispatches_actions_list = list(dModel[dComp].keys())
         incompatible_actions = [dAction not in hCompDict.keys()
                                       for dAction in dispatches_actions_list]
@@ -273,16 +282,16 @@ class HERD(MOPED):
           hAction = hCompDict[dAction]  # HERON component's action, might be a dict or str
           if isinstance(hAction, dict):
             hResource = list(hAction.keys())[0] if hAction else {}
-            mismatched_actions.append(hResource != dResource )
+            mismatched_actions.append(hResource != dResource)
           else:
-            mismatched_actions.append(hAction != dResource )
+            mismatched_actions.append(hAction != dResource)
 
         if sum(mismatched_actions) > 0:
           message = f'Attributes of HERON Component {dComp} do not match DISPATCHES case: '
           message += ', '.join( list(compress(dispatches_actions_list, mismatched_actions)) )
           raise IOError(message)
 
-      self.verbosityPrint(f'|HERON Case is compatible with {dName} DISPATCHES Model|')
+      self.raiseADebug(f'|HERON Case is compatible with {dName} DISPATCHES Model|')
 
   def _createDispatchesPyomoModel(self):
     """
@@ -319,9 +328,9 @@ class HERD(MOPED):
 
     mdl_flowsheet = build_ne_flowsheet # pointing to the imported DISPATCHES nuclear flowsheet
     mdl_init = fix_dof_and_initialize # pointing to the imported DISPATCHES fix/init method
-    mdl_unfix = self.unfix_dof # we add a method to unfix certain DoFs based on DISPATCHES jupyter notebooks
+    mdl_unfix = self.unfixDof # we add a method to unfix certain DoFs based on DISPATCHES jupyter notebooks
 
-    # NOTE: within the build process, a tmp JSON file is created in wdir... ugh.
+    # NOTE: within the build process, a tmp JSON file is created in wdir...
     build_multiperiod_design(dmdl,
                          flowsheet=mdl_flowsheet,
                          initialization=mdl_init,
@@ -333,7 +342,7 @@ class HERD(MOPED):
 
     for s in dmdl.set_scenarios:
       # Build the connecting constraints
-      self.build_connecting_constraints(dmdl.scenario[s],
+      self.buildConnectingConstraints(dmdl.scenario[s],
                                   set_time=dmdl.set_time,
                                   set_days=dmdl.set_days,
                                   set_years=dmdl.set_years)
@@ -343,12 +352,61 @@ class HERD(MOPED):
                               ps=dmdl,
                               LMP=dmdl.LMP[s])
 
-    #   # Hydrogen demand constraint.
-    #   # Divide the RHS by the molecular mass to convert kg/s to mol/s
-    #   scenario = dmdl.scenario[s]
-    #   @scenario.Constraint(dmdl.set_time, dmdl.set_days, dmdl.set_years)
-    #   def hydrogen_demand_constraint(blk, t, d, y):
-    #       return blk.period[t, d, y].fs.h2_tank.outlet_to_pipeline.flow_mol[0] <= dmdl.h2_demand / 2.016e-3
+      # Hydrogen demand constraint.
+      # Divide the RHS by the molecular mass to convert kg/s to mol/s
+      scenario = dmdl.scenario[s]
+      @scenario.Constraint(dmdl.set_time, dmdl.set_days, dmdl.set_years)
+      def hydrogen_demand_constraint(blk, t, d, y):
+        return blk.period[t, d, y].fs.h2_tank.outlet_to_pipeline.flow_mol[0] <= 3 / 2.016e-3 #dmdl.h2_demand / 2.016e-3
+
+  def _addNonAnticipativityConstraints(self):
+    """
+      Add non anticipativity constraints
+    """
+    # temporary object pointing to model
+    dmdl = self._dmdl
+
+    # Add non-anticipativity constraints
+    dmdl.pem_capacity = pyo.Var(within=pyo.NonNegativeReals,
+                        doc="Design PEM capacity (in kW)")
+    dmdl.tank_capacity = pyo.Var(within=pyo.NonNegativeReals,
+                          doc="Design tank capacity (in mol)")
+    dmdl.h2_turbine_capacity = pyo.Var(within=pyo.NonNegativeReals,
+                                doc="Design turbine capacity (in W)")
+
+    @dmdl.Constraint(dmdl.set_scenarios)
+    def non_anticipativity_pem(blk, s):
+      return blk.pem_capacity == blk.scenario[s].pem_capacity
+
+    @dmdl.Constraint(dmdl.set_scenarios)
+    def non_anticipativity_tank(blk, s):
+      return blk.tank_capacity == blk.scenario[s].tank_capacity
+
+    @dmdl.Constraint(dmdl.set_scenarios)
+    def non_anticipativity_turbine(blk, s):
+      return blk.h2_turbine_capacity == blk.scenario[s].h2_turbine_capacity
+
+  def _addObjective(self):
+    """
+      Adding objective function to model
+    """
+    # temporary object pointing to model
+    dmdl = self._dmdl
+
+    # Define the objective function
+    dmdl.obj = pyo.Objective(expr=sum(dmdl.weights_scenarios[s] * dmdl.scenario[s].npv
+                           for s in dmdl.set_scenarios),
+                  sense=pyo.maximize)
+
+  def _solveDispatchesModel(self):
+    """
+      Solving model
+    """
+    # Define the solver object. Using the default solver: IPOPT
+    solver = get_solver()
+
+    # Solve the optimization problem
+    solver.solve(self._dmdl, tee=True)
 
   def run(self):
     """
@@ -366,7 +424,9 @@ class HERD(MOPED):
     self._checkDispatchesCompatibility()
     self._createDispatchesPyomoModel()
     self._buildDispatchesModel()
-    # self._solveDispatchesModel()
+    self._addNonAnticipativityConstraints()
+    self._addObjective()
+    self._solveDispatchesModel()
 
     # now we need to import DISPATCHES
     #  X. load in the synthetic histories to DISPATCHES
@@ -380,18 +440,19 @@ class HERD(MOPED):
     #  6. run a loop over scenarios
     #      X. build constraints (**NEW** import some params from HERON??) per scenario
     #      b. run append_costs
-    #           i. use Pyomo expressions to create TEAL cashflows, particularly npvs per scenario
-    #           ii. loop through dispatches_meta_dict?
-    #                - create capex pyomo using correct drivers
-    #  7. add non-anticipativity constraints
-    #  8. add objective (sum up npvs)
-    #  9. run solver from idaes
+    #           i.  gather all required Pyomo expressions from DISPATCHES
+    #           ii. gather all required alphas, multipliers from HERON Input
+    #           iii. combine both into TEAL cashflows by using Pyomo expressions as the drivers
+    #                - loop through DISPATCHES metadata?
+    #  X. add non-anticipativity constraints
+    #  X. add objective (sum up npvs)
+    #  X. run solver from idaes
 
 
   ############################
   # DISPATCHES methods
 
-  def unfix_dof(self, m, **kwargs):
+  def unfixDof(self, m, **kwargs):
     """
     This function unfixes a few degrees of freedom for optimization.
     This particular method is taken from the DISPATCHES jupyter notebook
@@ -431,7 +492,7 @@ class HERD(MOPED):
 
     m.fs.mixer.hydrogen_feed.flow_mol[0].setlb(0.001)
 
-  def build_connecting_constraints(self, m, set_time, set_days, set_years):
+  def buildConnectingConstraints(self, m, set_time, set_days, set_years):
     """
     This function declares the first-stage variables or design decisions,
     adds constraints that ensure that the operational variables never exceed their
@@ -479,6 +540,14 @@ class HERD(MOPED):
           blk.period[t - 1, d, y].fs.h2_tank.tank_holdup[0]
         )
 
+
+  # def _identifyTEALDrivers(self, m):
+  #   """
+  #     Identify the correct DISPATCHES expressions to use as TEAL drivers
+  #   """
+
+  #   a = 1
+
   def append_costs_and_revenue(self, m, ps, LMP):
     """
     ps: Object containing information on sets and parameters
@@ -490,10 +559,10 @@ class HERD(MOPED):
     set_years = ps.set_years           # Set of years
     weights_days = ps.weights_days     # Weights associated with each cluster
 
-    h2_sp = ps.h2_price                # Selling price of hydrogen
-    plant_life = ps.plant_life         # Plant lifetime
-    tax_rate = ps.tax_rate             # Corporate tax rate
-    discount_rate = ps.discount_rate   # Discount rate
+    h2_sp = 3                # Selling price of hydrogen
+    plant_life = 23         # Plant lifetime
+    tax_rate = 0.2             # Corporate tax rate
+    discount_rate = 0.09   # Discount rate
 
     years_vec = [y - set_years[0] + 1 for y in set_years]
     years_vec.append(plant_life + 1)
@@ -501,81 +570,81 @@ class HERD(MOPED):
                             for i in range(years_vec[j], years_vec[j + 1]))
                       for j, y in enumerate(set_years)}
 
-      # # PEM CAPEX: $1630/kWh and pem_capacity is in kW,
-      # # Tank CAPEX: $29/kWh, the LHV of hydrogen is 33.3 kWh/kg,
-      # # the molecular mass of hydrogen is 2.016e-3 kg/mol and
-      # # tank_capacity is in moles
-      # # Turbine CAPEX: $947/kWh and turbine_capacity is in W
-      # m.capex = Expression(
-      #     expr=(1630 * m.pem_capacity +
-      #           (29 * 33.3 * 2.016e-3) * m.tank_capacity +
-      #           (947 / 1000) * m.h2_turbine_capacity),
-      #     doc="Total capital cost (in USD)"
-      # )
+    # PEM CAPEX: $1630/kWh and pem_capacity is in kW,
+    # Tank CAPEX: $29/kWh, the LHV of hydrogen is 33.3 kWh/kg,
+    # the molecular mass of hydrogen is 2.016e-3 kg/mol and
+    # tank_capacity is in moles
+    # Turbine CAPEX: $947/kWh and turbine_capacity is in W
+    m.capex = pyo.Expression(
+      expr=(1630 * m.pem_capacity +
+            (29 * 33.3 * 2.016e-3) * m.tank_capacity +
+            (947 / 1000) * m.h2_turbine_capacity),
+      doc="Total capital cost (in USD)"
+    )
 
-      # # Fixed O&M of PEM: $47.9/kW
-      # # Fixed O&M of turbine: $7/kW
-      # @m.Expression(set_years,
-      #               doc="Fixed O&M cost per year (in USD)")
-      # def fixed_om_cost(blk, y):
-      #     return (
-      #         47.9 * m.pem_capacity + 7e-3 * m.h2_turbine_capacity
-      #     )
+    # Fixed O&M of PEM: $47.9/kW
+    # Fixed O&M of turbine: $7/kW
+    @m.Expression(set_years,
+                  doc="Fixed O&M cost per year (in USD)")
+    def fixed_om_cost(blk, y):
+      return (
+          47.9 * m.pem_capacity + 7e-3 * m.h2_turbine_capacity
+      )
 
-      # # Variable O&M: PEM: $1.3/MWh and turbine: $4.25/MWh
-      # @m.Expression(set_years,
-      #               doc="Total variable O&M cost per year (in USD)")
-      # def variable_om_cost(blk, y):
-      #     return (
-      #         (1.3 * 1e-3) * sum(weights_days[y][d] * blk.period[t, d, y].fs.pem.electricity[0]
-      #                            for t in set_time for d in set_days) +
-      #         (4.25 * 1e-6) * sum(weights_days[y][d] * (
-      #                             - blk.period[t, d, y].fs.h2_turbine.turbine.work_mechanical[0]
-      #                             - blk.period[t, d, y].fs.h2_turbine.compressor.work_mechanical[0])
-      #                             for t in set_time for d in set_days)
-      #     )
+    # Variable O&M: PEM: $1.3/MWh and turbine: $4.25/MWh
+    @m.Expression(set_years,
+                  doc="Total variable O&M cost per year (in USD)")
+    def variable_om_cost(blk, y):
+      return (
+        (1.3 * 1e-3) * sum(weights_days[y][d] * blk.period[t, d, y].fs.pem.electricity[0]
+                            for t in set_time for d in set_days) +
+        (4.25 * 1e-6) * sum(weights_days[y][d] * (
+                            - blk.period[t, d, y].fs.h2_turbine.turbine.work_mechanical[0]
+                            - blk.period[t, d, y].fs.h2_turbine.compressor.work_mechanical[0])
+                            for t in set_time for d in set_days)
+      )
 
-      # @m.Expression(set_years,
-      #               doc="Revenue generated by selling electricity per year (in USD)")
-      # def electricity_revenue(blk, y):
-      #     return (
-      #         sum(weights_days[y][d] * LMP[y][d][t] *
-      #             (blk.period[t, d, y].fs.np_power_split.np_to_grid_port.electricity[0] * 1e-3 -
-      #              blk.period[t, d, y].fs.h2_turbine.turbine.work_mechanical[0] * 1e-6 -
-      #              blk.period[t, d, y].fs.h2_turbine.compressor.work_mechanical[0] * 1e-6)
-      #             for t in set_time for d in set_days)
-      #     )
+    @m.Expression(set_years,
+                  doc="Revenue generated by selling electricity per year (in USD)")
+    def electricity_revenue(blk, y):
+      return (
+        sum(weights_days[y][d] * LMP[y][d][t] *
+            (blk.period[t, d, y].fs.np_power_split.np_to_grid_port.electricity[0] * 1e-3 -
+              blk.period[t, d, y].fs.h2_turbine.turbine.work_mechanical[0] * 1e-6 -
+              blk.period[t, d, y].fs.h2_turbine.compressor.work_mechanical[0] * 1e-6)
+            for t in set_time for d in set_days)
+      )
 
-      # @m.Expression(set_years,
-      #               doc="Revenue generated by selling hydrogen per year (in USD)")
-      # def h2_revenue(blk, y):
-      #     return (
-      #         h2_sp * 2.016e-3 * 3600 *
-      #         sum(weights_days[y][d] *
-      #             blk.period[t, d, y].fs.h2_tank.outlet_to_pipeline.flow_mol[0]
-      #             for t in set_time for d in set_days)
-      #     )
+    @m.Expression(set_years,
+                  doc="Revenue generated by selling hydrogen per year (in USD)")
+    def h2_revenue(blk, y):
+      return (
+        h2_sp * 2.016e-3 * 3600 *
+        sum(weights_days[y][d] *
+            blk.period[t, d, y].fs.h2_tank.outlet_to_pipeline.flow_mol[0]
+            for t in set_time for d in set_days)
+      )
 
-      # @m.Expression(set_years,
-      #               doc="Depreciation value per year (in USD)")
-      # def depreciation(blk, y):
-      #     return (
-      #         blk.capex / plant_life
-      #     )
+    @m.Expression(set_years,
+                  doc="Depreciation value per year (in USD)")
+    def depreciation(blk, y):
+      return (
+        blk.capex / plant_life
+      )
 
-      # @m.Expression(set_years,
-      #               doc="Net profit per year (in USD)")
-      # def net_profit(blk, y):
-      #     return (
-      #         blk.depreciation[y] + (1 - tax_rate) * (+ blk.h2_revenue[y]
-      #                                                 + blk.electricity_revenue[y]
-      #                                                 - blk.fixed_om_cost[y]
-      #                                                 - blk.variable_om_cost[y]
-      #                                                 - blk.depreciation[y])
-      #     )
+    @m.Expression(set_years,
+                  doc="Net profit per year (in USD)")
+    def net_profit(blk, y):
+      return (
+        blk.depreciation[y] + (1 - tax_rate) * (+ blk.h2_revenue[y]
+                                                + blk.electricity_revenue[y]
+                                                - blk.fixed_om_cost[y]
+                                                - blk.variable_om_cost[y]
+                                                - blk.depreciation[y])
+      )
 
-      # m.npv = Expression(
-      #     expr=sum(weights_years[y] * m.net_profit[y] for y in set_years) - m.capex,
-      #     doc="Net present value (in USD)"
-      # )
+    m.npv = pyo.Expression(
+      expr=sum(weights_years[y] * m.net_profit[y] for y in set_years) - m.capex,
+      doc="Net present value (in USD)"
+    )
 

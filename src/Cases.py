@@ -25,7 +25,7 @@ from HERON.src.validators.Factory import get_class as get_validator
 import HERON.src._utils as hutils
 framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)
-from ravenframework.utils import InputData, InputTypes 
+from ravenframework.utils import InputData, InputTypes
 
 class Case(Base):
   """
@@ -49,6 +49,7 @@ class Case(Base):
                      'variationCoefficient': {'prefix': 'varCoeff', 'optimization_default': 'min'},
                      'skewness': {'prefix': 'skew', 'optimization_default': 'min'},
                      'kurtosis': {'prefix': 'kurt', 'optimization_default': 'min'},
+                     'samples': {'prefix': 'samp'},
                      'sharpeRatio': {'prefix': 'sharpe', 'optimization_default': 'max'},
                      'sortinoRatio': {'prefix': 'sortino', 'optimization_default': 'max', 'threshold': 'zero'},
                      'gainLossRatio': {'prefix': 'glr', 'optimization_default': 'max', 'threshold': 'zero'},
@@ -460,7 +461,7 @@ class Case(Base):
       elif item.getName() == 'result_statistics':
         new_result_statistics = self._read_result_statistics(item)
         self._result_statistics.update(new_result_statistics)
-    
+
     # checks
     if self._mode is None:
       self.raiseAnError('No <mode> node was provided in the <Case> node!')
@@ -631,7 +632,7 @@ class Case(Base):
           result_statistics[sub_name] = self.metrics_mapping[sub_name]['threshold']
       else:
         result_statistics[sub_name] = None
-    
+
     return result_statistics
 
   def initialize(self, components, sources):

@@ -291,8 +291,8 @@ class Template(TemplateBase, Base):
           self._updateCommaSeperatedList(group_outer_results, stat_name)
     # sweep mode has default variable names
     elif case.get_mode() == 'sweep':
-      sweep_default = [f'mean_{case._metric}', f'std_{case._metric}', f'med_{case._metric}', f'max_{case._metric}', 
-                       f'min_{case._metric}', f'perc_5_{case._metric}', f'perc_95_{case._metric}', 
+      sweep_default = [f'mean_{case._metric}', f'std_{case._metric}', f'med_{case._metric}', f'max_{case._metric}',
+                       f'min_{case._metric}', f'perc_5_{case._metric}', f'perc_95_{case._metric}',
                        f'samp_{case._metric}', f'var_{case._metric}']
       for sweep_name in sweep_default:
         if sweep_name not in default_stats:
@@ -1030,8 +1030,8 @@ class Template(TemplateBase, Base):
           self._updateCommaSeperatedList(group_final_return, stat_name)
     # sweep mode has default variable names
     elif case.get_mode() == 'sweep':
-      sweep_default = [f'mean_{case._metric}', f'std_{case._metric}', f'med_{case._metric}', 
-                       f'max_{case._metric}', f'min_{case._metric}', f'perc_5_{case._metric}', 
+      sweep_default = [f'mean_{case._metric}', f'std_{case._metric}', f'med_{case._metric}',
+                       f'max_{case._metric}', f'min_{case._metric}', f'perc_5_{case._metric}',
                        f'perc_95_{case._metric}', f'samp_{case._metric}', f'var_{case._metric}']
       for sweep_name in sweep_default:
         if sweep_name not in default_stats:

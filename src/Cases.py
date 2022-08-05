@@ -80,7 +80,7 @@ class Case(Base):
                                                   functions by using \texttt{meta['HERON']['Case'].get_labels()}.""")
     label_specs.addParam(name='name',param_type=InputTypes.StringType,
                          descr=r"""the generalized name of the identifier.
-                         Example: ``<label name="state">Idaho</label>''""")
+                         Example: ``$<$label name="state"$>$Idaho$<$/label$>$''""")
     input_specs.addSub(label_specs)
 
     mode_options = InputTypes.makeEnumType('ModeOptions', 'ModeOptionsType', ['opt', 'sweep'])
@@ -271,7 +271,7 @@ class Case(Base):
                                 \default{`zero'}
                                 \item requested $ \alpha $ value (a floating point value between 0.0
                                 and 1.0). Required when \xmlNode{metric} is ``expectedShortfall'' or
-                                ``valueAtRisk.'' \default{5.0}
+                                ``valueAtRisk.'' \default{0.05}
                               \end{itemize}""")
     optimizer.addSub(metric)
     type_options = InputTypes.makeEnumType('TypeOptions', 'TypeOptionsType',

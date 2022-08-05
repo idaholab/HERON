@@ -12,6 +12,10 @@ import itertools as it
 import pyomo.environ as pyo
 from pyomo.opt import SolverFactory
 import numpy as np
+<<<<<<< HEAD
+=======
+import pandas as pd
+>>>>>>> origin
 
 from HERON.src import _utils as hutils
 from HERON.src.base import Base
@@ -26,6 +30,14 @@ from ravenframework.MessageHandler import MessageHandler
 
 class MOPED(Base):
   def __init__(self):
+<<<<<<< HEAD
+=======
+    """
+      Construct.
+      @ In, None
+      @ Out, None
+    """
+>>>>>>> origin
     super().__init__()
     self._components = []                 # List of components objects from heron input
     self._sources = []                    # List of sources objects from heron input
@@ -104,11 +116,19 @@ class MOPED(Base):
       for prod in comp._produces:  # NOTE Cannot handle components that produce multiple things
         resource = prod._capacity_var
         mode = prod._capacity.type
+<<<<<<< HEAD
         self.setCapacityMeta(mode, resource, comp, prod, True, True)
       for dem in comp._demands:  # NOTE Cannot handle components that demand multiple things
         resource = dem._capacity_var
         mode = dem._capacity.type
         self.setCapacityMeta(mode, resource, comp, dem, False)
+=======
+        self.setCapacityMeta(mode, resource, comp, prod, True)
+      for dem in comp._demands:  # NOTE Cannot handle components that demand multiple things
+        resource = dem._capacity_var
+        mode = dem._capacity.type
+        self.setCapacityMeta(mode, resource, comp, dem)
+>>>>>>> origin
 
   def buildMultiplicityMeta(self):
     """
@@ -173,7 +193,11 @@ class MOPED(Base):
     self._m.t = pyo.Set(initialize=np.arange(hour_count))
     return synthetic_data
 
+<<<<<<< HEAD
   def setCapacityMeta(self, mode, resource, comp, element, produces=True, consumes=False):
+=======
+  def setCapacityMeta(self, mode, resource, comp, element, consumes=False):
+>>>>>>> origin
     """
       Checks the capacity type, dispatch type, and resources involved for each component
       to build component_meta
@@ -181,8 +205,12 @@ class MOPED(Base):
       @ In, resource, string, resource produced or demanded
       @ In, comp, HERON component
       @ In, element, HERON produces/demands node
+<<<<<<< HEAD
       @ In, produces, bool, does this component produce, default is True
       @ In, consumes, bool, does this component consume resources, default is False
+=======
+      @ In, consumes, bool, does this component consume resources
+>>>>>>> origin
       @ Out, None
     """
     # Multiplier plays important role in capacity node, especially for VRE's
@@ -192,6 +220,7 @@ class MOPED(Base):
       capacity_mult = 1
     elif capacity_mult < 0:
       capacity_mult *= -1
+<<<<<<< HEAD
     self._component_meta[comp.name]['Capacity Resource'] = resource
     # Organizing important aspects of problem for later access
     # TODO considering lists of produce and demand
@@ -199,6 +228,14 @@ class MOPED(Base):
       self._component_meta[comp.name]['Produces'] = element._produces[0]
     else:
       self._component_meta[comp.name]['Demands'] = element._demands[0]
+=======
+    # Organizing important aspects of problem for later access
+    if isinstance(element, type(self._components[0]._produces[0])):  # FIXME Assumes first comp is a producer
+      # if isinstance(type, type(self._components[0]._produces[0])):
+      self._component_meta[comp.name]['Produces'] = resource
+    else:
+      self._component_meta[comp.name]['Demands'] = resource
+>>>>>>> origin
     self._component_meta[comp.name]['Consumes'] = None
     self._component_meta[comp.name]['Dispatch'] = element._dispatchable
     # Different possible capacity value definitions for a component
@@ -206,9 +243,12 @@ class MOPED(Base):
       self.raiseADebug(f'Building pyomo capacity variable for '
                        f'{comp.name}')
       opt_bounds = element._capacity._vp._parametric
+<<<<<<< HEAD
       # Considering user inputs for default heron sign convention
       if opt_bounds[1] < 1:
         opt_bounds *= -1
+=======
+>>>>>>> origin
       opt_bounds *= capacity_mult
       # This is a capacity we make a decision on
       var = pyo.Var(initialize=0.5 * opt_bounds[1], bounds=(opt_bounds[0], opt_bounds[1]))
@@ -220,9 +260,12 @@ class MOPED(Base):
                        f'{comp.name}')
       # Params represent constant value components of the problem
       value = element._capacity._vp._parametric
+<<<<<<< HEAD
       # Considering user inputs for default heron sign convention
       if value < 1:
         value *= -1
+=======
+>>>>>>> origin
       value *= capacity_mult
       param = pyo.Param(initialize=value)
       setattr(self._m, f'{comp.name}', param)
@@ -237,11 +280,18 @@ class MOPED(Base):
       # TODO smarter way to do this check?
       self._component_meta[comp.name]['Capacity'] = getattr(self._m, f'{comp.name}')
     if consumes == True:
+<<<<<<< HEAD
       # TODO should we handle transfer functions here?
       for con in element._consumes:
         transfer_values = element.get_transfer().get_coefficients()
         self._component_meta[comp.name]['Consumes'] = con
         self._component_meta[comp.name]['Transfer'] = abs(transfer_values[con]) / abs(transfer_values[element._produces[0]])
+=======
+      # NOTE not all producers consume
+      # TODO should we handle transfer functions here?
+      for con in element._consumes:
+          self._component_meta[comp.name]['Consumes'][con] = element._transfer
+>>>>>>> origin
 
   def buildCashflowMeta(self):
     """
@@ -421,8 +471,13 @@ class MOPED(Base):
     """
       Generates dispatch vars and value arrays to build components
       @ In, comp, HERON component
+<<<<<<< HEAD
       @ Out, template_array, np.array, array of pyo.values used for TEAL cfs
       @ Out, capacity, np.array/pyomo.var, capacity variable for the component
+=======
+      @ Out, capacity, np.array/pyomo.var, capacity variable for the component
+      @ Out, template_array, np.array, array of pyo.values used for TEAL cfs
+>>>>>>> origin
     """
     # NOTE Assumes that all components will remain functional for project life
     project_life = int(self._case._global_econ['ProjectTime'])
@@ -431,6 +486,7 @@ class MOPED(Base):
     template_array = np.zeros((self._case._num_samples, project_life + 1, self._yearly_hours), dtype=object)
     capacity = self._component_meta[comp.name]['Capacity']
     dispatch_type = self._component_meta[comp.name]['Dispatch']
+<<<<<<< HEAD
     # What to have user be able to define consuming components capacity in terms of either resource
     # This allows dispatch to be in terms of producing resource and capacity be in terms of consumption resource
     # Only applies to fixed dispatch here due to pyomo construction
@@ -439,6 +495,8 @@ class MOPED(Base):
         reverse_transfer = 1 / self._component_meta[comp.name]['Transfer']
     else:
       reverse_transfer = 1
+=======
+>>>>>>> origin
     # Checking for type of capacity is necessary to build dispatch variable
     self._m.dummy = pyo.Var()
     self._m.placeholder = pyo.Param()
@@ -466,7 +524,11 @@ class MOPED(Base):
                             initialize=lambda m, c, t: capacity.value,
                             domain=pyo.NonNegativeReals,)
             setattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}', param)
+<<<<<<< HEAD
             con = pyo.Constraint(self._m.c, self._m.t, expr=lambda m, c, t: param[(c, t)] == reverse_transfer*capacity)
+=======
+            con = pyo.Constraint(self._m.c, self._m.t, expr=lambda m, c, t: param[(c, t)] == capacity)
+>>>>>>> origin
             setattr(self._m, f'{comp.name}_fixed_{real+1}_{year+1}', con)
             template_array[real, year + 1, :] = (1 / self._case._num_samples) * np.array(list(param.values())) * np.array(list(mult.values()))
         else:
@@ -480,12 +542,17 @@ class MOPED(Base):
             template_array[real, year + 1, :] = (1 / self._case._num_samples) * np.array(list(var.values())) * np.array(list(mult.values()))
           elif dispatch_type == 'fixed':
             param = pyo.Param(self._m.c, self._m.t,
+<<<<<<< HEAD
                               initialize=lambda m, c, t: reverse_transfer*capacity[f'Realization_{real+1}'][year, c, t]
+=======
+                              initialize=lambda m, c, t: capacity[f'Realization_{real+1}'][year, c, t]
+>>>>>>> origin
                               )
             setattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}', param)
             template_array[real, year + 1, :] = (1 / self._case._num_samples) * np.array(list(param.values())) * np.array(list(mult.values()))
     return capacity, template_array
 
+<<<<<<< HEAD
   def buildConsumptionVariables(self, comp):
     """
       Builds consumption pyomo variables that are dependent on the output of the same components dispatch
@@ -506,6 +573,8 @@ class MOPED(Base):
                              rule=lambda m, c, t: var[(c,t)] == transfer*dispatch[(c,t)])
         setattr(self._m,f'{comp.name}_consumption_limit_{real+1}_{year+1}',con)
 
+=======
+>>>>>>> origin
   def createCashflowComponent(self, comp, capacity, dispatch):
     """
       Builds TEAL component using pyomo dispatch and capacity variables
@@ -605,12 +674,16 @@ class MOPED(Base):
     # Initializing production and demand trackers
     produced = 0
     demanded = 0
+<<<<<<< HEAD
     consumed = 0
+=======
+>>>>>>> origin
     # Necessary to check all components involved in the analysis
     for comp in self._components:
       comp_meta = self._component_meta[comp.name]
       # Conservation constrains the dispatch decisions
       dispatch_value = getattr(self._m, f'{comp.name}_dispatch_{real + 1}_{year + 1}')
+<<<<<<< HEAD
       if comp_meta['Consumes'] is not None:
         consumption_value = getattr(self._m,f'{comp.name}_consume_{real+1}_{year+1}')
       for key, value in comp_meta.items():
@@ -645,6 +718,31 @@ class MOPED(Base):
     upper_bound = reverse_transfer*getattr(self._m, f'{comp.name}')
     dispatch_value = getattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}')
     return dispatch_value[(c, t)] <= upper_bound
+=======
+      for key, value in comp_meta.items():
+        if key == 'Produces' and value == resource:
+          produced += dispatch_value[(c, t)]
+        elif key == 'Demands' and value == resource:
+          demanded += dispatch_value[(c, t)]
+        # TODO consider consumption and incorrect input information
+    return produced == demanded
+
+  def upper(self, comp, real, year, M, c, t):
+      """
+        Restricts independently dispatched compononents based on their capacity
+        @ In, comp, HERON comp object
+        @ In, real, int, current realization
+        @ In, year, int, current year
+        @ In, M, pyomo model object, MOPED pyomo ConcreteModel
+        @ In, c, int, index for cluster
+        @ In, t, int, index for hour within cluster
+        @ Out, rule, boolean expression for upper bounding
+      """
+      # This is allows for the capacity to be an upper bound and decision variable
+      upper_bound = getattr(self._m, f'{comp.name}')
+      dispatch_value = getattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}')
+      return dispatch_value[(c, t)] <= upper_bound
+>>>>>>> origin
 
   def buildConstraints(self):
     """
@@ -681,6 +779,11 @@ class MOPED(Base):
       @ In, None
       @ Out, None
     """
+<<<<<<< HEAD
+=======
+    columns = []
+    values = []
+>>>>>>> origin
     # Results provide run times and optimizer final status
     results = self._solver.solve(self._m)
     self.raiseAMessage(f'Optimizer has finished running, here are the results\n{results}')
@@ -689,11 +792,23 @@ class MOPED(Base):
       try:
         comp_print = getattr(self._m, f'{comp.name}')
         self.raiseAMessage(f'Here is the optimized capacity for {comp.name}')
+<<<<<<< HEAD
+=======
+        columns.append(f'{comp.name} Capacity')
+        values.append(comp_print.value)
+>>>>>>> origin
         comp_print.pprint()
       except:
         self.raiseAMessage(f'{comp.name} does not have a standard capacity')
     NPV = pyo.value(self._m.NPV)
     self.raiseAMessage(f"The final NPV is: {NPV}")
+<<<<<<< HEAD
+=======
+    columns.append('Expected NPV')
+    values.append(NPV)
+    output_data = pd.DataFrame([values], columns=columns)
+    output_data.to_csv('opt_solution.csv')
+>>>>>>> origin
 
   # ===========================
   # MAIN WORKFLOW
@@ -715,8 +830,11 @@ class MOPED(Base):
     for comp in self._components:
       capacity, dispatch = self.buildDispatchVariables(comp)
       cf_comp = self.createCashflowComponent(comp, capacity, dispatch)
+<<<<<<< HEAD
       if self._component_meta[comp.name]['Consumes'] is not None:
         self.buildConsumptionVariables(comp)
+=======
+>>>>>>> origin
       self._cf_components.append(cf_comp)
     self.raiseAMessage(f'Building pyomo cash flow expression for {self._case.name}')
     # TEAL is our cost function generator here
@@ -788,7 +906,11 @@ class MOPED(Base):
   def getTargetParams(self, target='all'):
     """
       Returns the case, components, and sources
+<<<<<<< HEAD
       @ In, None
+=======
+      @ In, target, string, param to retrieve, defaults to 'all'
+>>>>>>> origin
       @ Out, case, Cases.Case object
       @ Out, components, list of Components.Component objects
       @ Out, sources, list of Placeholder objects

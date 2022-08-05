@@ -46,10 +46,21 @@ class HeronIntegration(RavenTester):
       @ Out, cmd, str, command to run
     """
     cmd = ''
-    python = self._get_python_command()
+    cmd, heron_inp = self.get_heron_command(cmd)
+    cmd += ' && '
+    cmd = self.get_raven_command(cmd, heron_inp)
+    return cmd
+
+  def get_heron_command(self, cmd):
+    """
+      Generates command for running heron
+      @ In, cmd, string
+      @ Out, cmd, string, updated command
+      @ Out, heron_inp
+    """
     test_loc = os.path.abspath(self.specs['test_dir'])
     # HERON expects to be run in the dir of the input file currently, TODO fix this
-    cmd += ' cd {loc} && '.format(loc=test_loc)
+    cmd += f' cd {test_loc} && '
     # clear the subdirectory if it's present
     cmd += ' rm -rf *_o/ && '
     # run HERON first
@@ -57,10 +68,17 @@ class HeronIntegration(RavenTester):
     # Windows is a little different with bash scripts
     if platform.system() == 'Windows':
       cmd += ' bash.exe '
-    cmd += f' {self.heron_driver} {heron_inp} && '
-    # then run "outer.xml"
+    cmd += f' {self.heron_driver} {heron_inp}'
+    return cmd, heron_inp
+
+  def get_raven_command(self, cmd, heron_inp):
+    """
+      Get command for running raven
+      @ In, cmd, string
+      @ In, heron_inp, path to heron input
+      @ Out, cmd, string, updated command
+    """
+    python = self._get_python_command()
     raven_inp = os.path.abspath(os.path.join(os.path.dirname(heron_inp), 'outer.xml'))
     cmd += f' {python} {self.driver} {raven_inp}'
-
     return cmd
-

@@ -101,6 +101,16 @@ class Case(Base):
     input_specs.addSub(InputData.parameterInputFactory('verbosity', contentType=verbosity_options,
                                                        strictMode=True, descr=desc_verbosity_options))
 
+    workflow_options = InputTypes.makeEnumType('WorkflowOptions', 'WorkflowOptionsType',
+                                               ['standard', 'MOPED', 'combined'])
+    desc_workflow_options = r"""determines the desired workflow(s) for the HERON analysis. \default{standard}.
+                            If ``standard'' runs HERON as usual (writes outer/inner for RAVEN workflow).
+                            If ``MOPED'' runs monolithic solver MOPED using the information in xml input.
+                            If ``combined'' runs both workflows, setting up RAVEN workflow and solving with MOPED.
+                            See Workflow Options section in user guide for more details"""
+    input_specs.addSub(InputData.parameterInputFactory('workflow', contentType=workflow_options,
+                                                       strictMode=True, descr=desc_workflow_options))
+
     # not yet implemented TODO
     #econ_metrics = InputTypes.makeEnumType('EconMetrics', 'EconMetricsTypes', ['NPV', 'lcoe'])
     #desc_econ_metrics = r"""indicates the economic metric that should be used for the HERON analysis. For most cases, this
@@ -384,6 +394,7 @@ class Case(Base):
         'inner_samples': 1,            # how many inner realizations to sample
         'macro_steps': 1,              # how many "years" for inner realizations
         'dispatch_plot': True          # whether to output a plot in debug mode
+
     }
 
     self.data_handling = {             # data handling options
@@ -393,6 +404,7 @@ class Case(Base):
     self._time_discretization = None   # (start, end, number) for constructing time discretization, same as argument to np.linspace
     self._Resample_T = None            # user-set increments for resources
     self._optimization_settings = None # optimization settings dictionary for outer optimization loop
+    self._workflow = 'standard' # setting for how to run HERON, default is through raven workflow
     self._result_statistics = {        # desired result statistics (keys) dictionary with attributes (values)
         'sigma': None,                 # user can specify additional result statistics
         'expectedValue': None,
@@ -465,6 +477,8 @@ class Case(Base):
           self.dispatch_vars[var_name] = vp
       elif item.getName() == 'data_handling':
         self.data_handling = self._read_data_handling(item)
+      elif item.getName() == 'workflow':
+        self._workflow = item.value
       elif item.getName() == 'result_statistics':
         new_result_statistics = self._read_result_statistics(item)
         self._result_statistics.update(new_result_statistics)

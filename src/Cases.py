@@ -364,38 +364,6 @@ class Case(Base):
       @ Out, None
     """
     Base.__init__(self, **kwargs)
-<<<<<<< HEAD
-    self.name = None            # case name
-    self._mode = None           # extrema to find: opt, sweep
-    self._metric = 'NPV'        # UNUSED (future work); economic metric to focus on: lcoe, profit, cost
-    self.run_dir = run_dir      # location of HERON input file
-    self._verbosity = 'all'     # default verbosity for RAVEN inner/outer
-
-    self.dispatch_name = None   # name of dispatcher to use
-    self.dispatcher = None      # type of dispatcher to use
-    self.validator_name = None  # name of dispatch validation to use
-    self.validator = None       # type of dispatch validation to use
-    self.dispatch_vars = {}     # non-component optimization ValuedParams
-
-    self.outerParallel = 0     # number of outer parallel runs to use
-    self.innerParallel = 0     # number of inner parallel runs to use
-
-    self._diff_study = None     # is this only a differential study?
-    self._num_samples = 1       # number of ARMA stochastic samples to use ("denoises")
-    self._hist_interval = None  # time step interval, time between production points
-    self._hist_len = None       # total history length, in same units as _hist_interval
-    self._num_hist = None       # number of history steps, hist_len / hist_interval
-    self._global_econ = {}      # global economics settings, as a pass-through
-    self._increments = {}       # stepwise increments for resource balancing
-    self._time_varname = 'time' # name of the time-variable throughout simulation
-    self._year_varname = 'Year' # name of the year-variable throughout simulation
-    self._labels = {}           # extra information pertaining to current case
-    self.debug = {              # debug options, as enabled by the user (defaults included)
-        'enabled': False,         # whether to enable debug mode
-        'inner_samples': 1,       # how many inner realizations to sample specifically for the debug run
-        'macro_steps': 1,         # how many "years" for inner realizations
-        'dispatch_plot': True     # whether to output a plot in debug mode
-=======
     self.name = None                   # case name
     self._mode = None                  # extrema to find: opt, sweep
     self._metric = 'NPV'               # TODO: future work - economic metric to focus on: lcoe, profit, cost
@@ -427,7 +395,6 @@ class Case(Base):
         'macro_steps': 1,              # how many "years" for inner realizations
         'dispatch_plot': True          # whether to output a plot in debug mode
 
->>>>>>> origin
     }
 
     self.data_handling = {             # data handling options
@@ -438,13 +405,10 @@ class Case(Base):
     self._Resample_T = None            # user-set increments for resources
     self._optimization_settings = None # optimization settings dictionary for outer optimization loop
     self._workflow = 'standard' # setting for how to run HERON, default is through raven workflow
-<<<<<<< HEAD
-=======
     self._result_statistics = {        # desired result statistics (keys) dictionary with attributes (values)
         'sigma': None,                 # user can specify additional result statistics
         'expectedValue': None,
         'median': None}
->>>>>>> origin
 
     # clean up location
     self.run_dir = os.path.abspath(os.path.expanduser(self.run_dir))
@@ -515,12 +479,9 @@ class Case(Base):
         self.data_handling = self._read_data_handling(item)
       elif item.getName() == 'workflow':
         self._workflow = item.value
-<<<<<<< HEAD
-=======
       elif item.getName() == 'result_statistics':
         new_result_statistics = self._read_result_statistics(item)
         self._result_statistics.update(new_result_statistics)
->>>>>>> origin
 
     # checks
     if self._mode is None:

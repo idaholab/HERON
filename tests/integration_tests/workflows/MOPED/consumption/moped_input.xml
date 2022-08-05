@@ -5,16 +5,15 @@
     <created>2022-08-01</created>
     <description>
       Demonstrates ability for MOPED to handled consuming components (generator) with multiple
-      resources (electricity and steam).
+      resources (electricity and steam). Validated manually against default HERON runs.
     </description>
     <classesTested>HERON</classesTested>
   </TestInfo>
 
   <Case name="Opt_Runs">
     <mode>opt</mode>
-    <!-- <workflow>MOPED</workflow> -->
+    <workflow>MOPED</workflow>
     <verbosity>debug</verbosity>
-    <!-- <debug></debug> -->
     <num_arma_samples>3</num_arma_samples>
     <time_discretization>
       <time_variable>Time</time_variable>

@@ -12,10 +12,7 @@ import itertools as it
 import pyomo.environ as pyo
 from pyomo.opt import SolverFactory
 import numpy as np
-<<<<<<< HEAD
-=======
 import pandas as pd
->>>>>>> origin
 
 from HERON.src import _utils as hutils
 from HERON.src.base import Base

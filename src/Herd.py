@@ -6,10 +6,12 @@
 """
 import os
 import sys
+import copy
 import operator
 from itertools import compress
 import pyomo.environ as pyo
 from pyomo.opt import SolverFactory
+import numpy as np
 import _utils as hutils
 
 # Nuclear flowsheet function imports
@@ -37,9 +39,6 @@ dispatches_model_component_meta={
       "Produces": 'electricity',
       "Consumes": {},
       "Cashflows":{
-        "Capacity":{
-          "Expressions": 'np_power_split.electricity_in',
-        },
         "Dispatch":{
           "Expressions": 'np_power_split.np_to_grid_port.electricity'
         },
@@ -107,6 +106,8 @@ class HERD(MOPED):
     # running the init for MOPED first to initialize empty params
     super().__init__()
     self._dmdl = None # Pyomo model specific to DISPATCHES (different from _m)
+    self._dispatches_model_template = None # Template of DISPATCHES Model for HERON comparison
+    self._metrics = None # TEAL metrics, summed expressions
 
   def buildComponentMeta(self):
     """
@@ -245,7 +246,7 @@ class HERD(MOPED):
 
     # check that HERON input file contains all components needed to run DISPATCHES case
     # using naming convention: d___ corresponds to DISPATCHES, h___ corresponds to HERON
-    dispatches_model_template = dispatches_model_component_meta.copy()
+    dispatches_model_template = copy.deepcopy(dispatches_model_component_meta)
     for dName, dModel in dispatches_model_template.items():
       dispatches_comp_list    = list( dModel.keys() )
       incompatible_components = [dComp not in heron_comp_list for dComp in dispatches_comp_list]
@@ -290,8 +291,10 @@ class HERD(MOPED):
           message = f'Attributes of HERON Component {dComp} do not match DISPATCHES case: '
           message += ', '.join( list(compress(dispatches_actions_list, mismatched_actions)) )
           raise IOError(message)
+      break
 
-      self.raiseADebug(f'|HERON Case is compatible with {dName} DISPATCHES Model|')
+    self.raiseADebug(f'|HERON Case is compatible with {dName} DISPATCHES Model|')
+    self._dispatches_model_template = dispatches_model_component_meta[dName] # NOTE: NOT using copy
 
   def _createDispatchesPyomoModel(self):
     """
@@ -348,9 +351,13 @@ class HERD(MOPED):
                                   set_years=dmdl.set_years)
 
       # Append cash flow expressions
-      self.append_costs_and_revenue(dmdl.scenario[s],
-                              ps=dmdl,
-                              LMP=dmdl.LMP[s])
+      for hComp in self._components:
+        if hComp.name not in self._dispatches_model_template.keys():
+          continue # skip components within HERON that are NOT defined in DISPATCHES template
+        tComp = self._createCashflowsForDispatches(dmdl.scenario[s], hComp,
+                                fullModel=dmdl,
+                                LMP=dmdl.LMP[s])
+        self._cf_components.append(tComp)
 
       # Hydrogen demand constraint.
       # Divide the RHS by the molecular mass to convert kg/s to mol/s
@@ -358,6 +365,205 @@ class HERD(MOPED):
       @scenario.Constraint(dmdl.set_time, dmdl.set_days, dmdl.set_years)
       def hydrogen_demand_constraint(blk, t, d, y):
         return blk.period[t, d, y].fs.h2_tank.outlet_to_pipeline.flow_mol[0] <= 3 / 2.016e-3 #dmdl.h2_demand / 2.016e-3
+
+    self._metrics = RunCashFlow.run(self._econ_settings, self._cf_components, {}, pyomoVar=True)
+
+  def _createCashflowsForDispatches(self, scenario, hComp, fullModel, LMP):
+    """
+      Identify the correct DISPATCHES expressions to use as TEAL drivers
+    """
+    # blank TEAL cash flow
+    tComp   = CashFlows.Component()
+    tParams = {"name": hComp.name} # beginning of params dict for TEAL
+
+    # collection of cash flows for given HERON component
+    CF_collection = []
+    CF_meta = self._cf_meta[hComp.name]
+    # projectLife = operator.attrgetter("_case._global_econ")(self)['ProjectTime']
+
+    # loop through all cashflows for given component
+    for cf, value in CF_meta.items():
+      if cf == 'Lifetime':
+        self.raiseADebug(f'Setting component lifespan for {hComp.name}')
+        tParams['Life_time'] = value
+        tComp.setParams(tParams)
+
+      elif cf == 'Capex':
+        # Capex is the most complex to handle generally due to amort
+        self.raiseADebug(f'Generating Capex cashflow for {hComp.name}')
+        capex_params = CF_meta['Capex Params']
+        capex_driver = CF_meta['Capex Driver']
+        # getting capacity Pyomo object if capex_driver is not defined
+        if capex_driver is None:
+          capex_driver, mult = self._getCapacityFromDispatchesModel(scenario,
+                                              self._dispatches_model_template[hComp.name])
+          # mult defaults to 1
+          value *= mult
+        # generate TEAL capex cashflow
+        capex = self.createCapex(tComp,
+                              alpha=value,
+                              capacity=capex_driver,
+                              unique_params=capex_params)
+        CF_collection.append(capex)
+        # define depreciation
+        depreciation = CF_meta['Deprec']
+        if depreciation is not None:
+          capex.setAmortization('MACRS', depreciation)
+          amorts = getattr(tComp, "_createDepreciation")(capex)
+          CF_collection.extend(amorts)
+
+      elif cf == "Yearly":
+        self.raiseADebug(f'Generating Yearly OM cashflow for {hComp.name}')
+        yearly_params = CF_meta['Yearly Params']
+        yearly_driver = CF_meta['Yearly Driver']
+        if yearly_driver is None:
+          # assuming that yearly fixed OM based on capacity
+          yearly_driver, mult = self._getCapacityFromDispatchesModel(scenario,
+                                              self._dispatches_model_template[hComp.name])
+
+        yearly = self.createRecurringYearly(tComp, value, yearly_driver, yearly_params)
+        CF_collection.append(yearly)
+
+      elif cf == "Dispatching":
+        # Here value can be a np.array as well for ARMA grid pricing
+        self.raiseADebug(f'Generating dispatch OM cashflow for {hComp.name}')
+        dispatching_params = CF_meta['Dispatching Params']
+        dispatch_driver    = CF_meta['Dispatch Driver']
+        if dispatch_driver is None:
+          # these should return lists
+          dispatch_driver, mult = self._getDispatchFromDispatchesModel(scenario,
+                                            self._dispatches_model_template[hComp.name])
+
+          # if isinstance(value, dict):
+          #   for real in range(self._case._num_samples):
+          #     alpha_realization = self.reshapeAlpha(value)
+          #     var_om = self.createRecurringHourly(tComp, alpha_realization[real, :, :], dispatch[real, :, :], real, dispatching_params)
+          #     CF_collection.append(var_om)
+          # else:
+          #   # Necessary to create a unique cash flow for each dispatch realization
+          #   for real in range(self._case._num_samples):
+          #     var_om = self.createRecurringHourly(tComp, value, dispatch[real, :, :], real, dispatching_params)
+          #     CF_collection.append(var_om)
+
+    tComp.addCashflows(CF_collection)
+    return tComp
+
+  def _getCapacityFromDispatchesModel(self, mdl, dComp):
+    """
+    """
+    cashflows_dict = dComp['Cashflows']
+    capacity_dict  = cashflows_dict['Capacity']
+    capacity_str   = capacity_dict['Expressions']
+
+    capacity_driver = operator.attrgetter(capacity_str)(mdl)
+    mult = capacity_dict['Multiplier'] if 'Multiplier' in capacity_dict.keys() else 1
+
+    return capacity_driver, mult
+
+  def _getDispatchFromDispatchesModel(self, mdl, dComp):
+    """
+    """
+    cashflows_dict = dComp['Cashflows']
+    dispatch_dict  = cashflows_dict['Dispatch']
+    dispatch_str   = dispatch_dict['Expressions']
+
+    indeces = np.array([tuple(i) for i in mdl.period_index], dtype="i,i,i")
+    hours = self._dmdl.set_time
+    days  = self._dmdl.set_days
+    years = self._dmdl.set_years
+    time_shape = (len(years), len(days), len())
+    indeces = indeces.reshape(time_shape)
+
+    dispatch_driver = operator.attrgetter(dispatch_str)(mdl)
+    mult = dispatch_dict['Multiplier'] if 'Multiplier' in dispatch_dict.keys() else 1
+
+    return dispatch_driver, mult
+
+  def unfixDof(self, ps, **kwargs):
+    """
+    This function unfixes a few degrees of freedom for optimization.
+    This particular method is taken from the DISPATCHES jupyter notebook
+    found in "dispatches/dispatches/models/nuclear_case/flowsheets"
+    titled "multiperiod_design_pricetaker"
+      @In: ps: Pyomo model for period within a given scenario
+    """
+    # Set defaults in case options are not passed to the function
+    options = kwargs.get("options", {})
+    air_h2_ratio = options.get("air_h2_ratio", 10.76)
+
+    # Unfix the electricity split in the electrical splitter
+    ps.fs.np_power_split.split_fraction["np_to_grid", 0].unfix()
+
+    # Unfix the holdup_previous and outflow variables
+    ps.fs.h2_tank.tank_holdup_previous.unfix()
+    ps.fs.h2_tank.outlet_to_turbine.flow_mol.unfix()
+    ps.fs.h2_tank.outlet_to_pipeline.flow_mol.unfix()
+
+    # Unfix the flowrate of air to the mixer
+    ps.fs.mixer.air_feed.flow_mol.unfix()
+
+    # Add a constraint to maintain the air to hydrogen flow ratio
+    ps.fs.mixer.air_h2_ratio = pyo.Constraint(
+                expr=ps.fs.mixer.air_feed.flow_mol[0] ==
+                      air_h2_ratio * ps.fs.mixer.hydrogen_feed.flow_mol[0])
+
+    # Set bounds on variables. A small non-zero value is set as the lower
+    # bound on molar flowrates to avoid convergence issues
+    ps.fs.pem.outlet.flow_mol[0].setlb(0.001)
+
+    ps.fs.h2_tank.inlet.flow_mol[0].setlb(0.001)
+    ps.fs.h2_tank.outlet_to_turbine.flow_mol[0].setlb(0.001)
+    ps.fs.h2_tank.outlet_to_pipeline.flow_mol[0].setlb(0.001)
+
+    ps.fs.translator.inlet.flow_mol[0].setlb(0.001)
+    ps.fs.translator.outlet.flow_mol[0].setlb(0.001)
+
+    ps.fs.mixer.hydrogen_feed.flow_mol[0].setlb(0.001)
+
+  def buildConnectingConstraints(self, scenario, set_time, set_days, set_years):
+    """
+    This function declares the first-stage variables or design decisions,
+    adds constraints that ensure that the operational variables never exceed their
+    design values, and adds constraints connecting variables at t - 1 and t
+    """
+    # Declare first-stage variables (Design decisions)
+    scenario.pem_capacity = pyo.Var(within=pyo.NonNegativeReals,
+                          doc="Maximum capacity of the PEM electrolyzer (in kW)")
+    scenario.tank_capacity = pyo.Var(within=pyo.NonNegativeReals,
+                          doc="Maximum holdup of the tank (in mol)")
+    scenario.h2_turbine_capacity = pyo.Var(within=pyo.NonNegativeReals,
+                          doc="Maximum power output from the turbine (in W)")
+
+    # Ensure that the electricity to the PEM elctrolyzer does not exceed the PEM capacity
+    @scenario.Constraint(set_time, set_days, set_years)
+    def pem_capacity_constraint(blk, t, d, y):
+      return blk.period[t, d, y].fs.pem.electricity[0] <= scenario.pem_capacity
+
+    # Ensure that the final tank holdup does not exceed the tank capacity
+    @scenario.Constraint(set_time, set_days, set_years)
+    def tank_capacity_constraint(blk, t, d, y):
+      return blk.period[t, d, y].fs.h2_tank.tank_holdup[0] <= scenario.tank_capacity
+
+    # Ensure that the power generated by the turbine does not exceed the turbine capacity
+    @scenario.Constraint(set_time, set_days, set_years)
+    def turbine_capacity_constraint(blk, t, d, y):
+      return (
+          - blk.period[t, d, y].fs.h2_turbine.turbine.work_mechanical[0]
+          - blk.period[t, d, y].fs.h2_turbine.compressor.work_mechanical[0] <=
+          scenario.h2_turbine_capacity  )
+
+    # Connect the initial tank holdup at time t with the final tank holdup at time t - 1
+    @scenario.Constraint(set_time, set_days, set_years)
+    def tank_holdup_constraints(blk, t, d, y):
+      if t == 1:
+        # Each day begins with an empty tank
+        return (
+          blk.period[t, d, y].fs.h2_tank.tank_holdup_previous[0] == 0  )
+      else:
+        # Initial holdup at time t = final holdup at time t - 1
+        return (
+          blk.period[t, d, y].fs.h2_tank.tank_holdup_previous[0] ==
+          blk.period[t - 1, d, y].fs.h2_tank.tank_holdup[0]   )
 
   def _addNonAnticipativityConstraints(self):
     """
@@ -394,9 +600,7 @@ class HERD(MOPED):
     dmdl = self._dmdl
 
     # Define the objective function
-    dmdl.obj = pyo.Objective(expr=sum(dmdl.weights_scenarios[s] * dmdl.scenario[s].npv
-                           for s in dmdl.set_scenarios),
-                  sense=pyo.maximize)
+    dmdl.obj = pyo.Objective(expr=self._metrics['NPV'], sense=pyo.maximize)
 
   def _solveDispatchesModel(self):
     """
@@ -447,107 +651,11 @@ class HERD(MOPED):
     #  X. add non-anticipativity constraints
     #  X. add objective (sum up npvs)
     #  X. run solver from idaes
+    #  10. output to CSV?
 
 
   ############################
   # DISPATCHES methods
-
-  def unfixDof(self, m, **kwargs):
-    """
-    This function unfixes a few degrees of freedom for optimization.
-    This particular method is taken from the DISPATCHES jupyter notebook
-    found in "dispatches/dispatches/models/nuclear_case/flowsheets"
-    titled "multiperiod_design_pricetaker"
-    """
-    # Set defaults in case options are not passed to the function
-    options = kwargs.get("options", {})
-    air_h2_ratio = options.get("air_h2_ratio", 10.76)
-
-    # Unfix the electricity split in the electrical splitter
-    m.fs.np_power_split.split_fraction["np_to_grid", 0].unfix()
-
-    # Unfix the holdup_previous and outflow variables
-    m.fs.h2_tank.tank_holdup_previous.unfix()
-    m.fs.h2_tank.outlet_to_turbine.flow_mol.unfix()
-    m.fs.h2_tank.outlet_to_pipeline.flow_mol.unfix()
-
-    # Unfix the flowrate of air to the mixer
-    m.fs.mixer.air_feed.flow_mol.unfix()
-
-    # Add a constraint to maintain the air to hydrogen flow ratio
-    m.fs.mixer.air_h2_ratio = pyo.Constraint(
-                expr=m.fs.mixer.air_feed.flow_mol[0] ==
-                      air_h2_ratio * m.fs.mixer.hydrogen_feed.flow_mol[0])
-
-    # Set bounds on variables. A small non-zero value is set as the lower
-    # bound on molar flowrates to avoid convergence issues
-    m.fs.pem.outlet.flow_mol[0].setlb(0.001)
-
-    m.fs.h2_tank.inlet.flow_mol[0].setlb(0.001)
-    m.fs.h2_tank.outlet_to_turbine.flow_mol[0].setlb(0.001)
-    m.fs.h2_tank.outlet_to_pipeline.flow_mol[0].setlb(0.001)
-
-    m.fs.translator.inlet.flow_mol[0].setlb(0.001)
-    m.fs.translator.outlet.flow_mol[0].setlb(0.001)
-
-    m.fs.mixer.hydrogen_feed.flow_mol[0].setlb(0.001)
-
-  def buildConnectingConstraints(self, m, set_time, set_days, set_years):
-    """
-    This function declares the first-stage variables or design decisions,
-    adds constraints that ensure that the operational variables never exceed their
-    design values, and adds constraints connecting variables at t - 1 and t
-    """
-    # Declare first-stage variables (Design decisions)
-    m.pem_capacity = pyo.Var(within=pyo.NonNegativeReals,
-                          doc="Maximum capacity of the PEM electrolyzer (in kW)")
-    m.tank_capacity = pyo.Var(within=pyo.NonNegativeReals,
-                          doc="Maximum holdup of the tank (in mol)")
-    m.h2_turbine_capacity = pyo.Var(within=pyo.NonNegativeReals,
-                                doc="Maximum power output from the turbine (in W)")
-
-    # Ensure that the electricity to the PEM elctrolyzer does not exceed the PEM capacity
-    @m.Constraint(set_time, set_days, set_years)
-    def pem_capacity_constraint(blk, t, d, y):
-      return blk.period[t, d, y].fs.pem.electricity[0] <= m.pem_capacity
-
-    # Ensure that the final tank holdup does not exceed the tank capacity
-    @m.Constraint(set_time, set_days, set_years)
-    def tank_capacity_constraint(blk, t, d, y):
-      return blk.period[t, d, y].fs.h2_tank.tank_holdup[0] <= m.tank_capacity
-
-    # Ensure that the power generated by the turbine does not exceed the turbine capacity
-    @m.Constraint(set_time, set_days, set_years)
-    def turbine_capacity_constraint(blk, t, d, y):
-      return (
-          - blk.period[t, d, y].fs.h2_turbine.turbine.work_mechanical[0]
-          - blk.period[t, d, y].fs.h2_turbine.compressor.work_mechanical[0] <=
-          m.h2_turbine_capacity
-      )
-
-    # Connect the initial tank holdup at time t with the final tank holdup at time t - 1
-    @m.Constraint(set_time, set_days, set_years)
-    def tank_holdup_constraints(blk, t, d, y):
-      if t == 1:
-        # Each day begins with an empty tank
-        return (
-          blk.period[t, d, y].fs.h2_tank.tank_holdup_previous[0] == 0
-        )
-      else:
-        # Initial holdup at time t = final holdup at time t - 1
-        return (
-          blk.period[t, d, y].fs.h2_tank.tank_holdup_previous[0] ==
-          blk.period[t - 1, d, y].fs.h2_tank.tank_holdup[0]
-        )
-
-
-  # def _identifyTEALDrivers(self, m):
-  #   """
-  #     Identify the correct DISPATCHES expressions to use as TEAL drivers
-  #   """
-
-  #   a = 1
-
   def append_costs_and_revenue(self, m, ps, LMP):
     """
     ps: Object containing information on sets and parameters

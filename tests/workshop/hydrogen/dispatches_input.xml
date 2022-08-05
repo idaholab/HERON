@@ -54,7 +54,7 @@
         <!-- construction cost -->
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
           <driver>
-            <variable>npp_capacity</variable>
+            <fixed_value>1e3</fixed_value>
           </driver>
           <reference_price>
             <fixed_value>0</fixed_value> <!-- existing NPP, CAPEX=0? -->

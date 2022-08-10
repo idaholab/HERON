@@ -40,7 +40,7 @@ dispatches_model_component_meta={
       "Consumes": {},
       "Cashflows":{
         "Dispatch":{
-          "Expressions": 'np_power_split.np_to_grid_port.electricity'
+          "Expressions": ['np_power_split.np_to_grid_port.electricity']
         },
       },
     },
@@ -52,7 +52,7 @@ dispatches_model_component_meta={
           "Expressions": 'pem_capacity',
         },
         "Dispatch":{
-          "Expressions": ['pem.electricity'],
+          "Expressions": ['fs.pem.electricity'],
         },
       },
     },
@@ -64,7 +64,7 @@ dispatches_model_component_meta={
           "Expressions": 'tank_capacity',
         },
         "Dispatch":{
-          "Expressions": ['h2_tank.outlet_to_pipeline.flow_mol'],
+          "Expressions": ['fs.h2_tank.outlet_to_pipeline.flow_mol'],
         },
       },
     },
@@ -76,8 +76,8 @@ dispatches_model_component_meta={
           "Expressions": 'h2_turbine_capacity',
         },
         "Dispatch":{
-          "Expressions": ['h2_turbine.turbine.work_mechanical',
-            'h2_turbine.compressor.work_mechanical'],
+          "Expressions": ['fs.h2_turbine.turbine.work_mechanical',
+            'fs.h2_turbine.compressor.work_mechanical'],
           "Multiplier":  [-1, -1]
         },
       }
@@ -85,10 +85,24 @@ dispatches_model_component_meta={
     "electricity_market":{
       "Demands":  'electricity',
       "Consumes": {},
+      "Cashflows":{
+        "Dispatch":{
+          "Expressions": ['fs.np_power_split.np_to_grid_port.electricity',
+            'fs.h2_turbine.turbine.work_mechanical',
+            'fs.h2_turbine.compressor.work_mechanical'],
+          "Multiplier":  [-1, 1, 1]
+        },
+      }
     },
     "h2_market":{
       "Demands":  'hydrogen',
       "Consumes": {},
+      "Cashflows":{
+        "Dispatch":{
+          "Expressions": ['fs.h2_tank.outlet_to_pipeline.flow_mol'],
+          "Multiplier":  [-1]
+        },
+      },
     },
   },
 }
@@ -108,6 +122,7 @@ class HERD(MOPED):
     self._dmdl = None # Pyomo model specific to DISPATCHES (different from _m)
     self._dispatches_model_template = None # Template of DISPATCHES Model for HERON comparison
     self._metrics = None # TEAL metrics, summed expressions
+    self._demand_meta = {}
 
   def buildComponentMeta(self):
     """
@@ -125,6 +140,30 @@ class HERD(MOPED):
         self.getComponentActionMeta(comp, sto, "Stores")
       for dem in getattr(comp, "_demands"): # NOTE Cannot handle components that demand multiple things
         self.getComponentActionMeta(comp, dem, "Demands")
+
+  def _getDemandData(self):
+    """
+      Builds cashflow meta used in cashflow component construction
+      @ In, None
+      @ Out, None
+    """
+    for comp in self._components:
+      if comp.name.split('_')[-1] == 'market':
+        # NOTE: only considering one resource in demand
+        demand = getattr(comp, "_demands")[0]
+        demand_cap  = getattr(demand, "_capacity")
+        demand_type = demand_cap.type
+        demand_vp   = getattr(demand_cap, "_vp")
+
+        if demand_type == "FixedValue":
+          demand_signal  = getattr(demand_vp, "_parametric") * -1
+
+        elif demand_type == 'SyntheticHistory':
+          signal = getattr(demand_vp, "_var_name")
+          demand_signal = self.loadSyntheticHistory(signal, 1)
+
+        self._demand_meta[comp.name] = {}
+        self._demand_meta[comp.name]["Demand"] = demand_signal
 
   def getComponentActionMeta(self, comp, action, action_type=None):
     """
@@ -343,6 +382,9 @@ class HERD(MOPED):
                          stochastic=True,
                          verbose=False)
 
+    # list of initialized TEAL components; filters out HERON components that don't have cash flows
+    teal_components, heron_components = self._initializeCashFlows()
+
     for s in dmdl.set_scenarios:
       # Build the connecting constraints
       self.buildConnectingConstraints(dmdl.scenario[s],
@@ -351,48 +393,66 @@ class HERD(MOPED):
                                   set_years=dmdl.set_years)
 
       # Append cash flow expressions
-      for hComp in self._components:
+      for hComp, tComp in zip(heron_components, teal_components): #this zip might be danger
         if hComp.name not in self._dispatches_model_template.keys():
           continue # skip components within HERON that are NOT defined in DISPATCHES template
-        tComp = self._createCashflowsForDispatches(dmdl.scenario[s], hComp,
+
+        self._createCashflowsForDispatches(dmdl.scenario[s], hComp, tComp, s,
                                 fullModel=dmdl,
                                 LMP=dmdl.LMP[s])
-        self._cf_components.append(tComp)
 
       # Hydrogen demand constraint.
       # Divide the RHS by the molecular mass to convert kg/s to mol/s
       scenario = dmdl.scenario[s]
       @scenario.Constraint(dmdl.set_time, dmdl.set_days, dmdl.set_years)
       def hydrogen_demand_constraint(blk, t, d, y):
-        return blk.period[t, d, y].fs.h2_tank.outlet_to_pipeline.flow_mol[0] <= 3 / 2.016e-3 #dmdl.h2_demand / 2.016e-3
+        return blk.period[t, d, y].fs.h2_tank.outlet_to_pipeline.flow_mol[0] \
+                  <= self._demand_meta['h2_market']["Demand"] / 2.016e-3 # convert from kg to mol
 
+    self._cf_components.extend(teal_components)
     self._metrics = RunCashFlow.run(self._econ_settings, self._cf_components, {}, pyomoVar=True)
 
-  def _createCashflowsForDispatches(self, scenario, hComp, fullModel, LMP):
+  def _initializeCashFlows(self):
+
+    teal_components  = []
+    heron_components = []
+    for hComp in self._components:
+      if hComp._economics._cash_flows == [] or hComp.name not in self._dispatches_model_template.keys():
+        continue
+      # blank TEAL cash flow
+      tealComp   = CashFlows.Component()
+      tealParams = {"name": hComp.name} # beginning of params dict for TEAL
+
+      self.raiseADebug(f'Setting component lifespan for {hComp.name}')
+      tealParams['Life_time'] = self._cf_meta[hComp.name]['Lifetime']
+      tealComp.setParams(tealParams)
+      teal_components.append(tealComp)
+
+      heron_components.append(hComp)
+    return teal_components, heron_components
+
+  def _createCashflowsForDispatches(self, scenario, hComp, tComp, scenario_ind, fullModel, LMP):
     """
       Identify the correct DISPATCHES expressions to use as TEAL drivers
     """
-    # blank TEAL cash flow
-    tComp   = CashFlows.Component()
-    tParams = {"name": hComp.name} # beginning of params dict for TEAL
-
     # collection of cash flows for given HERON component
     CF_collection = []
     CF_meta = self._cf_meta[hComp.name]
-    # projectLife = operator.attrgetter("_case._global_econ")(self)['ProjectTime']
 
     # loop through all cashflows for given component
     for cf, value in CF_meta.items():
       if cf == 'Lifetime':
-        self.raiseADebug(f'Setting component lifespan for {hComp.name}')
-        tParams['Life_time'] = value
-        tComp.setParams(tParams)
+        continue
 
       elif cf == 'Capex':
+        # only one capex for all scenarios
+        if scenario_ind > 0:
+          continue
         # Capex is the most complex to handle generally due to amort
         self.raiseADebug(f'Generating Capex cashflow for {hComp.name}')
         capex_params = CF_meta['Capex Params']
         capex_driver = CF_meta['Capex Driver']
+
         # getting capacity Pyomo object if capex_driver is not defined
         if capex_driver is None:
           capex_driver, mult = self._getCapacityFromDispatchesModel(scenario,
@@ -411,18 +471,23 @@ class HERD(MOPED):
           capex.setAmortization('MACRS', depreciation)
           amorts = getattr(tComp, "_createDepreciation")(capex)
           CF_collection.extend(amorts)
+        print(f"----{hComp.name}---- Dispatch Driver : {capex_driver}")
 
       elif cf == "Yearly":
+        # only one capex for all scenarios
+        if scenario_ind > 0:
+          continue
         self.raiseADebug(f'Generating Yearly OM cashflow for {hComp.name}')
         yearly_params = CF_meta['Yearly Params']
         yearly_driver = CF_meta['Yearly Driver']
         if yearly_driver is None:
-          # assuming that yearly fixed OM based on capacity
+          # assuming that yearly fixed OM is based on capacity
           yearly_driver, mult = self._getCapacityFromDispatchesModel(scenario,
                                               self._dispatches_model_template[hComp.name])
 
         yearly = self.createRecurringYearly(tComp, value, yearly_driver, yearly_params)
         CF_collection.append(yearly)
+        print(f"----{hComp.name}---- Yearly Driver : {yearly_driver}")
 
       elif cf == "Dispatching":
         # Here value can be a np.array as well for ARMA grid pricing
@@ -430,23 +495,19 @@ class HERD(MOPED):
         dispatching_params = CF_meta['Dispatching Params']
         dispatch_driver    = CF_meta['Dispatch Driver']
         if dispatch_driver is None:
-          # these should return lists
-          dispatch_driver, mult = self._getDispatchFromDispatchesModel(scenario,
-                                            self._dispatches_model_template[hComp.name])
+          # these should return nested lists
+          dispatch_driver = self._getDispatchFromDispatchesModel(scenario, hComp,
+                                        self._dispatches_model_template[hComp.name])
+        # check for alpha as a time series
+        if isinstance(value, dict):
+          value = self.reshapeAlpha(value)
 
-          # if isinstance(value, dict):
-          #   for real in range(self._case._num_samples):
-          #     alpha_realization = self.reshapeAlpha(value)
-          #     var_om = self.createRecurringHourly(tComp, alpha_realization[real, :, :], dispatch[real, :, :], real, dispatching_params)
-          #     CF_collection.append(var_om)
-          # else:
-          #   # Necessary to create a unique cash flow for each dispatch realization
-          #   for real in range(self._case._num_samples):
-          #     var_om = self.createRecurringHourly(tComp, value, dispatch[real, :, :], real, dispatching_params)
-          #     CF_collection.append(var_om)
+        hourly = self.createRecurringHourly(tComp, value,
+                                        dispatch_driver, scenario_ind, dispatching_params)
+        CF_collection.append(hourly)
+        print(f"----{hComp.name}---- Dispatch Driver : {dispatch_driver[2,8]}")
 
     tComp.addCashflows(CF_collection)
-    return tComp
 
   def _getCapacityFromDispatchesModel(self, mdl, dComp):
     """
@@ -460,24 +521,100 @@ class HERD(MOPED):
 
     return capacity_driver, mult
 
-  def _getDispatchFromDispatchesModel(self, mdl, dComp):
+  def _getDispatchFromDispatchesModel(self, mdl, hComp, dComp):
     """
     """
+    # project life time + 1, first year has to be 0 for recurring cash flows
+    projectLife = int( operator.attrgetter("_case._global_econ")(self)['ProjectTime'] )
+    projectLife += 1
+
+    # time indeces for HERON/TEAL
+    n_hours = len(self._dmdl.set_time)
+    n_days  = len(self._dmdl.set_days)
+    n_years = len(self._dmdl.set_years)
+    n_hours_per_year = n_hours * n_days # sometimes number of days refers to clusters < 365
+
+    # FIXME: this check should happen upstream somewhere? does HERON check?
+    if n_years < projectLife - 1:
+      raise IOError("Project Life exceeds number of years in available dispatch")
+
+    # template array for holding dispatch Pyomo expressions/objects
+    dispatch_array = np.zeros((projectLife, n_hours_per_year), dtype=object)
+    dispatch_type = self._component_meta[hComp.name]['Dispatch']
+
+    # TODO: there should be a more robust check of dispatch type, further upstream
+    if dispatch_type == "fixed":
+      self.raiseADebug("Dispatch type is fixed, this should be set through fix/unfix methods")
+      return None, None
+
+    # extract Pyomo expressions from DISPATCHES objects
     cashflows_dict = dComp['Cashflows']
     dispatch_dict  = cashflows_dict['Dispatch']
-    dispatch_str   = dispatch_dict['Expressions']
+    dispatch_strs  = dispatch_dict['Expressions']
 
+    # time indeces for DISPATCHES, as array of tuples
     indeces = np.array([tuple(i) for i in mdl.period_index], dtype="i,i,i")
-    hours = self._dmdl.set_time
-    days  = self._dmdl.set_days
-    years = self._dmdl.set_years
-    time_shape = (len(years), len(days), len())
+    time_shape = (n_years, n_hours_per_year) # reshaping the tuples array to match HERON dispatch
     indeces = indeces.reshape(time_shape)
 
-    dispatch_driver = operator.attrgetter(dispatch_str)(mdl)
-    mult = dispatch_dict['Multiplier'] if 'Multiplier' in dispatch_dict.keys() else 1
+    # extra multipliers specific to DISPATCHES (e.g., have to multiply turbine work done by -1)
+    dMults = dispatch_dict['Multiplier'] \
+                if 'Multiplier' in dispatch_dict.keys() \
+                else np.ones(len(dispatch_strs)) # defaults to just 1
 
-    return dispatch_driver, mult
+    for pyear in range(projectLife):
+      if pyear == 0:
+        continue
+
+      for time in range(n_hours_per_year):
+        ind = tuple(indeces[pyear-1,time])
+        # looping through all DISPATCHES variables pertaining to this specific dispatch
+        #   e.g., turbine costs due to work done by turbine + compressor, separate variables
+        dispatch_driver = 0
+        for ds, dStr in enumerate(dispatch_strs):
+          dispatch_driver += operator.attrgetter(dStr)(mdl.period[ind])[0] * dMults[ds]
+
+        # getting weights for each day/cluster
+        dy, yr = ind[1:]
+        weight = 1 / self._dmdl.weights_days[yr][dy]  # extracting weight for year + day
+
+        # storing individual Pyomo dispatch
+        dispatch_array[pyear, time] = dispatch_driver * weight
+
+    return dispatch_array
+
+  def reshapeAlpha(self, alpha):
+    """
+      This is different because DISPATCHES wants LMP signal in a different format.
+    """
+    projectLife = int( operator.attrgetter("_case._global_econ")(self)['ProjectTime'] )
+    projectLife += 1
+
+    signal = alpha['signals']
+    set_scenarios = alpha['sets']['set_scenarios']
+    set_years     = alpha['sets']['set_years']
+    set_days     = alpha['sets']['set_days']
+    set_time     = alpha['sets']['set_time']
+
+    # time indeces for HERON/TEAL
+    n_hours = len(alpha['sets']['set_time'])
+    n_days  = len(alpha['sets']['set_days'])
+    n_scenarios = len(set_scenarios)
+    n_hours_per_year = n_hours * n_days # sometimes number of days refers to clusters < 365
+
+    # plus 1 to year term to allow for 0 recurring costs during build year
+    reshaped_alpha = np.zeros([n_scenarios, projectLife, n_hours_per_year])
+
+    for real in set_scenarios:
+      # it necessary to have alpha be [real,year,hour] instead of [real,year,cluster,hour]
+      realized_alpha = [[signal[real][y][d][t] \
+                                    for t in set_time
+                                      for d in set_days]
+                                        for y in set_years] #shape here is [year,hour]
+      # first column of 2nd axis is 0 for project year 0
+      reshaped_alpha[real,1:,:] = realized_alpha
+
+    return reshaped_alpha
 
   def unfixDof(self, ps, **kwargs):
     """
@@ -504,8 +641,8 @@ class HERD(MOPED):
 
     # Add a constraint to maintain the air to hydrogen flow ratio
     ps.fs.mixer.air_h2_ratio = pyo.Constraint(
-                expr=ps.fs.mixer.air_feed.flow_mol[0] ==
-                      air_h2_ratio * ps.fs.mixer.hydrogen_feed.flow_mol[0])
+                expr=ps.fs.mixer.air_feed.flow_mol[int(0)] ==
+                      air_h2_ratio * ps.fs.mixer.hydrogen_feed.flow_mol[int(0)])
 
     # Set bounds on variables. A small non-zero value is set as the lower
     # bound on molar flowrates to avoid convergence issues
@@ -537,19 +674,19 @@ class HERD(MOPED):
     # Ensure that the electricity to the PEM elctrolyzer does not exceed the PEM capacity
     @scenario.Constraint(set_time, set_days, set_years)
     def pem_capacity_constraint(blk, t, d, y):
-      return blk.period[t, d, y].fs.pem.electricity[0] <= scenario.pem_capacity
+      return blk.period[t, d, y].fs.pem.electricity[int(0)] <= scenario.pem_capacity
 
     # Ensure that the final tank holdup does not exceed the tank capacity
     @scenario.Constraint(set_time, set_days, set_years)
     def tank_capacity_constraint(blk, t, d, y):
-      return blk.period[t, d, y].fs.h2_tank.tank_holdup[0] <= scenario.tank_capacity
+      return blk.period[t, d, y].fs.h2_tank.tank_holdup[int(0)] <= scenario.tank_capacity
 
     # Ensure that the power generated by the turbine does not exceed the turbine capacity
     @scenario.Constraint(set_time, set_days, set_years)
     def turbine_capacity_constraint(blk, t, d, y):
       return (
-          - blk.period[t, d, y].fs.h2_turbine.turbine.work_mechanical[0]
-          - blk.period[t, d, y].fs.h2_turbine.compressor.work_mechanical[0] <=
+          - blk.period[t, d, y].fs.h2_turbine.turbine.work_mechanical[int(0)]
+          - blk.period[t, d, y].fs.h2_turbine.compressor.work_mechanical[int(0)] <=
           scenario.h2_turbine_capacity  )
 
     # Connect the initial tank holdup at time t with the final tank holdup at time t - 1
@@ -558,12 +695,12 @@ class HERD(MOPED):
       if t == 1:
         # Each day begins with an empty tank
         return (
-          blk.period[t, d, y].fs.h2_tank.tank_holdup_previous[0] == 0  )
+          blk.period[t, d, y].fs.h2_tank.tank_holdup_previous[int(0)] == 0  )
       else:
         # Initial holdup at time t = final holdup at time t - 1
         return (
-          blk.period[t, d, y].fs.h2_tank.tank_holdup_previous[0] ==
-          blk.period[t - 1, d, y].fs.h2_tank.tank_holdup[0]   )
+          blk.period[t, d, y].fs.h2_tank.tank_holdup_previous[int(0)] ==
+          blk.period[t - 1, d, y].fs.h2_tank.tank_holdup[int(0)]   )
 
   def _addNonAnticipativityConstraints(self):
     """
@@ -596,11 +733,7 @@ class HERD(MOPED):
     """
       Adding objective function to model
     """
-    # temporary object pointing to model
-    dmdl = self._dmdl
-
-    # Define the objective function
-    dmdl.obj = pyo.Objective(expr=self._metrics['NPV'], sense=pyo.maximize)
+    self._dmdl.obj = pyo.Objective(expr=self._metrics['NPV'], sense=pyo.maximize)
 
   def _solveDispatchesModel(self):
     """
@@ -612,6 +745,10 @@ class HERD(MOPED):
     # Solve the optimization problem
     solver.solve(self._dmdl, tee=True)
 
+  def _exportResults(self):
+
+    mdl = self._dmdl
+
   def run(self):
     """
       Runs the workflow
@@ -621,16 +758,18 @@ class HERD(MOPED):
     # original workflow from MOPED
     self.buildEconSettings()  # MOPED method
     self.buildComponentMeta() # overloaded method
-    self.buildCashflowMeta()  # overloaded method
+    self.buildCashflowMeta()  # MOPED method
     self.collectResources()   # MOPED method (TODO: needed?)
 
     # new workflow for DISPATCHES
     self._checkDispatchesCompatibility()
+    self._getDemandData()
     self._createDispatchesPyomoModel()
     self._buildDispatchesModel()
     self._addNonAnticipativityConstraints()
     self._addObjective()
     self._solveDispatchesModel()
+    self._exportResults()
 
     # now we need to import DISPATCHES
     #  X. load in the synthetic histories to DISPATCHES
@@ -641,118 +780,18 @@ class HERD(MOPED):
     #      X. point to existing flowsheet
     #      X. point to existing init/fix method
     #      X. **NEW** overload unfix method??
-    #  6. run a loop over scenarios
+    #  X. run a loop over scenarios
     #      X. build constraints (**NEW** import some params from HERON??) per scenario
-    #      b. run append_costs
-    #           i.  gather all required Pyomo expressions from DISPATCHES
-    #           ii. gather all required alphas, multipliers from HERON Input
-    #           iii. combine both into TEAL cashflows by using Pyomo expressions as the drivers
-    #                - loop through DISPATCHES metadata?
+    #      X. run append_costs
+    #           X.  gather all required Pyomo expressions from DISPATCHES
+    #           X. gather all required alphas, multipliers from HERON Input
+    #           X. combine both into TEAL cashflows by using Pyomo expressions as the drivers
+    #                X. loop through DISPATCHES metadata?
     #  X. add non-anticipativity constraints
     #  X. add objective (sum up npvs)
     #  X. run solver from idaes
     #  10. output to CSV?
 
+    # check that NPV summed expression has all correct values
 
-  ############################
-  # DISPATCHES methods
-  def append_costs_and_revenue(self, m, ps, LMP):
-    """
-    ps: Object containing information on sets and parameters
-    LMP: Dictionary containing the LMP data
-    """
-
-    set_time = ps.set_time             # Set of hours
-    set_days = ps.set_days             # Set of days/clusters
-    set_years = ps.set_years           # Set of years
-    weights_days = ps.weights_days     # Weights associated with each cluster
-
-    h2_sp = 3                # Selling price of hydrogen
-    plant_life = 23         # Plant lifetime
-    tax_rate = 0.2             # Corporate tax rate
-    discount_rate = 0.09   # Discount rate
-
-    years_vec = [y - set_years[0] + 1 for y in set_years]
-    years_vec.append(plant_life + 1)
-    weights_years = {y: sum(1 / (1 + discount_rate) ** i
-                            for i in range(years_vec[j], years_vec[j + 1]))
-                      for j, y in enumerate(set_years)}
-
-    # PEM CAPEX: $1630/kWh and pem_capacity is in kW,
-    # Tank CAPEX: $29/kWh, the LHV of hydrogen is 33.3 kWh/kg,
-    # the molecular mass of hydrogen is 2.016e-3 kg/mol and
-    # tank_capacity is in moles
-    # Turbine CAPEX: $947/kWh and turbine_capacity is in W
-    m.capex = pyo.Expression(
-      expr=(1630 * m.pem_capacity +
-            (29 * 33.3 * 2.016e-3) * m.tank_capacity +
-            (947 / 1000) * m.h2_turbine_capacity),
-      doc="Total capital cost (in USD)"
-    )
-
-    # Fixed O&M of PEM: $47.9/kW
-    # Fixed O&M of turbine: $7/kW
-    @m.Expression(set_years,
-                  doc="Fixed O&M cost per year (in USD)")
-    def fixed_om_cost(blk, y):
-      return (
-          47.9 * m.pem_capacity + 7e-3 * m.h2_turbine_capacity
-      )
-
-    # Variable O&M: PEM: $1.3/MWh and turbine: $4.25/MWh
-    @m.Expression(set_years,
-                  doc="Total variable O&M cost per year (in USD)")
-    def variable_om_cost(blk, y):
-      return (
-        (1.3 * 1e-3) * sum(weights_days[y][d] * blk.period[t, d, y].fs.pem.electricity[0]
-                            for t in set_time for d in set_days) +
-        (4.25 * 1e-6) * sum(weights_days[y][d] * (
-                            - blk.period[t, d, y].fs.h2_turbine.turbine.work_mechanical[0]
-                            - blk.period[t, d, y].fs.h2_turbine.compressor.work_mechanical[0])
-                            for t in set_time for d in set_days)
-      )
-
-    @m.Expression(set_years,
-                  doc="Revenue generated by selling electricity per year (in USD)")
-    def electricity_revenue(blk, y):
-      return (
-        sum(weights_days[y][d] * LMP[y][d][t] *
-            (blk.period[t, d, y].fs.np_power_split.np_to_grid_port.electricity[0] * 1e-3 -
-              blk.period[t, d, y].fs.h2_turbine.turbine.work_mechanical[0] * 1e-6 -
-              blk.period[t, d, y].fs.h2_turbine.compressor.work_mechanical[0] * 1e-6)
-            for t in set_time for d in set_days)
-      )
-
-    @m.Expression(set_years,
-                  doc="Revenue generated by selling hydrogen per year (in USD)")
-    def h2_revenue(blk, y):
-      return (
-        h2_sp * 2.016e-3 * 3600 *
-        sum(weights_days[y][d] *
-            blk.period[t, d, y].fs.h2_tank.outlet_to_pipeline.flow_mol[0]
-            for t in set_time for d in set_days)
-      )
-
-    @m.Expression(set_years,
-                  doc="Depreciation value per year (in USD)")
-    def depreciation(blk, y):
-      return (
-        blk.capex / plant_life
-      )
-
-    @m.Expression(set_years,
-                  doc="Net profit per year (in USD)")
-    def net_profit(blk, y):
-      return (
-        blk.depreciation[y] + (1 - tax_rate) * (+ blk.h2_revenue[y]
-                                                + blk.electricity_revenue[y]
-                                                - blk.fixed_om_cost[y]
-                                                - blk.variable_om_cost[y]
-                                                - blk.depreciation[y])
-      )
-
-    m.npv = pyo.Expression(
-      expr=sum(weights_years[y] * m.net_profit[y] for y in set_years) - m.capex,
-      doc="Net present value (in USD)"
-    )
 

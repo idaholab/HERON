@@ -10,7 +10,7 @@
     <classesTested>HERON</classesTested>
   </TestInfo>
 
-  <Case name="dispatches_hydrogen_case">
+  <Case name="trying_something">
     <mode>opt</mode>
     <verbosity>all</verbosity>
     <num_arma_samples>5</num_arma_samples>
@@ -51,15 +51,15 @@
 
       <economics>
         <lifetime>31</lifetime>
-        <!-- construction cost -->
+        <!--
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
           <driver>
-            <fixed_value>1e3</fixed_value>
+            <variable>npp_capacity</variable>
           </driver>
           <reference_price>
-            <fixed_value>0</fixed_value> <!-- existing NPP, CAPEX=0? -->
+            <fixed_value>0</fixed_value>
           </reference_price>
-          <!-- <depreciate>15</depreciate> -->
+          <depreciate>15</depreciate>
         </CashFlow>
 
         <CashFlow name="var_OM" type="repeating" taxable='True' inflation='none' mult_target='False'>
@@ -68,9 +68,10 @@
             <multiplier>-1</multiplier>
           </driver>
           <reference_price>
-            <fixed_value>25</fixed_value> <!-- ballpark $25/MWh -->
+            <fixed_value>25</fixed_value>
           </reference_price>
         </CashFlow>
+        -->
       </economics>
 
     </Component>
@@ -246,7 +247,7 @@
     </Component>
 
     <Component name="electricity_market">
-      <demands resource="electricity" dispatch="fixed">
+      <demands resource="electricity" dispatch="dependent">
         <capacity>
           <ARMA variable="TOTALLOAD">synth</ARMA>
           <multiplier>-1</multiplier>
@@ -255,18 +256,39 @@
 
       <economics>
         <lifetime>1</lifetime>
+        <CashFlow name="electricity_revenue" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>electricity</activity>
+            <multiplier>1</multiplier>
+          </driver>
+          <reference_price>
+            <!-- ballpark $25/MWh -->
+            <ARMA variable="TOTALLOAD">LMP</ARMA>
+            <multiplier>1</multiplier>
+          </reference_price>
+        </CashFlow>
       </economics>
     </Component>
 
     <Component name="h2_market">
-      <demands resource="hydrogen" dispatch="fixed">
+      <demands resource="hydrogen" dispatch="dependent">
         <capacity>
-          <fixed_value> -1000 </fixed_value>
+          <fixed_value> -1 </fixed_value>
         </capacity>
       </demands>
 
       <economics>
         <lifetime>1</lifetime>
+        <CashFlow name="h2_revenue" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>hydrogen</activity>
+            <multiplier>1</multiplier>
+          </driver>
+          <reference_price>
+            <!-- ballpark $3/kg -->
+            <fixed_value>3</fixed_value>
+          </reference_price>
+        </CashFlow>
       </economics>
     </Component>
 
@@ -274,6 +296,7 @@
 
   <DataGenerators>
     <ARMA name='synth' variable="TOTALLOAD">../arma_202112_nyiso_def.pk</ARMA>
+    <ARMA name='LMP' variable="TOTALLOAD">../arma_202112_nyiso_def.pk</ARMA>
   </DataGenerators>
 
 </HERON>

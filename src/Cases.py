@@ -7,14 +7,11 @@
 from __future__ import unicode_literals, print_function
 import os
 import sys
-import copy
 import importlib
 
 import numpy as np
 
 from HERON.src.base import Base
-from HERON.src import Components
-from HERON.src import Placeholders
 
 from HERON.src.dispatch.Factory import known as known_dispatchers
 from HERON.src.dispatch.Factory import get_class as get_dispatcher
@@ -28,7 +25,7 @@ from HERON.src.validators.Factory import get_class as get_validator
 import HERON.src._utils as hutils
 framework_path = hutils.get_raven_loc()
 sys.path.append(framework_path)
-from ravenframework.utils import InputData, InputTypes, xmlUtils
+from ravenframework.utils import InputData, InputTypes
 
 class Case(Base):
   """
@@ -36,23 +33,28 @@ class Case(Base):
     TODO this case is for "sweep-opt", need to make a superclass for generic
   """
 
-  # metrics that can be used for objective in optimization mapped from RAVEN name to result name (prefix)
-  # 'default' is the default type of optimization (min/max)
-  optimization_metrics_mapping = {'expectedValue': {'prefix': 'mean', 'default': 'max'},
-                                  'minimum': {'prefix': 'min', 'default': 'max'},
-                                  'maximum': {'prefix': 'max', 'default': 'max'},
-                                  'median': {'prefix': 'med', 'default': 'max'},
-                                  'variance': {'prefix': 'var', 'default': 'min'},
-                                  'sigma': {'prefix': 'std', 'default': 'min'},
-                                  'percentile': {'prefix': 'perc', 'default': 'max'},
-                                  'variationCoefficient': {'prefix': 'varCoeff', 'default': 'min'},
-                                  'skewness': {'prefix': 'skew', 'default': 'min'},
-                                  'kurtosis': {'prefix': 'kurt', 'default': 'min'},
-                                  'sharpeRatio': {'prefix': 'sharpe', 'default': 'max'},
-                                  'sortinoRatio': {'prefix': 'sortino', 'default': 'max'},
-                                  'gainLossRatio': {'prefix': 'glr', 'default': 'max'},
-                                  'expectedShortfall': {'prefix': 'es', 'default': 'min'},
-                                  'valueAtRisk': {'prefix': 'VaR', 'default': 'min'}}
+  # metrics that can be used for objective in optimization or returned with results
+  # each metric contains a dictionary with the following keys:
+  # 'prefix' - printed result name
+  # 'optimization_default' - 'min' or 'max' for optimization
+  # 'percent' (only for percentile) - list of percentiles to return
+  # 'threshold' (only for sortinoRatio, gainLossRatio, expectedShortfall, valueAtRisk) - threshold value for calculation
+  metrics_mapping = {'expectedValue': {'prefix': 'mean', 'optimization_default': 'max'},
+                     'minimum': {'prefix': 'min', 'optimization_default': 'max'},
+                     'maximum': {'prefix': 'max', 'optimization_default': 'max'},
+                     'median': {'prefix': 'med', 'optimization_default': 'max'},
+                     'variance': {'prefix': 'var', 'optimization_default': 'min'},
+                     'sigma': {'prefix': 'std', 'optimization_default': 'min'},
+                     'percentile': {'prefix': 'perc', 'optimization_default': 'max', 'percent': ['5', '95']},
+                     'variationCoefficient': {'prefix': 'varCoeff', 'optimization_default': 'min'},
+                     'skewness': {'prefix': 'skew', 'optimization_default': 'min'},
+                     'kurtosis': {'prefix': 'kurt', 'optimization_default': 'min'},
+                     'samples': {'prefix': 'samp'},
+                     'sharpeRatio': {'prefix': 'sharpe', 'optimization_default': 'max'},
+                     'sortinoRatio': {'prefix': 'sortino', 'optimization_default': 'max', 'threshold': 'median'},
+                     'gainLossRatio': {'prefix': 'glr', 'optimization_default': 'max', 'threshold': 'median'},
+                     'expectedShortfall': {'prefix': 'es', 'optimization_default': 'min', 'threshold': ['0.05']},
+                     'valueAtRisk': {'prefix': 'VaR', 'optimization_default': 'min', 'threshold': ['0.05']}}
 
   #### INITIALIZATION ####
   @classmethod
@@ -78,7 +80,7 @@ class Case(Base):
                                                   functions by using \texttt{meta['HERON']['Case'].get_labels()}.""")
     label_specs.addParam(name='name',param_type=InputTypes.StringType,
                          descr=r"""the generalized name of the identifier.
-                         Example: ``<label name="state">Idaho</label>''""")
+                         Example: ``$<$label name="state"$>$Idaho$<$/label$>$''""")
     input_specs.addSub(label_specs)
 
     mode_options = InputTypes.makeEnumType('ModeOptions', 'ModeOptionsType', ['opt', 'sweep'])
@@ -101,6 +103,7 @@ class Case(Base):
 
     workflow_options = InputTypes.makeEnumType('WorkflowOptions', 'WorkflowOptionsType',
                                                ['standard', 'MOPED', 'combined', 'DISPATCHES'])
+
     desc_workflow_options = r"""determines the desired workflow(s) for the HERON analysis. \default{standard}.
                             If ``standard'' runs HERON as usual (writes outer/inner for RAVEN workflow).
                             If ``MOPED'' runs monolithic solver MOPED using the information in xml input.
@@ -236,9 +239,9 @@ class Case(Base):
 
     # optimization settings
     optimizer = InputData.parameterInputFactory('optimization_settings',
-                                                descr=r"""node that defines the settings to be used for the optimizer in
+                                                descr=r"""This node defines the settings to be used for the optimizer in
                                                 the ``outer'' run.""")
-    metric_options = InputTypes.makeEnumType('MetricOptions', 'MetricOptionsType', list(cls.optimization_metrics_mapping.keys()))
+    metric_options = InputTypes.makeEnumType('MetricOptions', 'MetricOptionsType', list(cls.metrics_mapping.keys()))
     desc_metric_options = r"""determines the statistical metric (calculated by RAVEN BasicStatistics
                           or EconomicRatio PostProcessors) from the ``inner'' run to be used as the
                           objective in the ``outer'' optimization.
@@ -269,7 +272,7 @@ class Case(Base):
                                 \default{`zero'}
                                 \item requested $ \alpha $ value (a floating point value between 0.0
                                 and 1.0). Required when \xmlNode{metric} is ``expectedShortfall'' or
-                                ``valueAtRisk.'' \default{5.0}
+                                ``valueAtRisk.'' \default{0.05}
                               \end{itemize}""")
     optimizer.addSub(metric)
     type_options = InputTypes.makeEnumType('TypeOptions', 'TypeOptionsType',
@@ -326,6 +329,33 @@ class Case(Base):
     dispatch_vars.addSub(value_param)
     input_specs.addSub(dispatch_vars)
 
+    # result statistics
+    result_stats = InputData.parameterInputFactory('result_statistics',
+                                                   descr=r"""This node defines the additional statistics
+                                                   to be returned with the results. The statistics
+                                                   \texttt{expectedValue} (prefix ``mean''),
+                                                   \texttt{sigma} (prefix ``std''), and \texttt{median}
+                                                   (prefix ``med'') are always returned with the results.
+                                                   Each subnode is the RAVEN-style name of the desired
+                                                   return statistic.""")
+    for stat in cls.metrics_mapping:
+      if stat not in ['expectedValue', 'sigma', 'median']:
+        statistic = InputData.parameterInputFactory(stat, strictMode=True,
+                                                    descr=r"""{} uses the prefix ``{}'' in the result output.""".format(stat, cls.metrics_mapping[stat]['prefix']))
+        if stat == 'percentile':
+          statistic.addParam('percent', param_type=InputTypes.StringType,
+                            descr=r"""requested percentile (a floating point value between 0.0 and 100.0).
+                            When no percent is given, returns both 5th and 95th percentiles.""")
+        elif stat in ['sortinoRatio', 'gainLossRatio']:
+          statistic.addParam('threshold', param_type=InputTypes.StringType,
+                            descr=r"""requested threshold (``median" or ``zero").""", default='``median"')
+        elif stat in ['expectedShortfall', 'valueAtRisk']:
+          statistic.addParam('threshold', param_type=InputTypes.StringType,
+                            descr=r"""requested threshold (a floating point value between 0.0 and 1.0).""",
+                            default='``0.05"')
+        result_stats.addSub(statistic)
+    input_specs.addSub(result_stats)
+
     return input_specs
 
   def __init__(self, run_dir, **kwargs):
@@ -335,46 +365,50 @@ class Case(Base):
       @ Out, None
     """
     Base.__init__(self, **kwargs)
-    self.name = None            # case name
-    self._mode = None           # extrema to find: opt, sweep
-    self._metric = 'NPV'        # UNUSED (future work); economic metric to focus on: lcoe, profit, cost
-    self.run_dir = run_dir      # location of HERON input file
-    self._verbosity = 'all'     # default verbosity for RAVEN inner/outer
+    self.name = None                   # case name
+    self._mode = None                  # extrema to find: opt, sweep
+    self._metric = 'NPV'               # TODO: future work - economic metric to focus on: lcoe, profit, cost
+    self.run_dir = run_dir             # location of HERON input file
+    self._verbosity = 'all'            # default verbosity for RAVEN inner/outer
 
-    self.dispatch_name = None   # name of dispatcher to use
-    self.dispatcher = None      # type of dispatcher to use
-    self.validator_name = None  # name of dispatch validation to use
-    self.validator = None       # type of dispatch validation to use
-    self.dispatch_vars = {}     # non-component optimization ValuedParams
+    self.dispatch_name = None          # name of dispatcher to use
+    self.dispatcher = None             # type of dispatcher to use
+    self.validator_name = None         # name of dispatch validation to use
+    self.validator = None              # type of dispatch validation to use
+    self.dispatch_vars = {}            # non-component optimization ValuedParams
 
-    self.outerParallel = 0     # number of outer parallel runs to use
-    self.innerParallel = 0     # number of inner parallel runs to use
+    self.outerParallel = 0             # number of outer parallel runs to use
+    self.innerParallel = 0             # number of inner parallel runs to use
 
-    self._diff_study = None     # is this only a differential study?
-    self._num_samples = 1       # number of ARMA stochastic samples to use ("denoises")
-    self._hist_interval = None  # time step interval, time between production points
-    self._hist_len = None       # total history length, in same units as _hist_interval
-    self._num_hist = None       # number of history steps, hist_len / hist_interval
-    self._global_econ = {}      # global economics settings, as a pass-through
-    self._increments = {}       # stepwise increments for resource balancing
-    self._time_varname = 'time' # name of the time-variable throughout simulation
-    self._year_varname = 'Year' # name of the year-variable throughout simulation
-    self._labels = {}           # extra information pertaining to current case
-    self.debug = {              # debug options, as enabled by the user (defaults included)
-        'enabled': False,         # whether to enable debug mode
-        'inner_samples': 1,       # how many inner realizations to sample specifically for the debug run
-        'macro_steps': 1,         # how many "years" for inner realizations
-        'dispatch_plot': True     # whether to output a plot in debug mode
+    self._diff_study = None            # is this only a differential study?
+    self._num_samples = 1              # number of ARMA stochastic samples to use ("denoises")
+    self._hist_interval = None         # time step interval, time between production points
+    self._hist_len = None              # total history length, in same units as _hist_interval
+    self._num_hist = None              # number of history steps, hist_len / hist_interval
+    self._global_econ = {}             # global economics settings, as a pass-through
+    self._increments = {}              # stepwise increments for resource balancing
+    self._time_varname = 'time'        # name of the time-variable throughout simulation
+    self._year_varname = 'Year'        # name of the year-variable throughout simulation
+    self._labels = {}                  # extra information pertaining to current case
+    self.debug = {                     # debug options, as enabled by the user (defaults included)
+        'enabled': False,              # whether to enable debug mode
+        'inner_samples': 1,            # how many inner realizations to sample
+        'macro_steps': 1,              # how many "years" for inner realizations
+        'dispatch_plot': True          # whether to output a plot in debug mode
     }
 
-    self.data_handling = {     # data handling options
-      'inner_to_outer': 'netcdf', # how to pass inner data to outer (csv, netcdf)
+    self.data_handling = {             # data handling options
+      'inner_to_outer': 'netcdf',      # how to pass inner data to outer (csv, netcdf)
     }
 
-    self._time_discretization = None # (start, end, number) for constructing time discretization, same as argument to np.linspace
-    self._Resample_T = None    # user-set increments for resources
+    self._time_discretization = None   # (start, end, number) for constructing time discretization, same as argument to np.linspace
+    self._Resample_T = None            # user-set increments for resources
     self._optimization_settings = None # optimization settings dictionary for outer optimization loop
     self._workflow = 'standard' # setting for how to run HERON, default is through raven workflow
+    self._result_statistics = {        # desired result statistics (keys) dictionary with attributes (values)
+        'sigma': None,                 # user can specify additional result statistics
+        'expectedValue': None,
+        'median': None}
 
     # clean up location
     self.run_dir = os.path.abspath(os.path.expanduser(self.run_dir))
@@ -445,6 +479,9 @@ class Case(Base):
         self.data_handling = self._read_data_handling(item)
       elif item.getName() == 'workflow':
         self._workflow = item.value
+      elif item.getName() == 'result_statistics':
+        new_result_statistics = self._read_result_statistics(item)
+        self._result_statistics.update(new_result_statistics)
 
     # checks
     if self._mode is None:
@@ -466,7 +503,7 @@ class Case(Base):
     self.dispatcher.set_time_discr(self._time_discretization)
     self.dispatcher.set_validator(self.validator)
 
-    self.raiseADebug('Successfully initialized Case {}.'.format(self.name))
+    self.raiseADebug(f'Successfully initialized Case {self.name}.')
 
   def _read_data_handling(self, node):
     """
@@ -571,6 +608,54 @@ class Case(Base):
 
     return opt_settings
 
+  def _read_result_statistics(self, node):
+    """
+      Reads result statistics node
+      @ In, node, InputParams.ParameterInput, result statistics head node
+      @ Out, result_statistics, dict, result statistics settings as dictionary
+    """
+    # result_statistics keys are statistic name value is percent, threshold value, or None
+    result_statistics = {}
+    for sub in node.subparts:
+      sub_name = sub.getName()
+      if sub_name == 'percentile':
+        try:
+          percent = sub.parameterValues['percent']
+          # if multiple percents are given, set as a list
+          if sub_name in result_statistics:
+            if isinstance(result_statistics[sub_name], list):
+              if percent not in result_statistics[sub_name]:
+                result_statistics[sub_name].append(percent)
+            else:
+              result_statistics[sub_name] = [result_statistics[sub_name], percent]
+          else:
+            result_statistics[sub_name] = percent
+        except KeyError:
+          result_statistics[sub_name] = self.metrics_mapping[sub_name]['percent']
+      elif sub_name in ['sortinoRatio', 'gainLossRatio']:
+        try:
+          result_statistics[sub_name] = sub.parameterValues['threshold']
+        except KeyError:
+          result_statistics[sub_name] = self.metrics_mapping[sub_name]['threshold']
+      elif sub_name in ['expectedShortfall', 'valueAtRisk']:
+        try:
+          threshold = sub.parameterValues['threshold']
+          # if multiple thresholds are given, set as a list
+          if sub_name in result_statistics:
+            if isinstance(result_statistics[sub_name], list):
+              if threshold not in result_statistics[sub_name]:
+                result_statistics[sub_name].append(threshold)
+            else:
+              result_statistics[sub_name] = [result_statistics[sub_name], threshold]
+          else:
+            result_statistics[sub_name] = sub.parameterValues['threshold']
+        except KeyError:
+          result_statistics[sub_name] = self.metrics_mapping[sub_name]['threshold']
+      else:
+        result_statistics[sub_name] = None
+
+    return result_statistics
+
   def initialize(self, components, sources):
     """
       Called after all objects are created, allows post-input initialization
@@ -592,7 +677,7 @@ class Case(Base):
     """
     return '<HERON Case>'
 
-  def print_me(self, tabs=0, tab='  '):
+  def print_me(self, tabs=0, tab='  ', **kwargs):
     """
       Prints info about self
       @ In, tabs, int, number of tabs to insert before print
@@ -626,8 +711,8 @@ class Case(Base):
     elif which == 'inner':
       io = 'i'
     else:
-      raise NotImplementedError('Unrecognized working dir request: "{}"'.format(which))
-    return '{case}_{io}'.format(case=self.name, io=io)
+      raise NotImplementedError(f'Unrecognized working dir request: "{which}"')
+    return f'{self.name}_{io}'
 
   def load_econ(self, components):
     """
@@ -644,7 +729,7 @@ class Case(Base):
         comp_name = comp.name
         for cf in comp.get_cashflows():
           cf_name = cf.name
-          indic['active'].append('{}|{}'.format(comp_name, cf_name))
+          indic['active'].append(f'{comp_name}|{cf_name}')
       self._global_econ['Indicator'] = indic
 
   def get_econ(self, components):
@@ -783,7 +868,7 @@ class Case(Base):
     template_name = 'template_driver'
     # import template module
     sys.path.append(heron_dir)
-    module = importlib.import_module('templates.{}'.format(template_name), package="HERON")
+    module = importlib.import_module(f'templates.{template_name}', package="HERON")
     # load template, perform actions
     template_class = module.Template(messageHandler=self.messageHandler)
     template_class.loadTemplate(template_dir)

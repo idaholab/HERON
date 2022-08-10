@@ -12,6 +12,7 @@ import itertools as it
 import pyomo.environ as pyo
 from pyomo.opt import SolverFactory
 import numpy as np
+import pandas as pd
 
 from HERON.src import _utils as hutils
 from HERON.src.base import Base
@@ -26,6 +27,11 @@ from ravenframework.MessageHandler import MessageHandler
 
 class MOPED(Base):
   def __init__(self):
+    """
+      Construct.
+      @ In, None
+      @ Out, None
+    """
     super().__init__()
     self._components = []                 # List of components objects from heron input
     self._sources = []                    # List of sources objects from heron input
@@ -413,8 +419,8 @@ class MOPED(Base):
     """
       Generates dispatch vars and value arrays to build components
       @ In, comp, HERON component
-      @ Out, template_array, np.array, array of pyo.values used for TEAL cfs
       @ Out, capacity, np.array/pyomo.var, capacity variable for the component
+      @ Out, template_array, np.array, array of pyo.values used for TEAL cfs
     """
     # NOTE Assumes that all components will remain functional for project life
     project_life = int(self._case._global_econ['ProjectTime'])
@@ -633,6 +639,8 @@ class MOPED(Base):
       @ In, None
       @ Out, None
     """
+    columns = []
+    values = []
     # Results provide run times and optimizer final status
     results = self._solver.solve(self._m)
     self.raiseAMessage(f'Optimizer has finished running, here are the results\n{results}')
@@ -641,11 +649,17 @@ class MOPED(Base):
       try:
         comp_print = getattr(self._m, f'{comp.name}')
         self.raiseAMessage(f'Here is the optimized capacity for {comp.name}')
+        columns.append(f'{comp.name} Capacity')
+        values.append(comp_print.value)
         comp_print.pprint()
       except:
         self.raiseAMessage(f'{comp.name} does not have a standard capacity')
     NPV = pyo.value(self._m.NPV)
     self.raiseAMessage(f"The final NPV is: {NPV}")
+    columns.append('Expected NPV')
+    values.append(NPV)
+    output_data = pd.DataFrame([values], columns=columns)
+    output_data.to_csv('opt_solution.csv')
 
   # ===========================
   # MAIN WORKFLOW
@@ -738,7 +752,7 @@ class MOPED(Base):
   def getTargetParams(self, target='all'):
     """
       Returns the case, components, and sources
-      @ In, None
+      @ In, target, string, param to retrieve, defaults to 'all'
       @ Out, case, Cases.Case object
       @ Out, components, list of Components.Component objects
       @ Out, sources, list of Placeholder objects

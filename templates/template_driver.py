@@ -222,7 +222,7 @@ class Template(TemplateBase, Base):
     """
     if case.get_mode() == 'sweep' or case.debug['enabled']:
       template.remove(template.find('Optimizers'))
-    elif case._mode == 'opt':
+    elif case.get_mode() == 'opt':
       template.remove(template.find('Samplers'))
 
   def _modify_outer_runinfo(self, template, case):
@@ -278,11 +278,32 @@ class Template(TemplateBase, Base):
     caps.text = ', '.join(var_list)
 
     # outer results
-    if case._optimization_settings is not None:
-      group_outer_results = var_groups.find(".//Group[@name='GRO_outer_results']")
+    group_outer_results = var_groups.find(".//Group[@name='GRO_outer_results']")
+    # add required defaults
+    default_stats = [f'mean_{case._metric}', f'std_{case._metric}', f'med_{case._metric}']
+    for stat in default_stats:
+      self._updateCommaSeperatedList(group_outer_results, stat)
+    # make sure user provided statistics beyond defaults get there
+    if any(stat not in ['expectedValue', 'sigma', 'median'] for stat in case._result_statistics):
+      stats_list = self._build_result_statistic_names(case)
+      for stat_name in stats_list:
+        if stat_name not in default_stats:
+          self._updateCommaSeperatedList(group_outer_results, stat_name)
+    # sweep mode has default variable names
+    elif case.get_mode() == 'sweep':
+      sweep_default = [f'mean_{case._metric}', f'std_{case._metric}', f'med_{case._metric}', f'max_{case._metric}',
+                       f'min_{case._metric}', f'perc_5_{case._metric}', f'perc_95_{case._metric}',
+                       f'samp_{case._metric}', f'var_{case._metric}']
+      for sweep_name in sweep_default:
+        if sweep_name not in default_stats:
+          self._updateCommaSeperatedList(group_outer_results, sweep_name)
+    # opt mode adds optimization variable if not already there
+    if (case.get_mode() == 'opt') and (case._optimization_settings is not None):
       new_metric_outer_results = self._build_opt_metric_out_name(case)
       if (new_metric_outer_results != 'missing') and (new_metric_outer_results not in group_outer_results.text):
+        # additional results statistics have been requested, add this metric if not already present
         self._updateCommaSeperatedList(group_outer_results, new_metric_outer_results, position=0)
+
     # labels group
     if case.get_labels():
       case_labels = ET.SubElement(var_groups, 'Group', attrib={'name': 'GRO_case_labels'})
@@ -341,18 +362,6 @@ class Template(TemplateBase, Base):
       self._remove_by_name(DOs, ['opt_eval', 'opt_soln'])
     elif case.get_mode() == 'opt':
       self._remove_by_name(DOs, ['grid'])
-    # update optimization settings if provided
-    if (case.get_mode() == 'opt') and (case._optimization_settings is not None) and (not case.debug['enabled']):  # TODO there should be a better way to handle the debug case
-      new_opt_objective = self._build_opt_metric_out_name(case)
-      # check if the metric in 'opt_eval' needs to be changed
-      opt_eval_output_node = DOs.find(".//PointSet[@name='opt_eval']").find('Output')
-      if (new_opt_objective != 'missing') and (new_opt_objective != opt_eval_output_node.text):
-        opt_eval_output_node.text = new_opt_objective
-      # check if the metric in 'opt_soln' needs to be changed
-      opt_soln_output = DOs.find(".//PointSet[@name='opt_soln']").find('Output')
-      if (new_opt_objective != 'missing') and (new_opt_objective not in opt_soln_output.text):
-        # remove mean_NPV and replace with new_opt_objective
-        opt_soln_output.text = opt_soln_output.text.replace('mean_NPV', new_opt_objective)
     # debug mode
     if case.debug['enabled']:
       # add debug dispatch output dataset
@@ -414,7 +423,7 @@ class Template(TemplateBase, Base):
     text = 'Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:{}_capacity'
     for component in components:
       name = component.name
-      attribs = {'variable':'{}_capacity'.format(name), 'type':'input'}
+      attribs = {'variable': f'{name}_capacity', 'type':'input'}
       new = xmlUtils.newNode('alias', text=text.format(name), attrib=attribs)
       raven.append(new)
 
@@ -463,7 +472,7 @@ class Template(TemplateBase, Base):
       new_opt_objective = self._build_opt_metric_out_name(case)
       opt_path_plot_vars = OSs.find(".//Plot[@name='opt_path']").find('vars')
       if (new_opt_objective != 'missing') and (new_opt_objective not in opt_path_plot_vars.text):
-        opt_path_plot_vars.text = opt_path_plot_vars.text.replace('mean_NPV', new_opt_objective)
+        opt_path_plot_vars.text = opt_path_plot_vars.text.replace(f'mean_{case._metric}', new_opt_objective)
     # debug mode
     if case.debug['enabled']:
       # modify normal metric output
@@ -586,7 +595,7 @@ class Template(TemplateBase, Base):
       except KeyError:
         # type was not provided, so use the default value
         metric_raven_name = case._optimization_settings['metric']['name']
-        type_node.text = case.optimization_metrics_mapping[metric_raven_name]['default']
+        type_node.text = case.metrics_mapping[metric_raven_name]['optimization_default']
 
       # swap out convergence values (only persistence implemented now)
       convergence = opt_node.find('convergence')
@@ -711,6 +720,7 @@ class Template(TemplateBase, Base):
     self._modify_inner_components(template, case, components)
     self._modify_inner_caselabels(template, case)
     self._modify_inner_time_vars(template, case)
+    self._modify_inner_result_statistics(template, case)
     self._modify_inner_optimization_settings(template, case)
     self._modify_inner_data_handling(template, case)
     if case.debug['enabled']:
@@ -845,7 +855,7 @@ class Template(TemplateBase, Base):
     groups = {}
     var_groups = template.find('VariableGroups')
     for tag in ['capacities', 'init_disp', 'full_dispatch']:
-      groups[tag] = var_groups.find(".//Group[@name='GRO_{}']".format(tag))
+      groups[tag] = var_groups.find(f".//Group[@name='GRO_{tag}']")
 
     # change inner input due to components requested
     for component in components:
@@ -876,7 +886,7 @@ class Template(TemplateBase, Base):
         # OR capacity is limited by a function, and we also can't handle it here, but in the dispatch.
         pass
       else:
-        raise NotImplementedError('Capacity from "{}" not implemented yet. Component: {}'.format(capacity, cap_name))
+        raise NotImplementedError(f'Capacity from "{capacity}" not implemented yet. Component: {cap_name}')
 
       for tracker in component.get_tracking_vars():
         for resource in component.get_resources():
@@ -930,27 +940,32 @@ class Template(TemplateBase, Base):
       new_objective = self._build_opt_metric_out_name(case)
       # add optimization objective name to VariableGroups 'GRO_final_return' if not already there
       group = template.find('VariableGroups').find(".//Group[@name='GRO_final_return']")
-      if (new_objective != 'missing') and (new_objective not in group.text):
+      if group.text is None:
+        self._updateCommaSeperatedList(group, new_objective, postion=0)
+      elif (new_objective != 'missing') and (new_objective not in group.text):
         self._updateCommaSeperatedList(group, new_objective, position=0)
       # add optimization objective to PostProcessor list if not already there
+      pp_node = template.find('Models').find(".//PostProcessor[@name='statistics']")
       if new_objective != 'missing':
-        pp_node = template.find('Models').find(".//PostProcessor[@name='statistics']")
         raven_metric_name = case._optimization_settings['metric']['name']
-        prefix = case.optimization_metrics_mapping[raven_metric_name]['prefix']
+        prefix = case.metrics_mapping[raven_metric_name]['prefix']
         if pp_node.find(raven_metric_name) is None:
           # add subnode to PostProcessor
-          if 'threshold' in case._optimization_settings['metric'].keys():
+          if 'threshold' in case._optimization_settings['metric']:
             if raven_metric_name in ['valueAtRisk', 'expectedShortfall']:
               threshold = str(case._optimization_settings['metric']['threshold'])
             else:
               threshold = case._optimization_settings['metric']['threshold']
-              # TODO should NPV be the only metric available?
-            new_node = xmlUtils.newNode(raven_metric_name, text='NPV',
+            new_node = xmlUtils.newNode(raven_metric_name, text=case._metric,
                                         attrib={'prefix': prefix,
                                                 'threshold': threshold})
+          elif 'percent' in case._optimization_settings['metric']:
+            percent = str(case._optimization_settings['metric']['percent'])
+            new_node = xmlUtils.newNode(raven_metric_name, text=case._metric,
+                                        attrib={'prefix': prefix,
+                                                'percent': percent})
           else:
-            # TODO should NPV be the only metric available?
-            new_node = xmlUtils.newNode(raven_metric_name, text='NPV',
+            new_node = xmlUtils.newNode(raven_metric_name, text=case._metric,
                                         attrib={'prefix': prefix})
           pp_node.append(new_node)
         else:
@@ -960,11 +975,120 @@ class Template(TemplateBase, Base):
           if prefix != subnode.attrib['prefix']:
             subnode.attrib['prefix'] = prefix
           # percentile has additional parameter to check
-          if 'percent' in case._optimization_settings['metric'].keys():
-            # defaults to 5 or 95 percentile
-            if str(int(case._optimization_settings['metric']['percent'])) not in ['5', '95']:
-              # update attribute
-              subnode.attrib['percent'] = str(case._optimization_settings['metric']['percent'])
+          if 'percent' in case._optimization_settings['metric']:
+            # see if percentile already has what we need
+            if str(int(case._optimization_settings['metric']['percent'])) not in subnode.attrib['percent']:
+              # nope, need to add the percent to the existing attribute
+              subnode.attrib['percent'] += ','+str(case._optimization_settings['metric']['percent'])
+          if 'threshold' in case._optimization_settings['metric']:
+            # see if the threshold is already there
+            if str(case._optimization_settings['metric']['threshold']) not in subnode.attrib['threshold']:
+              # nope, need to add the threshold to existing attribute
+              subnode.attrib['threshold'] += ','+str(case._optimization_settings['metric']['threshold'])
+      else:
+        # new_objective is missing, use mean_metric
+        if pp_node.find('expectedValue') is None:
+          pp_node.append(xmlUtils.newNode('expectedValue', text=case._metric,
+                                          attrib={'prefix': 'mean'}))
+        else:
+          # check that the subnode has the correct values
+          subnode = pp_node.find('expectedValue')
+          if 'mean' != subnode.attrib['prefix']:
+            subnode.attrib['prefix'] = 'mean'
+    # if no optimization settings specified, make sure mean_metric is in PostProcessor node
+    elif case.get_mode() == 'opt':
+      pp_node = template.find('Models').find(".//PostProcessor[@name='statistics']")
+      if pp_node.find('expectedValue') is None:
+        pp_node.append(xmlUtils.newNode('expectedValue', text=case._metric,
+                                        attrib={'prefix': 'mean'}))
+      else:
+        # check that the subnode has the correct values
+        subnode = pp_node.find('expectedValue')
+        if 'mean' != subnode.attrib['prefix']:
+          subnode.attrib['prefix'] = 'mean'
+
+  def _modify_inner_result_statistics(self, template, case):
+    """
+      Modifies template to include result statistics
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ Out, None
+    """
+    # handle VariableGroups
+    var_groups = template.find('VariableGroups')
+    # final return variable group (sent to outer)
+    group_final_return = var_groups.find(".//Group[@name='GRO_final_return']")
+    # add required defaults
+    default_stats = [f'mean_{case._metric}', f'std_{case._metric}', f'med_{case._metric}']
+    for stat in default_stats:
+      self._updateCommaSeperatedList(group_final_return, stat)
+    # make sure user provided statistics beyond defaults get there
+    if any(stat not in ['expectedValue', 'sigma', 'median'] for stat in case._result_statistics):
+      stats_list = self._build_result_statistic_names(case)
+      for stat_name in stats_list:
+        if stat_name not in default_stats:
+          self._updateCommaSeperatedList(group_final_return, stat_name)
+    # sweep mode has default variable names
+    elif case.get_mode() == 'sweep':
+      sweep_default = [f'mean_{case._metric}', f'std_{case._metric}', f'med_{case._metric}',
+                       f'max_{case._metric}', f'min_{case._metric}', f'perc_5_{case._metric}',
+                       f'perc_95_{case._metric}', f'samp_{case._metric}', f'var_{case._metric}']
+      for sweep_name in sweep_default:
+        if sweep_name not in default_stats:
+          self._updateCommaSeperatedList(group_final_return, sweep_name)
+    # opt mode uses optimization variable if no other stats are given, this is handled below
+    if (case.get_mode == 'opt') and (case._optimization_settings is not None):
+      new_metric_opt_results = self._build_opt_metric_out_name(case)
+      if (new_metric_opt_results != 'missing') and (new_metric_opt_results not in group_final_return.text):
+        # additional results statistics have been requested, add this metric if not already present
+        self._updateCommaSeperatedList(group_final_return, new_metric_opt_results, position=0)
+
+    # fill out PostProcessor nodes
+    pp_node = template.find('Models').find(".//PostProcessor[@name='statistics']")
+    # add default statistics
+    stats = ['expectedValue', 'sigma', 'median']
+    prefixes = ['mean', 'std', 'med']
+    for stat, pref in zip(stats, prefixes):
+      pp_node.append(xmlUtils.newNode(stat, text=case._metric, attrib={'prefix': pref}))
+    # add any user supplied statistics beyond defaults
+    if any(stat not in ['expectedValue', 'sigma', 'median'] for stat in case._result_statistics):
+      for raven_metric_name in case._result_statistics:
+        if raven_metric_name not in stats:
+          prefix = case.metrics_mapping[raven_metric_name]['prefix']
+          # add subnode to PostProcessor
+          if raven_metric_name == 'percentile':
+            # add percent attribute
+            percent = case._result_statistics[raven_metric_name]
+            if isinstance(percent, list):
+              for p in percent:
+                pp_node.append(xmlUtils.newNode(raven_metric_name, text=case._metric,
+                                                attrib={'prefix': prefix,
+                                                        'percent': p}))
+            else:
+              pp_node.append(xmlUtils.newNode(raven_metric_name, text=case._metric,
+                                              attrib={'prefix': prefix,
+                                                      'percent': percent}))
+          elif raven_metric_name in ['valueAtRisk', 'expectedShortfall', 'sortinoRatio', 'gainLossRatio']:
+            threshold = case._result_statistics[raven_metric_name]
+            if isinstance(threshold, list):
+              for t in threshold:
+                pp_node.append(xmlUtils.newNode(raven_metric_name, text=case._metric,
+                                                attrib={'prefix': prefix,
+                                                        'threshold': t}))
+            else:
+              pp_node.append(xmlUtils.newNode(raven_metric_name, text=case._metric,
+                                              attrib={'prefix': prefix,
+                                                      'threshold': threshold}))
+          else:
+            pp_node.append(xmlUtils.newNode(raven_metric_name, text=case._metric,
+                                            attrib={'prefix': prefix}))
+    # if not specified, "sweep" mode has additional defaults
+    elif case.get_mode() == 'sweep':
+      stats = ['maximum', 'minimum', 'percentile', 'samples', 'variance']
+      prefixes = ['max', 'min', 'perc', 'samp', 'var']
+      for stat, pref in zip(stats, prefixes):
+        pp_node.append(xmlUtils.newNode(stat, text=case._metric, attrib={'prefix': pref}))
+    # if not specified, "opt" mode is handled in _modify_inner_optimization_settings
 
   def _modify_inner_data_handling(self, template, case):
     """
@@ -1048,7 +1172,7 @@ class Template(TemplateBase, Base):
         tax          = subCash._taxable
         depreciation = subCash._depreciate
         if subCash._type == 'one-time':
-          cfNode =  xmlUtils.newNode('Capex', text='', attrib={'name':'{name}'.format(name = name),
+          cfNode =  xmlUtils.newNode('Capex', text='', attrib={'name': f'{name}',
                                                                 'tax':tax,
                                                                 'inflation': inflation,
                                                                 'mult_target': mult_target
@@ -1061,7 +1185,7 @@ class Template(TemplateBase, Base):
             cfNode.append(xmlUtils.newNode('depreciation',attrib={'scheme':'MACRS'}, text = depreciation))
           cfs.append(cfNode)
         else:
-          cfNode =  xmlUtils.newNode('Recurring', text='', attrib={'name':'{name}'.format(name = name),
+          cfNode =  xmlUtils.newNode('Recurring', text='', attrib={'name': f'{name}',
                                                                    'tax':tax,
                                                                    'inflation': inflation,
                                                                    'mult_target': mult_target
@@ -1069,7 +1193,7 @@ class Template(TemplateBase, Base):
           cfNode.append(xmlUtils.newNode('driver',
           text = self.namingTemplates['re_cash'].format(period=subCash._period,
                                                         driverType = driverType,
-                                                        driverName ='_{comp}_{name}'.format(comp = component.name ,name = name))))
+                                                        driverName = f'_{component.name}_{name}')))
 
           cfNode.append(xmlUtils.newNode('alpha',text = '-1.0'))
           cfs.append(cfNode)
@@ -1149,7 +1273,7 @@ class Template(TemplateBase, Base):
     ## if a history set, there better only be one
     elif typ == 'HistorySet':
       assert depends is not None
-      assert len(depends) == 1, 'Depends is: {}'.format(depends)
+      assert len(depends) == 1, f'Depends is: {depends}'
       opt = xmlUtils.newNode('options')
       opt.append(xmlUtils.newNode('pivotParameter', text=list(depends.keys())[0]))
       new.append(opt)
@@ -1217,7 +1341,7 @@ class Template(TemplateBase, Base):
     rom_name = source.name
     # create the output data object
     objs = template.find('DataObjects')
-    obj_name = '{}_meta'.format(rom_name)
+    obj_name = f'{rom_name}_meta'
     self._create_dataobject(objs, 'DataSet', obj_name)
     # create the output outstream
     os_name = obj_name
@@ -1261,20 +1385,40 @@ class Template(TemplateBase, Base):
     try:
       # metric name in RAVEN
       metric_raven_name = case._optimization_settings['metric']['name']
-      # potential metric name to add to VariableGroups, DataObjects, Optimizers
-      opt_out_metric_name = case.optimization_metrics_mapping[metric_raven_name]['prefix']
+      # potential metric name to add
+      opt_out_metric_name = case.metrics_mapping[metric_raven_name]['prefix']
       # do I need to add a percent or threshold to this name?
       if metric_raven_name == 'percentile':
         opt_out_metric_name += '_' + str(case._optimization_settings['metric']['percent'])
-      elif metric_raven_name in ['valueAtRisk', 'expectedShortfall']:
+      elif metric_raven_name in ['valueAtRisk', 'expectedShortfall', 'sortinoRatio', 'gainLossRatio']:
         opt_out_metric_name += '_' + str(case._optimization_settings['metric']['threshold'])
-      elif metric_raven_name in ['sortinoRatio', 'gainLossRatio']:
-        opt_out_metric_name += '_' + case._optimization_settings['metric']['threshold']
-      # add target variable to name TODO should this be changeable from NPV?
-      opt_out_metric_name += '_NPV'
+      opt_out_metric_name += '_'+case._metric
     except (TypeError, KeyError):
       # <optimization_settings> node not in input file OR
       # 'metric' is missing from _optimization_settings
       opt_out_metric_name = 'missing'
 
     return opt_out_metric_name
+
+  def _build_result_statistic_names(self, case):
+    """
+      Constructs the names of the statistics requested for output
+      @ In, case, HERON Case, defining Case instance
+      @ Out, names, list, list of names of statistics requested for output
+    """
+    names = []
+    for name in case._result_statistics:
+      out_name = case.metrics_mapping[name]['prefix']
+      # do I need to add percent or threshold?
+      if name in ['percentile', 'valueAtRisk', 'expectedShortfall', 'sortinoRatio', 'gainLossRatio']:
+        # multiple percents or thresholds may be specified
+        if isinstance(case._result_statistics[name], list):
+          for attrib in case._result_statistics[name]:
+            names.append(out_name+'_'+attrib+'_'+case._metric)
+        else:
+          names.append(out_name+'_'+case._result_statistics[name]+'_'+case._metric)
+      else:
+        out_name += '_'+case._metric
+        names.append(out_name)
+
+    return names

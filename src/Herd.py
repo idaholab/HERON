@@ -8,6 +8,7 @@ import os
 import sys
 import copy
 import operator
+import pandas as pd
 from itertools import compress
 import pyomo.environ as pyo
 from pyomo.opt import SolverFactory
@@ -90,7 +91,7 @@ dispatches_model_component_meta={
           "Expressions": ['fs.np_power_split.np_to_grid_port.electricity',
             'fs.h2_turbine.turbine.work_mechanical',
             'fs.h2_turbine.compressor.work_mechanical'],
-          "Multiplier":  [-1, 1, 1]
+          "Multiplier":  [-1, 1e-3, 1e-3] # NOTE: h2 turbine is in W, convert to kW
         },
       }
     },
@@ -100,7 +101,7 @@ dispatches_model_component_meta={
       "Cashflows":{
         "Dispatch":{
           "Expressions": ['fs.h2_tank.outlet_to_pipeline.flow_mol'],
-          "Multiplier":  [-1]
+          "Multiplier":  [-3600] # convert 1/s to 1/hr
         },
       },
     },
@@ -122,6 +123,7 @@ class HERD(MOPED):
     self._dmdl = None # Pyomo model specific to DISPATCHES (different from _m)
     self._dispatches_model_template = None # Template of DISPATCHES Model for HERON comparison
     self._metrics = None # TEAL metrics, summed expressions
+    self._results = None # results from Dispatch solve
     self._demand_meta = {}
 
   def buildComponentMeta(self):
@@ -397,9 +399,7 @@ class HERD(MOPED):
         if hComp.name not in self._dispatches_model_template.keys():
           continue # skip components within HERON that are NOT defined in DISPATCHES template
 
-        self._createCashflowsForDispatches(dmdl.scenario[s], hComp, tComp, s,
-                                fullModel=dmdl,
-                                LMP=dmdl.LMP[s])
+        self._createCashflowsForDispatches(dmdl.scenario[s], hComp, tComp, s)
 
       # Hydrogen demand constraint.
       # Divide the RHS by the molecular mass to convert kg/s to mol/s
@@ -431,7 +431,7 @@ class HERD(MOPED):
       heron_components.append(hComp)
     return teal_components, heron_components
 
-  def _createCashflowsForDispatches(self, scenario, hComp, tComp, scenario_ind, fullModel, LMP):
+  def _createCashflowsForDispatches(self, scenario, hComp, tComp, scenario_ind):
     """
       Identify the correct DISPATCHES expressions to use as TEAL drivers
     """
@@ -444,10 +444,7 @@ class HERD(MOPED):
       if cf == 'Lifetime':
         continue
 
-      elif cf == 'Capex':
-        # only one capex for all scenarios
-        if scenario_ind > 0:
-          continue
+      if cf == 'Capex':
         # Capex is the most complex to handle generally due to amort
         self.raiseADebug(f'Generating Capex cashflow for {hComp.name}')
         capex_params = CF_meta['Capex Params']
@@ -471,12 +468,9 @@ class HERD(MOPED):
           capex.setAmortization('MACRS', depreciation)
           amorts = getattr(tComp, "_createDepreciation")(capex)
           CF_collection.extend(amorts)
-        print(f"----{hComp.name}---- Dispatch Driver : {capex_driver}")
+        print(f"----{hComp.name}---- Capex Driver : {capex_driver}")
 
       elif cf == "Yearly":
-        # only one capex for all scenarios
-        if scenario_ind > 0:
-          continue
         self.raiseADebug(f'Generating Yearly OM cashflow for {hComp.name}')
         yearly_params = CF_meta['Yearly Params']
         yearly_driver = CF_meta['Yearly Driver']
@@ -606,11 +600,11 @@ class HERD(MOPED):
     reshaped_alpha = np.zeros([n_scenarios, projectLife, n_hours_per_year])
 
     for real in set_scenarios:
-      # it necessary to have alpha be [real,year,hour] instead of [real,year,cluster,hour]
+      # it necessary to have alpha be [real,year,hour] instead of [real,year, cluster, hour]
       realized_alpha = [[signal[real][y][d][t] \
                                     for t in set_time
                                       for d in set_days]
-                                        for y in set_years] #shape here is [year,hour]
+                                        for y in set_years] #shape here is [year, hour]
       # first column of 2nd axis is 0 for project year 0
       reshaped_alpha[real,1:,:] = realized_alpha
 
@@ -743,11 +737,16 @@ class HERD(MOPED):
     solver = get_solver()
 
     # Solve the optimization problem
-    solver.solve(self._dmdl, tee=True)
+    self._results = solver.solve(self._dmdl, tee=True)
 
   def _exportResults(self):
 
     mdl = self._dmdl
+
+    print(f'Optimal NPV is ------------------- $B {pyo.value(mdl.obj) * 1e-9} ')
+    print(f'--- Optimal PEM capacity is        {pyo.value(mdl.pem_capacity)  * 1e-3} ??')
+    print(f'--- Optimal H2 Tank capacity is    {pyo.value(mdl.tank_capacity) * 2.016e-3} ??')
+    print(f'--- Optimal H2 Turbine capacity is {pyo.value(mdl.h2_turbine_capacity) * 1e-6} ??')
 
   def run(self):
     """

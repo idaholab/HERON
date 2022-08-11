@@ -23,14 +23,11 @@ MOPED is limited to the TEA's where the dispatch and capacity selection agents a
 
 Additionally, MOPED has limitations in terms of acceptable inputs, which currently include:
 \begin{itemize}
-    \item Capacities for VRE's (Wind/Solar)
-    \item Reference prices from Synthetic Histories
-    \item Components that consume one resource to produce another
-    \item Storage components
-    \item Dispatch plotting
     \item Custom functions for prices, VRE capacities, demand, etc.
     \item Components that do not start operation at project start
     \item Components with (component life x rebuild count $<$ project life)
+    \item Components that produce, consume, or demand multiple resources
+    \item Components with multiple cashflows of a same type
 \end{itemize}
 Development is focussed on reducing the number of items on this list. The end goal of MOPED is to maintain the same capabilities as the default workflow.
 

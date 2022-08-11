@@ -1,0 +1,16 @@
+[Tests]
+  [./Moped_storage_heavy]
+    type = HeronMoped
+    input = moped_input.xml
+    heavy = true
+    # prereq = NYArma
+    [./csv]
+      type = OrderedCSV
+      output = 'opt_solution.csv'
+      zero_threshold = 1e-6
+      # Loser tolerances due to seeding issue with ROMCollection objects
+      #  see Issue #1351
+      rel_err = 3e-2
+    [../]
+  [../]
+[]

@@ -13,6 +13,7 @@ import pyomo.environ as pyo
 from pyomo.opt import SolverFactory
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from HERON.src import _utils as hutils
 from HERON.src.base import Base
@@ -48,6 +49,7 @@ class MOPED(Base):
     self._cf_components = []              # List of TEAL.Components objects generated for analysis
     self._dispatch = []                   # List of pyomo vars/params for each realization and year
     self._multiplicity_meta = {}          # Dictionary of analysis years, clusters, and associated multiplicity
+    self._plot = False                    # Boolean to determine if a dispatch plot is made for the analysis (defaults to false)
 
     self.messageHandler = MessageHandler()
 
@@ -110,11 +112,15 @@ class MOPED(Base):
       for prod in comp._produces:  # NOTE Cannot handle components that produce multiple things
         resource = prod._capacity_var
         mode = prod._capacity.type
-        self.setCapacityMeta(mode, resource, comp, prod, True)
+        self.setCapacityMeta(mode, resource, comp, prod, kind='produces')
       for dem in comp._demands:  # NOTE Cannot handle components that demand multiple things
         resource = dem._capacity_var
         mode = dem._capacity.type
-        self.setCapacityMeta(mode, resource, comp, dem)
+        self.setCapacityMeta(mode, resource, comp, dem, kind='demands')
+      for store in comp._stores:  # NOTE Cannot handle components that store multiple things
+        resource = store._capacity_var
+        mode = store._capacity.type
+        self.setCapacityMeta(mode, resource, comp, store, kind='stores')
 
   def buildMultiplicityMeta(self):
     """
@@ -179,7 +185,7 @@ class MOPED(Base):
     self._m.t = pyo.Set(initialize=np.arange(hour_count))
     return synthetic_data
 
-  def setCapacityMeta(self, mode, resource, comp, element, consumes=False):
+  def setCapacityMeta(self, mode, resource, comp, element, kind='produces'):
     """
       Checks the capacity type, dispatch type, and resources involved for each component
       to build component_meta
@@ -187,7 +193,7 @@ class MOPED(Base):
       @ In, resource, string, resource produced or demanded
       @ In, comp, HERON component
       @ In, element, HERON produces/demands node
-      @ In, consumes, bool, does this component consume resources
+      @ In, kind, string, describes comp type, stores,produces,demands
       @ Out, None
     """
     # Multiplier plays important role in capacity node, especially for VRE's
@@ -197,12 +203,20 @@ class MOPED(Base):
       capacity_mult = 1
     elif capacity_mult < 0:
       capacity_mult *= -1
+    self._component_meta[comp.name]['Capacity Resource'] = resource
+    self._component_meta[comp.name]['Stores'] = None
+    self._component_meta[comp.name]['Produces'] = None
+    self._component_meta[comp.name]['Demands'] = None
     # Organizing important aspects of problem for later access
-    if isinstance(element, type(self._components[0]._produces[0])):  # FIXME Assumes first comp is a producer
-      # if isinstance(type, type(self._components[0]._produces[0])):
-      self._component_meta[comp.name]['Produces'] = resource
-    else:
-      self._component_meta[comp.name]['Demands'] = resource
+    # TODO considering lists of produce and demand
+    if kind == 'produces':
+      self._component_meta[comp.name]['Produces'] = element._produces[0]
+    elif kind == 'demands':
+      self._component_meta[comp.name]['Demands'] = element._demands[0]
+    elif kind == 'stores':
+      self._component_meta[comp.name]['Stores'] = element._stores
+      self._component_meta[comp.name]['Initial Value'] = element._initial_stored.get_value()
+      self._component_meta[comp.name]['SRTE'] = element.get_sqrt_RTE()
     self._component_meta[comp.name]['Consumes'] = None
     self._component_meta[comp.name]['Dispatch'] = element._dispatchable
     # Different possible capacity value definitions for a component
@@ -210,6 +224,9 @@ class MOPED(Base):
       self.raiseADebug(f'Building pyomo capacity variable for '
                        f'{comp.name}')
       opt_bounds = element._capacity._vp._parametric
+      # Considering user inputs for default heron sign convention
+      if opt_bounds[1] < 1:
+        opt_bounds *= -1
       opt_bounds *= capacity_mult
       # This is a capacity we make a decision on
       var = pyo.Var(initialize=0.5 * opt_bounds[1], bounds=(opt_bounds[0], opt_bounds[1]))
@@ -221,6 +238,9 @@ class MOPED(Base):
                        f'{comp.name}')
       # Params represent constant value components of the problem
       value = element._capacity._vp._parametric
+      # Considering user inputs for default heron sign convention
+      if value < 1:
+        value *= -1
       value *= capacity_mult
       param = pyo.Param(initialize=value)
       setattr(self._m, f'{comp.name}', param)
@@ -234,11 +254,12 @@ class MOPED(Base):
     if mode != 'SyntheticHistory':
       # TODO smarter way to do this check?
       self._component_meta[comp.name]['Capacity'] = getattr(self._m, f'{comp.name}')
-    if consumes == True:
-      # NOTE not all producers consume
+    if kind == 'produces':
       # TODO should we handle transfer functions here?
       for con in element._consumes:
-          self._component_meta[comp.name]['Consumes'][con] = element._transfer
+        transfer_values = element.get_transfer().get_coefficients()
+        self._component_meta[comp.name]['Consumes'] = con
+        self._component_meta[comp.name]['Transfer'] = abs(transfer_values[con]) / abs(transfer_values[element._produces[0]])
 
   def buildCashflowMeta(self):
     """
@@ -428,6 +449,14 @@ class MOPED(Base):
     template_array = np.zeros((self._case._num_samples, project_life + 1, self._yearly_hours), dtype=object)
     capacity = self._component_meta[comp.name]['Capacity']
     dispatch_type = self._component_meta[comp.name]['Dispatch']
+    # What to have user be able to define consuming components capacity in terms of either resource
+    # This allows dispatch to be in terms of producing resource and capacity be in terms of consumption resource
+    # Only applies to fixed dispatch here due to pyomo construction
+    if self._component_meta[comp.name]['Consumes'] is not None:
+      if self._component_meta[comp.name]['Consumes'] == self._component_meta[comp.name]['Capacity Resource']:
+        reverse_transfer = 1 / self._component_meta[comp.name]['Transfer']
+    else:
+      reverse_transfer = 1
     # Checking for type of capacity is necessary to build dispatch variable
     self._m.dummy = pyo.Var()
     self._m.placeholder = pyo.Param()
@@ -455,7 +484,7 @@ class MOPED(Base):
                             initialize=lambda m, c, t: capacity.value,
                             domain=pyo.NonNegativeReals,)
             setattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}', param)
-            con = pyo.Constraint(self._m.c, self._m.t, expr=lambda m, c, t: param[(c, t)] == capacity)
+            con = pyo.Constraint(self._m.c, self._m.t, expr=lambda m, c, t: param[(c, t)] == reverse_transfer*capacity)
             setattr(self._m, f'{comp.name}_fixed_{real+1}_{year+1}', con)
             template_array[real, year + 1, :] = (1 / self._case._num_samples) * np.array(list(param.values())) * np.array(list(mult.values()))
         else:
@@ -469,10 +498,89 @@ class MOPED(Base):
             template_array[real, year + 1, :] = (1 / self._case._num_samples) * np.array(list(var.values())) * np.array(list(mult.values()))
           elif dispatch_type == 'fixed':
             param = pyo.Param(self._m.c, self._m.t,
-                              initialize=lambda m, c, t: capacity[f'Realization_{real+1}'][year, c, t]
+                              initialize=lambda m, c, t: reverse_transfer*capacity[f'Realization_{real+1}'][year, c, t]
                               )
             setattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}', param)
             template_array[real, year + 1, :] = (1 / self._case._num_samples) * np.array(list(param.values())) * np.array(list(mult.values()))
+    return capacity, template_array
+
+  def buildConsumptionVariables(self, comp):
+    """
+      Builds consumption pyomo variables that are dependent on the output of the same components dispatch
+      @ In, comp, HERON component object
+      @ Out, None
+    """
+    # NOTE Assumes that all components will remain functional for project life
+    project_life = int(self._case._global_econ['ProjectTime'])
+    transfer = self._component_meta[comp.name]['Transfer']
+    for real in range(self._case._num_samples):
+      for year in range(project_life):
+        dispatch = getattr(self._m,f'{comp.name}_dispatch_{real+1}_{year+1}')
+        var = pyo.Var(self._m.c, self._m.t,
+                      initialize=lambda m, c, t: 0,
+                      domain=pyo.NonNegativeReals)
+        setattr(self._m,f'{comp.name}_consume_{real+1}_{year+1}',var)
+        con = pyo.Constraint(self._m.c,self._m.t,
+                             rule=lambda m, c, t: var[(c,t)] == transfer*dispatch[(c,t)])
+        setattr(self._m,f'{comp.name}_consumption_limit_{real+1}_{year+1}',con)
+
+  def buildStorageVariables(self, comp):
+    """
+      Builds storage dispatch(charge/discharge), level, and dependencies in pyomo
+      @ In, comp, HERON component object
+      @ Out, capacity, np.array/pyomo.var, capacity variable for the component
+      @ Out, template_array, np.array, array of pyo.values used for TEAL cfs
+    """
+    self.raiseADebug(f'Preparing storage variables for {comp.name}')
+    # NOTE Assumes that all components will remain functional for project life
+    project_life = int(self._case._global_econ['ProjectTime'])
+    # Necessary to make year index one larger than project life so that year zero
+    # Can be empty for recurring cashflows
+    template_array = np.zeros((self._case._num_samples, project_life + 1, self._yearly_hours), dtype=object)
+    capacity = self._component_meta[comp.name]['Capacity']
+    # NOTE we assume independent for all storage components
+    dispatch_type = self._component_meta[comp.name]['Dispatch']
+    initial_value = self._component_meta[comp.name]['Initial Value']
+    trip_efficiency = self._component_meta[comp.name]['SRTE']
+    # TODO how to dynamically generate the time-step value?
+    dt = self._m.t[2] - self._m.t[1]
+    cluster_end = self._m.t[-1]
+    for real in range(self._case._num_samples):
+      for year in range(project_life):
+        mult = getattr(self._m,f'multiplicity_{year+1}')
+        # battery needs to track level, charging, and discharging
+        level = pyo.Var(self._m.c, self._m.t,
+                        domain=pyo.NonNegativeReals)
+        setattr(self._m,f'{comp.name}_level_{real+1}_{year+1}',level)
+        level_upper = pyo.Constraint(self._m.c, self._m.t,
+                                     rule=lambda m, c, t: level[(c,t)] <= capacity)
+        setattr(self._m,f'{comp.name}_level_upper_{real+1}_{year+1}',level_upper)
+        charge = pyo.Var(self._m.c, self._m.t,
+                         domain=pyo.NonNegativeReals)
+        setattr(self._m,f'{comp.name}_charge_{real+1}_{year+1}',charge)
+        discharge = pyo.Var(self._m.c, self._m.t,
+                         domain=pyo.NonNegativeReals)
+        setattr(self._m,f'{comp.name}_discharge_{real+1}_{year+1}',discharge)
+        discharge_limit = pyo.Constraint(self._m.c, self._m.t,
+                                         rule=lambda m, c, t:
+                                         discharge[(c,t)] <= trip_efficiency*self.getPreviousIndex(comp.name, level, real+1, year+1, c, t, initial_value))
+        setattr(self._m,f'{comp.name}_discharge_limit_{real+1}_{year+1}',discharge_limit)
+        # level is time dependent and requires propagation via constraints
+        level_propagation = pyo.Constraint(self._m.c, self._m.t,
+                                           rule=lambda m, c, t:
+                                           level[(c,t)] == self.getPreviousIndex(comp.name, level, real+1, year+1, c, t, initial_value) +
+                                           dt*(trip_efficiency*charge[(c,t)] - (1/trip_efficiency)*discharge[(c,t)]))
+        setattr(self._m,f'{comp.name}_level_propagation_{real+1}_{year+1}',level_propagation)
+        # Storage set points should enforce shorter time horizons for storage decisions
+        level_point_set_lower = pyo.Constraint(self._m.c,
+                                         rule=lambda m, c: level[(c,0)] == initial_value)
+        setattr(self._m,f'{comp.name}_level_setpoint_lower_{real+1}_{year+1}',level_point_set_lower)
+        level_point_set_upper = pyo.Constraint(self._m.c,
+                                         rule=lambda m, c: level[(c,cluster_end)] == initial_value)
+        setattr(self._m,f'{comp.name}_level_setpoint_upper_{real+1}_{year+1}',level_point_set_upper)
+        # TODO currently only considering costs associated with discharging the storage, however charging and level should be considered
+        # This will involve handling a separate template_array as a driver for a separate TEAL cashflow
+        template_array[real, year+1, :] = (1 / self._case._num_samples) * np.array(list(discharge.values())) * np.array(list(mult.values()))
     return capacity, template_array
 
   def createCashflowComponent(self, comp, capacity, dispatch):
@@ -574,34 +682,55 @@ class MOPED(Base):
     # Initializing production and demand trackers
     produced = 0
     demanded = 0
+    consumed = 0
+    charged = 0
+    discharged = 0
     # Necessary to check all components involved in the analysis
     for comp in self._components:
       comp_meta = self._component_meta[comp.name]
       # Conservation constrains the dispatch decisions
-      dispatch_value = getattr(self._m, f'{comp.name}_dispatch_{real + 1}_{year + 1}')
+      if comp_meta['Stores'] is not None:
+        charge_value = getattr(self._m, f'{comp.name}_charge_{real + 1}_{year + 1}')
+        discharge_value = getattr(self._m, f'{comp.name}_discharge_{real + 1}_{year + 1}')
+      else:
+        dispatch_value = getattr(self._m, f'{comp.name}_dispatch_{real + 1}_{year + 1}')
+      if comp_meta['Consumes'] is not None:
+        consumption_value = getattr(self._m,f'{comp.name}_consume_{real+1}_{year+1}')
       for key, value in comp_meta.items():
         if key == 'Produces' and value == resource:
-          produced += dispatch_value[(c, t)]
+          produced += dispatch_value[(c,t)]
         elif key == 'Demands' and value == resource:
-          demanded += dispatch_value[(c, t)]
+          demanded += dispatch_value[(c,t)]
+        elif key == 'Consumes' and value == resource:
+          consumed += consumption_value[(c,t)]
+        elif key == 'Stores' and value == resource:
+          charged += charge_value[(c,t)]
+          discharged += discharge_value[(c,t)]
         # TODO consider consumption and incorrect input information
-    return produced == demanded
+    return produced + discharged == demanded + consumed + charged
 
   def upper(self, comp, real, year, M, c, t):
-      """
-        Restricts independently dispatched compononents based on their capacity
-        @ In, comp, HERON comp object
-        @ In, real, int, current realization
-        @ In, year, int, current year
-        @ In, M, pyomo model object, MOPED pyomo ConcreteModel
-        @ In, c, int, index for cluster
-        @ In, t, int, index for hour within cluster
-        @ Out, rule, boolean expression for upper bounding
-      """
+    """
+      Restricts independently dispatched compononents based on their capacity
+      @ In, comp, HERON comp object
+      @ In, real, int, current realization
+      @ In, year, int, current year
+      @ In, M, pyomo model object, MOPED pyomo ConcreteModel
+      @ In, c, int, index for cluster
+      @ In, t, int, index for hour within cluster
+      @ Out, rule, boolean expression for upper bounding
+    """
+    # What to have user be able to define consuming components capacity in terms of either resource
+    # This allows dispatch to be in terms of producing resource and capacity be in terms of consumption resource
+    if self._component_meta[comp.name]['Consumes'] is not None:
+      if self._component_meta[comp.name]['Consumes'] == self._component_meta[comp.name]['Capacity Resource']:
+        reverse_transfer = 1 / self._component_meta[comp.name]['Transfer']
+    else:
+      reverse_transfer = 1
       # This is allows for the capacity to be an upper bound and decision variable
-      upper_bound = getattr(self._m, f'{comp.name}')
-      dispatch_value = getattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}')
-      return dispatch_value[(c, t)] <= upper_bound
+    upper_bound = reverse_transfer*getattr(self._m, f'{comp.name}')
+    dispatch_value = getattr(self._m, f'{comp.name}_dispatch_{real+1}_{year+1}')
+    return dispatch_value[(c, t)] <= upper_bound
 
   def buildConstraints(self):
     """
@@ -626,6 +755,9 @@ class MOPED(Base):
           setattr(self._m, f'{resource}_con_{real+1}_{year+1}', con)
         # Bounding constraints on dispatches
         for comp in self._components:
+          # storage has constraints build elsewhere see (buildStorageComponents)
+          if self._component_meta[comp.name]['Stores'] is not None:
+            continue
           capacity = self._component_meta[comp.name]['Capacity']
           if isinstance(capacity, (dummy_type, placeholder_type)):
             con = pyo.Constraint(self._m.c, self._m.t,
@@ -660,6 +792,80 @@ class MOPED(Base):
     output_data = pd.DataFrame([values], columns=columns)
     output_data.to_csv('opt_solution.csv')
 
+  def dispatchPlot(self, real=1, year=1, cluster=0):
+    """
+      Plots the dispatch behavior for a given realization, year, and cluster
+      @ In, real, int, realization to plot (defaults to 1)
+      @ In, year, int, year to plot (defaults to 1)
+      @ In, cluster, int, cluster to plot (defaults to 1)
+      @ Out, None
+    """
+    self.raiseAMessage(f'Generating resource dispatch plots for {self._case.name}')
+    time = np.array(self._m.t)
+    for res in self._resources:
+      plot_colors = ['green','red','blue','orange','teal','violet','brown','black','yellow']
+      plt.figure(figsize=(2,1))
+      main = plt.subplot(111)
+      main.set_xlabel('Time')
+      main.set_ylabel(f'{res} (Dispatched)')
+      main.set_title(f'{res} Dispatch (Realization: {real} Year: {year} Cluster: {cluster})')
+      main.set_xlim((0,time[-1]))
+      for comp in self._components:
+        if self._component_meta[comp.name]['Produces'] == res:
+          plot_dispatch = np.zeros(len(self._m.t))
+          dispatch = getattr(self._m,f'{comp.name}_dispatch_{real}_{year}')
+          for t in self._m.t:
+            plot_dispatch[t] = pyo.value(dispatch[(cluster,t)])
+          label = f'{comp.name} Production'
+          main.plot(time,plot_dispatch,label=label,color=plot_colors[0])
+          plot_colors.pop(0)
+        elif self._component_meta[comp.name]['Demands'] == res:
+          plot_dispatch = np.zeros(len(self._m.t))
+          dispatch = getattr(self._m,f'{comp.name}_dispatch_{real}_{year}')
+          for t in self._m.t:
+            plot_dispatch[t] = -1*pyo.value(dispatch[(cluster,t)])
+          if self._component_meta[comp.name]['Dispatch'] =='fixed':
+            label = f'{comp.name} Demand'
+          else:
+            label = f'{comp.name} Sales'
+          main.plot(time,plot_dispatch,label=label,color=plot_colors[0])
+          plot_colors.pop(0)
+        elif self._component_meta[comp.name]['Consumes'] == res:
+          plot_dispatch = np.zeros(len(self._m.t))
+          dispatch = getattr(self._m,f'{comp.name}_consume_{real}_{year}')
+          for t in self._m.t:
+            plot_dispatch[t] = -1*pyo.value(dispatch[(cluster,t)])
+          label = f'{comp.name} Consumption'
+          main.plot(time,plot_dispatch,label=label,color=plot_colors[0])
+          plot_colors.pop(0)
+        elif self._component_meta[comp.name]['Stores'] == res:
+          plot_level = np.zeros(len(self._m.t))
+          plot_charge = np.zeros(len(self._m.t))
+          plot_discharge = np.zeros(len(self._m.t))
+          level = getattr(self._m,f'{comp.name}_level_{real}_{year}')
+          charge = getattr(self._m,f'{comp.name}_charge_{real}_{year}')
+          discharge = getattr(self._m,f'{comp.name}_discharge_{real}_{year}')
+          for t in self._m.t:
+            plot_level[t] = pyo.value(level[(cluster,t)])
+            plot_charge[t] = -1*pyo.value(charge[(cluster,t)])
+            plot_discharge[t] = pyo.value(discharge[(cluster,t)])
+          label = f'{comp.name} Charging'
+          main.plot(time,plot_charge,label=label,color=plot_colors[0],marker='x',ls='--')
+          label = f'{comp.name} Discharging'
+          main.plot(time,plot_discharge,label=label,color=plot_colors[0],marker='o',ls='--')
+          sec_axis = main.twinx()
+          sec_axis.set_ylabel(f'{res} (Stored)')
+          cap = pyo.value(getattr(self._m,f'{comp.name}'))
+          sec_axis.set_ylim((0,cap+1))
+          label = f'{comp.name} Level'
+          sec_axis.plot(time,plot_level,label=label,color=plot_colors[0],ls='-.')
+          plot_colors.pop(0)
+      leg_main = main.legend(loc='best')
+      leg_main.set_title('Dispatch')
+      leg_sec = sec_axis.legend(loc='best')
+      leg_sec.set_title('Storage')
+      plt.show()
+
   # ===========================
   # MAIN WORKFLOW
   # ===========================
@@ -678,8 +884,14 @@ class MOPED(Base):
     self.buildMultiplicityVariables()
     # Each component will have dispatch and cashflow associated
     for comp in self._components:
-      capacity, dispatch = self.buildDispatchVariables(comp)
+      # Storage components have their own unique set of pyomo variables
+      if self._component_meta[comp.name]['Stores'] is None:
+        capacity, dispatch = self.buildDispatchVariables(comp)
+      else:
+        capacity, dispatch = self.buildStorageVariables(comp)
       cf_comp = self.createCashflowComponent(comp, capacity, dispatch)
+      if self._component_meta[comp.name]['Consumes'] is not None:
+        self.buildConsumptionVariables(comp)
       self._cf_components.append(cf_comp)
     self.raiseAMessage(f'Building pyomo cash flow expression for {self._case.name}')
     # TEAL is our cost function generator here
@@ -691,6 +903,9 @@ class MOPED(Base):
     # TODO does this need to present information about dispatches, how to do this?
     self.raiseAMessage(f'Running Optimizer...')
     self.solveAndDisplay()
+    # TODO provide way for user to turn plotting on and off, defaults to off
+    if self._plot:
+      self.dispatchPlot()
 
   # ===========================
   # UTILITIES
@@ -772,3 +987,32 @@ class MOPED(Base):
     else:
       raise IOError(f'Your {target} is not a valid attribute for MOPED.',
                     f'Please select from {acceptable_targets}')
+
+  def getPreviousIndex(self, comp_name, variable, real, year, c, t, initial_value):
+    """
+      Given an indexed variable, returns the value of the same variable, but of the previous index
+      This is specifically useful for the development of battery level constraints
+      @ In, comp_name, string, name of component that variable belongs to
+      @ In, variable, pyomo var object
+      @ In, real, int, realization of the variable
+      @ In, year, int, year of the variable
+      @ In, c, int, current cluster index
+      @ In, t, int, current time index
+      @ In, initial_value, float, initial value of var prior to analysis start
+      @ Out, previous_index, indexed pyomo var object
+    """
+    # Need to know length of cluster and time indexes for getting previous data
+    time = len(self._m.t)
+    cluster = len(self._m.c)
+    if t == 0:
+      if c == 0:
+        if year == 1:
+          return initial_value
+        else:
+          previous_level = getattr(self._m,f'{comp_name}_level_{real}_{year}')
+          # Indexing pyomo vars is more direct hence the -1
+          return previous_level[(cluster-1,time-1)]
+      else:
+        return variable[(c-1,time-1)]
+    else:
+      return variable[(c, t-1)]

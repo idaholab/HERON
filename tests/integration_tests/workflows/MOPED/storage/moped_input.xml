@@ -1,0 +1,121 @@
+<HERON>
+  <TestInfo>
+    <name>MOPED_storage</name>
+    <author>grifanthoney</author>
+    <created>2022-08-04</created>
+    <description>
+      Demonstrates MOPED's ability to handle storage optimizing components. Simple NPP, battery, grid demand case.
+      This test has a deterministic signal for quick testing purposes.
+    </description>
+    <classesTested>HERON</classesTested>
+  </TestInfo>
+
+  <Case name="storage">
+    <mode>opt</mode>
+    <verbosity>debug</verbosity>
+    <num_arma_samples>2</num_arma_samples>
+    <workflow>MOPED</workflow>
+    <time_discretization>
+      <year_variable>YEAR</year_variable>
+      <time_variable>HOUR</time_variable>
+      <end_time>23</end_time>
+      <num_steps>24</num_steps>
+    </time_discretization>
+    <economics>
+      <ProjectTime>3</ProjectTime>
+      <DiscountRate>0.08</DiscountRate>
+      <tax>0.1</tax>
+      <inflation>0.1</inflation>
+      <verbosity>50</verbosity>
+    </economics>
+    <dispatcher>
+      <pyomo/>
+    </dispatcher>
+  </Case>
+
+
+  <Components>
+    <Component name="npp">
+
+      <produces resource="electricity" dispatch="independent">
+        <capacity resource="electricity">
+          <fixed_value>25</fixed_value> <!--GW-->
+        </capacity>
+      </produces>
+
+      <economics>
+        <lifetime>10</lifetime>
+        <!-- construction cost -->
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <variable>npp_capacity</variable>
+          </driver>
+          <reference_price>
+            <fixed_value>-1e8</fixed_value>
+          </reference_price>
+        </CashFlow>
+
+        <CashFlow name="var_OM" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <!-- ballpark $25/MWh -->
+            <fixed_value>25e3</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="battery">
+      <stores resource="electricity" dispatch="independent">
+        <capacity resource="electricity">
+          <opt_bounds>1,15</opt_bounds>
+        </capacity>
+        <initial_stored>
+          <fixed_value>1</fixed_value>
+        </initial_stored>
+        <RTE>0.9</RTE>
+      </stores>
+      <economics>
+        <lifetime>10</lifetime>
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <variable>battery_capacity</variable>
+          </driver>
+          <reference_price>
+            <fixed_value>-5e8</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="grid">
+      <demands resource="electricity" dispatch="fixed">
+        <capacity>
+          <ARMA variable="Signal">Price</ARMA>
+          <multiplier>-30</multiplier>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>1</lifetime>
+        <CashFlow name="sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <fixed_value>20e6</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+  </Components>
+
+  <DataGenerators>
+    <ARMA name='Price' variable="Signal">%HERON%/tests/integration_tests/ARMA/Sine/arma.pk</ARMA>
+  </DataGenerators>
+
+</HERON>

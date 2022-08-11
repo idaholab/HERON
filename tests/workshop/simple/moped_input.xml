@@ -1,0 +1,125 @@
+<HERON>
+  <TestInfo>
+    <name>MOPED_simple</name>
+    <author>grifanthoney</author>
+    <created>2022-07-18</created>
+    <description>
+      Simple test for MOPED, a very basic demand-met-by-production case.
+    </description>
+    <classesTested>HERON</classesTested>
+  </TestInfo>
+
+  <Case name="1_simple">
+    <mode>opt</mode>
+    <verbosity>debug</verbosity>
+    <num_arma_samples>2</num_arma_samples>
+    <workflow>MOPED</workflow>
+    <time_discretization>
+      <year_variable>YEAR</year_variable>
+      <time_variable>HOUR</time_variable>
+      <end_time>23</end_time>
+      <num_steps>24</num_steps>
+    </time_discretization>
+    <economics>
+      <ProjectTime>3</ProjectTime>
+      <DiscountRate>0.08</DiscountRate>
+      <tax>0.1</tax>
+      <inflation>0.1</inflation>
+      <verbosity>50</verbosity>
+    </economics>
+    <dispatcher>
+      <pyomo/>
+    </dispatcher>
+  </Case>
+
+
+  <Components>
+    <Component name="ngcc">
+
+      <produces resource="electricity" dispatch="independent">
+        <capacity resource="electricity">
+          <opt_bounds>10, 40</opt_bounds> <!--GW-->
+          <!-- <sweep_values>0,21.69,23.73,24.5</sweep_values> -->
+        </capacity>
+      </produces>
+
+      <economics>
+        <lifetime>10</lifetime>
+        <!-- construction cost -->
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <variable>ngcc_capacity</variable>
+          </driver>
+          <reference_price>
+            <!-- 1000 $/kW * 1e6 kW/GW = 1e9 est cost for 1 GW NGCC -->
+            <fixed_value>-1e8</fixed_value>
+          </reference_price>
+          <!-- <depreciate>15</depreciate> -->
+        </CashFlow>
+
+        <CashFlow name="var_OM" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <!-- ballpark $25/MWh -->
+            <fixed_value>25e3</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+
+    <Component name="import">
+
+      <produces resource="electricity" dispatch="independent">
+        <capacity resource="electricity">
+          <fixed_value>100</fixed_value> <!-- GW -->
+        </capacity>
+      </produces>
+
+      <economics>
+        <lifetime>1</lifetime>
+        <CashFlow name="import" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <!-- ballpark $100/MWh -->
+            <fixed_value>100e3</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+
+    <Component name="grid">
+      <demands resource="electricity" dispatch="fixed">
+        <capacity>
+          <ARMA variable="TOTALLOAD">synth</ARMA>
+          <multiplier>-1</multiplier>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>1</lifetime>
+        <!-- <CashFlow name='e_sales' type='repeating' taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <activity>electricity</activity>
+            <multiplier>-15e3</multiplier>
+          </driver>
+          <reference_price>
+            <ARMA variable="SOLAR">synth</ARMA>
+          </reference_price>
+        </CashFlow> -->
+      </economics>
+    </Component>
+
+  </Components>
+
+  <DataGenerators>
+    <ARMA name='synth' variable="TOTALLOAD,SOLAR">../arma_202112_nyiso_def.pk</ARMA>
+  </DataGenerators>
+
+</HERON>

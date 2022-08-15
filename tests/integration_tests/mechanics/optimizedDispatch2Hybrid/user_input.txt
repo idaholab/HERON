@@ -1,0 +1,28 @@
+# The file that includes all the HYBRID variables.
+# All the capacities and dispatches should be a subset of this file's variables.
+# The user is expected to change/review the filename
+all_variables_file = "dsfinal.txt"
+
+
+# Below is a list of the components' capacities.
+# Components' list is extracted from HERON input file: "heron_input.xml"
+# The capacities are listed in the form:
+#				 HERON_component_capacity_1 = HYBRID_component_capacity_1
+# The user is expected to change/review the HYRBID components' capacities.
+steamer_capacity = HYBRID_steamer_capacity
+generator_capacity = HYBRID_generator_capacity
+electr_market_capacity = HYBRID_electr_market_capacity
+electr_flex_capacity = HYBRID_electr_flex_capacity
+
+
+# Below are the HERON variables and their corresponding HYBRID variables
+# HERON variables are extracted from the HERON dispatch outputs file
+# HERON dispatch outputs file is: "dispatch_print.csv"
+# The variables are listed in the form:
+#				HERON_variable_1 = HYBRID_variable_1
+# The user is expected to change/review the HYRBID variables
+Dispatch__steamer__production__steam = HYBRID_Dispatch__steamer__production__steam
+Dispatch__generator__production__steam = HYBRID_Dispatch__generator__production__steam
+Dispatch__generator__production__electricity = HYBRID_Dispatch__generator__production__electricity
+Dispatch__electr_market__production__electricity = HYBRID_Dispatch__electr_market__production__electricity
+Dispatch__electr_flex__production__electricity = HYBRID_Dispatch__electr_flex__production__electricity

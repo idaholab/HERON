@@ -7,11 +7,15 @@
 import os
 import sys
 import argparse
-import input_loader
-from base import Base
-import _utils as hutils
 
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+import HERON.src._utils as hutils
 sys.path.append(hutils.get_raven_loc())
+
+from HERON.src import input_loader
+from HERON.src.base import Base
+from HERON.src.Moped import MOPED
+
 from ravenframework.MessageHandler import MessageHandler
 
 
@@ -89,6 +93,24 @@ class HERON(Base):
     assert case is not None
     case.write_workflows(self._components, self._sources, self._input_dir)
 
+  def run_moped_workflow(self, case=None, components=None, sources=None):
+    """
+      Runs MOPED workflow for generating pyomo problem and solves it
+      @ In, case, HERON case object with necessary run settings
+      @ Out, None
+    """
+    if case is None:
+      case = self._case
+    if components is None:
+      components = self._components
+    if sources is None:
+      sources = self._sources
+    assert case is not None and components is not None and sources is not None
+    moped = MOPED()
+    self.raiseAMessage("***** You are running Monolithic Optimizer for Probabilistic Economic Dispatch (MOPED) *****")
+    moped.setInitialParams(case, components, sources)
+    moped.run()
+
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Holistic Energy Resource Optimization Network (HERON)')
   parser.add_argument('xml_input_file', help='HERON XML input file')
@@ -97,6 +119,9 @@ if __name__ == '__main__':
   sim.read_input(args.xml_input_file) # TODO expand to use arguments?
   # print details
   sim.print_me()
-  sim.create_raven_workflow()
+  if sim._case._workflow == 'standard':
+    sim.create_raven_workflow()
+  elif sim._case._workflow == 'MOPED':
+    sim.run_moped_workflow()
   # TODO someday? sim.run()
 

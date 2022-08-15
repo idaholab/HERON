@@ -9,8 +9,8 @@ import sys
 import abc
 import copy
 
-import _utils as hutils
-from base import Base
+import HERON.src._utils as hutils
+from HERON.src.base import Base
 
 FRAMEWORK_PATH = hutils.get_raven_loc()
 sys.path.append(FRAMEWORK_PATH)
@@ -65,6 +65,10 @@ class Placeholder(Base):
       # magic word for "relative to HERON root"
       heron_path = hutils.get_heron_loc()
       self._target_file = os.path.abspath(self._source.replace('%HERON%', heron_path))
+    elif self._source.startswith('%FARM%'):
+      # magic word for "relative to FARM root"
+      farm_path = hutils.get_farm_loc()
+      self._target_file = os.path.abspath(self._source.replace('%FARM%', farm_path))
     else:
       # check absolute path
       rel_interp = os.path.abspath(os.path.join(self._workingDir, self._source))
@@ -206,8 +210,10 @@ class ARMA(Placeholder):
       # if interpolated, needs more checking
       interp_years = structure['macro']['num']
       if interp_years >= project_life:
-        self.raiseADebug(f'"{self.name}" interpolates {interp_years} macro steps,' +
-                           f'and project life is {project_life}, so histories will be trunctated.')
+        self.raiseADebug(
+            f'"{self.name}" interpolates {interp_years} macro steps,' +
+            f'and project life is {project_life}, so histories will be trunctated.'
+        )
         self.limit_interp = project_life
       else:
         self.raiseAnError(
@@ -264,7 +270,7 @@ class Function(Placeholder):
       @ Out, d, dict, object contents
     """
     # d = super(self, __getstate__) TODO only if super has one ...
-    d = copy.deepcopy(dict((k, v) for k, v in self.__dict__.items() if k not in ['_module']))
+    d = copy.deepcopy(dict((k, v) for k, v in self.__dict__.items() if k not in ['_module','_module_methods']))
     return d
 
   def __setstate__(self, d):
@@ -274,6 +280,11 @@ class Function(Placeholder):
       @ Out, None
     """
     self.__dict__ = d
+    self._module = None
+    self._module_methods = {}
+    target_dir = os.path.dirname(os.path.abspath(self._target_file))
+    if target_dir not in sys.path:
+      sys.path.append(target_dir)
     load_string, _ = utils.identifyIfExternalModelExists(self, self._target_file, '')
     module = utils.importFromPath(load_string, True)
     if not module:

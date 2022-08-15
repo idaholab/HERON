@@ -10,7 +10,7 @@ import os
 import sys
 import numpy as np
 
-from _utils import get_raven_loc
+from HERON.src._utils import get_raven_loc
 from .ValuedParam import ValuedParam, InputData, InputTypes
 
 

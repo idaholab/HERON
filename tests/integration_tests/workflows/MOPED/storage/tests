@@ -1,0 +1,13 @@
+[Tests]
+  [./Moped_storage]
+    type = HeronMoped
+    input = moped_input.xml
+    # prereq = sineARMA
+    [./csv]
+      type = OrderedCSV
+      output = 'opt_solution.csv'
+      zero_threshold = 1e-6
+      rel_err = 1e-6
+    [../]
+  [../]
+[]

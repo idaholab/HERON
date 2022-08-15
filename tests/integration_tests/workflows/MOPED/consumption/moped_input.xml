@@ -1,0 +1,111 @@
+<HERON>
+  <TestInfo>
+    <name>consumption</name>
+    <author>grifanthoney</author>
+    <created>2022-08-01</created>
+    <description>
+      Demonstrates ability for MOPED to handled consuming components (generator) with multiple
+      resources (electricity and steam). Validated manually against default HERON runs.
+    </description>
+    <classesTested>HERON</classesTested>
+  </TestInfo>
+
+  <Case name="Opt_Runs">
+    <mode>opt</mode>
+    <workflow>MOPED</workflow>
+    <verbosity>debug</verbosity>
+    <num_arma_samples>3</num_arma_samples>
+    <time_discretization>
+      <time_variable>Time</time_variable>
+      <end_time>2</end_time>
+      <num_steps>21</num_steps>
+    </time_discretization>
+    <economics>
+      <ProjectTime>3</ProjectTime>
+      <DiscountRate>0.08</DiscountRate>
+      <tax>0.0</tax>
+      <inflation>0.0</inflation>
+      <verbosity>50</verbosity>
+    </economics>
+    <dispatcher>
+      <pyomo/>
+    </dispatcher>
+  </Case>
+
+  <Components>
+    <Component name="steamer">
+      <produces resource="steam" dispatch="fixed">
+        <capacity resource="steam">
+          <opt_bounds debug_value='4'>1, 10</opt_bounds>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>27</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="generator">
+      <produces resource="electricity" dispatch="independent">
+        <consumes>steam</consumes>
+        <capacity resource="steam">
+          <fixed_value>-100</fixed_value>
+        </capacity>
+        <transfer>
+          <linear>
+            <rate resource="steam">-1</rate>
+            <rate resource="electricity">0.5</rate>
+          </linear>
+        </transfer>
+      </produces>
+      <economics>
+        <lifetime>27</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="electr_market">
+      <demands resource="electricity" dispatch="independent">
+        <capacity>
+          <fixed_value>-2</fixed_value>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>30</lifetime>
+        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>electricity</activity>
+            <multiplier>-10000</multiplier>
+          </driver>
+          <reference_price>
+            <ARMA variable='Signal'>Price</ARMA>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="steam_market">
+      <demands resource="steam" dispatch="dependent">
+        <capacity>
+          <fixed_value>-5</fixed_value>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>30</lifetime>
+        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>steam</activity>
+            <multiplier>-10000</multiplier>
+          </driver>
+          <reference_price>
+            <fixed_value>5</fixed_value>>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+  </Components>
+
+  <DataGenerators>
+    <ARMA name='Price' variable="Signal">%HERON%/tests/integration_tests/ARMA/Sine/arma.pk</ARMA>
+  </DataGenerators>
+
+</HERON>

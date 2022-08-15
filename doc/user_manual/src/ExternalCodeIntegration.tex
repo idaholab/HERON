@@ -1,0 +1,124 @@
+\section{External Code Integration}
+HERON can exchange data with other Integrated Energy Systems (IES) codes to conduct technical or economic analyses for various electricity market structures. More information about integrating HERON with other IES software is here: \url{https://ies.inl.gov/SitePages/FORCE.aspx}
+
+The integration between HERON and other IES tools is still a work in progress. Currently, HERON can communicate with the following codes
+
+\subsection{HYBRID}
+The HYBRID repository contains a collection of models representing the physical dynamics of various integrated energy systems and processes. HERON has the capability to load the economic information about the components of the grid system automatically from HYBRID. More information about HYBRID is here: \url{https://github.com/idaholab/HYBRID}
+
+An example that demonstrates this capability can be found at: 
+\begin{lstlisting}
+/HERON/tests/integration_tests/mechanics/hybrid_load/
+\end{lstlisting}
+
+The Python script, that auto-loads the needed economic information from HYBRID to HERON, is named \path{hybrid2heron_economic.py}. This script can be found at:
+\begin{lstlisting}
+/HERON/src/Hybrid2Heron/
+\end{lstlisting}
+
+
+The \path{hybrid2heron_economic.py} script takes one command-line argument, which is the path of the initial HERON input XML file (or pre-input file) before loading any information from HYBRID
+
+For example, the terminal command looks like this:
+\begin{lstlisting}
+python hybrid2heron_economic.py pre_heron_input.xml
+\end{lstlisting}
+A new HERON input XML file, \path{heron_input.xml}, is generated with all the subnodes under the \xmlNode{economics} node loaded from the HYBRID text files. More details about the initial HERON input XML file, the generated (loaded) input XML file and other files at the \path{/HERON/tests/integration_tests/mechanics/hybrid_load/} test are discussed in detail in the following subsections. 
+
+\subsubsection{The initial HERON input XML file}
+The initial HERON XML file, \path{pre_heron_input.xml}, structure should be similar to the typical HERON input XML file and must have
+\begin{itemize}
+\item A \xmlNode{Components} node: 
+\item At least one \xmlNode{Component} sub-node under the \xmlNode{Components} node such as:
+\begin{lstlisting}[style=XML,morekeywords={class}]
+<Component name="component_name"> </Component>
+\end{lstlisting}   
+
+\item An empty \xmlNode{economics} node under the \xmlNode{Component} node with the path to the HYBRID text file that includes the needed information as follows:
+\begin{lstlisting}[style=XML,morekeywords={class}]
+<economics src="path/to/HYBRID/file"> </economics>
+\end{lstlisting}   
+\end{itemize}
+If the \xmlNode{economics} node is not empty, it will remain unaltered when creating the final HERON XML file, \path{heron_input.xml}.
+
+An example of the initial HERON XML file, \path{pre_heron_input.xml}, is located at \path{/HERON/tests/integration_tests/mechanics/hybrid_load/}. 
+The \xmlNode{Components} node at the \path{pre_heron_input.xml} looks like this:
+\begin{lstlisting}[style=XML,morekeywords={class}]
+<Components>
+  <Component name="source">
+    <!--Other component subnodes-->
+    <economics src="Costs/source/source.toml"></economics>
+  </Component>
+</Components>
+\end{lstlisting}
+In this example, the economic information of the component \xmlString{source} would be loaded from a text file whose path is \path{/Costs/source/source.toml}. Similarly, for any other component, the economic information can be provided from other text files. 
+
+\subsubsection{The HYBRID text files}
+The HYBRID text files are expected to have extensions such as .toml or .txt or .rtf and are located at: 
+\path{/HERON/tests/integration_tests/mechanics/hybrid_load/Costs/sink/sink.toml} and 
+\path{/HERON/tests/integration_tests/mechanics/hybrid_load/Costs/source/source.toml}. 
+
+The HYBRID files do not have to be in the same folder with the \path{pre_heron_input.xml} as long as the value of the \xmlString{src} parameter at the \xmlNode{economics} node is the path to the corresponding HYBRID text file. The HYBRID text file structure looks like this:
+\begin{lstlisting}
+Lifetime = 30 #years
+VOM = 0 # Just a placeholder to make sure it passes through
+Activity = a
+\end{lstlisting}
+
+Each line, in the HYBRID text file, includes a variable name and its value plus a comment (if necessary). Any comments must start with the \verb|#| sign. The data should be appropriately auto-loaded from HYBRID text file to HERON XML file even if the text file includes additional irrelevant variables or additional comments at the top or the bottom of the file.
+
+\subsubsection{The generated HERON Input XML file}
+The generated input file, \path{heron_input.xml}, includes:
+\begin{itemize}
+\item All the information that was in the initial HERON input file,       \path{pre_heron_input.xml}
+\item All the relevant variables from the HYBRID text files.
+\item Default values for additional variables that are found neither at the \path{pre_heron_input.xml} nor at the HYBRID text files but are required by HERON to make sure that the input XML file is complete, and no required nodes or parameters are missing. The comments (warnings) inside the \path{heron_input.xml} tell the user if the values of specific variables are not provided by HYBRID, and if default values are assigned instead. The user should review these comments/warnings.
+\end{itemize}
+
+\subsubsection{HYBRID and HERON keywords}
+The HYBRID keywords or the HYBRID variables that the \path{hybrid2heron_economic.py} code can identify to create the corresponding HERON nodes are listed in the CSV file, \path{HYBRID_HERON_keywords.csv}, which is located at: \path{/HERON/src/Hybrid2Heron}. Understanding this CSV file is essential, especially if the user plans to add more HYBRID variables or modify them. The CSV file, \path{HYBRID_HERON_keywords.csv} includes the following columns:
+
+
+\begin{itemize}
+    \item \textbf{HYBRID Keyword}: This column lists all the HYBRID variables' names that the Python script, \path{hybrid2heron_economic.py}, can identify. The variables' names in the HYBRID text files must be a subset of the HYBRID variables' names at the \path{HYBRID_HERON_keywords.csv}. Otherwise, the user can either change the variables' names in the \path{HYBRID_HERON_keywords.csv} file or in the HYBRID text files.    
+    \item \textbf{Description}: The description or the definition of each HYBRID variable 
+    \item \textbf{HERON (Node or Parameter)}: This column specifies if the HYBRID variable is corresponding to a HERON node or a node parameter in the HERON input XML file. \emph{N} refers to a node while \emph{P} refers to a parameter.
+    \item \textbf{HERON Node}, \textbf{HERON Subnode} and \textbf{HERON Subsubnode}: These three columns specify the location of the HERON node corresponding to the HYBRID variable. For example, the HYBRID variable \verb|"Activity"| corresponds the sub-sub-node \xmlNode{activity} under the \xmlNode{driver} sub-node under the \xmlNode{CashFlow} node as follows:
+    
+    \begin{lstlisting}[style=XML,morekeywords={class}]
+<CashFlow inflation="none" mult_target="FALSE" name="VOM" taxable="TRUE" type="repeating">
+    <driver>
+        <activity>a</activity>
+    </driver>
+</CashFlow>
+
+    \end{lstlisting}
+          Also, the HYBRID variable \verb|"VOM_inflation"| corresponds to a \emph{parameter(P)} or an attribute that is called \xmlString{inflation} at the node \xmlNode{CashFlow} under the \xmlNode{economics} node as illustrated in the \xmlNode{economics} node (above).
+    
+    \item \textbf{Belong to same node}: This column is intended to determine the list of sub-nodes or parameters that belong to the same node. We consider four primary nodes under the \xmlNode{economics} node, which are the component lifetime plus three types of cash flows: The Capital Expenditures (CAPEX) cash flow, the Fixed Operation and Maintenance (FOM) cash flow, and the Variable Operation and Maintenance (VOM) cash flow. These four primary nodes are listed under the \xmlNode{economics} node at the HERON input XML file are as follows:
+    
+\begin{minipage}{0.93\textwidth}
+\begin{lstlisting}[style=XML,morekeywords={class}]
+<economics>
+  <lifetime>30</lifetime>
+  <CashFlow inflation="none" mult_target="FALSE" name="capex" taxable="TRUE" type="one-time"></CashFlow>
+  <CashFlow inflation="none" mult_target="FALSE" name="FOM" taxable="TRUE" type="repeating"></CashFlow>
+  <CashFlow inflation="none" mult_target="FALSE" name="VOM" taxable="TRUE" type="repeating"></CashFlow>
+</economics>
+\end{lstlisting}
+\end{minipage} \par
+
+The numerical values under the \verb|"Belong to same node"| column are either \verb|0| or \verb|1| or \verb|2| or \verb|3| corresponding to the nodes \xmlNode{lifetime}, \xmlNode{CashFlow name="capex"}, \xmlNode{CashFlow name="FOM"}, \xmlNode{CashFlow name="VOM"} respectively. 
+
+For example, since the HYBRID variable \verb|"capex_inflation"| corresponds to the parameter, \xmlString{inflation}, under the node \xmlNode{CashFlow name="capex"}, the corresponding numerical value under the \verb|"Belong to same node"| is \verb|"1"|. 
+
+Similarly, the \verb|"Amortization_lifetime"| HYBRID variable corresponds to the HERON sub-node \xmlNode{depreciate} under \emph{all} the three cash flow nodes, the corresponding numerical value under the \verb|"Belong to same node"| is \verb|"1,2,3"|. 
+
+Note that we consider three types only of cash flows, but the user can add additional cash flows to the \path{HYBRID_HERON_keywords.csv} file, if needed. 
+     
+ \item \textbf{Required if HYBRID keyword?}: This column determines if the HYBRID variable needs to be included when building the HERON input XML file even if this HYBRID variable is not provided by the HYBRID text files. 
+ 
+ For example, the HYBRID variable, \verb|"Activity"|, will be included if the \verb|"VOM"| cash flow is present since the node \xmlNode{CashFlow name="VOM"} will be incomplete if the \xmlNode{activity} sub-node is missing. Therefore, for the HYBRID variable, \verb|"Activity"|, the corresponding value under the \verb|"Required if HYBRID keyword?"| column is \verb|"VOM"|
+ 
+ \item \textbf{Default value for the required variable}: This column assigns a default value for any HYBRID variable whose value is not provided by the HYBRID text files if this HYBRID variable is required (see the column \verb|"Required if HYBRID keyword?"|). For example, the default value of the HYBRID variable, \verb|"Activity"|, if required, is \xmlString{electricity} 
+\end{itemize}

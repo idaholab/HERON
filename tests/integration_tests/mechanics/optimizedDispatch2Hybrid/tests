@@ -1,0 +1,10 @@
+[Tests]
+  [./CreatingUserInputFile_HYBRID_User]
+    type = RavenPython
+    input = 'create_user_input.py heron_input.xml dispatch_print.csv'
+  [../]
+  [./OptimizedDispatch_FromHERON2HYBRID]
+    type = RavenPython
+    input = 'export2Hybrid.py heron_input.xml dispatch_print.csv'
+  [../]
+[]

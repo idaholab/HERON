@@ -10,7 +10,7 @@ It takes the following arguments:
 1- The HERON input XML file
 2- The optimized dispatch outputs csv file.
 For example, To run the script, use the following command:
-    python create_user_input.py heron_input.xml dispatch_print.csv
+  python create_user_input.py heron_input.xml Debug_Run_o/dispatch_print.csv
 The output will be a user input file: "user_input.txt".
 The user needs to review the user input file and change/review the HYRBID variables and capacities there.
 
@@ -25,18 +25,17 @@ import os.path
 import argparse
 from xml.etree import ElementTree as ET
 import pandas as pd
-from colorama import Fore
-from colorama import Style
+
 
 
 #####
 # Section 1: Extracting components' capacities Function
 def extract_capacities_heron_hybrid(heron_input, output_file):
   """
-  Creates a list of components' capacities from the HERON inpue file plus creating placeholders for the components' capacities in HYRBID
-  @ In, heron input, str, the HERON input XML file
-  @ In, output_file, str, the text file where the list of components capacities should be printed.
-  @ Out, output_file, str, text a file autoloaded with the list of components' capacities from the HERON file and placeholders for the components' capacities in HYRBID
+    Creates a list of components' capacities from the HERON inpue file plus creating placeholders for the components' capacities in HYRBID
+    @ In, heron input, str, the HERON input XML file
+    @ In, output_file, str, the text file where the list of components capacities should be printed.
+    @ Out, None
   """
 
   # Creating the HERON XML file tree
@@ -70,13 +69,12 @@ def extract_capacities_heron_hybrid(heron_input, output_file):
           + "\n"
         )
       print("\n")
-      print(len(comp_list), "components are found in:", heron_input, "\n")
+      print(len(comp_list), "components are found in:", heron_input)
       print(
         "The capacities of",
         len(comp_list),
         "components are printed at the",
-        output_file,
-        "\n",
+        output_file
       )
 
     if not comp_list:
@@ -87,10 +85,10 @@ def extract_capacities_heron_hybrid(heron_input, output_file):
 # Section 2: Extracting dispatch outputs Function
 def extract_dispatches_heron_hybrid(dispatch_print, output_file):
   """
-  Creates a list of dispatches (components' optimized variables) from the HERON inpue file plus creating placeholders for the dispatches in HYRBID
-  @ In, dispatch_print, str, the distpach csv file with a list of optimized variables
-  @ In, output_file, str, the text file where the list of optimized dispatches should be printed.
-  @ Out, output_file, str, a text file autoloaded with the optimized dispatches plus placeholders for the HYBRID dispatches
+    Creates a list of dispatches (components' optimized variables) from the HERON inpue file plus creating placeholders for the dispatches in HYRBID
+    @ In, dispatch_print, str, the distpach csv file with a list of optimized variables
+    @ In, output_file, str, the text file where the list of optimized dispatches should be printed.
+    @ Out, None
   """
   input_dataset = pd.read_csv(dispatch_print)
   # Extracting the HERON csv dispatches
@@ -119,8 +117,7 @@ def extract_dispatches_heron_hybrid(dispatch_print, output_file):
       " optimized dispatches are found in:",
       dispatch_print,
       "and printed at the",
-      output_file,
-      "\n",
+      output_file
     )
 
 
@@ -157,7 +154,8 @@ with open(user_input_file, "a+") as u:
 extract_capacities_heron_hybrid(args.HERON_input_file, user_input_file)
 extract_dispatches_heron_hybrid(args.HERON_dipatch_csv_file, user_input_file)
 
-print(
-  f"{Fore.RED}The {user_input_file} file is created for the HYBRID user to change/review it{Style.RESET_ALL}",
-  "\n",
+print('\033[94m',
+      f"The {user_input_file} file is created for the HYBRID user to change/review it",
+      "\n",
+      '\033[0m'
 )

@@ -10,8 +10,8 @@ This script is run with the following arguments:
 1- The HERON input XML file.
 2- The optimized dispatch outputs CSV file.
 For example, to run this script, use the following command:
-    python export2Hybrid.py heron_input.xml dispatch_print.csv
-The output will be a text file compatible with HYBRID: "hybrid_input.txt."
+    python export2Hybrid.py heron_input.xml Debug_Run_o/dispatch_print.csv
+The output will be a text file compatible with HYBRID: "hybrid_compatible_dispatch.txt"
 """
 
 #####
@@ -23,28 +23,22 @@ import argparse
 import pandas as pd
 import numpy as np
 from xml.etree import ElementTree as ET
-from colorama import Fore
-from colorama import Style
 
 #####
-# Section 1: A Function to connect HERON/HYRBID capacities and dispatches in the user-input file
+# Section 1: A Function to connect HERON/HYRBID capacities in the user-input file
 
-def map_capacities_dispatches_in_the_user_input_file(user_input_file):
+def map_capacities_in_the_user_input_file(user_input_file):
   """
-  Identifies which component dispatch/capacity in HYBRID corresponds to which component dispatch/capacity in HERON.
-  @ In, user-input file, str, the user-input text file
-  @ Out, a dictionary that matches HERON and HYBRID capacities, dict, Defining the HYBRID capacity that corresponds to each HERON capacity
-  @ Out, a dictionary that matches HERON and HYBRID dispatches, dict, Defining the HYBRID dispatch that corresponds to each HERON dispatch
+    Identifies which component capacity in HYBRID corresponds to which component capacity in HERON.
+    @ In, user_input_file, str, the user-input text file
+    @ Out, comp_capacity, dict, a dictionary that matches HERON and HYBRID components capacities
   """
   # Iterating over the user-input file
   with open(user_input_file, "r") as f:
     comp_capacity = {}
-    heron_hybrid_dispatch = {}
-
     for line in f:
       if line.startswith("all_variables_file"):
         all_var_hybrid_file = line.split("=")[1].strip().replace('"', "")
-
       if not line.startswith("#"):
         # Connect HYBRID/HREON capacities
         if "capacity" in line:
@@ -53,30 +47,53 @@ def map_capacities_dispatches_in_the_user_input_file(user_input_file):
           )
           hybrid_capacity = line.strip().split("=")[1].strip()
           comp_capacity[comp_name] = hybrid_capacity
-          with open(all_var_hybrid_file) as hyb:
-            if not hybrid_capacity in hyb.read():
-              print(
-                f"{Fore.YELLOW}Warning{Style.RESET_ALL}: '{hybrid_capacity}' is not found in {all_var_hybrid_file}"
-              )
+          if os.path.exists(all_var_hybrid_file): # checkin whether HYBRID variables file exists
+            with open(all_var_hybrid_file) as hyb:
+              if not hybrid_capacity in hyb.read():
+                print('\033[91m', f" Warning: {hybrid_capacity} is not found in {all_var_hybrid_file}", '\033[0m')
+          else:
+            print ('\033[91m', f" Warning: {all_var_hybrid_file} is not found", '\033[0m')
+  return (comp_capacity)
 
-                    # Connect HYBRID/HREON dispatches
+#####
+# Section 2: A Function to connect HERON/HYRBID dispatches in the user-input file
+
+def map_dispatches_in_the_user_input_file(user_input_file):
+  """
+    Identifies which component dispatch in HYBRID corresponds to which component dispatch in HERON.
+    @ In, user_input_file, str, the user-input text file
+    @ Out, heron_hybrid_dispatch, dict, a dictionary that matches HERON and HYBRID dispatches
+  """
+  # Iterating over the user-input file
+  with open(user_input_file, "r") as f:
+    heron_hybrid_dispatch = {}
+    for line in f:
+      if line.startswith("all_variables_file"):
+        all_var_hybrid_file = line.split("=")[1].strip().replace('"', "")
+
+      if not line.startswith("#"):
+        # Connect HYBRID/HREON dispatches
         if "Dispatch" in line:
           heron_dispatch = line.strip().split("=")[0].strip()
           hybrid_dispatch = line.strip().split("=")[1].strip()
           heron_hybrid_dispatch[heron_dispatch] = hybrid_dispatch
+          if os.path.exists(all_var_hybrid_file): # checkin whether HYBRID variables file exists
+            with open(all_var_hybrid_file) as hyb:
+              if not hybrid_dispatch in hyb.read():
+                print('\033[91m', f" Warning: {hybrid_dispatch} is not found in {all_var_hybrid_file}",'\033[0m')
+          else:
+            print ('\033[91m', f" Warning: {all_var_hybrid_file} is not found", '\033[0m')
 
-  return (comp_capacity, heron_hybrid_dispatch)
-
+  return (heron_hybrid_dispatch)
 
 #####
-# Section 2: A Function to obtain the values of the components'c capacities from the HERON input file
-
+# Section 3: A Function to obtain the values of the components'c capacities from the HERON input file
 
 def get_capacities_from_heron(heron_input_file):
   """
-  Extracts the values of the components' capacities from the HERON input XML file
-  @ In, HERON input, str, the HERON input XML file
-  @ Out, components' capacities, dict, the value of the capacity of each component
+    Extracts the values of the components' capacities from the HERON input XML file
+    @ In, heron_input_file, str, the HERON input XML file
+    @ Out, comp_capacites_values, dict, the values of the components' capacities
   """
 
   # The HERON XML file tree
@@ -113,13 +130,13 @@ def get_capacities_from_heron(heron_input_file):
 
 
 #####
-# Section 3: A Function to get the most interesting dataset from the HERON optimized dispatch
+# Section 4: A Function to get the most interesting dataset from the HERON optimized dispatch
 
 def get_interesting_dispatch(dispatch_print_csv):
   """
-  Extracts the most interesting dataset from the a CSV file that we get from HERON. This CSV file includes optimized dispatchs that are calaculated at different years and samples.
-  @ In, dispatch_print, str, a csv file produced by HERON and includes optimized components' time-dependent variables at different years, different samples
-  @ Out, interesting dataset, pandas.core.frame.DataFrame, time-dependent optimized variables
+    Extracts the most interesting dataset from the a CSV file that we get from HERON. This CSV file includes optimized dispatchs that are calaculated at different years and samples.
+    @ In, dispatch_print_csv, str, a csv file produced by HERON and includes optimized components' time-dependent variables at different years, different samples
+    @ Out, interesting_dataset, pandas.core.frame.DataFrame, time-dependent optimized variables
   """
 
   # Reading the input csv file from HERON
@@ -177,7 +194,8 @@ def get_interesting_dispatch(dispatch_print_csv):
 
 
 #####
-# Section 4: Specifying terminal command arguments
+# Section 5: Specifying terminal command arguments
+
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(
     description="Convert the HERON optimized components' variables (optimized dispatch) to a text file that is compatible with HYBRID"
@@ -190,12 +208,13 @@ if __name__ == "__main__":
   args = parser.parse_args()
 
 #####
-# Section 5: Creating a text file to be used by the HYBRID user
+# Section 6: Creating a text file to be used by the HYBRID user
 
 # Check whether the user-input file exists
 file_exists = os.path.exists("user_input.txt")
 if file_exists:
-  print("The user_input.txt file is found")
+  print("\n",
+        "The user_input.txt file is found")
 else:
   print("The user_input.txt file is not found")
 
@@ -206,11 +225,11 @@ if os.path.exists(output_file):
 
 # Get capacities and dispatches
 hybrid_heron_capacities = (
-  map_capacities_dispatches_in_the_user_input_file("user_input.txt")
-)[0]
+  map_capacities_in_the_user_input_file("user_input.txt")
+)
 hybrid_heron_dispatches = (
-  map_capacities_dispatches_in_the_user_input_file("user_input.txt")
-)[-1]
+  map_dispatches_in_the_user_input_file("user_input.txt")
+)
 
 with open(output_file, "a+") as f:
   f.write("# A list of components' capacities" + "\n")

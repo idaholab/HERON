@@ -1,7 +1,7 @@
 # Copyright 2022, Battelle Energy Alliance, LLC
 # ALL RIGHTS RESERVED
 """
-A script to convert the HERON optimized components' variables (optimized dispatch) to a text file that is compatible with HYBRID.
+A script to convert the HERON optimized components' variables (optimized dispatch) to a text file compatible with HYBRID.
 
 The user-input file, "user_input.txt", must be in the same folder.
 The user must review/modify the "user_input.txt" before running this script.
@@ -25,7 +25,7 @@ import numpy as np
 from xml.etree import ElementTree as ET
 
 #####
-# Section 1: A Function to connect HERON/HYRBID capacities in the user-input file
+# Section 1: A Function to connect HERON/HYBRID capacities in the user-input file
 
 def map_capacities_in_the_user_input_file(user_input_file):
   """
@@ -56,7 +56,7 @@ def map_capacities_in_the_user_input_file(user_input_file):
   return (comp_capacity)
 
 #####
-# Section 2: A Function to connect HERON/HYRBID dispatches in the user-input file
+# Section 2: A Function to connect HERON/HYBRID dispatches in the user-input file
 
 def map_dispatches_in_the_user_input_file(user_input_file):
   """
@@ -87,7 +87,7 @@ def map_dispatches_in_the_user_input_file(user_input_file):
   return (heron_hybrid_dispatch)
 
 #####
-# Section 3: A Function to obtain the values of the components'c capacities from the HERON input file
+# Section 3: A Function to obtain the values of the components' capacities from the HERON input file
 
 def get_capacities_from_heron(heron_input_file):
   """
@@ -130,12 +130,12 @@ def get_capacities_from_heron(heron_input_file):
 
 
 #####
-# Section 4: A Function to get the most interesting dataset from the HERON optimized dispatch
+# Section 4: # Section 4: A Function to get the most interesting dataset from the HERON optimized dispatch
 
 def get_interesting_dispatch(dispatch_print_csv):
   """
-    Extracts the most interesting dataset from the a CSV file that we get from HERON. This CSV file includes optimized dispatchs that are calaculated at different years and samples.
-    @ In, dispatch_print_csv, str, a csv file produced by HERON and includes optimized components' time-dependent variables at different years, different samples
+    Extracts the most interesting dataset from the CSV file we get from HERON. This CSV file includes optimized dispatches calculated at different years and samples.
+    @ In, dispatch_print_csv, str, a CSV file produced by HERON and includes optimized components' time-dependent variables at different years, different samples
     @ Out, interesting_dataset, pandas.core.frame.DataFrame, time-dependent optimized variables
   """
 

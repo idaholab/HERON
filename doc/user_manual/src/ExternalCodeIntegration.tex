@@ -1,12 +1,13 @@
 \section{External Code Integration}
-HERON can exchange data with other Integrated Energy Systems (IES) codes to conduct technical or economic analyses for various electricity market structures. More information about integrating HERON with other IES software is here: \url{https://ies.inl.gov/SitePages/FORCE.aspx}
+HERON can exchange data with other Integrated Energy Systems (IES) tools to conduct technical or economic analyses for various electricity market structures. More information about integrating HERON with other IES software is here: \url{https://ies.inl.gov/SitePages/FORCE.aspx}
 
-The integration between HERON and other IES tools is still a work in progress. Currently, HERON can communicate with the following codes
+Integrating HERON and other IES tools is still a work in progress. Currently, HERON can communicate with HYBRID only. HERON provides algorithms for analyzing the long-term viability of potential IES technologies, while HYBRID provides models to achieve high-resolution analysis over a short time. More information about HYBRID is here: \url{https://github.com/idaholab/HYBRID}
 
-\subsection{HYBRID}
-The HYBRID repository contains a collection of models representing the physical dynamics of various integrated energy systems and processes. HERON has the capability to load the economic information about the components of the grid system automatically from HYBRID. More information about HYBRID is here: \url{https://github.com/idaholab/HYBRID}
 
-An example that demonstrates this capability can be found at: 
+HYBRID models determine the fundamental properties of the IES components. These fundamental properties include transfer functions, operational ramping limits, and economics. The fundamental properties of generating units are used in HERON as constraints and economic drivers for long-term portfolio optimization. On the other side, the feasibility of the optimized energy portfolio, calculated by HERON, is analyzed using HYBRID to ensure that no physical or operational constraints are violated. HYBRID and HERON integration through automating the data exchange between HYBRID and HERON is demonstrated in the following subsections.
+
+\subsection{Auto-loading the components' economic information from HYBRID to HERON}
+HERON can load the economic information about the components of the grid. An example that demonstrates this capability can be found at: 
 \begin{lstlisting}
 /HERON/tests/integration_tests/mechanics/hybrid_load/
 \end{lstlisting}
@@ -122,3 +123,75 @@ Note that we consider three types only of cash flows, but the user can add addit
  
  \item \textbf{Default value for the required variable}: This column assigns a default value for any HYBRID variable whose value is not provided by the HYBRID text files if this HYBRID variable is required (see the column \verb|"Required if HYBRID keyword?"|). For example, the default value of the HYBRID variable, \verb|"Activity"|, if required, is \xmlString{electricity} 
 \end{itemize}
+
+\subsection{Auto-loading the optimized dispatches from HERON to HYBRID}
+The optimized dispatches, that HERON calculates, can be converted to a text file compatible with HYBRID. An example that demonstrates this capability can be found at: 
+\begin{lstlisting}
+/HERON/tests/integration_tests/mechanics/optimizedDispatch2Hybrid/
+\end{lstlisting}
+
+
+
+This test demonstrates converting the HERON optimized components' variables (optimized dispatch) to a text file that is compatible with HYBRID via the following three steps:
+\begin{enumerate}
+
+\item \textbf{Producing the optimized dispatches}: Initially, the optimized dispatches are calculated via HERON through two steps (two optimization loops). An outer loop for optimizing the sizes of the grid components/units and an inner loop that calculates the optimal energy dispatch. These two steps (loops) create the optimized dispatches CSV file by running the usual HERON commands such as:
+\begin{lstlisting}
+~/projects/HERON/heron heron_input.xml
+~/projects/raven/raven_framework outer.xml
+\end{lstlisting}
+Note that this HERON input XML file, \path{heron_input.xml}, is borrowed from \path{/HERON/tests/integration_tests/mechanics/debug_mode/} and is run in debug mode. The debug mode enables a reduced-size run (a single outer loop and a single inner loop). 
+
+The output of the previous two commands is the optimized dispatch printed in
+\begin{lstlisting}
+optimizedDispatch2Hybrid/Debug_Run_o/dispatch_print.csv
+\end{lstlisting}
+
+
+
+\item \textbf{Creating the user-input file for the HYBRID user}: This step enables the HYBRID user to change the names, if necessary, of the optimized components' variables and the capacities of the components. The HYBRID user input file is created by running the code \path{create_user_input.py} which extracts the optimized dispatch outputs from the dispatches CSV file and the list of capacities of the components from the HERON input XML file.
+ 
+ 
+The \path{create_user_input.py} takes two arguments: The HERON input XML file and the optimized dispatch outputs CSV file. For example, use the following command:
+ \begin{lstlisting}
+python create_user_input.py heron_input.xml Debug_Run_o/
+dispatch_print.csv
+  \end{lstlisting}
+  
+ 
+ 
+This step creates \path{user_input.txt} that the HYBRID user should modify or review before moving to the next step. The \path{user_input.txt} includes a list of the HERON variables and their corresponding HYBRID variables (that the HYBRID user may change) plus the location of \path{all_variables_file}. The \path{all_variables_file} is a file that includes all the HYBRID variables. All the capacities and dispatches should be a subset of this file's variables. This file helps to ensure that the HYBRID capacities and dispatches are identified by HYBRID. Currently the \path{all_variables_file} is {"dsfinal.txt"} which is located in 
+\begin{lstlisting}
+/HERON/tests/integration_tests/mechanics/
+optimizedDispatch2Hybrid/dsfinal.txt
+\end{lstlisting}
+The user can change the file location in the \path{user_input.txt}.    
+  
+
+
+\item \textbf{Creating an optimized dispatches file for HYBRID}: A text file containing the optimized dispatches and capacities of the components is created to be compatible with HYBRID using the code \path{export2Hybrid.py}. The variables' names in the generated (auto-loaded) HYBRID text file are borrowed from the \path{user_input.txt} and the \path{user_input.txt} must be in the same folder as the \path{export2Hybrid.py}. 
+ The \path{export2Hybrid.py} extracts the values of the capacities of the components from the HERON input file, \path{heron_input.xml}, and extracts the most challenging scenario from the optimized dispatch CSV file, \path{Debug_Run_o/dispatch_print.csv}. 
+ 
+ We assume that the most challenging scenario is the scenario (of a specific year and sample) with the highest rate of change of any components' resource (variable). This most challenging scenario is selected as follows:
+   
+
+\begin{itemize}
+ \item For each scenario, calculate the rate of change at each time step for each component variable
+  \item For each scenario, calculate the maximum rate of change over all the time steps over all the variables. 
+   \item Select the scenario with the highest maximum rate of change to be the maximum scenario.
+ \end{itemize}
+ 
+
+
+Note that we assume that all the components' variables in the \path{dispatch_print.csv} have the same units. 
+ 
+ The \path{export2Hybrid.py} is run with two arguments: The HERON input XML file and the optimized dispatch outputs CSV file. For example, use the following command:
+ 
+ \begin{lstlisting}
+python export2Hybrid.py heron_input.xml Debug_Run_o/
+dispatch_print.csv
+ \end{lstlisting}
+
+The output will be a text file compatible with HYBRID:    \path{hybrid_compatible_dispatch.txt}. The terminal will display warning messages if the HYBRID dispatches/capacities are not a subset of the variables list in the \path{user_input.txt}.    
+
+\end{enumerate}

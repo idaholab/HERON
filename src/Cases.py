@@ -149,6 +149,14 @@ class Case(Base):
         descr=r"""the number of parallel runs to use per inner sampling run. This should be at most the number
               of denoising samples, and at most the number of parallel processes available on your computing
               device. \default{1}"""))
+    #XXX RAVEN should be providing this InputData
+    runinfo = InputData.parameterInputFactory('runinfo',
+                descr=r"""this is copied into the raven runinfo block""")
+    runinfo.addSub(InputData.parameterInputFactory('expectedTime', contentType=InputTypes.StringType))
+    runinfo.addSub(InputData.parameterInputFactory('clusterParameters', contentType=InputTypes.StringType))
+    runinfo.addSub(InputData.parameterInputFactory('RemoteRunCommand', contentType=InputTypes.StringType))
+    runinfo.addSub(InputData.parameterInputFactory('memory', contentType=InputTypes.StringType))
+    parallel.addSub(runinfo)
     # TODO HPC?
     input_specs.addSub(parallel)
 
@@ -438,11 +446,15 @@ class Case(Base):
         self._mode = item.value
       elif item.getName() == 'parallel':
         self.useParallel = True
+        self.parallelRunInfo = {}
         for sub in item.subparts:
           if sub.getName() == 'outer':
             self.outerParallel = sub.value
           elif sub.getName() == 'inner':
             self.innerParallel = sub.value
+          elif sub.getName() == 'runinfo':
+            for subsub in sub.subparts:
+              self.parallelRunInfo[subsub.getName()] = str(subsub.value)
       elif item.getName() == 'metric':
         self._metric = item.value
       elif item.getName() == 'differential':

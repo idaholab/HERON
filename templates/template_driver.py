@@ -251,6 +251,15 @@ class Template(TemplateBase, Base):
       batchSize = run_info.find('batchSize')
       batchSize.text = f'{case.outerParallel}'
       run_info.append(xmlUtils.newNode('internalParallel', text='True'))
+    if case.useParallel:
+      #XXX this doesn't handle non-mpi modes like torque or other custom ones
+      mode = xmlUtils.newNode('mode', text='mpi')
+      mode.append(xmlUtils.newNode('runQSUB'))
+      if 'memory' in case.parallelRunInfo:
+        mode.append(xmlUtils.newNode('memory', text=case.parallelRunInfo.pop('memory')))
+      for sub in case.parallelRunInfo:
+        run_info.append(xmlUtils.newNode(sub, text=str(case.parallelRunInfo[sub])))
+      run_info.append(mode)
     if case.innerParallel:
       run_info.append(xmlUtils.newNode('NumMPI', text=case.innerParallel))
 

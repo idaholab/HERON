@@ -376,6 +376,7 @@ class Case(Base):
     self.validator = None              # type of dispatch validation to use
     self.dispatch_vars = {}            # non-component optimization ValuedParams
 
+    self.useParallel = False           # parallel tag specified?
     self.outerParallel = 0             # number of outer parallel runs to use
     self.innerParallel = 0             # number of inner parallel runs to use
 
@@ -436,6 +437,7 @@ class Case(Base):
       if item.getName() == 'mode':
         self._mode = item.value
       elif item.getName() == 'parallel':
+        self.useParallel = True
         for sub in item.subparts:
           if sub.getName() == 'outer':
             self.outerParallel = sub.value
@@ -490,6 +492,11 @@ class Case(Base):
       self.raiseAnError('No <dispatch> node was provided in the <Case> node!')
     if self._time_discretization is None:
       self.raiseAnError('<time_discretization> node was not provided in the <Case> node!')
+    if self.innerParallel == 0 and self.useParallel:
+      #set default inner parallel to number of samples (denoises)
+      self.innerParallel = self._num_samples
+    #Note that if self.outerParallel == 0 and self.useParallel
+    # then outerParallel will be set in template_driver _modify_outer_samplers
     cores_requested = self.innerParallel * self.outerParallel
     if cores_requested > 1:
       # check to see if the number of processes available can meet the request

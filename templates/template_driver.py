@@ -249,6 +249,7 @@ class Template(TemplateBase, Base):
       # for now, outer does not use InternalParallel
       batchSize = run_info.find('batchSize')
       batchSize.text = f'{case.outerParallel}'
+      run_info.append(xmlUtils.newNode('internalParallel', text='True'))
     if case.innerParallel:
       run_info.append(xmlUtils.newNode('NumMPI', text=case.innerParallel))
 

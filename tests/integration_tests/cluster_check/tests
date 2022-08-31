@@ -3,7 +3,12 @@
   type = HeronIntegration
   kind = heron_only
   input = heron_input.xml
-  UnorderedXml = outer.xml
+  [./xml_check]
+    type = XML
+    unordered = true
+    output = outer.xml
+    alt_root = './RunInfo'
+  [../]
  [../]
 
 []

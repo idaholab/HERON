@@ -138,24 +138,27 @@ class Case(Base):
               \default{True}"""))
     input_specs.addSub(debug)
 
-    parallel = InputData.parameterInputFactory('parallel', descr=r"""Describes how to parallelize this run.""")
+    parallel = InputData.parameterInputFactory('parallel', descr=r"""Describes how to parallelize this run. If not present defaults to no parallelization (1 outer, 1 inner)""")
     parallel.addSub(InputData.parameterInputFactory('outer', contentType=InputTypes.IntegerType,
         descr=r"""the number of parallel runs to use for the outer optimization run. The product of this
               number and \xmlNode{inner} should be at most the number of parallel process available on
               your computing device. This should also be at most the number of samples needed per outer iteration;
               for example, with 3 opt bound variables and using finite differencing, at most 4 parallel outer runs
-              can be used. \default{1}"""))
+              can be used. \default{number of variable sweeps + 1}"""))
     parallel.addSub(InputData.parameterInputFactory('inner', contentType=InputTypes.IntegerType,
         descr=r"""the number of parallel runs to use per inner sampling run. This should be at most the number
               of denoising samples, and at most the number of parallel processes available on your computing
-              device. \default{1}"""))
+              device. \default{number of denoising samples}"""))
     #XXX RAVEN should be providing this InputData
     runinfo = InputData.parameterInputFactory('runinfo',
-                descr=r"""this is copied into the raven runinfo block""")
-    runinfo.addSub(InputData.parameterInputFactory('expectedTime', contentType=InputTypes.StringType))
-    runinfo.addSub(InputData.parameterInputFactory('clusterParameters', contentType=InputTypes.StringType))
-    runinfo.addSub(InputData.parameterInputFactory('RemoteRunCommand', contentType=InputTypes.StringType))
-    runinfo.addSub(InputData.parameterInputFactory('memory', contentType=InputTypes.StringType))
+                descr=r"""this is copied into the RAVEN runinfo block, and defaults are specified in RAVEN""")
+    runinfo.addSub(InputData.parameterInputFactory('expectedTime', contentType=InputTypes.StringType,
+                  descr=r"""the expected time for the run to take in hours, minutes, seconds (example 24:00:00 for 1 day) """))
+    runinfo.addSub(InputData.parameterInputFactory('clusterParameters', contentType=InputTypes.StringType,
+                  descr=r"""Extra parameters needed by the cluster qsub command"""))
+    runinfo.addSub(InputData.parameterInputFactory('RemoteRunCommand', contentType=InputTypes.StringType,
+                   descr=r"""The shell command used to run remote commands"""))
+    runinfo.addSub(InputData.parameterInputFactory('memory', contentType=InputTypes.StringType,descr=r"""The amount of memory needed per core (example 4gb)"""))
     parallel.addSub(runinfo)
     # TODO HPC?
     input_specs.addSub(parallel)

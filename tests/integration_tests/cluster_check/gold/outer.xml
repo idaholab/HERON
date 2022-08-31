@@ -4,10 +4,6 @@
     <WorkingDir>Opt_Runs_o</WorkingDir>
     <Sequence>optimize, plot</Sequence>
     <batchSize>3</batchSize>
-    <!-- <internalParallel>True</internalParallel>
-     <mode>mpi<runQSUB></runQSUB></mode>
-     <expectedTime>72:0:0</expectedTime>
-     <clusterParameters>-P nst -j oe</clusterParameters> -->
     <expectedTime>72:0:0</expectedTime>
     <clusterParameters>-P nst</clusterParameters>
     <mode>mpi

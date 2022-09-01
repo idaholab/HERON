@@ -1,6 +1,6 @@
 <HERON>
   <TestInfo>
-    <name>trying_something</name>
+    <name>test_dispatches_wJSON</name>
     <author>sotogj</author>
     <created>2022-07-14</created>
     <description>
@@ -10,14 +10,11 @@
     <classesTested>HERON</classesTested>
   </TestInfo>
 
-  <Case name="trying_something">
+  <Case name="test_dispatches_wJSON">
     <mode>opt</mode>
     <verbosity>all</verbosity>
-    <num_arma_samples>5</num_arma_samples>
+    <num_arma_samples>1</num_arma_samples>
     <workflow>DISPATCHES</workflow>
-    <!-- <parallel>
-        <inner>2</inner>
-      </parallel> -->
     <time_discretization>
       <year_variable>YEAR</year_variable>
       <time_variable>HOUR</time_variable>
@@ -26,8 +23,8 @@
     </time_discretization>
     <economics>
       <ProjectTime>3</ProjectTime>
-      <DiscountRate>0.09</DiscountRate>
-      <tax>0.25</tax>
+      <DiscountRate>0.08</DiscountRate>
+      <tax>0.2</tax>
       <inflation>0</inflation>
       <verbosity>50</verbosity>
     </economics>
@@ -42,7 +39,6 @@
        power unit is kW or W, price is $, mass is mol   -->
   <Components>
     <Component name="npp">
-
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
           <fixed_value>1e6</fixed_value> <!-- kW -->
@@ -50,7 +46,7 @@
       </produces>
 
       <economics>
-        <lifetime>31</lifetime>
+        <lifetime>20</lifetime>
         <!--
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
           <driver>
@@ -95,7 +91,7 @@
       </produces>
 
       <economics>
-        <lifetime>31</lifetime>
+        <lifetime>20</lifetime>
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
           <driver>
             <variable>pem_capacity</variable> <!-- kW -->
@@ -103,7 +99,7 @@
           <reference_price>
             <fixed_value>-1630</fixed_value> <!-- $/kWh -->
           </reference_price>
-          <!-- <depreciate>15</depreciate> -->
+          <depreciate>15</depreciate>
         </CashFlow>
 
         <CashFlow name="fixed_OM" type="repeating" period="year" taxable="True" inflation="none" mult_target="False">
@@ -113,16 +109,14 @@
           <reference_price>
             <fixed_value>-47.9</fixed_value> <!-- $/kW -->
           </reference_price>
-          <!-- <depreciate>15</depreciate> -->
         </CashFlow>
 
         <CashFlow name="var_OM" type="repeating" period="hour" taxable='True' inflation='none' mult_target='False'>
           <driver>
             <activity>hydrogen</activity>
-            <multiplier>-1</multiplier>
           </driver>
           <reference_price>
-            <fixed_value>0.0013</fixed_value> <!-- $/kWh -->
+            <fixed_value>-0.0013</fixed_value> <!-- $/kWh -->
           </reference_price>
         </CashFlow>
       </economics>
@@ -138,16 +132,15 @@
       </stores>
 
       <economics>
-        <lifetime>31</lifetime>
+        <lifetime>20</lifetime>
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
           <driver>
             <variable>h2tank_capacity</variable>
           </driver>
           <reference_price>
-            <fixed_value>-965.7</fixed_value> <!-- $29/kWh, H2 LHV is: 33.3 kWh/kg -->
-            <multiplier>2.016e-3</multiplier> <!-- H2 molar mass 2.016e-3 kg/mol -->
+            <fixed_value>-965.7</fixed_value> <!-- $29/kWh, H2 LHV: 33.3 kWh/kg * 2.016e-3 kg/mol -->
           </reference_price>
-          <!-- <depreciate>15</depreciate> -->
+          <depreciate>15</depreciate>
         </CashFlow>
 
       </economics>
@@ -172,7 +165,7 @@
       </produces>
 
       <economics>
-        <lifetime>31</lifetime>
+        <lifetime>20</lifetime>
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
           <driver>
             <variable>h2turbine_capacity</variable>
@@ -180,7 +173,7 @@
           <reference_price>
             <fixed_value>-0.947</fixed_value> <!-- $/W -->
           </reference_price>
-          <!-- <depreciate>15</depreciate> -->
+          <depreciate>15</depreciate>
         </CashFlow>
 
         <CashFlow name="fixed_OM" type="repeating" period="year" taxable="True" inflation="none" mult_target="False">
@@ -188,18 +181,16 @@
             <variable>h2turbine_capacity</variable>
           </driver>
           <reference_price>
-            <fixed_value>-7e-3</fixed_value> <!-- $/W -->
+            <fixed_value>-0.007</fixed_value> <!-- $/W -->
           </reference_price>
-          <!-- <depreciate>15</depreciate> -->
         </CashFlow>
 
         <CashFlow name="var_OM" type="repeating" period="hour" taxable='True' inflation='none' mult_target='False'>
           <driver>
             <activity>electricity</activity>
-            <multiplier>-1</multiplier>
           </driver>
           <reference_price>
-            <fixed_value>4.25e-6</fixed_value> <!-- $4.25/MWh to $/W -->
+            <fixed_value>-4.25e-6</fixed_value> <!-- $4.25/MWh to $/W -->
           </reference_price>
         </CashFlow>
       </economics>
@@ -214,7 +205,7 @@
       </produces>
 
       <economics>
-        <lifetime>1</lifetime>
+        <lifetime>20</lifetime>
         <CashFlow name="import_electricity" type="repeating" taxable='True' inflation='none' mult_target='False'>
           <driver>
             <activity>electricity</activity>
@@ -238,7 +229,7 @@
       </produces>
 
       <economics>
-        <lifetime>1</lifetime>
+        <lifetime>20</lifetime>
         <CashFlow name="import_hydrogen" type="repeating" taxable='True' inflation='none' mult_target='False'>
           <driver>
             <activity>hydrogen</activity>
@@ -255,22 +246,22 @@
     <Component name="electricity_market">
       <demands resource="electricity" dispatch="dependent">
         <capacity>
-          <ARMA variable="TOTALLOAD">synth</ARMA>
+          <ARMA variable="dispatches-test">Load</ARMA>
           <multiplier>-1</multiplier>
         </capacity>
       </demands>
 
       <economics>
-        <lifetime>100</lifetime>
+        <lifetime>20</lifetime>
         <CashFlow name="electricity_revenue" type="repeating" period="hour" taxable='True' inflation='none' mult_target='False'>
           <driver>
             <activity>electricity</activity>
-            <multiplier>1</multiplier>
           </driver>
           <reference_price>
             <!-- ballpark $25/MWh -->
-            <ARMA variable="TOTALLOAD">LMP</ARMA> <!-- assumed $/MWh-->
-            <multiplier>1e-3</multiplier> <!-- convert to $/kWh -->
+            <ARMA variable="dispatches-test">LMP</ARMA> <!-- assumed $/MWh-->
+            <!-- <multiplier>1e-3</multiplier> -->
+              <!-- convert to $/kWh -->
           </reference_price>
         </CashFlow>
       </economics>
@@ -279,12 +270,12 @@
     <Component name="h2_market">
       <demands resource="hydrogen" dispatch="dependent">
         <capacity>
-          <fixed_value> -1 </fixed_value>
+          <fixed_value>-1</fixed_value>
         </capacity>
       </demands>
 
       <economics>
-        <lifetime>100</lifetime>
+        <lifetime>20</lifetime>
         <CashFlow name="h2_revenue" type="repeating" period="hour" taxable='True' inflation='none' mult_target='False'>
           <driver>
             <activity>hydrogen</activity>
@@ -292,8 +283,8 @@
           </driver>
           <reference_price>
             <!-- ballpark $3/kg -->
-            <fixed_value>3</fixed_value> <!-- $/kg -->
-            <multiplier>2.016e-3</multiplier> <!-- convert to $/mol-->
+            <fixed_value>-3</fixed_value> <!-- $/kg -->
+            <multiplier>1</multiplier> <!-- convert to $/mol by multiplying kg/mol-->
           </reference_price>
         </CashFlow>
       </economics>
@@ -302,7 +293,7 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='synth' variable="TOTALLOAD">../arma_202112_nyiso_def.pk</ARMA>
+    <ARMA name='Load' variable="TOTALLOAD">../arma_202112_nyiso_def.pk</ARMA>
     <ARMA name='LMP' variable="TOTALLOAD">../arma_202112_nyiso_def.pk</ARMA>
   </DataGenerators>
 

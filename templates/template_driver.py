@@ -99,6 +99,7 @@ class Template(TemplateBase, Base):
     self.__case = None
     self.__components = None
     self.__sources = None
+    self.__sweep_vars = []
 
   def loadTemplate(self, path):
     """
@@ -246,9 +247,19 @@ class Template(TemplateBase, Base):
       run_info.find('Sequence').text = 'optimize, plot'
     # parallel
     if case.outerParallel:
-      # for now, outer does not use InternalParallel
+      # set outer batchsize and InternalParallel
       batchSize = run_info.find('batchSize')
       batchSize.text = f'{case.outerParallel}'
+      run_info.append(xmlUtils.newNode('internalParallel', text='True'))
+    if case.useParallel:
+      #XXX this doesn't handle non-mpi modes like torque or other custom ones
+      mode = xmlUtils.newNode('mode', text='mpi')
+      mode.append(xmlUtils.newNode('runQSUB'))
+      if 'memory' in case.parallelRunInfo:
+        mode.append(xmlUtils.newNode('memory', text=case.parallelRunInfo.pop('memory')))
+      for sub in case.parallelRunInfo:
+        run_info.append(xmlUtils.newNode(sub, text=str(case.parallelRunInfo[sub])))
+      run_info.append(mode)
     if case.innerParallel:
       run_info.append(xmlUtils.newNode('NumMPI', text=case.innerParallel))
 
@@ -569,6 +580,16 @@ class Template(TemplateBase, Base):
       else:
         # this capacity will be evaluated by ARMA/Function, and doesn't need to be added here.
         pass
+    if case.outerParallel == 0 and case.useParallel:
+      #XXX if we had a way to calculate this ahead of time,
+      # this could be done in _modify_outer_runinfo
+      #Need to update the outerParallel number
+      run_info = template.find('RunInfo')
+      case.outerParallel = len(self.__sweep_vars) + 1
+      #XXX duplicate of code in _modify_outer_runinfo
+      batchSize = run_info.find('batchSize')
+      batchSize.text = f'{case.outerParallel}'
+      run_info.append(xmlUtils.newNode('internalParallel', text='True'))
 
   def _modify_outer_optimizers(self, template, case):
     """
@@ -678,6 +699,7 @@ class Template(TemplateBase, Base):
     dist.find('upperBound').text = str(max_cap)
     xml = copy.deepcopy(self.var_template)
     xml.attrib['name'] = var_name
+    self.__sweep_vars.append(var_name)
     xml.find('distribution').text = dist_name
     if sampler == 'grid':
       caps = ' '.join(str(x) for x in sorted(capacities))

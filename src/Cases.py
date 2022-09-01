@@ -138,17 +138,28 @@ class Case(Base):
               \default{True}"""))
     input_specs.addSub(debug)
 
-    parallel = InputData.parameterInputFactory('parallel', descr=r"""Describes how to parallelize this run.""")
+    parallel = InputData.parameterInputFactory('parallel', descr=r"""Describes how to parallelize this run. If not present defaults to no parallelization (1 outer, 1 inner)""")
     parallel.addSub(InputData.parameterInputFactory('outer', contentType=InputTypes.IntegerType,
         descr=r"""the number of parallel runs to use for the outer optimization run. The product of this
               number and \xmlNode{inner} should be at most the number of parallel process available on
               your computing device. This should also be at most the number of samples needed per outer iteration;
               for example, with 3 opt bound variables and using finite differencing, at most 4 parallel outer runs
-              can be used. \default{1}"""))
+              can be used. \default{number of variable sweeps + 1}"""))
     parallel.addSub(InputData.parameterInputFactory('inner', contentType=InputTypes.IntegerType,
         descr=r"""the number of parallel runs to use per inner sampling run. This should be at most the number
               of denoising samples, and at most the number of parallel processes available on your computing
-              device. \default{1}"""))
+              device. \default{number of denoising samples}"""))
+    #XXX RAVEN should be providing this InputData
+    runinfo = InputData.parameterInputFactory('runinfo',
+                descr=r"""this is copied into the RAVEN runinfo block, and defaults are specified in RAVEN""")
+    runinfo.addSub(InputData.parameterInputFactory('expectedTime', contentType=InputTypes.StringType,
+                  descr=r"""the expected time for the run to take in hours, minutes, seconds (example 24:00:00 for 1 day) """))
+    runinfo.addSub(InputData.parameterInputFactory('clusterParameters', contentType=InputTypes.StringType,
+                  descr=r"""Extra parameters needed by the cluster qsub command"""))
+    runinfo.addSub(InputData.parameterInputFactory('RemoteRunCommand', contentType=InputTypes.StringType,
+                   descr=r"""The shell command used to run remote commands"""))
+    runinfo.addSub(InputData.parameterInputFactory('memory', contentType=InputTypes.StringType,descr=r"""The amount of memory needed per core (example 4gb)"""))
+    parallel.addSub(runinfo)
     # TODO HPC?
     input_specs.addSub(parallel)
 
@@ -376,6 +387,7 @@ class Case(Base):
     self.validator = None              # type of dispatch validation to use
     self.dispatch_vars = {}            # non-component optimization ValuedParams
 
+    self.useParallel = False           # parallel tag specified?
     self.outerParallel = 0             # number of outer parallel runs to use
     self.innerParallel = 0             # number of inner parallel runs to use
 
@@ -436,11 +448,16 @@ class Case(Base):
       if item.getName() == 'mode':
         self._mode = item.value
       elif item.getName() == 'parallel':
+        self.useParallel = True
+        self.parallelRunInfo = {}
         for sub in item.subparts:
           if sub.getName() == 'outer':
             self.outerParallel = sub.value
           elif sub.getName() == 'inner':
             self.innerParallel = sub.value
+          elif sub.getName() == 'runinfo':
+            for subsub in sub.subparts:
+              self.parallelRunInfo[subsub.getName()] = str(subsub.value)
       elif item.getName() == 'metric':
         self._metric = item.value
       elif item.getName() == 'differential':
@@ -490,6 +507,11 @@ class Case(Base):
       self.raiseAnError('No <dispatch> node was provided in the <Case> node!')
     if self._time_discretization is None:
       self.raiseAnError('<time_discretization> node was not provided in the <Case> node!')
+    if self.innerParallel == 0 and self.useParallel:
+      #set default inner parallel to number of samples (denoises)
+      self.innerParallel = self._num_samples
+    #Note that if self.outerParallel == 0 and self.useParallel
+    # then outerParallel will be set in template_driver _modify_outer_samplers
     cores_requested = self.innerParallel * self.outerParallel
     if cores_requested > 1:
       # check to see if the number of processes available can meet the request

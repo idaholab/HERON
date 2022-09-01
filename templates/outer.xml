@@ -4,10 +4,6 @@
     <WorkingDir>.</WorkingDir>
     <Sequence></Sequence>
     <batchSize>1</batchSize>
-    <!-- <internalParallel>True</internalParallel>
-     <mode>mpi<runQSUB></runQSUB></mode>
-     <expectedTime>72:0:0</expectedTime>
-     <clusterParameters>-P nst -j oe</clusterParameters> -->
   </RunInfo>
 
   <Steps>

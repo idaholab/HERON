@@ -1,0 +1,14 @@
+[Tests]
+ [./cluster_runinfo]
+  type = HeronIntegration
+  kind = heron_only
+  input = heron_input.xml
+  [./xml_check]
+    type = XML
+    unordered = true
+    output = outer.xml
+    alt_root = './RunInfo'
+  [../]
+ [../]
+
+[]

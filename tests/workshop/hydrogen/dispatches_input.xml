@@ -25,7 +25,7 @@
       <ProjectTime>3</ProjectTime>
       <DiscountRate>0.08</DiscountRate>
       <tax>0.2</tax>
-      <inflation>0</inflation>
+      <inflation>0.02184</inflation>
       <verbosity>50</verbosity>
     </economics>
     <dispatcher>
@@ -138,7 +138,7 @@
             <variable>h2tank_capacity</variable>
           </driver>
           <reference_price>
-            <fixed_value>-965.7</fixed_value> <!-- $29/kWh, H2 LHV: 33.3 kWh/kg * 2.016e-3 kg/mol -->
+            <fixed_value>-965.69</fixed_value> <!-- $29/kWh, H2 LHV: 33.3 kWh/kg * 2.016e-3 kg/mol -->
           </reference_price>
           <depreciate>15</depreciate>
         </CashFlow>

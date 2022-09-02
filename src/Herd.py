@@ -860,27 +860,4 @@ class HERD(MOPED):
     self._solveDispatchesModel()
     self._exportResults()
 
-    # now we need to import DISPATCHES
-    #  X. load in the synthetic histories to DISPATCHES
-    #  X. create weights
-    #  X. create overall Pyomo model
-    #  X. set global parameters from HERON
-    #  X. build DISPATCHES multiperiod
-    #      X. point to existing flowsheet
-    #      X. point to existing init/fix method
-    #      X. **NEW** overload unfix method??
-    #  X. run a loop over scenarios
-    #      X. build constraints (**NEW** import some params from HERON??) per scenario
-    #      X. run append_costs
-    #           X.  gather all required Pyomo expressions from DISPATCHES
-    #           X. gather all required alphas, multipliers from HERON Input
-    #           X. combine both into TEAL cashflows by using Pyomo expressions as the drivers
-    #                X. loop through DISPATCHES metadata?
-    #  X. add non-anticipativity constraints
-    #  X. add objective (sum up npvs)
-    #  X. run solver from idaes
-    #  10. output to CSV?
-
-    # check that NPV summed expression has all correct values
-
 

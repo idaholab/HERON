@@ -15,6 +15,12 @@ import pyomo.environ as pyo
 from pyomo.opt import SolverFactory
 import numpy as np
 import _utils as hutils
+path_to_raven = hutils.get_raven_loc()
+sys.path.append(path.abspath(path.join(path_to_raven, 'scripts')))
+sys.path.append(path.abspath(path.join(path_to_raven, 'plugins')))
+sys.path.append(path_to_raven)
+from ravenframework.utils import xmlUtils
+import externalROMloader as ROMloader
 
 # Nuclear flowsheet function imports
 from dispatches.case_studies.nuclear_case.nuclear_flowsheet import build_ne_flowsheet
@@ -112,17 +118,34 @@ class HERD(MOPED):
     super().__init__()
     self._dmdl = None # Pyomo model specific to DISPATCHES (different from _m)
     self._dispatches_model_template = None # Template of DISPATCHES Model for HERON comparison
+    self._timeIndexMap = ['years', 'days', 'hours']
     self._metrics = None # TEAL metrics, summed expressions
     self._results = None # results from Dispatch solve
     self._simTime = 0
     self._num_samples = 0
     self._simTimeSet = range(0)
     self._demand_meta = {}
+    self._synthhistories = {}
 
     # some testing stuff
     self._testMode = False
-    self._testYears = []
+    # intended years to test out (2022-2031, use same data. 2032-2041, use same data)
+    self._testSynthYears = []
+    self._testProjLife = 0
+    self._testProjectYearRange = []
+    self._testMap_Synth2Proj = []
+
+  def _setTestTimeSets(self):
+
+    self._testSynthYears = [2022, 2032]
     self._testProjLife = 20
+    # range of years through intended project life (_testSynthYears contained within this set)
+    #   year[0]-1 is the construction year
+    self._testProjectYearRange =  np.arange(self._testSynthYears[0],
+                                            self._testSynthYears[0] + self._testProjLife)
+    # array map, same length as project year range but with entries in _testSynthYears
+    self._testMap_Synth2Proj = np.array([self._testSynthYears[sum(y>=self._testSynthYears) - 1]
+                                            for y in self._testProjectYearRange])
 
   def buildEconSettings(self, verbosity=0):
     """
@@ -133,11 +156,11 @@ class HERD(MOPED):
     # checking for a specific case - testing the DISPATCHES base Nuclear Case
     if self._case.name == 'test_dispatches_wJSON':
       self._testMode = True
+      self._setTestTimeSets()
       # testing for 20 year project life, override because it doesnt match LMP JSON signal
       globalEcon = getattr(self._case,"_global_econ")
-      globalEcon["ProjectTime"] = self._testProjLife
-      # intended years to test out (2022-2031, use same data. 2032-2041, use same data)
-      self._testYears = [2022, 2032]
+      globalEcon["ProjectTime"] = self._testProjLife # some funky pointer stuff here
+
     # now run parent method
     super().buildEconSettings(verbosity)
     self._num_samples = getattr(self._case,"_num_samples")
@@ -231,11 +254,89 @@ class HERD(MOPED):
       for con in getattr(action, "_consumes"):
         self._component_meta[comp.name]['Consumes'][con] = getattr(action, "_transfer")
 
+  def sampleFromROM(self, signal, multiplier):
+    """
+      Loads synthetic history for a specified signal,
+      also sets yearly hours and pyomo indexing sets
+      @ In, signal, string, name of signal to sample
+      @ In, multiplier, int/float, value to multiply synthetic history evaluations by
+      @ Out, synthetic_data, dict, contains data from evaluated ROM
+    """
+    # NOTE self._sources[0]._var_names are the user assigned signal names in DataGenerators
+    source = getattr(self, "_sources")[0]
+    source_var_names = getattr(source, "_var_names")
+
+    # check that signal name is available within data generator
+    if signal not in source_var_names:
+      raise IOError('The requested signal name is not available'
+                    'from the synthetic history, check DataGenerators node in input')
+
+    # Initializing ravenROMexternal object gives PATH access to xmlUtils
+    target_file = getattr(source, "_target_file")
+    runner = ROMloader.ravenROMexternal( binaryFileName=target_file,
+                                         whereFrameworkIs=hutils.get_raven_loc())
+
+    # TODO expand to change other pickledROM settings withing this method
+    inp = {'scaling': [1]}
+    nodes = []
+    node = xmlUtils.newNode('ROM', attrib={'name': 'SyntheticHistory', 'subType': 'pickledRom'})
+    node.append(xmlUtils.newNode('clusterEvalMode', text=self._eval_mode))
+    nodes.append(node)
+    runner.setAdditionalParams(nodes)
+
+    # sample realizations from ROM
+    synthetic_data = {}
+    for real in range(self._num_samples):
+      self.raiseAMessage(f'Loading synthetic history for signal: {signal}')
+      name = f'Realization_{real + 1}'
+      current_realization = runner.evaluate(inp)[0]
+      # applying mult to each realization is easier than iteration through dict object later
+      current_realization[signal] *= multiplier
+      if self._eval_mode == 'full':
+        # reshape so that a filler cluster index is made
+        current_realization[signal] = np.expand_dims(current_realization[signal], axis=1)
+      synthetic_data[name] = current_realization[signal]
+
+    # saving index map, often looks like ["Year", "ROM Cluster", "Hour"]
+    synthetic_data['indexMap'] = current_realization['_indexMap'][0][signal]
+    years, days, hours = self._timeIndexMap # defined in __init__, order matters
+    for ind in synthetic_data['indexMap']:
+      if ind.lower() in 'years':
+        synthetic_data[years] = np.asarray(current_realization[ind], dtype=int)
+      elif ind.lower() in '_rom_cluster_days':
+        synthetic_data[days]  = np.array(current_realization[ind] + 1, dtype=int)
+      elif ind.lower() in 'hours':
+        synthetic_data[hours] = np.array(current_realization[ind] + 1, dtype=int)
+
+    # extracting cluster info from ROM - how many days of year per cluster?
+    # location: runner.rom._segmentROM._macroSteps[2018]._clusterInfo['map']
+    # using attrgetter to get rid of "access to protected member" warning
+    cluster_steps = operator.attrgetter('_segmentROM._macroSteps')(runner.rom)
+    synthetic_data['weights_days'] = {}
+    for year in synthetic_data[years]:
+      synthetic_data['weights_days'][year] = {}
+      for cluster in synthetic_data[days]:
+        cluster_map = operator.attrgetter('_clusterInfo')(cluster_steps[year])['map']
+        index = int(cluster-1)
+        synthetic_data['weights_days'][year][cluster] = len(cluster_map[index])
+
+    cluster_sums = [sum([cluster
+                      for _, cluster in synthetic_data['weights_days'][y].items()])
+                        for y in synthetic_data[years]]
+
+    if sum(cluster_sums) != 365 * len(synthetic_data[years]):
+      raise IOError('ROM cluster weights do not add to 365 for all provided years.')
+
+    if self._eval_mode not in ['clustered', 'full']:
+      raise IOError('Improper ROM evaluation mode detected, try "clustered" or "full".')
+    return synthetic_data
+
   def loadSyntheticHistoryFromJSON(self):
     """
       Load synthetic history data specifically from a JSON file (very specific for testing)
     """
     # paths to LMP signal JSON within DISPATCHES
+    # TODO: move a copy of this file to HERD?
     proj_path = path.dirname(path_to_raven)
     disp_path = path.join(proj_path, "dispatches/dispatches/case_studies/nuclear_case/")
     lmp_path  = path.abspath( path.join(disp_path, "lmp_signal.json") )
@@ -246,22 +347,18 @@ class HERD(MOPED):
 
     # data is the same for 2022-2031, and 2032-2041
     #   to save on # of variables, just duplicate LMP values
-    testYears = self._testYears
-    n_days = len(synthHist['0']['2020'].keys())
-    n_time = len(synthHist['0']['2020']['1'].keys()) -1
+    synthYears = self._testSynthYears # actual years to gather data from e.g., [2022, 2032]
 
     # building array of simulation years
-    projLifeRange = np.arange( testYears[0],   # year[0]-1 is the construction year
-                  testYears[0] + self._testProjLife) # full project time
-    set_years_map = np.array([testYears[sum(y>=testYears)-1] for y in projLifeRange])
-     # this array looks like [2022, 2022, ...., 2032, 2032, ...]
+    projLifeRange = self._testProjectYearRange # actual year range for full project [2022->2041]
+    set_years_map = self._testMap_Synth2Proj # array looks like [2022, 2022, ...., 2032, 2032, ...]
 
     # creating set of scenarios/realizations/samples
     n_scenarios = self._num_samples
     set_scenarios = list( range(n_scenarios) )
 
     # we have to rebuild the LMP signal, using set_years as a map for when to duplicate data
-    if len(testYears) < self._testProjLife:
+    if len(synthYears) < self._testProjLife:
       fullHist = {}
       # looping through scenarios, re-building LMP signal if necessary
       for r in set_scenarios:
@@ -272,10 +369,13 @@ class HERD(MOPED):
       # same dictionary
       fullHist = synthHist
 
-    sets = [set_years_map, testYears, projLifeRange, set_scenarios]
-    setLengths = [len(set_years_map), n_days, n_time] # hard-coded for now, just to check
+    n_days = len(synthHist['0']['2020'].keys())
+    n_time = len(synthHist['0']['2020']['1'].keys()) - 1
+    fullHist['years'] = synthYears
+    fullHist['days']  = range(1, int(n_days + 1) )
+    fullHist['hours'] = range(1, int(n_time + 1) )
 
-    return fullHist, sets, setLengths
+    return fullHist
 
   def loadSyntheticHistory(self, signal, multiplier):
     """
@@ -288,19 +388,17 @@ class HERD(MOPED):
     """
     # calling parent method for loading synthetic history
     testJSON = (signal == 'dispatches-test' and self._testMode)
+
     if testJSON:
-      synthHist, [set_years_map, set_years, projYears, set_scenarios], [n_years, n_days, n_hours] \
-                = self.loadSyntheticHistoryFromJSON()
+      synthHist = self.loadSyntheticHistoryFromJSON()
     else: # normal extraction
-      synthHist = super().loadSyntheticHistory(signal, multiplier)
-      n_years, n_days, n_hours = synthHist['Realization_1'].shape
-      set_scenarios = range(sum("Realization" in entry for entry in synthHist.keys()))
-      set_years = list(synthHist['years'])
-      set_years_map = set_years
-      projYears = set_years
-    # set data
-    set_days = range(1, n_days + 1)  # to appease Pyomo, indexing starts at 1
-    set_time = range(1, n_hours + 1) # to appease Pyomo, indexing starts at 1
+      synthHist = self.sampleFromROM(signal, multiplier)
+
+    synth_years, synth_days, synth_hours = [synthHist[ind] for ind in self._timeIndexMap]
+    synth_scenarios = range(self._num_samples)
+    projYearsRange = self._testProjectYearRange
+    map_synth2proj = self._testMap_Synth2Proj
+
     # double check years
     # if len(set_years) != n_years:
     #   raise IOError("Discrepancy in number of years within Synthetic History")
@@ -310,47 +408,41 @@ class HERD(MOPED):
     newHist['signals'] = {}
     # converting to dictionary that plays nice with DISPATCHES/IDAES
     if testJSON:
-      for scenario in set_scenarios:
+      for scenario in synth_scenarios:
         newHist['signals'][scenario] = {year: {day: {hour:
                                         synthHist[str(scenario)][str(year)][str(day)][str(hour)]
-                                                      for hour in set_time}
-                                              for day in set_days}
-                                      for year in projYears}
+                                                      for hour in synth_hours}
+                                              for day in synth_days}
+                                      for year in projYearsRange}
     else:
       for key, data in synthHist.items():
         # assuming the keys are in format "Realization_i"
         if "Realization" in key:
           # realizations known as scenarios in DISPATCHES, index starting at 0
           k = int( key.split('_')[-1] )
-          # years indexed by integer year (2020, etc.)
+          # years indexed by integer year (2020, etc.)"sets"'sets'
           # clusters and hours indexed starting at 1
-          newHist['signals'][set_scenarios[k-1]] = {year: {cluster: {hour:
-                                                                          data[y, cluster-1, hour-1]
-                                                                    for hour in set_time}
-                                                          for cluster in set_days}
-                                                    for y, year in enumerate(set_years)}
+          newHist['signals'][synth_scenarios[k-1]] = {year: {day: {hour: data[y, day-1, hour-1]
+                                                                    for hour in synth_hours}
+                                                          for day in synth_days}
+                                                    for y, year in enumerate(synth_years)}
     # save set time data for use within DISPATCHES
     newHist["sets"] = {}
-    newHist["sets"]["set_scenarios"] = list(set_scenarios) # DISPATCHES wants this as a list
-    newHist["sets"]["set_years"] = set_years # DISPATCHES wants this as a list
-    newHist["sets"]["set_days"]  = set_days  # DISPATCHES wants this as a range
-    newHist["sets"]["set_time"]  = set_time  # DISPATCHES wants this as a range
-    newHist["sets"]["set_years_map"] = set_years_map # used only for tests
-    newHist["sets"]["projYears"] = projYears # used only for tests
-    #TODO: need weights_days - how many days does each cluster represent?
+    newHist["sets"]["synth_scenarios"] = list(synth_scenarios) # DISPATCHES wants this as a list
+    newHist["sets"]["synth_years"]  = synth_years # DISPATCHES wants this as a list
+    newHist["sets"]["synth_days"]   = synth_days  # DISPATCHES wants this as a range
+    newHist["sets"]["synth_hours"]  = synth_hours # DISPATCHES wants this as a range
+    newHist["sets"]["map_synth2proj"] = map_synth2proj # used only for tests
+    newHist["sets"]["projYearsRange"] = projYearsRange # used only for tests
+    # getting weights_days - how many days does each cluster represent?
     if testJSON:
-      newHist["weights_days"] = {year: {cluster:
-                                            synthHist[str(0)][str(year)][str(cluster)]["num_days"]
-                                      for cluster in set_days}
-                                for year in set_years}
-    elif n_days == 2:
-      tmp_weights = [183, 182] # just guessing for now, need this info from ARMA model?
-      newHist["weights_days"]  = {year: {cluster: tmp_weights[cluster-1]
-                                      for cluster in set_days}
-                                for year in set_years}
+      newHist["weights_days"] = {yr: {cl: synthHist[str(0)][str(yr)][str(cl)]["num_days"]
+                                      for cl in synth_days}
+                                for yr in synth_years}
     else:
-      raise IOError("HERD not set up for more than 2 clusters yet when using ROM.")
+      newHist["weights_days"] = synthHist['weights_days']
 
+    self._synthhistories[signal] = copy.deepcopy(newHist)
     return newHist
 
   def _checkDispatchesCompatibility(self):
@@ -418,15 +510,22 @@ class HERD(MOPED):
     """
       Create new DISPATCHES Pyomo Model with available data
     """
-    market_synthetic_history = self._component_meta['electricity_market']['SyntheticHistory']
+    signals = list( self._synthhistories.keys() )
+
+    if 'dispatches-test' in signals:
+      market_synthetic_history = self._synthhistories['dispatches-test']
+    elif 'price' in signals:
+      market_synthetic_history = self._synthhistories['price']
+    else:
+      raise IOError('Signal name not found in generated synthetic history dictionary')
 
     # transferring information on Sets
     sets = market_synthetic_history['sets']
-    self._dmdl.set_time  = sets['set_time']
-    self._dmdl.set_days  = sets['set_days']
-    self._dmdl.set_years = sets['set_years']
-    self._dmdl.set_years_map = sets["set_years_map"]
-    self._dmdl.set_scenarios = sets['set_scenarios']
+    self._dmdl.set_time  = sets['synth_hours']
+    self._dmdl.set_days  = sets['synth_days']
+    self._dmdl.set_years = sets['synth_years']
+    self._dmdl.set_years_map = sets['map_synth2proj']
+    self._dmdl.set_scenarios = sets['synth_scenarios']
 
     # transferring information on LMP Synthetic History signal
     # TODO: here we use TOTALLOAD data as a stand-in, should actually be price signals
@@ -436,8 +535,7 @@ class HERD(MOPED):
     self._dmdl.weights_days = market_synthetic_history['weights_days']
 
     # NOTE: equal probability for all scenarios
-    self._dmdl.weights_scenarios = {s:1/len(self._dmdl.set_scenarios)
-                                        for s in self._dmdl.set_scenarios}
+    self._dmdl.weights_scenarios = {s:1/self._num_samples for s in range(self._num_samples)}
 
   def _buildDispatchesModel(self):
     """
@@ -672,15 +770,15 @@ class HERD(MOPED):
     projectLife += 1
 
     signal = alpha['signals']
-    set_scenarios = alpha['sets']['set_scenarios']
-    set_years = alpha['sets']['set_years']
-    set_days  = alpha['sets']['set_days']
-    set_time  = alpha['sets']['set_time']
-    projYears = alpha['sets']['projYears']
+    set_scenarios = alpha['sets']['synth_scenarios']
+    set_years = alpha['sets']['synth_years']
+    set_days  = alpha['sets']['synth_days']
+    set_time  = alpha['sets']['synth_hours']
+    projYears = alpha['sets']['projYearsRange']
 
     # time indeces for HERON/TEAL
-    n_hours = len(alpha['sets']['set_time'])
-    n_days  = len(alpha['sets']['set_days'])
+    n_hours = len(set_time)
+    n_days  = len(set_days)
     n_scenarios = len(set_scenarios)
     n_hours_per_year = n_hours * n_days # sometimes number of days refers to clusters < 365
 
@@ -688,7 +786,7 @@ class HERD(MOPED):
     reshaped_alpha = np.zeros([n_scenarios, projectLife, n_hours_per_year])
 
     for real in set_scenarios:
-      # it necessary to have alpha be [real,year,hour] instead of [real,year, cluster, hour]
+      # it necessary to have alpha be [real, year, hour] instead of [real,year, cluster, hour]
       realized_alpha = [[signal[real][y][d][t] \
                                     for d in set_days
                                       for t in set_time]

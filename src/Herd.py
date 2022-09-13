@@ -2,7 +2,7 @@
 # ALL RIGHTS RESERVED
 """
   New HERON workflow for setting up and running DISPATCHES cases
-  HEron Runs Dispatches (HERD)
+  (HE)RON (R)uns (D)ISPATCHES (HERD)
 """
 import os.path as path
 import json
@@ -42,7 +42,7 @@ from TEAL.src import main as RunCashFlow
 from HERON.src.Moped import MOPED
 
 dispatches_model_component_meta={
-  "Nuclear-Hydrogen IES: H2 Production, Storage, and Combustion": {
+  "Nuclear Case": {
     "pem":{ # will require some transfer function
       "Produces": 'hydrogen',
       "Consumes": 'electricity',
@@ -106,37 +106,44 @@ dispatches_model_component_meta={
 
 class HERD(MOPED):
   """
+    (HE)RON (R)uns (D)ISPATCHES
     Main class used for communicating between HERON and a
-    DISPATCHES case
+    DISPATCHES case (currently, only nuclear case)
   """
 
   def __init__(self):
     """
-      Initializes main class by calling parent class MOPED
+      Initializing HERD class by calling parent class init.
+      @ In, None
+      @ Out, None
     """
     # running the init for MOPED first to initialize empty params
     super().__init__()
+
+    # extra parameters for HERD
     self._dmdl = None # Pyomo model specific to DISPATCHES (different from _m)
     self._dispatches_model_template = None # Template of DISPATCHES Model for HERON comparison
-    self._timeIndexMap = ['years', 'days', 'hours']
-    self._metrics = None # TEAL metrics, summed expressions
-    self._results = None # results from Dispatch solve
-    self._simTime = 0
-    self._num_samples = 0
-    self._simTimeSet = range(0)
-    self._demand_meta = {}
-    self._synthhistories = {}
+    self._timeIndexMap = ['years', 'days', 'hours'] # index map to save time sets to dict later
+    self._metrics = None   # TEAL metrics, summed expressions
+    self._results = None   # results from Dispatch solve
+    self._num_samples = 0  # number of samples/scenarios/realizations for easier retrievability
+    self._demand_meta = {} # saving demand data to separate dict (in case it is also sampled)
+    self._synthhistories = {}  # nested dict of all synthetic histories
 
-    # some testing stuff
+    # Testing - using LMP signals from JSON script as used in example Jupyter notebook
+    #    intended years to test out (2022-2031, use same data. 2032-2041, use same data)
     self._testMode = False
-    # intended years to test out (2022-2031, use same data. 2032-2041, use same data)
-    self._testSynthYears = []
-    self._testProjLife = 0
-    self._testProjectYearRange = []
-    self._testMap_Synth2Proj = []
+    self._testSynthYears = []  # the actual years to test out, [2022, 2032]
+    self._testProjLife = 0     # intended length of project, regardless of synthyears
+    self._testProjectYearRange = [] # actual years of project [2022, 2023, 2024, ...]
+    self._testMap_Synth2Proj = [] # map from synth to actual years [2022, 2022, ..., 2032, ...]
 
   def _setTestTimeSets(self):
-
+    """
+      Sets object attributes for time sets specifically for JSON test.
+      @ In, None
+      @ Out, None
+    """
     self._testSynthYears = [2022, 2032]
     self._testProjLife = 20
     # range of years through intended project life (_testSynthYears contained within this set)
@@ -184,7 +191,7 @@ class HERD(MOPED):
 
   def _getDemandData(self):
     """
-      Builds cashflow meta used in cashflow component construction
+      Builds cashflow meta specifically for market demand data
       @ In, None
       @ Out, None
     """
@@ -256,8 +263,7 @@ class HERD(MOPED):
 
   def sampleFromROM(self, signal, multiplier):
     """
-      Loads synthetic history for a specified signal,
-      also sets yearly hours and pyomo indexing sets
+      Loads synthetic history for a specified signal, from given ROM.
       @ In, signal, string, name of signal to sample
       @ In, multiplier, int/float, value to multiply synthetic history evaluations by
       @ Out, synthetic_data, dict, contains data from evaluated ROM
@@ -299,18 +305,22 @@ class HERD(MOPED):
 
     # saving index map, often looks like ["Year", "ROM Cluster", "Hour"]
     synthetic_data['indexMap'] = current_realization['_indexMap'][0][signal]
+
+    # get time set data from ROM realizations
     years, days, hours = self._timeIndexMap # defined in __init__, order matters
     for ind in synthetic_data['indexMap']:
+      # for year set, we truncate based on desired Project Time (28 yrs available)
       if ind.lower() in 'years':
-        synthetic_data[years] = np.asarray(current_realization[ind], dtype=int)
+        projLife = int( getattr(self._case, '_global_econ')['ProjectTime'] ) #TODO: check life < years
+        synthetic_data[years] = np.array(current_realization[ind][0:projLife], dtype=int)
       elif ind.lower() in '_rom_cluster_days':
         synthetic_data[days]  = np.array(current_realization[ind] + 1, dtype=int)
       elif ind.lower() in 'hours':
         synthetic_data[hours] = np.array(current_realization[ind] + 1, dtype=int)
 
     # extracting cluster info from ROM - how many days of year per cluster?
-    # location: runner.rom._segmentROM._macroSteps[2018]._clusterInfo['map']
-    # using attrgetter to get rid of "access to protected member" warning
+    #    location: runner.rom._segmentROM._macroSteps[2018]._clusterInfo['map']
+    #    using attrgetter to get rid of "access to protected member" warning
     cluster_steps = operator.attrgetter('_segmentROM._macroSteps')(runner.rom)
     synthetic_data['weights_days'] = {}
     for year in synthetic_data[years]:
@@ -320,13 +330,15 @@ class HERD(MOPED):
         index = int(cluster-1)
         synthetic_data['weights_days'][year][cluster] = len(cluster_map[index])
 
-    cluster_sums = [sum([cluster
-                      for _, cluster in synthetic_data['weights_days'][y].items()])
+    # check to see if clusters add up to 365
+    cluster_sums = [sum(cluster
+                      for _, cluster in synthetic_data['weights_days'][y].items())
                         for y in synthetic_data[years]]
 
     if sum(cluster_sums) != 365 * len(synthetic_data[years]):
       raise IOError('ROM cluster weights do not add to 365 for all provided years.')
 
+    # check that evaluation mode is either clustered or full
     if self._eval_mode not in ['clustered', 'full']:
       raise IOError('Improper ROM evaluation mode detected, try "clustered" or "full".')
     return synthetic_data
@@ -334,6 +346,8 @@ class HERD(MOPED):
   def loadSyntheticHistoryFromJSON(self):
     """
       Load synthetic history data specifically from a JSON file (very specific for testing)
+      @ In, None
+      @ Out, None
     """
     # paths to LMP signal JSON within DISPATCHES
     # TODO: move a copy of this file to HERD?
@@ -379,13 +393,14 @@ class HERD(MOPED):
 
   def loadSyntheticHistory(self, signal, multiplier):
     """
-      Loads synthetic history for a specified signal,
-      also sets yearly hours and pyomo indexing sets.
-      Calls the parent method and restructures dictionary
-      to match DISPATCHES format.
+      Loads synthetic history for a specified signal, also sets yearly hours.
+      Calls the parent method and restructures dictionary to match DISPATCHES format.
       @ In, signal, string, name of signal to sample
       @ Out, synthetic_data, dict, contains data from evaluated ROM
     """
+    if signal == 'price' and multiplier == -1:
+      multiplier *= -1 # undoing negative multiplier from one step above, price != demand
+
     # calling parent method for loading synthetic history
     testJSON = (signal == 'dispatches-test' and self._testMode)
 
@@ -449,6 +464,8 @@ class HERD(MOPED):
     """
       Checks HERON components to match compatibility with available
       DISPATCHES flowsheets.
+      @ In, None
+      @ Out, None
     """
     # TODO: check for financial params/inputs?
     heron_comp_list = list( self._component_meta.keys() ) # current list of HERON components
@@ -509,6 +526,8 @@ class HERD(MOPED):
   def _addSetsToPyomo(self):
     """
       Create new DISPATCHES Pyomo Model with available data
+      @ In, None
+      @ Out, None
     """
     signals = list( self._synthhistories.keys() )
 
@@ -524,7 +543,7 @@ class HERD(MOPED):
     self._dmdl.set_time  = sets['synth_hours']
     self._dmdl.set_days  = sets['synth_days']
     self._dmdl.set_years = sets['synth_years']
-    self._dmdl.set_years_map = sets['map_synth2proj']
+    self._dmdl.set_years_map = sets['map_synth2proj'] if self._testMode else sets['synth_years']
     self._dmdl.set_scenarios = sets['synth_scenarios']
 
     # transferring information on LMP Synthetic History signal
@@ -539,9 +558,10 @@ class HERD(MOPED):
 
   def _buildDispatchesModel(self):
     """
-      Build dispatches model
+      Builds full DISPATCHES Pyomo model
+      @ In, None
+      @ Out, None
     """
-
     self._addSetsToPyomo()
 
     mdl_flowsheet = build_ne_flowsheet # pointing to the imported DISPATCHES nuclear flowsheet
@@ -591,7 +611,11 @@ class HERD(MOPED):
       text_file.write(str(self._metrics['NPV']))
 
   def _initializeCashFlows(self):
-
+    """
+      Initialize and populate TEAL cash flows for all components
+      @ In, None
+      @ Out, None
+    """
     teal_components  = []
     heron_components = []
     for hComp in self._components:
@@ -611,7 +635,12 @@ class HERD(MOPED):
 
   def _createCashflowsForDispatches(self, scenario, hComp, tComp, scenario_ind):
     """
-      Identify the correct DISPATCHES expressions to use as TEAL drivers
+      Create and populate TEAL cash flows for all components
+      @ In, scenario, Pyomo model for given scenario
+      @ In, hComp, HERON component dictionary
+      @ In, tComp, TEAL cashflow component object
+      @ In, scenario_ind, integer for scenario index
+      @ Out, None
     """
     # collection of cash flows for given HERON component
     CF_collection = []
@@ -685,6 +714,11 @@ class HERD(MOPED):
 
   def _getCapacityFromDispatchesModel(self, mdl, dComp):
     """
+      Get capacity driver string from DISPATCHES dictionary and use it to extract
+      correct capacity Pyomo expression from scenario model.
+      @ In, mdl, Pyomo model for given scenario
+      @ In, dComp, DISPATCHES component dictionary
+      @ Out, None
     """
     cashflows_dict = dComp['Cashflows']
     capacity_dict  = cashflows_dict['Capacity']
@@ -697,6 +731,12 @@ class HERD(MOPED):
 
   def _getDispatchFromDispatchesModel(self, mdl, hComp, dComp):
     """
+      Get dispatch driver string from DISPATCHES dictionary and use it to extract
+      correct dispatch Pyomo expression from scenario model.
+      @ In, mdl, Pyomo model for given scenario
+      @ In, hComp, HERON component dictionary
+      @ In, dComp, DISPATCHES component dictionary
+      @ Out, None
     """
     # project life time + 1, first year has to be 0 for recurring cash flows
     projectLife = int( operator.attrgetter("_case._global_econ")(self)['ProjectTime'] )
@@ -764,17 +804,18 @@ class HERD(MOPED):
 
   def reshapeAlpha(self, alpha):
     """
-      This is different because DISPATCHES wants LMP signal in a different format.
+      Reshape alpha time series (multiplier for a cash flow) to match DISPATCHES structure.
+      @ In, alpha, synthetic history dictionary for time series cash flow
+      @ Out, None
     """
     projectLife = int( operator.attrgetter("_case._global_econ")(self)['ProjectTime'] )
     projectLife += 1
 
     signal = alpha['signals']
     set_scenarios = alpha['sets']['synth_scenarios']
-    set_years = alpha['sets']['synth_years']
+    set_years = alpha['sets']['projYearsRange'] if self._testMode else alpha['sets']['synth_years']
     set_days  = alpha['sets']['synth_days']
     set_time  = alpha['sets']['synth_hours']
-    projYears = alpha['sets']['projYearsRange']
 
     # time indeces for HERON/TEAL
     n_hours = len(set_time)
@@ -786,11 +827,11 @@ class HERD(MOPED):
     reshaped_alpha = np.zeros([n_scenarios, projectLife, n_hours_per_year])
 
     for real in set_scenarios:
-      # it necessary to have alpha be [real, year, hour] instead of [real,year, cluster, hour]
+      # it necessary to have alpha be [real, year, hour] instead of [real, year, cluster, hour]
       realized_alpha = [[signal[real][y][d][t] \
                                     for d in set_days
                                       for t in set_time]
-                                        for y in projYears] #shape here is [year, hour]
+                                        for y in set_years] #shape here is [year, hour]
       # first column of 2nd axis is 0 for project year 0
       reshaped_alpha[real,1:,:] = realized_alpha
 
@@ -798,11 +839,12 @@ class HERD(MOPED):
 
   def unfixDof(self, ps, **kwargs):
     """
-    This function unfixes a few degrees of freedom for optimization.
-    This particular method is taken from the DISPATCHES jupyter notebook
-    found in "dispatches/dispatches/models/nuclear_case/flowsheets"
-    titled "multiperiod_design_pricetaker"
+      This function unfixes a few degrees of freedom for optimization.
+      This particular method is taken from the DISPATCHES jupyter notebook
+      found in "dispatches/dispatches/models/nuclear_case/flowsheets"
+      titled "multiperiod_design_pricetaker"
       @In: ps: Pyomo model for period within a given scenario
+      @In: kwargs: extra arguments for flowsheet parameters
     """
     # Set defaults in case options are not passed to the function
     options = kwargs.get("options", {})
@@ -839,9 +881,14 @@ class HERD(MOPED):
 
   def buildConnectingConstraints(self, scenario, set_time, set_days, set_years):
     """
-    This function declares the first-stage variables or design decisions,
-    adds constraints that ensure that the operational variables never exceed their
-    design values, and adds constraints connecting variables at t - 1 and t
+      This function declares the first-stage variables or design decisions,
+      adds constraints that ensure that the operational variables never exceed their
+      design values, and adds constraints connecting variables at t - 1 and t
+      @ In, scenario, Pyomo model for given scenario
+      @ In, set_time, list of hours in day
+      @ In, set_days, list of days/clusters per year
+      @ In, set_years, list of years per scenario
+      @ Out, None
     """
     # Declare first-stage variables (Design decisions)
     scenario.pem_capacity = pyo.Var(within=pyo.NonNegativeReals,
@@ -884,7 +931,10 @@ class HERD(MOPED):
 
   def _addNonAnticipativityConstraints(self):
     """
-      Add non anticipativity constraints
+      Adding non-anticipativity constraints, ensuring that all capacity variables are the same
+      for all scenarios.
+      @ In, None
+      @ Out, None
     """
     # temporary object pointing to model
     dmdl = self._dmdl
@@ -911,13 +961,17 @@ class HERD(MOPED):
 
   def _addObjective(self):
     """
-      Adding objective function to model
+      Adding objective function using TEAL metrics.
+      @ In, None
+      @ Out, None
     """
     self._dmdl.obj = pyo.Objective(expr=self._metrics['NPV'], sense=pyo.maximize)
 
   def _solveDispatchesModel(self):
     """
-      Solving model
+      Solve the DISPATCHES Pyomo model.
+      @ In, None
+      @ Out, None
     """
     # Define the solver object. Using the default solver: IPOPT
     solver = get_solver()
@@ -926,13 +980,37 @@ class HERD(MOPED):
     self._results = solver.solve(self._dmdl, tee=True)
 
   def _exportResults(self):
-
+    """
+      Print and export results from optimization solution.
+      @ In, None
+      @ Out, None
+    """
     mdl = self._dmdl
+    case_name = self._case.name
 
-    print(f'Optimal NPV is ------------------- $B {pyo.value(mdl.obj) * 1e-9} ')
-    print(f'--- Optimal PEM capacity is        {pyo.value(mdl.pem_capacity)  * 1e-3} ??')
-    print(f'--- Optimal H2 Tank capacity is    {pyo.value(mdl.tank_capacity) * 2.016e-3} ??')
-    print(f'--- Optimal H2 Turbine capacity is {pyo.value(mdl.h2_turbine_capacity) * 1e-6} ??')
+    # optimal NPV and variable values
+    opt_NPV = pyo.value(mdl.obj) # given in $s
+    opt_PEM = pyo.value(mdl.pem_capacity) # already in kW
+    opt_H2Tank = pyo.value(mdl.tank_capacity) * 2.016e-3 # convert to kg
+    opt_H2Turb = pyo.value(mdl.h2_turbine_capacity) * 1e-3 # convert to kW
+
+    print(f'Optimal NPV is ------------------- $B {opt_NPV * 1e-9} ')
+    print(f'--- Optimal PEM capacity is        {opt_PEM  * 1e-3} MW')
+    print(f'--- Optimal H2 Tank capacity is    {opt_H2Tank} kg')
+    print(f'--- Optimal H2 Turbine capacity is {opt_H2Turb * 1e-3} MW')
+
+    # storing and outputting optimal values to csv
+    columns = []
+    values  = []
+    # optimal objective / metric
+    columns.append('Expected NPV')
+    values.append(opt_NPV)
+    # optimal capacities
+    columns.extend(['PEM Size', 'H2 Tank Size', 'H2 Turbine Size'])
+    values.extend([opt_PEM, opt_H2Tank, opt_H2Turb])
+    # outputting to csv
+    output_data = pd.DataFrame([values], columns=columns)
+    output_data.to_csv(f'opt_solution__{case_name}.csv')
 
   def run(self):
     """
@@ -957,5 +1035,3 @@ class HERD(MOPED):
     self._addObjective()
     self._solveDispatchesModel()
     self._exportResults()
-
-

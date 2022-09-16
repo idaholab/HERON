@@ -246,7 +246,7 @@
     <Component name="electricity_market">
       <demands resource="electricity" dispatch="dependent">
         <capacity>
-          <ARMA variable="dispatches-test">Load</ARMA>
+          <ARMA variable="dispatches-test">dispatches-test</ARMA>
           <multiplier>-1</multiplier>
         </capacity>
       </demands>
@@ -293,7 +293,7 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='Load' variable="TOTALLOAD">../arma_202112_nyiso_def.pk</ARMA>
+    <ARMA name='dispatches-test' variable="TOTALLOAD">../arma_202112_nyiso_def.pk</ARMA>
     <ARMA name='LMP' variable="TOTALLOAD">../arma_202112_nyiso_def.pk</ARMA>
   </DataGenerators>
 

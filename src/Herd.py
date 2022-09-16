@@ -124,7 +124,7 @@ class HERD(MOPED):
     self._dmdl = None # Pyomo model specific to DISPATCHES (different from _m)
     self._dispatches_model_template = None # Template of DISPATCHES Model for HERON comparison
     self._timeIndexMap = ['years', 'days', 'hours'] # index map to save time sets to dict later
-    self._metrics = None   # TEAL metrics, summed expressions
+    self._metrics = []     # TEAL metrics, summed expressions
     self._results = None   # results from Dispatch solve
     self._num_samples = 0  # number of samples/scenarios/realizations for easier retrievability
     self._demand_meta = {} # saving demand data to separate dict (in case it is also sampled)
@@ -161,7 +161,7 @@ class HERD(MOPED):
       @ out, None
     """
     # checking for a specific case - testing the DISPATCHES base Nuclear Case
-    if self._case.name == 'test_dispatches_wJSON':
+    if np.any([source.name == 'dispatches-test' for source in self._sources]):
       self._testMode = True
       self._setTestTimeSets()
       # testing for 20 year project life, override because it doesnt match LMP JSON signal
@@ -252,7 +252,7 @@ class HERD(MOPED):
       self._component_meta[comp.name][mode] = synthHist
 
     # cannot do sweep values yet
-    elif mode == 'SweepValues': # TODO Add capability to handle sweepvalues, maybe multiple pyo.Params?
+    elif mode == 'SweepValues': # TODO Add capability to handle sweepvalues
       raise IOError('MOPED does not currently support sweep values option')
 
     # NOTE not all producers consume
@@ -490,7 +490,7 @@ class HERD(MOPED):
       # now let's check individual component actions
       for dComp in dispatches_comp_list:
         hCompDict = self._component_meta[dComp]  # HERON component dict, same name as DISPATCHES
-        #FIXME: temp fix to not check for Cashflows just yet
+        #TODO: temp fix to not check for Cashflows just yet
         if 'Cashflows' in dModel[dComp].keys():
           del dModel[dComp]['Cashflows']
         dispatches_actions_list = list(dModel[dComp].keys())
@@ -556,14 +556,27 @@ class HERD(MOPED):
     # NOTE: equal probability for all scenarios
     self._dmdl.weights_scenarios = {s:1/self._num_samples for s in range(self._num_samples)}
 
+  def _addAdditionalConstraints(self, mdl):
+    """
+      Method to add additional constraints not included in DISPATCHES flowsheet
+      @ In, mdl, Pyomo model
+      @ Out, None
+    """
+    @mdl.Constraint(self._dmdl.set_time, self._dmdl.set_days, self._dmdl.set_years)
+    def hydrogen_demand_constraint(blk, t, d, y):
+      return blk.period[t, d, y].fs.h2_tank.outlet_to_pipeline.flow_mol[0] \
+                <= self._demand_meta['h2_market']["Demand"] / 2.016e-3 # convert from kg to mol
+
   def _buildDispatchesModel(self):
     """
       Builds full DISPATCHES Pyomo model
       @ In, None
       @ Out, None
     """
+    # add time sets to Pyomo model from given synthetic history and desired project lifetime
     self._addSetsToPyomo()
 
+    # pointing to necessary IDAES/DISPATCHES Physics models
     mdl_flowsheet = build_ne_flowsheet # pointing to the imported DISPATCHES nuclear flowsheet
     mdl_init  = fix_dof_and_initialize # pointing to the imported DISPATCHES fix/init method
     mdl_unfix = self.unfixDof # we add a method to unfix certain DoFs based on DISPATCHES jupyter notebooks
@@ -573,6 +586,7 @@ class HERD(MOPED):
                          flowsheet=mdl_flowsheet,
                          initialization=mdl_init,
                          unfix_dof=mdl_unfix,
+                         unfix_dof_options={},
                          multiple_days=True,
                          multiyear=True,
                          stochastic=True,
@@ -581,6 +595,7 @@ class HERD(MOPED):
     # list of initialized TEAL components; filters out HERON components that don't have cash flows
     teal_components, heron_components = self._initializeCashFlows()
 
+    # looping through all sampled scenarios
     for s in self._dmdl.set_scenarios:
       # Build the connecting constraints
       self.buildConnectingConstraints(self._dmdl.scenario[s],
@@ -588,27 +603,24 @@ class HERD(MOPED):
                                   set_days=self._dmdl.set_days,
                                   set_years=self._dmdl.set_years)
 
+      # Hydrogen demand constraint (Divide the RHS by the molecular mass to convert kg/s to mol/s)
+      self._addAdditionalConstraints(self._dmdl.scenario[s])
+
       # Append cash flow expressions
       for hComp, tComp in zip(heron_components, teal_components): #this zip might be danger
+        # skip components within HERON that are NOT defined in DISPATCHES template
         if hComp.name not in self._dispatches_model_template.keys():
-          continue # skip components within HERON that are NOT defined in DISPATCHES template
-
+          continue
+        # create cashflows using TEAL (capex, yearly or hourly)
         self._createCashflowsForDispatches(self._dmdl.scenario[s], hComp, tComp, s)
 
-      # Hydrogen demand constraint.
-      # Divide the RHS by the molecular mass to convert kg/s to mol/s
-      scenario = self._dmdl.scenario[s]
-      @scenario.Constraint(self._dmdl.set_time, self._dmdl.set_days, self._dmdl.set_years)
-      def hydrogen_demand_constraint(blk, t, d, y):
-        return blk.period[t, d, y].fs.h2_tank.outlet_to_pipeline.flow_mol[0] \
-                  <= self._demand_meta['h2_market']["Demand"] / 2.016e-3 # convert from kg to mol
-
-    self._cf_components.extend(teal_components)
-    self._metrics = RunCashFlow.run(self._econ_settings, self._cf_components, {}, pyomoVar=True)
+      # compute desired metric using TEAL and storing it
+      scenario_metric = RunCashFlow.run(self._econ_settings, teal_components, {}, pyomoVar=True)
+      self._metrics.append(scenario_metric)
+      del scenario_metric
 
     with open("HERD_output.txt", "w") as text_file:
-      # text_file.write(str(m.npv.expr))
-      text_file.write(str(self._metrics['NPV']))
+      text_file.write(str(self._metrics[0]['NPV']))
 
   def _initializeCashFlows(self):
     """
@@ -749,10 +761,6 @@ class HERD(MOPED):
     n_hours_per_year = n_hours * n_days # sometimes number of days refers to clusters < 365
 
     set_years_map = np.hstack([0, self._dmdl.set_years_map])
-
-    # # FIXME: this check should happen upstream somewhere? does HERON check?
-    # if n_years < projectLife - 1:
-    #   raise IOError("Project Life exceeds number of years in available dispatch")
 
     # template array for holding dispatch Pyomo expressions/objects
     dispatch_array = np.zeros((projectLife, n_hours_per_year), dtype=object)
@@ -965,7 +973,14 @@ class HERD(MOPED):
       @ In, None
       @ Out, None
     """
-    self._dmdl.obj = pyo.Objective(expr=self._metrics['NPV'], sense=pyo.maximize)
+    # scenario probability weights
+    weights = self._dmdl.weights_scenarios
+
+    # pyomo expression for full metric wtih scenario weights applied
+    Metric = np.sum( weights[n]*scenario['NPV'] for n, scenario in enumerate(self._metrics) )
+
+    # set objective
+    self._dmdl.obj = pyo.Objective(expr=Metric, sense=pyo.maximize)
 
   def _solveDispatchesModel(self):
     """

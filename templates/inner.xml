@@ -44,7 +44,7 @@
     <Group name='GRO_armasamples_out'      >GRO_armasamples_out_scalar</Group>
     <Group name='GRO_armasamples_in_scalar'>scaling, GRO_capacities</Group>
     <Group name='GRO_armasamples_out_scalar'>NPV</Group>
-    <Group name='GRO_final_return'>mean_NPV, std_NPV, med_NPV, max_NPV, min_NPV, perc_5_NPV, perc_95_NPV, samp_NPV, var_NPV</Group>
+    <Group name='GRO_final_return'></Group>
     <Group name="GRO_full_dispatch"></Group>
     <Group name="GRO_full_dispatch_indices"></Group>
     <Group name='GRO_interp'>stepwise</Group>

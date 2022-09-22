@@ -40,9 +40,9 @@ __pycache__
 *inner.xml
 *cash.xml
 *romMeta.xml
+*write_inner.py
 /tests/integration_tests/ARMA/Sine/synthetic.*
 /tests/integration_tests/workflows/MOPED/*/*.csv
-/tests/*/**/write_inner.py
 *_o/
 tests/integration_tests/mechanics/optimizedDispatch2Hybrid/hybrid_compatible_dispatch.txt
 tests/integration_tests/mechanics/optimizedDispatch2Hybrid/user_input.txt

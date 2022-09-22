@@ -1,0 +1,13 @@
+[Tests]
+ [./NuclearCaseARMA]
+  type = HeronIntegration
+  input = dispatches_ROM_input.xml
+  # prereq = price_arma
+  [./csv]
+    type = OrderedCSV
+    output = 'gold/opt_soln__ARMA.csv'
+    zero_threshold = 1e-6
+  [../]
+ [../]
+
+[]

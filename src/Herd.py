@@ -413,11 +413,6 @@ class HERD(MOPED):
     synth_scenarios = range(self._num_samples)
     projYearsRange = self._testProjectYearRange
     map_synth2proj = self._testMap_Synth2Proj
-
-    # double check years
-    # if len(set_years) != n_years:
-    #   raise IOError("Discrepancy in number of years within Synthetic History")
-
     # restructure the synthetic history dictionary to match DISPATCHES
     newHist = {}
     newHist['signals'] = {}
@@ -1029,7 +1024,7 @@ class HERD(MOPED):
 
   def run(self):
     """
-      Runs the workflow
+      Runs the DISPATCHES workflow
       @ In, None
       @ Out, None
     """

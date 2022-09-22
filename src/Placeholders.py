@@ -409,21 +409,32 @@ class CSV(Placeholder):
       contentType=InputTypes.StringType,
       ordered=False,
       baseNode=None,
-      descr="""TODO: FILL THIS IN""",
+      descr="""This data source is a static comma separated values (CSV) file.
+               The text of this node indicates the location of the CSV file.
+               This location is usually relative with respect to the HERON XML input file;
+               however, a full absolute path can be used, or the path can be prepended
+               with ``\%HERON\%'' to be relative to the installation directory of HERON.
+               It is expected that variables contained in this file are defined as headers
+               in the first row."""
     )
 
     specs.addParam(
       "name",
       param_type=InputTypes.StringType,
       required=True,
-      descr="""TODO: FILL THIS IN""",
+      descr="""identifier for this data source in HERON and in the HERON input file.""",
     )
 
     specs.addParam(
       'variable',
       param_type=InputTypes.StringListType,
       required=True,
-      descr="""TODO: FILL THIS IN""",
+      descr="""provides the names of the variables found in the CSV file
+               and will be used in the workflow. Please note that all CSV files
+               used in HERON for the purpose of input data must contain a variable
+               titled ``RAVEN_sample_ID''. This variable can be a column of constant
+               values (i.e., 0 or 1). This variable is unlikely to be used in the workflow
+               but is required by RAVEN.""",
     )
     return specs
 
@@ -454,7 +465,7 @@ class CSV(Placeholder):
       if var not in headers:
         self.raiseAnError(
           KeyError,
-          f'Variable {var} requested for "{self.name}" but not found in "{self._target_file}"! Found: {headers}'
+          f'Variable "{var}" requested for "{self.name}" but not found in "{self._target_file}"! Found: {headers}'
         )
 
   def checkValid(self, case, components, sources):

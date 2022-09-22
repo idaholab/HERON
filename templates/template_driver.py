@@ -435,8 +435,12 @@ class Template(TemplateBase, Base):
     # NOTE: if we find any CSVs in sources, we know the structure of our inner
     # has changed quite a bit. This is because we abandon the EnsembleModel &
     # MonteCarlo samplers in favor of a ExternalModel & CustomSampler when
-    # using Static Histories instead of a Synthetic History.
+    # using Static Histories instead of a Synthetic History. Also we do not
+    # anticpate/allow users to mix the use of Static & Synthetic Histories.
     if any(x.is_type("CSV") for x in sources):
+      # NOTE: this chunk of code does the initial footwork for switching
+      # to Static Histories. The rest of the required changes are completed
+      # in the _modify_inner_static_history() method.
       text = 'Samplers|CustomSampler@name:mc_arma_dispatch|constant@name:{}'
       # Remove anything having to do with 'denoises', it's no longer needed.
       raven.remove(raven.find(".//alias[@variable='denoises']"))

@@ -17,19 +17,22 @@ class StaticHistory(ValuedParam):
   @classmethod
   def get_input_specs(cls):
     """
-      Template for parameters that can take a scalar, an ARMA history, or a function
+      Template for parameters that can take a variable from a CSV file.
       @ In, None
       @ Out, spec, InputData, value-based spec
     """
     spec = InputData.parameterInputFactory(
       'CSV',
       contentType=InputTypes.StringType,
-      descr=r"""TODO: FILL THIS IN"""
+      descr=r"""indicates that this value will be taken from a static CSV file signals,
+              which will be provided to the dispatch at run time. The value
+              of this node should be the name of a static history CSV generator found in the
+              \xmlNode{DataGenerator} node."""
     )
     spec.addParam(
       'variable',
       param_type=InputTypes.StringType,
-      descr=r"""indicates which variable coming from the synthetic histories this value should be taken from."""
+      descr=r"""indicates which variable coming from static history CSV this value should be taken from."""
     )
     return spec
 
@@ -80,7 +83,8 @@ class StaticHistory(ValuedParam):
     except KeyError:
       self.raiseAnError(
         RuntimeError,
-        f'variable "{var_name}" was not found among the RAVEN variables!'
+        f'variable "{var_name}" was not found among the RAVEN variables!' +
+        f'Please check to ensure the provided CSV file contains "{var_name}" as a header'
       )
     except IndexError:
       val = inputs['HERON']['RAVEN_vars'][var_name]

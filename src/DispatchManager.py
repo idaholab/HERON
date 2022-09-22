@@ -88,10 +88,10 @@ class DispatchRunner:
     """
     pass_vars = {}
     history_structure = {}
-    # investigate sources for required ARMA information
+    # investigate sources for required ARMA/CSV information
     for source in self._sources:
       if source.is_type('ARMA') or source.is_type("CSV"):
-        # get structure of ARMA
+        # get structure of ARMA/CSV
         vars_needed = source.get_variable()
         for v in vars_needed:
           pass_vars[v] = getattr(raven, v)
@@ -541,7 +541,6 @@ class DispatchRunner:
         found = True
         break
 
-    assert self._case is not None
     if not found:
       for source in self._sources:
         if source.is_type("CSV"):
@@ -554,6 +553,11 @@ class DispatchRunner:
           found = True
           break
 
+    # It's important to note here. We do not anticipate users mixing
+    # ARMA & CSV sources, we also don't account for discrepancies in
+    # time-steps between CSV and ARMA. Eventually we may need to modify
+    # the code to allow for mixed use and determine compatibility of
+    # time-steps.
     if not found:
       raise RuntimeError('No ARMA or CSV found in sources! Temporal mapping is missing.')
 

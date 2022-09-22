@@ -27,6 +27,16 @@ class HeronIntegration(RavenTester):
   """
 
   # TODO extend get_valid_params?
+  @staticmethod
+  def get_valid_params():
+    """
+      Returns the valid parameters.
+      @ In, None
+      @ Out, params, _ValidParameters, return the parameters.
+    """
+    params = RavenTester.get_valid_params()
+    params.add_param('kind', 'both', 'Run "both" HERON and RAVEN or "heron_only"')
+    return params
 
   def __init__(self, name, param):
     """
@@ -47,8 +57,13 @@ class HeronIntegration(RavenTester):
     """
     cmd = ''
     cmd, heron_inp = self.get_heron_command(cmd)
-    cmd += ' && '
-    cmd = self.get_raven_command(cmd, heron_inp)
+    if self.specs["kind"].lower() == "both":
+      cmd += ' && '
+      cmd = self.get_raven_command(cmd, heron_inp)
+    elif self.specs["kind"].lower() == "heron_only":
+      pass
+    else:
+      print("ERROR unknown HeronIntegration command kind", self.specs["kind"])
     return cmd
 
   def get_heron_command(self, cmd):

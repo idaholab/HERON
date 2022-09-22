@@ -40,7 +40,7 @@
           <lifetime>10</lifetime>
           <CashFlow name="capex" type="one-time" taxable="False" inflation="none" mult_target="False">
             <driver>
-              <Function method="capacity">functions</Function>
+              <variable>source_capacity</variable>
             </driver>
             <reference_price>
               <fixed_value>10000.0</fixed_value>
@@ -56,7 +56,7 @@
           </CashFlow>
           <CashFlow name="FOM" type="repeating" period='year' taxable="False" inflation="none" mult_target="False">
             <driver>
-              <Function method="capacity">functions</Function>
+              <variable>source_capacity</variable>
             </driver>
             <reference_price>
               <fixed_value>100.0</fixed_value>
@@ -103,6 +103,5 @@
 
     <DataGenerators>
       <CSV name='flex' variable="Signal">%HERON%/tests/integration_tests/mechanics/static_history/Static.csv</CSV>
-      <Function name="functions">functions.py</Function>
     </DataGenerators>
 </HERON>

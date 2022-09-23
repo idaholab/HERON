@@ -5,6 +5,7 @@
     <pyutilib source='forge'/>
     <glpk source='forge' skip_check='True'/>
     <ipopt source='forge' skip_check='True'/>
+    <networkx optional='True'/>
     <!-- Windows doesn't have a reasonably-accessible installer for coincbc -->
     <coincbc os="mac,linux" source='forge' skip_check='True'/>
   </main>

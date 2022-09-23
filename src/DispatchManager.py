@@ -14,13 +14,12 @@ from time import time as run_clock
 import numpy as np
 from typing_extensions import final
 
-# set up path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import _utils as hutils
-import SerializationManager
+from . import _utils as hutils
+from . import SerializationManager
 
 raven_path = hutils.get_raven_loc()
 sys.path.append(raven_path)
+from ravenframework.PluginBaseClasses.ExternalModelPluginBase import ExternalModelPluginBase
 sys.path.pop()
 
 cashflow_path = os.path.abspath(os.path.join(hutils.get_cashflow_loc(raven_path=raven_path), '..'))
@@ -654,45 +653,57 @@ class DispatchRunner:
     return truncated
 
 
-################
-# RAVEN methods
-################
-def _readMoreXML(raven, xml):
+class DispatchManager(ExternalModelPluginBase):
   """
-    Reads additional inputs for DispatchManager
-    @ In, raven, object, variable-storing object
+    A plugin to run heron.lib
   """
-  respec = xml.find('respecTime')
-  if respec is not None:
-    try:
-      stats = [int(x) for x in respec.text.split(',')]
-      raven._override_time = stats
-      np.linspace(*stats) # test it out
-    except Exception:
-      raise IOError('DispatchManager xml: respec values should be arguments for np.linspace! Got', respec.text)
 
-def run(raven, raven_dict):
-  """
-    # TODO split into dispatch manager class and dispatch runner external model
-    API for external models.
-    This is run as part of the INNER ensemble model, run after the synthetic history generation
-    @ In, raven, object, RAVEN variables object
-    @ In, raven_dict, dict, additional RAVEN information
-    @ Out, None
-  """
-  path = os.path.join(os.getcwd(), '..', 'heron.lib') # TODO custom name?
-  # build runner
-  runner = DispatchRunner()
-  # load library file
-  runner.load_heron_lib(path)
-  # load data from RAVEN
-  raven_vars = runner.extract_variables(raven, raven_dict)
-  # TODO clustering, multiyear, etc?
-  # add settings from readMoreXML
-  override_time = getattr(raven, '_override_time', None)
-  if override_time is not None:
-    runner.override_time(override_time) # TODO setter
-  dispatch, metrics = runner.run(raven_vars)
-  runner.save_variables(raven, dispatch, metrics)
+  def initialize(self, container, runInfoDict, inputFiles):
+    """
+      Method to initialize the DispatchManager plugin.
+      @ In, container, object, external 'self'
+      @ In, runInfoDict, dict, the dictionary containing the runInfo (read in the XML input file)
+      @ In, inputFiles, list, not used
+      @ Out, None
+    """
+    pass
+
+  def _readMoreXML(self, raven, xml):
+    """
+      Reads additional inputs for DispatchManager
+      @ In, raven, object, variable-storing object
+    """
+    respec = xml.find('respecTime')
+    if respec is not None:
+      try:
+        stats = [int(x) for x in respec.text.split(',')]
+        raven._override_time = stats
+        np.linspace(*stats) # test it out
+      except Exception:
+        raise IOError('DispatchManager xml: respec values should be arguments for np.linspace! Got', respec.text)
+
+  def run(self, raven, raven_dict):
+    """
+      # TODO split into dispatch manager class and dispatch runner external model
+      API for external models.
+      This is run as part of the INNER ensemble model, run after the synthetic history generation
+      @ In, raven, object, RAVEN variables object
+      @ In, raven_dict, dict, additional RAVEN information
+      @ Out, None
+    """
+    path = os.path.join(os.getcwd(), '..', 'heron.lib') # TODO custom name?
+    # build runner
+    runner = DispatchRunner()
+    # load library file
+    runner.load_heron_lib(path)
+    # load data from RAVEN
+    raven_vars = runner.extract_variables(raven, raven_dict)
+    # TODO clustering, multiyear, etc?
+    # add settings from readMoreXML
+    override_time = getattr(raven, '_override_time', None)
+    if override_time is not None:
+      runner.override_time(override_time) # TODO setter
+    dispatch, metrics = runner.run(raven_vars)
+    runner.save_variables(raven, dispatch, metrics)
 
 

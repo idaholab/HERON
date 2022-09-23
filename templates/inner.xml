@@ -45,10 +45,7 @@
     <Group name='GRO_armasamples_in_scalar'>scaling, GRO_capacities</Group>
     <Group name='GRO_armasamples_out_scalar'>NPV</Group>
 
-    <Group name='GRO_final_return'>
-      mean_NPV, std_NPV, med_NPV, max_NPV, min_NPV,
-      perc_5_NPV, perc_95_NPV, samp_NPV, var_NPV
-    </Group>
+    <Group name='GRO_final_return'></Group>
 
     <Group name="GRO_full_dispatch"></Group>
     <Group name="GRO_full_dispatch_indices"></Group>
@@ -103,14 +100,6 @@
     </EnsembleModel>
 
     <PostProcessor name="statistics" subType="EconomicRatio">
-      <expectedValue prefix="mean">NPV</expectedValue>
-      <sigma prefix="std">NPV</sigma>
-      <median prefix="med">NPV</median>
-      <maximum prefix="max">NPV</maximum>
-      <minimum prefix="min">NPV</minimum>
-      <percentile prefix="perc">NPV</percentile>
-      <samples prefix="samp">NPV</samples>
-      <variance prefix="var">NPV</variance>
     </PostProcessor>
   </Models>
 

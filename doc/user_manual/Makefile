@@ -12,7 +12,7 @@ populate:
 	python script/generate_user_manual.py
 
 build: ../version.tex
-	cd build; pdflatex -interaction=nonstopmode $(SRCFILE).tex
+	cd build; pdflatex -interaction=nonstopmode $(SRCFILE).tex; pdflatex -interaction=nonstopmode $(SRCFILE).tex; pdflatex -interaction=nonstopmode $(SRCFILE).tex
 	cp -f build/HERON_user_manual.pdf pdf/
 
 finish:

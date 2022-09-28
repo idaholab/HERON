@@ -311,11 +311,11 @@ class HERD(MOPED):
     for ind in synthetic_data['indexMap']:
       # for year set, we truncate based on desired Project Time (28 yrs available)
       if ind.lower() in 'years':
-        projLife = int( getattr(self._case, '_global_econ')['ProjectTime'] ) #TODO: check life < years
+        projLife = int( getattr(self._case, '_global_econ')['ProjectTime'] )
         synthetic_data[years] = np.array(current_realization[ind][0:projLife], dtype=int)
       elif ind.lower() in '_rom_cluster_days':
         synthetic_data[days]  = np.array(current_realization[ind] + 1, dtype=int)
-      elif ind.lower() in 'hours':
+      elif ind.lower() in 'timehours':
         synthetic_data[hours] = np.array(current_realization[ind] + 1, dtype=int)
 
     # extracting cluster info from ROM - how many days of year per cluster?
@@ -330,14 +330,6 @@ class HERD(MOPED):
         index = int(cluster-1)
         synthetic_data['weights_days'][year][cluster] = len(cluster_map[index])
 
-    # check to see if clusters add up to 365
-    cluster_sums = [sum(cluster
-                      for _, cluster in synthetic_data['weights_days'][y].items())
-                        for y in synthetic_data[years]]
-
-    if sum(cluster_sums) != 365 * len(synthetic_data[years]):
-      raise IOError('ROM cluster weights do not add to 365 for all provided years.')
-
     # check that evaluation mode is either clustered or full
     if self._eval_mode not in ['clustered', 'full']:
       raise IOError('Improper ROM evaluation mode detected, try "clustered" or "full".')
@@ -350,7 +342,7 @@ class HERD(MOPED):
       @ Out, None
     """
     # paths to LMP signal JSON within DISPATCHES
-    # TODO: move a copy of this file to HERD?
+    # TODO: move a copy of this file to HERD? or convert to static history
     proj_path = path.dirname(path_to_raven)
     disp_path = path.join(proj_path, "dispatches/dispatches/case_studies/nuclear_case/")
     lmp_path  = path.abspath( path.join(disp_path, "lmp_signal.json") )
@@ -430,7 +422,7 @@ class HERD(MOPED):
         if "Realization" in key:
           # realizations known as scenarios in DISPATCHES, index starting at 0
           k = int( key.split('_')[-1] )
-          # years indexed by integer year (2020, etc.)"sets"'sets'
+          # years indexed by integer year (2020, etc.)
           # clusters and hours indexed starting at 1
           newHist['signals'][synth_scenarios[k-1]] = {year: {day: {hour: data[y, day-1, hour-1]
                                                                     for hour in synth_hours}
@@ -439,9 +431,9 @@ class HERD(MOPED):
     # save set time data for use within DISPATCHES
     newHist["sets"] = {}
     newHist["sets"]["synth_scenarios"] = list(synth_scenarios) # DISPATCHES wants this as a list
-    newHist["sets"]["synth_years"]  = synth_years # DISPATCHES wants this as a list
-    newHist["sets"]["synth_days"]   = synth_days  # DISPATCHES wants this as a range
-    newHist["sets"]["synth_hours"]  = synth_hours # DISPATCHES wants this as a range
+    newHist["sets"]["synth_years"]  = np.unique(synth_years) # DISPATCHES wants this as a list
+    newHist["sets"]["synth_days"]   = np.unique(synth_days)  # DISPATCHES wants this as a range
+    newHist["sets"]["synth_hours"]  = np.unique(synth_hours) # DISPATCHES wants this as a range
     newHist["sets"]["map_synth2proj"] = map_synth2proj # used only for tests
     newHist["sets"]["projYearsRange"] = projYearsRange # used only for tests
     # getting weights_days - how many days does each cluster represent?
@@ -464,7 +456,7 @@ class HERD(MOPED):
     """
     # TODO: check for financial params/inputs?
     heron_comp_list = list( self._component_meta.keys() ) # current list of HERON components
-    self.raiseADebug(f'|Checking compatibility between HERON and available DISPATCHES cases|')
+    self.raiseADebug('|Checking compatibility between HERON and available DISPATCHES cases|')
 
     # check that HERON input file contains all components needed to run DISPATCHES case
     # using naming convention: d___ corresponds to DISPATCHES, h___ corresponds to HERON
@@ -530,19 +522,20 @@ class HERD(MOPED):
       market_synthetic_history = self._synthhistories['dispatches-test']
     elif 'price' in signals:
       market_synthetic_history = self._synthhistories['price']
+    elif 'Signal' in signals:
+      market_synthetic_history = self._synthhistories['Signal']
     else:
       raise IOError('Signal name not found in generated synthetic history dictionary')
 
     # transferring information on Sets
     sets = market_synthetic_history['sets']
-    self._dmdl.set_time  = sets['synth_hours']
-    self._dmdl.set_days  = sets['synth_days']
-    self._dmdl.set_years = sets['synth_years']
+    self._dmdl.set_time  = np.unique(sets['synth_hours'])
+    self._dmdl.set_days  = np.unique(sets['synth_days'])
+    self._dmdl.set_years = np.unique(sets['synth_years'])
     self._dmdl.set_years_map = sets['map_synth2proj'] if self._testMode else sets['synth_years']
     self._dmdl.set_scenarios = sets['synth_scenarios']
 
     # transferring information on LMP Synthetic History signal
-    # TODO: here we use TOTALLOAD data as a stand-in, should actually be price signals
     self._dmdl.LMP = market_synthetic_history['signals']
 
     # transferring information on weightings
@@ -613,9 +606,6 @@ class HERD(MOPED):
       scenario_metric = RunCashFlow.run(self._econ_settings, teal_components, {}, pyomoVar=True)
       self._metrics.append(scenario_metric)
       del scenario_metric
-
-    with open("HERD_output.txt", "w") as text_file:
-      text_file.write(str(self._metrics[0]['NPV']))
 
   def _initializeCashFlows(self):
     """
@@ -715,7 +705,6 @@ class HERD(MOPED):
                                         dispatch_driver, scenario_ind,
                                         dispatching_params)
         CF_collection.append(hourly)
-        print(f"----{hComp.name}---- Dispatch Driver : {dispatch_driver[2,8]}")
 
     tComp.addCashflows(CF_collection)
 

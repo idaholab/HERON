@@ -1,20 +1,20 @@
 <HERON>
   <TestInfo>
-    <name>HERD_nuclearCase_ARMA</name>
+    <name>HERD_nuclearCase_Sine</name>
     <author>sotogj</author>
-    <created>2022-09-13</created>
+    <created>2022-09-27</created>
     <description>
       First DISPATCHES case, for NPP dispatching to electricity to grid and PEM electrolyzer,
       storing hydrogen in tanks which can also be combusted to create electricty for the grid.
-      This particular case samples from a LMP signal ARMA model.
+      This particular case samples from a sine wave ARMA model just for testing.
     </description>
     <classesTested>HERON</classesTested>
   </TestInfo>
 
-  <Case name="nuclearCase_ARMA">
+  <Case name="nuclearCase_Sine">
     <mode>opt</mode>
     <verbosity>all</verbosity>
-    <num_arma_samples>1</num_arma_samples>
+    <num_arma_samples>2</num_arma_samples>
     <workflow>DISPATCHES</workflow>
     <time_discretization>
       <year_variable>YEAR</year_variable>
@@ -23,7 +23,7 @@
       <num_steps>24</num_steps>
     </time_discretization>
     <economics>
-      <ProjectTime>10</ProjectTime>
+      <ProjectTime>3</ProjectTime>
       <DiscountRate>0.08</DiscountRate>
       <tax>0.2</tax>
       <inflation>0.02184</inflation>
@@ -234,8 +234,8 @@
           </driver>
           <reference_price>
             <!-- ballpark $25/MWh -->
-            <ARMA variable="price">LMP</ARMA> <!-- assumed $/MWh-->
-            <!-- <multiplier>1e-3</multiplier> -->
+            <ARMA variable="Signal">LMP</ARMA> <!-- assumed $/MWh-->
+            <multiplier>10</multiplier>
               <!-- convert to $/kWh -->
           </reference_price>
         </CashFlow>
@@ -269,7 +269,7 @@
 
   <DataGenerators>
     <!--<ARMA name='Load' variable="TOTALLOAD">../arma_202112_nyiso_def.pk</ARMA>-->
-    <ARMA name='LMP' variable="price">../price_arma.pk</ARMA>
+    <ARMA name='LMP' variable="Signal">../../../ARMA/Sine/arma.pk</ARMA>
   </DataGenerators>
 
 </HERON>

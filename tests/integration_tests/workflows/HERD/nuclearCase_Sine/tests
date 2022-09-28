@@ -1,11 +1,11 @@
 [Tests]
  [./NuclearCaseSine]
-  type = HeronIntegration
+  type = HeronMoped
   input = dispatches_sine_input.xml
   # prereq = arma
   [./csv]
     type = OrderedCSV
-    output = 'gold/opt_soln__sine.csv'
+    output = 'opt_solution__nuclearCase_Sine.csv'
     zero_threshold = 1e-6
   [../]
  [../]

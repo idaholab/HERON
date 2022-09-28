@@ -1,11 +1,12 @@
 [Tests]
  [./NuclearCaseNotebookMatch]
-  type = HeronIntegration
+  type = HeronMoped
   input = dispatches_input.xml
+  max_time = 600
   # prereq = price_arma
   [./csv]
     type = OrderedCSV
-    output = 'gold/opt_soln__notebook_match.csv'
+    output = 'opt_solution__nuclearCase_notebook_match.csv'
     zero_threshold = 1e-6
   [../]
  [../]

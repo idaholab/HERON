@@ -144,7 +144,7 @@ class HERD(MOPED):
       @ In, None
       @ Out, None
     """
-    self._testSynthYears = [2022, 2032]
+    self._testSynthYears = [2022]
     self._testProjLife = 20
     # range of years through intended project life (_testSynthYears contained within this set)
     #   year[0]-1 is the construction year

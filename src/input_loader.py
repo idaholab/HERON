@@ -67,8 +67,7 @@ def parse(xml, loc, messageHandler):
   for sub_xml in sources_node:
     typ = sub_xml.tag
     if typ == 'CSV':
-      raise NotImplementedError('Not taking histories from CSV yet. If needed, let me know.')
-      # new = Placeholders.CSV(messageHandler=messageHandler)
+      new = Placeholders.CSV(loc=loc, messageHandler=messageHandler)
     elif typ == 'ARMA':
       new = Placeholders.ARMA(loc=loc, messageHandler=messageHandler)
     elif typ == 'Function':
@@ -89,7 +88,7 @@ def parse(xml, loc, messageHandler):
         kind, name = info.get_source()
         # if not looking for a DataGenerator placeholder, then nothing more to do
         # if using "activity", also nothing to do
-        if kind not in ['Function', 'ARMA', 'ROM']:
+        if kind not in ['Function', 'ARMA', 'ROM', 'CSV']:
           continue
         # find it
         for source in sources:

@@ -44,6 +44,14 @@ class ValuedParam(MessageUser):
     self._target_obj = None  # Placeholder object for this VP, if needed
     self._value = None       # None for most VP, for Parametric may be valued
 
+  def __repr__(self) -> str:
+    """
+      Return Object Representation String
+      @ In, None
+      @ Out, None
+    """
+    return f"<HERON {self._source_kind}>"
+
   def read(self, comp_name, spec, mode, alias_dict=None):
     """
       Used to read valued param from XML input

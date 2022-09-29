@@ -3,7 +3,7 @@
   type = HeronMoped
   input = dispatches_input.xml
   max_time = 600
-  # prereq = price_arma
+  rel_err = 1e-6
   [./csv]
     type = OrderedCSV
     output = 'opt_solution__nuclearCase_notebook_match.csv'

@@ -269,7 +269,7 @@
 
   <DataGenerators>
     <!--<ARMA name='Load' variable="TOTALLOAD">../arma_202112_nyiso_def.pk</ARMA>-->
-    <ARMA name='LMP' variable="Signal">../../../ARMA/Sine/arma.pk</ARMA>
+    <ARMA name='LMP' variable="Signal">%HERON%/tests/integration_tests/ARMA/Sine/arma.pk</ARMA>
   </DataGenerators>
 
 </HERON>

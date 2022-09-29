@@ -23,11 +23,12 @@ from ravenframework.utils import xmlUtils
 import externalROMloader as ROMloader
 
 # Nuclear flowsheet function imports
-from dispatches.case_studies.nuclear_case.nuclear_flowsheet import build_ne_flowsheet
-from dispatches.case_studies.nuclear_case.nuclear_flowsheet import fix_dof_and_initialize
+# NOTE: these paths will change for next DISPATCHES release
+from dispatches.models.nuclear_case.flowsheets.nuclear_flowsheet import build_ne_flowsheet
+from dispatches.models.nuclear_case.flowsheets.nuclear_flowsheet import fix_dof_and_initialize
 
 # Import function for the construction of the multiperiod model
-from dispatches.case_studies.nuclear_case.multiperiod import build_multiperiod_design
+from dispatches.models.nuclear_case.flowsheets.multiperiod import build_multiperiod_design
 
 from idaes.core.solvers import get_solver
 
@@ -343,9 +344,8 @@ class HERD(MOPED):
     """
     # paths to LMP signal JSON within DISPATCHES
     # TODO: move a copy of this file to HERD? or convert to static history
-    proj_path = path.dirname(path_to_raven)
-    disp_path = path.join(proj_path, "dispatches/dispatches/case_studies/nuclear_case/")
-    lmp_path  = path.abspath( path.join(disp_path, "lmp_signal.json") )
+    disp_nuc_path = path.dirname( build_multiperiod_design.__code__.co_filename )
+    lmp_path  = path.abspath( path.join(disp_nuc_path, "lmp_signal.json") )
 
     # loading JSON data
     with open(lmp_path, encoding='utf-8') as fp:

@@ -34,20 +34,7 @@ Development is focused on reducing the number of items on this list. The end goa
 \subsection{HERON Runs DISPATCHES (HERD)}
 The Design Integration and Synthesis Platform to Advance Tightly Coupled Hybrid Energy Systems (DISPATCHES) repository can now be utilized using a HERON workflow (the github repository can be found here: \url{https://github.com/gmlc-dispatches/dispatches}). This HERON workflow builds a monolithic Pyomo object with cashflows generated through TEAL, similar to MOPED. In contrast, this workflow utilizes physics models from the Institute for the Design of Advanced Energy Systems (IDAES) which are linked using DISPATCHES flowsheets. 
 
-DISPATCHES currently uses two workflows: a double-loop (a real-time and day-ahead market loop, not the RAVEN runs RAVEN loop) and multiperiod optimization.  HERD implements the multiperiod optimization workflow from DISPATCHES: it calls on an existing DISPATCHES flowsheet to create IDAES Pyomo physics models and runs a monolithic solve of multiple sampled market/weather scenarios. Available flowsheets pertain to three specific case studies in the DISPATCHES repository: a nuclear, renewables, and fossil fuel case. HERD implements the nuclear case with hydrogen production, storage, and combustion. 
-
-\subsubsection{Installation}
-DISPATCHES first needs to be installed within the same Python environment where RAVEN and the TEAL and HERON plugins are installed. The RAVEN Python environment must first be loaded
-\begin{lstlisting}
-  cd path/to/raven
-  source ./scripts/establish_conda_env.sh --load
-\end{lstlisting}
-then DISPATCHES and all required packages should be installed within the RAVEN Python environment (assuming in this example that the DISPATCHES local repository is in the same project directory as RAVEN):
-\begin{lstlisting}
-  cd ../dispatches 
-  python -m pip install -r requirements-dev.txt 
-\end{lstlisting}
-An additional flag, \texttt{--trusted-host=codeload.github.com}, can be added to the pip installation which adds github to trusted hosts to avoid a potential error. 
+DISPATCHES currently uses two workflows: a double-loop (a real-time and day-ahead market loop, not to be confused with the RAVEN runs RAVEN approach) and multiperiod optimization.  HERD specifically implements the multiperiod optimization workflow from DISPATCHES: it calls on an existing DISPATCHES flowsheet to create IDAES Pyomo physics models and runs a monolithic solve of multiple sampled market/weather scenarios. Available flowsheets pertain to three specific case studies in the DISPATCHES repository: a nuclear, renewables, and fossil fuel case. HERD currently implements the nuclear case with hydrogen production, storage, and combustion. 
 
 \subsubsection{How to Run}
 To run this workflow, insert “DISPATCHES“ into the \xmlNode{workflow} node. The HERON XML Input script must include components that match the nuclear case:
@@ -61,7 +48,8 @@ To run this workflow, insert “DISPATCHES“ into the \xmlNode{workflow} node. 
 \end{itemize}
 A sample script can be found in
 \begin{lstlisting}
-  /tests/integration\_tests/workflows/HERD/nuclearCase\_ARMA.
+/tests/integration_tests/workflows/HERD/nuclearCase_Sine.
 \end{lstlisting} 
 
-In the future, 
+\subsubsection{Using JSON Data to Match Original Notebook Results}
+For testing purposes, an alternate use of the "DISPATCHES" workflow is available. This is triggered by labeling a \xmlNode{DataGenerator} as ``dispatches-test``. Instead of loading synthetic histories from an ARMA model, HERD loads data from the DISPATCHES LMP JSON file in the DISPATCHES repository. This is used in HERD to test a simulation that matches the original multiperiod nuclear case Jupyter notebook results in the DISPATCHES repository. This will be converted to a loaded static history in the future. 

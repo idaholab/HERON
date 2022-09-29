@@ -10,7 +10,7 @@
       zero_threshold = 1e-6
       # Loser tolerances due to seeding issue with ROMCollection objects
       #  see Issue #1351
-      rel_err = 3e-2
+      rel_err = 4e-2
     [../]
   [../]
 []

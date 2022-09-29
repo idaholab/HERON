@@ -1,7 +1,15 @@
 <?xml version="1.0" ?>
 <Simulation verbosity="debug">
-  <!-- NOTE: THE DATA FOR THIS INPUT FILE IS NOT INCLUDED IN THIS REPOSITORY!
-   THIS IS JUST INCLUDED FOR POSTERITY SO IT CAN BE TRACKED UNTIL IT'S MOVED TO FORCE -->
+  <TestInfo>
+    <name>NYISO_ARMA_2YR</name>
+    <author>dylanjm</author>
+    <created>2022-09-29</created>
+    <description>
+      This trains a stochastic ARMA using NYISO data for testing in HERON
+    </description>
+    <classesTested>SupervisedLearning.ARMA</classesTested>
+  </TestInfo>
+
   <RunInfo>
     <WorkingDir>NYISO</WorkingDir>
     <Sequence>load, train, meta, serialize, sample</Sequence>

@@ -223,9 +223,7 @@
     <Component name="electricity_market">
       <demands resource="electricity" dispatch="dependent">
         <capacity>
-          <!-- for some reason, economic Indicator doesn't get created without an ARMA model -->
-          <ARMA variable="dispatches-test">dispatches-test</ARMA>
-          <multiplier>-1</multiplier>
+          <fixed_value>-1</fixed_value>
         </capacity>
       </demands>
 
@@ -237,8 +235,7 @@
           </driver>
           <reference_price>
             <!-- ballpark $25/MWh -->
-            <ARMA variable="dispatches-test">LMP</ARMA> <!-- assumed $/MWh-->
-            <!-- <multiplier>1e-3</multiplier> -->
+            <ARMA variable="dispatches-test">dispatches-test</ARMA> <!-- assumed $/MWh-->
               <!-- convert to $/kWh -->
             </reference_price>
         </CashFlow>
@@ -273,7 +270,6 @@
   <DataGenerators>
     <!-- to trigger the use of the JSON LMP signal, name needs to be 'dispatches-test'-->
     <ARMA name='dispatches-test' variable="TOTALLOAD">%HERON%/tests/workshop/arma_202112_nyiso_def.pk</ARMA>
-    <ARMA name='LMP' variable="TOTALLOAD">%HERON%/tests/workshop/arma_202112_nyiso_def.pk</ARMA>
   </DataGenerators>
 
 </HERON>

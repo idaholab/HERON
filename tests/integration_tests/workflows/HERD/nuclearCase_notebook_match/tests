@@ -3,11 +3,11 @@
   type = HeronMoped
   input = dispatches_input.xml
   max_time = 600
-  rel_err = 1e-6
   [./csv]
     type = OrderedCSV
     output = 'opt_solution__nuclearCase_notebook_match.csv'
     zero_threshold = 1e-6
+	rel_err = 1e-6
   [../]
  [../]
 

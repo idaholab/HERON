@@ -113,18 +113,15 @@ class HERON(Base):
     moped.setInitialParams(case, components, sources)
     moped.run()
 
-  def run_dispatches_workflow(self, case = None, components = None, sources = None):
+  def run_dispatches_workflow(self):
     """
       Runs DISPATCHES workflow for creating framework and running with IDAES
-      @ In, case, HERON case object with necessary run settings
+      @ In, None
       @ Out, None
     """
-    if case is None:
-      case = self._case
-    if components is None:
-      components = self._components
-    if sources is None:
-      sources = self._sources
+    case = self._case
+    components = self._components
+    sources = self._sources
     assert case is not None and components is not None and sources is not None
     dispatches = Herd.HERD()
     print("*******************************************************************************")

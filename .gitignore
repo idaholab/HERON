@@ -46,3 +46,4 @@ __pycache__
 *_o/
 tests/integration_tests/mechanics/optimizedDispatch2Hybrid/hybrid_compatible_dispatch.txt
 tests/integration_tests/mechanics/optimizedDispatch2Hybrid/user_input.txt
+/tests/integration_tests/workflows/HERD/*/*.csv

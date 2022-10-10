@@ -20,7 +20,7 @@ The primary motivations and potential benefits of MOPED include:
 
 \subsubsection{Limitations}
 MOPED is limited to the TEA's where the dispatch and capacity selection agents are cooperative. In other words, MOPED cannot solve analyses where maximizing dispatch value reduces the total NPV value. Possible scenarios include deregulated markets, direct competition, and agent-based dispatch.
-
+ 
 Additionally, MOPED has limitations in terms of acceptable inputs, which currently include:
 \begin{itemize}
     \item Custom functions for prices, VRE capacities, demand, etc.
@@ -29,8 +29,27 @@ Additionally, MOPED has limitations in terms of acceptable inputs, which current
     \item Components that produce, consume, or demand multiple resources
     \item Components with multiple cashflows of a same type
 \end{itemize}
-Development is focussed on reducing the number of items on this list. The end goal of MOPED is to maintain the same capabilities as the default workflow.
+Development is focused on reducing the number of items on this list. The end goal of MOPED is to maintain the same capabilities as the default workflow.
 
-\subsection{DISPATCHES}
-The DISPATCHES workflow builds a monolithic pyomo object with cost functions from TEAL, which is similar to MOPED. In constrast, this workflow utilizes IDAES modeling to include physics within the pyomo model.
+\subsection{HERON Runs DISPATCHES (HERD)}
+The Design Integration and Synthesis Platform to Advance Tightly Coupled Hybrid Energy Systems (DISPATCHES) repository can now be utilized using a HERON workflow (the github repository can be found here: \url{https://github.com/gmlc-dispatches/dispatches}). This HERON workflow builds a monolithic Pyomo object with cashflows generated through TEAL, similar to MOPED. In contrast, this workflow utilizes physics models from the Institute for the Design of Advanced Energy Systems (IDAES) which are linked using DISPATCHES flowsheets. 
 
+DISPATCHES currently uses two workflows: a double-loop (a real-time and day-ahead market loop, not to be confused with the RAVEN runs RAVEN approach) and multiperiod optimization.  HERD specifically implements the multiperiod optimization workflow from DISPATCHES: it calls on an existing DISPATCHES flowsheet to create IDAES Pyomo physics models and runs a monolithic solve of multiple sampled market/weather scenarios. Available flowsheets pertain to three specific case studies in the DISPATCHES repository: a nuclear, renewables, and fossil fuel case. HERD currently implements the nuclear case with hydrogen production, storage, and combustion. 
+
+\subsubsection{How to Run}
+To run this workflow, insert “DISPATCHES“ into the \xmlNode{workflow} node. The HERON XML Input script must include components that match the nuclear case:
+\begin{itemize}
+  \item a nuclear power plant,
+  \item a proton exchange membrane electrolyzer for hydrogen production,
+  \item a hydrogen storage tank,
+  \item a hydrogen turbine for additional electricity production from hydrogen reserves,
+  \item an electricity market, and
+  \item a hydrogen pipeline.
+\end{itemize}
+A sample script can be found in
+\begin{lstlisting}
+/tests/integration_tests/workflows/HERD/nuclearCase_Sine.
+\end{lstlisting} 
+
+\subsubsection{Using JSON Data to Match Original Notebook Results}
+For testing purposes, an alternate use of the "DISPATCHES" workflow is available. This is triggered by labeling a \xmlNode{DataGenerator} as ``dispatches-test``. Instead of loading synthetic histories from an ARMA model, HERD loads data from the DISPATCHES LMP JSON file in the DISPATCHES repository. This is used in HERD to test a simulation that matches the original multiperiod nuclear case Jupyter notebook results in the DISPATCHES repository. This will be converted to a loaded static history in the future. 

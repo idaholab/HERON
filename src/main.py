@@ -5,6 +5,7 @@
   Runs HERON.
 """
 import os
+from queue import Empty
 import sys
 import argparse
 
@@ -15,6 +16,7 @@ sys.path.append(hutils.get_raven_loc())
 from HERON.src import input_loader
 from HERON.src.base import Base
 from HERON.src.Moped import MOPED
+from HERON.src import Herd
 
 from ravenframework.MessageHandler import MessageHandler
 
@@ -111,6 +113,23 @@ class HERON(Base):
     moped.setInitialParams(case, components, sources)
     moped.run()
 
+  def run_dispatches_workflow(self):
+    """
+      Runs DISPATCHES workflow for creating framework and running with IDAES
+      @ In, None
+      @ Out, None
+    """
+    case = self._case
+    components = self._components
+    sources = self._sources
+    assert case is not None and components is not None and sources is not None
+    dispatches = Herd.HERD()
+    print("*******************************************************************************")
+    print("HERON is Running DISPATCHES")
+    print("*******************************************************************************")
+    dispatches.setInitialParams(case, components, sources)
+    dispatches.run()
+
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Holistic Energy Resource Optimization Network (HERON)')
   parser.add_argument('xml_input_file', help='HERON XML input file')
@@ -123,5 +142,7 @@ if __name__ == '__main__':
     sim.create_raven_workflow()
   elif sim._case._workflow == 'MOPED':
     sim.run_moped_workflow()
+  elif sim._case._workflow == 'DISPATCHES':
+    sim.run_dispatches_workflow()
   # TODO someday? sim.run()
 

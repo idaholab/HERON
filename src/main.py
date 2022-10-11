@@ -134,6 +134,11 @@ class HERON(Base):
     dispatches.run()
 
 def main():
+  """
+    Runs HERON input from command line arguments
+    @ In, None
+    @ Out, None
+  """
   parser = argparse.ArgumentParser(description='Holistic Energy Resource Optimization Network (HERON)')
   parser.add_argument('xml_input_file', help='HERON XML input file')
   args = parser.parse_args()

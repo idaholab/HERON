@@ -9,7 +9,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import _utils as hutils
 try:
-  import FARM
+  import FARM.src
   farm_loc = FARM.__path__
 except ModuleNotFoundError:
   try:

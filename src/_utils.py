@@ -28,6 +28,14 @@ def get_raven_loc():
     @ In, None
     @ Out, loc, string, absolute location of RAVEN
   """
+  try:
+    import ravenframework
+    print("WARNING: get_raven_loc deprecated")
+    import traceback
+    traceback.print_stack()
+    return path.dirname(ravenframework.__path__[0])
+  except ModuleNotFoundError:
+    pass
   config = path.abspath(path.join(path.dirname(__file__),'..','.ravenconfig.xml'))
   if not path.isfile(config):
     raise IOError(

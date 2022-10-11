@@ -21,7 +21,8 @@ from ravenframework.utils import InputData, InputTypes
 # allows pyomo to solve on threaded processes
 import pyutilib.subprocess.GlobalData
 pyutilib.subprocess.GlobalData.DEFINE_SIGNAL_HANDLERS_DEFAULT = False
-from pyutilib.common._exceptions import ApplicationError
+#from pyutilib.common._exceptions import ApplicationError
+from pyomo.common.errors import ApplicationError
 
 from .Dispatcher import Dispatcher
 from .DispatchState import DispatchState, NumpyState

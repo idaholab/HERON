@@ -17,14 +17,18 @@ from typing_extensions import final
 from . import _utils as hutils
 from . import SerializationManager
 
-raven_path = hutils.get_raven_loc()
-sys.path.append(raven_path)
-from ravenframework.PluginBaseClasses.ExternalModelPluginBase import ExternalModelPluginBase
-sys.path.pop()
+try:
+  from ravenframework.PluginBaseClasses.ExternalModelPluginBase import ExternalModelPluginBase
+  import TEAL
+except ModuleNotFoundError:
+  raven_path = hutils.get_raven_loc()
+  sys.path.append(raven_path)
+  from ravenframework.PluginBaseClasses.ExternalModelPluginBase import ExternalModelPluginBase
+  sys.path.pop()
 
-cashflow_path = os.path.abspath(os.path.join(hutils.get_cashflow_loc(raven_path=raven_path), '..'))
-sys.path.append(cashflow_path)
-import TEAL
+  cashflow_path = os.path.abspath(os.path.join(hutils.get_cashflow_loc(raven_path=raven_path), '..'))
+  sys.path.append(cashflow_path)
+  import TEAL
 from TEAL.src import CashFlows
 from TEAL.src.main import run as CashFlow_run
 

@@ -17,6 +17,10 @@ sys.path.append(FRAMEWORK_PATH)
 from ravenframework.utils import InputData, InputTypes, utils, xmlUtils
 sys.path.pop()
 
+sys.path.append(os.path.join(FRAMEWORK_PATH, 'scripts'))
+from externalROMloader import ravenROMexternal
+sys.path.pop()
+
 
 class Placeholder(Base):
   """
@@ -376,9 +380,6 @@ class ROM(Placeholder):
       @ Out, None
     """
     super().read_input(xml)
-    sys.path.append(os.path.join(FRAMEWORK_PATH, 'scripts'))
-    from externalROMloader import ravenROMexternal
-    sys.path.pop()
 
     self._runner = ravenROMexternal(self._target_file, FRAMEWORK_PATH)
     # TODO is this serializable? or get/set state for this?

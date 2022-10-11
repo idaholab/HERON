@@ -130,7 +130,7 @@ class HERON(Base):
     dispatches.setInitialParams(case, components, sources)
     dispatches.run()
 
-if __name__ == '__main__':
+def main():
   parser = argparse.ArgumentParser(description='Holistic Energy Resource Optimization Network (HERON)')
   parser.add_argument('xml_input_file', help='HERON XML input file')
   args = parser.parse_args()
@@ -145,4 +145,7 @@ if __name__ == '__main__':
   elif sim._case._workflow == 'DISPATCHES':
     sim.run_dispatches_workflow()
   # TODO someday? sim.run()
+
+if __name__ == '__main__':
+  main()
 

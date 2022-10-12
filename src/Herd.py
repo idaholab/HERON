@@ -15,12 +15,14 @@ import pyomo.environ as pyo
 from pyomo.opt import SolverFactory
 import numpy as np
 import _utils as hutils
-path_to_raven = hutils.get_raven_loc()
-sys.path.append(path.abspath(path.join(path_to_raven, 'scripts')))
-sys.path.append(path.abspath(path.join(path_to_raven, 'plugins')))
-sys.path.append(path_to_raven)
+try:
+  import ravenframework
+except ModuleNotFoundError:
+  path_to_raven = hutils.get_raven_loc()
+  sys.path.append(path.abspath(path.join(path_to_raven, 'plugins')))
+  sys.path.append(path_to_raven)
 from ravenframework.utils import xmlUtils
-import externalROMloader as ROMloader
+from ravenframework.ROMExternal import ROMLoader
 
 # Nuclear flowsheet function imports
 # NOTE: these paths will change for next DISPATCHES release
@@ -282,8 +284,7 @@ class HERD(MOPED):
 
     # Initializing ravenROMexternal object gives PATH access to xmlUtils
     target_file = getattr(source, "_target_file")
-    runner = ROMloader.ravenROMexternal( binaryFileName=target_file,
-                                         whereFrameworkIs=hutils.get_raven_loc())
+    runner = ROMLoader( binaryFileName=target_file)
 
     # TODO expand to change other pickledROM settings withing this method
     inp = {'scaling': [1]}

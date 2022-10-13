@@ -9,6 +9,7 @@ import importlib
 import xml.etree.ElementTree as ET
 import warnings
 import pickle
+from functools import cache
 from os import path
 
 import pandas as pd
@@ -116,6 +117,7 @@ def get_project_lifetime(case, components):
   econ_settings.setParams(econ_params)
   return getProjectLength(econ_settings, econ_comps)
 
+@cache
 def get_synthhist_structure(fpath):
   """
     Extracts synthetic history info from ROM (currently ARMA ROM)

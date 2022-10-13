@@ -110,18 +110,21 @@ class Pyomo(Dispatcher):
     if solver_node is not None:
       self._solver = solver_node.value
 
-    # check solver exists
     if self._solver is None:
-      for solver in SOLVERS:
-        self._solver = solver
-        found_solver = True
-        try:
-          if not pyo.SolverFactory(self._solver).available():
-            found_solver = False
-          else:
-            break
-        except ApplicationError:
+      solvers_to_check = SOLVERS
+    else:
+      solvers_to_check = [self._solver]
+    # check solver exists
+    for solver in solvers_to_check:
+      self._solver = solver
+      found_solver = True
+      try:
+        if not pyo.SolverFactory(self._solver).available():
           found_solver = False
+        else:
+          break
+      except ApplicationError:
+        found_solver = False
     # NOTE: we probably need a consistent way to test and check viable solvers,
     # maybe through a unit test that mimics the model setup here. For now, I assume
     # that anything that shows as not available or starts with an underscore is not

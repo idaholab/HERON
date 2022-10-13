@@ -429,7 +429,13 @@ class Template(TemplateBase, Base):
     raven = template.find('Models').find('Code')
     # executable
     raven_exec = raven.find('executable')
-    raven_exec.text = os.path.abspath(os.path.join(RAVEN_LOC, '..', 'raven_framework'))
+    raven_exec_guess = os.path.abspath(os.path.join(RAVEN_LOC, '..', 'raven_framework'))
+    if os.path.exists(raven_exec_guess):
+      raven_exec.text = raven_exec_guess
+    elif shutil.which("raven_framework") is not None:
+      raven_exec.text = "raven_framework"
+    else:
+      raise RuntimeError("raven_framework not in PATH and not at "+raven_exec_guess)
     # conversion script
     conv = raven.find('conversion').find('input')
     conv.attrib['source'] = '../write_inner.py'

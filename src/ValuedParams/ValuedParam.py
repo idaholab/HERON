@@ -8,8 +8,11 @@
 """
 import sys
 from HERON.src import _utils as hutils
-framework_path = hutils.get_raven_loc()
-sys.path.append(framework_path)
+try:
+  import ravenframework
+except ModuleNotFoundError:
+  framework_path = hutils.get_raven_loc()
+  sys.path.append(framework_path)
 from ravenframework.utils import InputData, InputTypes
 from ravenframework.BaseClasses import MessageUser
 

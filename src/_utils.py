@@ -8,6 +8,8 @@ import sys
 import importlib
 import xml.etree.ElementTree as ET
 import warnings
+import pickle
+from functools import cache
 from os import path
 
 import pandas as pd
@@ -28,6 +30,14 @@ def get_raven_loc():
     @ In, None
     @ Out, loc, string, absolute location of RAVEN
   """
+  try:
+    import ravenframework
+    print("WARNING: get_raven_loc deprecated")
+    import traceback
+    traceback.print_stack()
+    return path.dirname(ravenframework.__path__[0])
+  except ModuleNotFoundError:
+    pass
   config = path.abspath(path.join(path.dirname(__file__),'..','.ravenconfig.xml'))
   if not path.isfile(config):
     raise IOError(
@@ -107,6 +117,7 @@ def get_project_lifetime(case, components):
   econ_settings.setParams(econ_params)
   return getProjectLength(econ_settings, econ_comps)
 
+@cache
 def get_synthhist_structure(fpath):
   """
     Extracts synthetic history info from ROM (currently ARMA ROM)
@@ -115,12 +126,13 @@ def get_synthhist_structure(fpath):
   """
   # TODO could this be a function of the ROM itself?
   # TODO or could we interrogate the ROM directly instead of the XML?
-  raven_loc = get_raven_loc()
-  from externalROMloader import ravenROMexternal as ravenROM
-  # Why should we get warnings from RAVEN when we are just trying to write an input file.
-  with warnings.catch_warnings():
-    warnings.simplefilter('ignore')
-    rom = ravenROM(fpath, raven_loc).rom
+  try:
+    import ravenframework
+  except ModuleNotFoundError:
+    #If ravenframework not in path, need to add, otherwise loading rom will fail
+    raven_path = hutils.get_raven_loc()
+    sys.path.append(os.path.expanduser(raven_path))
+  rom = pickle.load(open(fpath, 'rb'))
 
   structure = {}
   meta = rom.writeXML().getRoot()

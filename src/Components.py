@@ -15,8 +15,11 @@ from HERON.src.ValuedParams import factory as vp_factory
 from HERON.src.ValuedParamHandler import ValuedParamHandler
 from HERON.src import _utils as hutils
 
-framework_path = hutils.get_raven_loc()
-sys.path.append(framework_path)
+try:
+  import ravenframework
+except ModuleNotFoundError:
+  framework_path = hutils.get_raven_loc()
+  sys.path.append(framework_path)
 from ravenframework.utils import InputData, xmlUtils,InputTypes
 
 # TODO can we use EntityFactory from RAVEN?

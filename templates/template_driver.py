@@ -23,15 +23,17 @@ sys.path.pop()
 
 # get raven location
 RAVEN_LOC = os.path.abspath(os.path.join(hutils.get_raven_loc(), "ravenframework"))
-CF_LOC = hutils.get_cashflow_loc(raven_path=RAVEN_LOC)
-if CF_LOC is None:
-  raise RuntimeError('TEAL has not been found!\n' +
-                     f'Check TEAL installation for the RAVEN at "{RAVEN_LOC}"')
+try:
+  import TEAL.src
+except ModuleNotFoundError:
+  CF_LOC = hutils.get_cashflow_loc(raven_path=RAVEN_LOC)
+  if CF_LOC is None:
+    raise RuntimeError('TEAL has not been found!\n' +
+                       f'Check TEAL installation for the RAVEN at "{RAVEN_LOC}"')
 
-sys.path.append(os.path.join(CF_LOC, '..'))
+  sys.path.append(os.path.join(CF_LOC, '..'))
 from TEAL.src.main import getProjectLength
 from TEAL.src import CashFlows
-sys.path.pop()
 
 sys.path.append(os.path.join(RAVEN_LOC, '..'))
 from ravenframework.utils import xmlUtils
@@ -427,7 +429,13 @@ class Template(TemplateBase, Base):
     raven = template.find('Models').find('Code')
     # executable
     raven_exec = raven.find('executable')
-    raven_exec.text = os.path.abspath(os.path.join(RAVEN_LOC, '..', 'raven_framework'))
+    raven_exec_guess = os.path.abspath(os.path.join(RAVEN_LOC, '..', 'raven_framework'))
+    if os.path.exists(raven_exec_guess):
+      raven_exec.text = raven_exec_guess
+    elif shutil.which("raven_framework") is not None:
+      raven_exec.text = "raven_framework"
+    else:
+      raise RuntimeError("raven_framework not in PATH and not at "+raven_exec_guess)
     # conversion script
     conv = raven.find('conversion').find('input')
     conv.attrib['source'] = '../write_inner.py'

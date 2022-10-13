@@ -12,8 +12,11 @@ import numpy as np
 from HERON.src import ValuedParams
 from HERON.src.ValuedParamHandler import ValuedParamHandler
 import HERON.src._utils as hutils
-framework_path = hutils.get_raven_loc()
-sys.path.append(framework_path)
+try:
+  import ravenframework
+except ModuleNotFoundError:
+  framework_path = hutils.get_raven_loc()
+  sys.path.append(framework_path)
 from ravenframework.utils import InputData, xmlUtils,InputTypes
 
 

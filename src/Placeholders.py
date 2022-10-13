@@ -12,14 +12,15 @@ import copy
 import HERON.src._utils as hutils
 from HERON.src.base import Base
 
-FRAMEWORK_PATH = hutils.get_raven_loc()
-sys.path.append(FRAMEWORK_PATH)
+try:
+  import ravenframework
+except ModuleNotFoundError:
+  FRAMEWORK_PATH = hutils.get_raven_loc()
+  sys.path.append(FRAMEWORK_PATH)
 from ravenframework.utils import InputData, InputTypes, utils, xmlUtils
-sys.path.pop()
 
-sys.path.append(os.path.join(FRAMEWORK_PATH, 'scripts'))
-from externalROMloader import ravenROMexternal
-sys.path.pop()
+from ravenframework.ROMExternal import ROMLoader
+
 
 class Placeholder(Base):
   """
@@ -379,7 +380,8 @@ class ROM(Placeholder):
       @ Out, None
     """
     super().read_input(xml)
-    self._runner = ravenROMexternal(self._target_file, FRAMEWORK_PATH)
+
+    self._runner = ROMLoader(self._target_file)
     # TODO is this serializable? or get/set state for this?
 
   def evaluate(self, rlz):

@@ -13,10 +13,13 @@ from . import Placeholders
 from . import ValuedParams
 
 from . import _utils as hutils
-raven_path = hutils.get_raven_loc()
-sys.path.append(raven_path)
+try:
+  import ravenframework
+except ModuleNotFoundError:
+  raven_path = hutils.get_raven_loc()
+  sys.path.append(raven_path)
 from ravenframework.utils import xmlUtils
-sys.path.pop()
+
 
 
 def load(name):

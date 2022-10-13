@@ -23,15 +23,17 @@ sys.path.pop()
 
 # get raven location
 RAVEN_LOC = os.path.abspath(os.path.join(hutils.get_raven_loc(), "ravenframework"))
-CF_LOC = hutils.get_cashflow_loc(raven_path=RAVEN_LOC)
-if CF_LOC is None:
-  raise RuntimeError('TEAL has not been found!\n' +
-                     f'Check TEAL installation for the RAVEN at "{RAVEN_LOC}"')
+try:
+  import TEAL.src
+except ModuleNotFoundError:
+  CF_LOC = hutils.get_cashflow_loc(raven_path=RAVEN_LOC)
+  if CF_LOC is None:
+    raise RuntimeError('TEAL has not been found!\n' +
+                       f'Check TEAL installation for the RAVEN at "{RAVEN_LOC}"')
 
-sys.path.append(os.path.join(CF_LOC, '..'))
+  sys.path.append(os.path.join(CF_LOC, '..'))
 from TEAL.src.main import getProjectLength
 from TEAL.src import CashFlows
-sys.path.pop()
 
 sys.path.append(os.path.join(RAVEN_LOC, '..'))
 from ravenframework.utils import xmlUtils

@@ -25,7 +25,6 @@ except ModuleNotFoundError:
   sys.path.append(path_to_raven)
 from TEAL.src import main as RunCashFlow
 from TEAL.src import CashFlows
-import externalROMloader as ROMloader
 from ravenframework.ROMExternal import ROMLoader
 from ravenframework.MessageHandler import MessageHandler
 

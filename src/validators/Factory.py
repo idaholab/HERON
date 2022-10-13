@@ -21,6 +21,8 @@ except ModuleNotFoundError:
     if farm_loc is not None:
       farm_path = os.path.abspath(os.path.join(farm_loc))
       sys.path.append(farm_path)
+  except ModuleNotFoundError:
+    farm_loc = None
   except OSError:
     farm_loc = None
 

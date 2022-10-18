@@ -7,18 +7,22 @@ import os
 import sys
 import platform
 
-# get heron utilities
-HERON_LOC = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.append(HERON_LOC)
-import _utils as hutils
-sys.path.pop()
+try:
+  from RavenFramework import RavenFramework as RavenTester
+  HERON_LOC = None
+except ModuleNotFoundError:
+  # get heron utilities
+  HERON_LOC = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+  sys.path.append(HERON_LOC)
+  import _utils as hutils
+  sys.path.pop()
 
-# get RAVEN base testers
-RAVEN_LOC = hutils.get_raven_loc()
-TESTER_LOC = os.path.join(RAVEN_LOC, '..', 'scripts', 'TestHarness', 'testers')
-sys.path.append(TESTER_LOC)
-from RavenFramework import RavenFramework as RavenTester
-sys.path.pop()
+  # get RAVEN base testers
+  RAVEN_LOC = hutils.get_raven_loc()
+  TESTER_LOC = os.path.join(RAVEN_LOC, '..', 'scripts', 'TestHarness', 'testers')
+  sys.path.append(TESTER_LOC)
+  from RavenFramework import RavenFramework as RavenTester
+  sys.path.pop()
 
 class HeronIntegration(RavenTester):
   """
@@ -46,7 +50,10 @@ class HeronIntegration(RavenTester):
       @ Out, None
     """
     RavenTester.__init__(self, name, param)
-    self.heron_driver = os.path.join(HERON_LOC, '..', 'heron')
+    if HERON_LOC is not None:
+      self.heron_driver = os.path.join(HERON_LOC, '..', 'heron')
+    else:
+      self.heron_driver = "heron"
     # NOTE: self.driver is RAVEN driver (e.g. /path/to/Driver.py)
 
   def get_command(self):

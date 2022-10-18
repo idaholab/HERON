@@ -12,13 +12,14 @@ import pickle
 try:
   from functools import cache
 except ImportError:
+  from functools import lru_cache
   def cache(user_function):
      """
-       identify function for version of python with no cache
-       @ In, user_function, any
-       @ Out, user_function, what was passed in
+       use lru_cache for older versions of python
+       @ In, user_function, function
+       @ Out, user_function, function that caches values
      """
-     return user_function
+     return lru_cache(maxsize=None)(user_function)
 from os import path
 
 import pandas as pd

@@ -102,6 +102,6 @@
     </Components>
 
     <DataGenerators>
-      <CSV name='flex' variable="Signal">%HERON%/tests/integration_tests/mechanics/static_history/Static.csv</CSV>
+      <CSV name='flex' variable="Signal">%BASE_WORKING_DIR%/../../../mechanics/static_history/Static.csv</CSV>
     </DataGenerators>
 </HERON>

@@ -269,7 +269,7 @@
 
   <DataGenerators>
     <!-- to trigger the use of the JSON LMP signal, name needs to be 'dispatches-test'-->
-    <ARMA name='dispatches-test' variable="TOTALLOAD">%HERON%/tests/integration_tests/ARMA/NYISO/nyiso_arma_2yr.pk</ARMA>
+    <ARMA name='dispatches-test' variable="TOTALLOAD">%BASE_WORKING_DIR%/../../../../ARMA/NYISO/nyiso_arma_2yr.pk</ARMA>
   </DataGenerators>
 
 </HERON>

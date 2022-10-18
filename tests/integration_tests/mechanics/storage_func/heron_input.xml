@@ -121,7 +121,7 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='Price' variable="Signal">%HERON%/tests/integration_tests/ARMA/Sine/arma.pk</ARMA>
+    <ARMA name='Price' variable="Signal">%BASE_WORKING_DIR%/../../../ARMA/Sine/arma.pk</ARMA>
     <Function name="transfers">transfers.py</Function>
     <Function name="storage_control">run_storage.py</Function>
   </DataGenerators>

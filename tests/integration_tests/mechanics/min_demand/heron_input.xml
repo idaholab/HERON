@@ -102,7 +102,7 @@
     </Components>
 
     <DataGenerators>
-      <ARMA name='flex' variable="Signal">%HERON%/tests/integration_tests/ARMA/Sine/arma.pk</ARMA>
+      <ARMA name='flex' variable="Signal">%BASE_WORKING_DIR%/../../../ARMA/Sine/arma.pk</ARMA>
       <Function name="transfers">transfers.py</Function>
     </DataGenerators>
 </HERON>

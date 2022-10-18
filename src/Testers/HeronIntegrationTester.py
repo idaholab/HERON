@@ -4,21 +4,25 @@
 
 
 import os
+import shutil
 import sys
 import platform
 
-# get heron utilities
 HERON_LOC = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.append(HERON_LOC)
-import _utils as hutils
-sys.path.pop()
+try:
+  from RavenFramework import RavenFramework as RavenTester
+except ModuleNotFoundError:
+  # get heron utilities
+  sys.path.append(HERON_LOC)
+  import _utils as hutils
+  sys.path.pop()
 
-# get RAVEN base testers
-RAVEN_LOC = hutils.get_raven_loc()
-TESTER_LOC = os.path.join(RAVEN_LOC, '..', 'scripts', 'TestHarness', 'testers')
-sys.path.append(TESTER_LOC)
-from RavenFramework import RavenFramework as RavenTester
-sys.path.pop()
+  # get RAVEN base testers
+  RAVEN_LOC = hutils.get_raven_loc()
+  TESTER_LOC = os.path.join(RAVEN_LOC, '..', 'scripts', 'TestHarness', 'testers')
+  sys.path.append(TESTER_LOC)
+  from RavenFramework import RavenFramework as RavenTester
+  sys.path.pop()
 
 class HeronIntegration(RavenTester):
   """
@@ -46,7 +50,13 @@ class HeronIntegration(RavenTester):
       @ Out, None
     """
     RavenTester.__init__(self, name, param)
-    self.heron_driver = os.path.join(HERON_LOC, '..', 'heron')
+    heron_guess = os.path.join(HERON_LOC, '..', 'heron')
+    if os.path.exists(heron_guess):
+      self.heron_driver = heron_guess
+    elif shutil.which("heron") is not None:
+      self.heron_driver = "heron"
+    else:
+      print("ERROR unable to find heron.  Tried: "+heron_guess)
     # NOTE: self.driver is RAVEN driver (e.g. /path/to/Driver.py)
 
   def get_command(self):

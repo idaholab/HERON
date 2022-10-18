@@ -9,7 +9,17 @@ import importlib
 import xml.etree.ElementTree as ET
 import warnings
 import pickle
-from functools import cache
+try:
+  from functools import cache
+except ImportError:
+  from functools import lru_cache
+  def cache(user_function):
+     """
+       use lru_cache for older versions of python
+       @ In, user_function, function
+       @ Out, user_function, function that caches values
+     """
+     return lru_cache(maxsize=None)(user_function)
 from os import path
 
 import pandas as pd

@@ -9,6 +9,11 @@ Testing the python script (HERON/src/Hybrid2Heron/hybrid2heron_economic.py) that
 import os
 import sys
 
+try:
+  import HERON
+  HYBRID_autoloader_path = HERON.__path__[0] + "/src/Hybrid2Heron/hybrid2heron_economic.py"
+except ModuleNotFoundError:
+  HYBRID_autoloader_path = os.path.dirname(os.path.abspath(__file__)).split("HERON")[0] + "HERON/src/Hybrid2Heron/hybrid2heron_economic.py"
+
 # Execute the python script located at src/Hybrid2Heron
-HYBRID_autoloader_path = os.path.dirname(os.path.abspath(__file__)).split("HERON")[0] + "HERON/src/Hybrid2Heron/hybrid2heron_economic.py"
 exec(open(HYBRID_autoloader_path).read())

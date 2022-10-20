@@ -27,12 +27,18 @@ import csv
 import argparse
 from xml.etree import ElementTree as ET
 
-# # Importing XML utility from RAVEN to make the output XML file looks pretty
-HERON_src_path = os.path.dirname(os.path.abspath(__file__)).split("HERON")[0] + "HERON/src"
-sys.path.append(HERON_src_path)
-from _utils import get_raven_loc
-sys.path.append(get_raven_loc())
-from scripts.conversionScripts import convert_utils as xm
+#Note: xm only uses prettify which is in both xmlUtils and convert_utils
+try:
+  from ravenframework.utils import xmlUtils as xm
+  import HERON.src
+  HERON_src_path = HERON.src.__path__[0]
+except ModuleNotFoundError:
+  # # Importing XML utility from RAVEN to make the output XML file looks pretty
+  HERON_src_path = os.path.dirname(os.path.abspath(__file__)).split("HERON")[0] + "HERON/src"
+  sys.path.append(HERON_src_path)
+  from _utils import get_raven_loc
+  sys.path.append(get_raven_loc())
+  from scripts.conversionScripts import convert_utils as xm
 
 #####
 # Section 1: HYBRID Information Extraction Function

@@ -20,6 +20,7 @@ from HERON.src import input_loader
 from HERON.src.base import Base
 from HERON.src.Moped import MOPED
 from HERON.src.Herd import HERD
+from HERON.src.NetworkPlot import NetworkPlot
 
 from ravenframework.MessageHandler import MessageHandler
 
@@ -85,6 +86,12 @@ class HERON(Base):
       comp.print_me(tabs=tabs+1, tab=tab)
     for source in self._sources:
       source.print_me(tabs=tabs+1, tab=tab)
+
+  def plot_me(self):
+    if self._case.debug['enabled']:  # TODO do this every time?
+      graph = NetworkPlot(self._components)
+      # graph.save('graph.png')
+      graph.show()
 
   def create_raven_workflow(self, case=None):
     """
@@ -154,12 +161,16 @@ def main():
   sim.read_input(args.xml_input_file) # TODO expand to use arguments?
   # print details
   sim.print_me()
+
   if sim._case._workflow == 'standard':
     sim.create_raven_workflow()
   elif sim._case._workflow == 'MOPED':
     sim.run_moped_workflow()
   elif sim._case._workflow == 'DISPATCHES':
     sim.run_dispatches_workflow()
+
+  sim.plot_me()
+  sim.create_raven_workflow()
   # TODO someday? sim.run()
 
 

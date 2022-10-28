@@ -2,6 +2,7 @@
  [./NuclearCaseSine]
   type = HeronMoped
   input = dispatches_sine_input.xml
+  required_libraries = 'dispatches'
   # prereq = arma
   [./csv]
     type = OrderedCSV

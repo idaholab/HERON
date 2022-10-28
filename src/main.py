@@ -19,7 +19,7 @@ except ModuleNotFoundError:
 from HERON.src import input_loader
 from HERON.src.base import Base
 from HERON.src.Moped import MOPED
-from HERON.src import Herd
+from HERON.src.Herd import HERD
 
 from ravenframework.MessageHandler import MessageHandler
 
@@ -122,16 +122,24 @@ class HERON(Base):
       @ In, None
       @ Out, None
     """
+    # checking to see if DISPATCHES is properly installed
+    try:
+      import dispatches.models as tmp_lib
+      del tmp_lib
+    except ModuleNotFoundError as mnferr:
+      raise IOError('DISPATCHES has not been found in current conda environment.' +
+                    'Please re-install the conda environment from RAVEN using the ' +
+                    '--optional flag.') from mnferr
     case = self._case
     components = self._components
     sources = self._sources
     assert case is not None and components is not None and sources is not None
-    dispatches = Herd.HERD()
+    herd = HERD()
     print("*******************************************************************************")
     print("HERON is Running DISPATCHES")
     print("*******************************************************************************")
-    dispatches.setInitialParams(case, components, sources)
-    dispatches.run()
+    herd.setInitialParams(case, components, sources)
+    herd.run()
 
 def main():
   """

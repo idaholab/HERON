@@ -24,15 +24,18 @@ except ModuleNotFoundError:
 from ravenframework.utils import xmlUtils
 from ravenframework.ROMExternal import ROMLoader
 
-# Nuclear flowsheet function imports
+
 # NOTE: these paths will change for next DISPATCHES release
-from dispatches.models.nuclear_case.flowsheets.nuclear_flowsheet import build_ne_flowsheet
-from dispatches.models.nuclear_case.flowsheets.nuclear_flowsheet import fix_dof_and_initialize
-
-# Import function for the construction of the multiperiod model
-from dispatches.models.nuclear_case.flowsheets.multiperiod import build_multiperiod_design
-
-from idaes.core.solvers import get_solver
+try:
+  # Nuclear flowsheet function imports
+  from dispatches.models.nuclear_case.flowsheets.nuclear_flowsheet import (build_ne_flowsheet,
+                                                                           fix_dof_and_initialize)
+  # Import function for the construction of the multiperiod model
+  from dispatches.models.nuclear_case.flowsheets.multiperiod import build_multiperiod_design
+  from idaes.core.solvers import get_solver
+except ModuleNotFoundError:
+  print("DISPATCHES has not been found in current conda environment. This is only needed when "+
+        "running the DISPATCHES workflow through HERD.")
 
 # append path with RAVEN location
 path_to_raven = hutils.get_raven_loc()

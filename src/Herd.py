@@ -275,7 +275,7 @@ class HERD(MOPED):
       for con in getattr(action, "_consumes"):
         self._component_meta[comp.name]['Consumes'][con] = getattr(action, "_transfer")
 
-  def _create_synth_hist_from_external_ROM(self, runner, signal, multiplier):
+  def _generate_synthetic_histories(self, runner, signal, multiplier):
     """
       Samples from external ROM given a signal and multiplier for said signal
       @ In, runner, ROM loader, external ROM loader object
@@ -306,27 +306,18 @@ class HERD(MOPED):
     # saving index map, often looks like ["Year", "ROM Cluster", "Hour"]
     synthetic_data['indexMap'] = current_realization['_indexMap'][0][signal]
 
-    return synthetic_data
-
-  def _get_time_sets_from_synth_histories(self, synthetic_data):
-    """
-      Calculates time set lengths within sampled histories and saves within dictionary
-      @ In, synthetic_data, dict, dictionary of samples from ROM
-      @ Out, synthetic_data, dict, dictionary of samples from ROM
-    """
+    # set time set data
     years, days, hours = self._time_index_map # defined in __init__, order matters
-    assert 'Realization_1' in synthetic_data.keys()
-    synth_hist = synthetic_data['Realization_1'] # doesn't matter which realization
-
     for ind in synthetic_data['indexMap']:
       # for year set, we truncate based on desired Project Time (28 yrs available)
       if ind.lower() in 'years':
         projLife = int( getattr(self._case, '_global_econ')['ProjectTime'] )
-        synthetic_data[years] = np.array(synth_hist[ind][0:projLife], dtype=int)
+        synthetic_data[years] = np.array(current_realization[ind][0:projLife], dtype=int)
       elif ind.lower() in '_rom_cluster_days':
-        synthetic_data[days]  = np.array(synth_hist[ind] + 1, dtype=int)
+        synthetic_data[days]  = np.array(current_realization[ind] + 1, dtype=int)
       elif ind.lower() in 'timehours':
-        synthetic_data[hours] = np.array(synth_hist[ind] + 1, dtype=int)
+        synthetic_data[hours] = np.array(current_realization[ind] + 1, dtype=int)
+
     return synthetic_data
 
   def _get_cluster_info_from_synth_histories(self, runner, synthetic_data):
@@ -358,7 +349,7 @@ class HERD(MOPED):
       Loads synthetic history for a specified signal, also sets yearly hours.
       Calls the parent method and restructures dictionary to match DISPATCHES format.
       @ In, signal, string, name of signal to sample
-      @ Out, synthetic_data_reformat, dict, contains data from evaluated ROM
+      @ Out, synthetic_histories, dict, contains data from evaluated ROM
     """
     if signal == 'price' and multiplier == -1:
       multiplier *= -1 # undoing negative multiplier from one step above, price != demand
@@ -377,10 +368,7 @@ class HERD(MOPED):
     runner = ROMLoader( binaryFileName=target_file)
 
     # TODO expand to change other pickledROM settings withing this method
-    synthetic_data = self._create_synth_hist_from_external_ROM(runner, signal, multiplier)
-
-    # get time set data from ROM realizations
-    synthetic_data = self._get_time_sets_from_synth_histories(synthetic_data)
+    synthetic_data = self._generate_synthetic_histories(runner, signal, multiplier)
 
     # check that evaluation mode is either clustered or full
     if self._eval_mode not in ['clustered', 'full']:
@@ -395,8 +383,8 @@ class HERD(MOPED):
     map_synth2proj   = self._test_map_synth_to_proj
 
     # restructure the synthetic history dictionary to match DISPATCHES
-    synthetic_data_reformat = {}
-    synthetic_data_reformat['signals'] = {}
+    synth_histories = {}
+    synth_histories['signals'] = {}
     # converting to dictionary that plays nice with DISPATCHES/IDAES
     for key, data in synthetic_data.items():
       # assuming the keys are in format "Realization_i"
@@ -405,24 +393,24 @@ class HERD(MOPED):
         k = int( key.split('_')[-1] )
         # years indexed by integer year (2020, etc.)
         # clusters and hours indexed starting at 1
-        synthetic_data_reformat['signals'][synth_scenarios[k-1]] = {year: {day: {hour: data[y, day-1, hour-1]
+        synth_histories['signals'][synth_scenarios[k-1]] = {year: {day: {hour: data[y, day-1, hour-1]
                                                                   for hour in synth_hours}
                                                         for day in synth_days}
                                                   for y, year in enumerate(synth_years)}
     # save set time data for use within DISPATCHES
-    synthetic_data_reformat["sets"] = {}
-    synthetic_data_reformat["sets"]["synth_scenarios"] = list(synth_scenarios) # DISPATCHES wants this as a list
-    synthetic_data_reformat["sets"]["synth_years"]  = np.unique(synth_years) # DISPATCHES wants this as a list
-    synthetic_data_reformat["sets"]["synth_days"]   = np.unique(synth_days)  # DISPATCHES wants this as a range
-    synthetic_data_reformat["sets"]["synth_hours"]  = np.unique(synth_hours) # DISPATCHES wants this as a range
-    synthetic_data_reformat["sets"]["map_synth2proj"] = map_synth2proj # used only for tests
-    synthetic_data_reformat["sets"]["proj_years_range"] = proj_years_range # used only for tests
+    synth_histories["sets"] = {}
+    synth_histories["sets"]["synth_scenarios"] = list(synth_scenarios) # DISPATCHES wants this as a list
+    synth_histories["sets"]["synth_years"]  = np.unique(synth_years) # DISPATCHES wants this as a list
+    synth_histories["sets"]["synth_days"]   = np.unique(synth_days)  # DISPATCHES wants this as a range
+    synth_histories["sets"]["synth_hours"]  = np.unique(synth_hours) # DISPATCHES wants this as a range
+    synth_histories["sets"]["map_synth2proj"] = map_synth2proj # used only for tests
+    synth_histories["sets"]["proj_years_range"] = proj_years_range # used only for tests
     # getting weights_days - how many days does each cluster represent?
-    synthetic_data_reformat["weights_days"] = synthetic_data['weights_days']
+    synth_histories["weights_days"] = synthetic_data['weights_days']
 
     # saving a copy to self, referred to later when adding timesets to Pyomo model
-    self._synth_histories[signal] = copy.deepcopy(synthetic_data_reformat)
-    return synthetic_data_reformat
+    self._synth_histories[signal] = copy.deepcopy(synth_histories)
+    return synth_histories
 
   def loadStaticHistory(self, signal, multiplier):
     """

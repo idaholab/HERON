@@ -259,6 +259,12 @@ class HERD(MOPED):
       synth_hist = self.loadSyntheticHistory( getattr(value, "_var_name"), capacity_mult ) # runs external ROM load
       self._component_meta[comp.name][mode] = synth_hist
 
+    # sample static histories
+    elif mode == 'StaticHistory':
+      self.raiseADebug(f'|Building pyomo parameter with static histories for {comp.name}|')
+      synth_hist = self.loadStaticHistory( getattr(value, "_var_name"), capacity_mult ) # runs external ROM load
+      self._component_meta[comp.name][mode] = synth_hist
+
     # cannot do sweep values yet
     elif mode == 'SweepValues': # TODO Add capability to handle sweepvalues
       raise IOError('HERD does not currently support sweep values option')
@@ -269,27 +275,14 @@ class HERD(MOPED):
       for con in getattr(action, "_consumes"):
         self._component_meta[comp.name]['Consumes'][con] = getattr(action, "_transfer")
 
-  def sample_from_ROM(self, signal, multiplier):
+  def _create_synth_hist_from_external_ROM(self, runner, signal, multiplier):
     """
-      Loads synthetic history for a specified signal, from given ROM.
-      @ In, signal, string, name of signal to sample
-      @ In, multiplier, int/float, value to multiply synthetic history evaluations by
-      @ Out, synthetic_data, dict, contains data from evaluated ROM
+      Samples from external ROM given a signal and multiplier for said signal
+      @ In, runner, ROM loader, external ROM loader object
+      @ In, signal, str, name of signal to sample
+      @ In, multiplier, float or int, multiplier for given signal
+      @ Out, synthetic_data, dict, dictionary of samples from ROM
     """
-    # NOTE self._sources[0]._var_names are the user assigned signal names in DataGenerators
-    source = getattr(self, "_sources")[0]
-    source_var_names = getattr(source, "_var_names")
-
-    # check that signal name is available within data generator
-    if signal not in source_var_names:
-      raise IOError('The requested signal name is not available'
-                    'from the synthetic history, check DataGenerators node in input')
-
-    # Initializing ravenROMexternal object gives PATH access to xmlUtils
-    target_file = getattr(source, "_target_file")
-    runner = ROMLoader( binaryFileName=target_file)
-
-    # TODO expand to change other pickledROM settings withing this method
     inp = {'scaling': [1]}
     nodes = []
     node = xmlUtils.newNode('ROM', attrib={'name': 'SyntheticHistory', 'subType': 'pickledRom'})
@@ -313,17 +306,38 @@ class HERD(MOPED):
     # saving index map, often looks like ["Year", "ROM Cluster", "Hour"]
     synthetic_data['indexMap'] = current_realization['_indexMap'][0][signal]
 
-    # get time set data from ROM realizations
+    return synthetic_data
+
+  def _get_time_sets_from_synth_histories(self, synthetic_data):
+    """
+      Calculates time set lengths within sampled histories and saves within dictionary
+      @ In, synthetic_data, dict, dictionary of samples from ROM
+      @ Out, synthetic_data, dict, dictionary of samples from ROM
+    """
     years, days, hours = self._time_index_map # defined in __init__, order matters
+    assert 'Realization_1' in synthetic_data.keys()
+    synth_hist = synthetic_data['Realization_1'] # doesn't matter which realization
+
     for ind in synthetic_data['indexMap']:
       # for year set, we truncate based on desired Project Time (28 yrs available)
       if ind.lower() in 'years':
         projLife = int( getattr(self._case, '_global_econ')['ProjectTime'] )
-        synthetic_data[years] = np.array(current_realization[ind][0:projLife], dtype=int)
+        synthetic_data[years] = np.array(synth_hist[ind][0:projLife], dtype=int)
       elif ind.lower() in '_rom_cluster_days':
-        synthetic_data[days]  = np.array(current_realization[ind] + 1, dtype=int)
+        synthetic_data[days]  = np.array(synth_hist[ind] + 1, dtype=int)
       elif ind.lower() in 'timehours':
-        synthetic_data[hours] = np.array(current_realization[ind] + 1, dtype=int)
+        synthetic_data[hours] = np.array(synth_hist[ind] + 1, dtype=int)
+    return synthetic_data
+
+  def _get_cluster_info_from_synth_histories(self, runner, synthetic_data):
+    """
+      Extracts cluster information and sets to synthetic data dictionary
+      as weights for number of days simulated per year
+      @ In, runner, ROM loader, external ROM loader object
+      @ In, synthetic_data, dict, dictionary of samples from ROM
+      @ Out, synthetic_data, dict, dictionary of samples from ROM
+    """
+    years, days, __ = self._time_index_map # defined in __init__, order matters
 
     # extracting cluster info from ROM - how many days of year per cluster?
     #    location: runner.rom._segmentROM._macroSteps[2018]._clusterInfo['map']
@@ -337,17 +351,91 @@ class HERD(MOPED):
         index = int(cluster-1)
         synthetic_data['weights_days'][year][cluster] = len(cluster_map[index])
 
+    return synthetic_data
+
+  def loadSyntheticHistory(self, signal, multiplier):
+    """
+      Loads synthetic history for a specified signal, also sets yearly hours.
+      Calls the parent method and restructures dictionary to match DISPATCHES format.
+      @ In, signal, string, name of signal to sample
+      @ Out, synthetic_data_reformat, dict, contains data from evaluated ROM
+    """
+    if signal == 'price' and multiplier == -1:
+      multiplier *= -1 # undoing negative multiplier from one step above, price != demand
+
+    # NOTE self._sources[0]._var_names are the user assigned signal names in DataGenerators
+    source = getattr(self, "_sources")[0]
+    source_var_names = getattr(source, "_var_names")
+
+    # check that signal name is available within data generator
+    if signal not in source_var_names:
+      raise IOError('The requested signal name is not available'
+                    'from the synthetic history, check DataGenerators node in input')
+
+    # Initializing ravenROMexternal object gives PATH access to xmlUtils
+    target_file = getattr(source, "_target_file")
+    runner = ROMLoader( binaryFileName=target_file)
+
+    # TODO expand to change other pickledROM settings withing this method
+    synthetic_data = self._create_synth_hist_from_external_ROM(runner, signal, multiplier)
+
+    # get time set data from ROM realizations
+    synthetic_data = self._get_time_sets_from_synth_histories(synthetic_data)
+
     # check that evaluation mode is either clustered or full
     if self._eval_mode not in ['clustered', 'full']:
       raise IOError('Improper ROM evaluation mode detected, try "clustered" or "full".')
-    return synthetic_data
 
-  def load_synthetic_history_from_JSON(self):
+    # extracting cluster info from ROM - how many days of year per cluster?
+    synthetic_data = self._get_cluster_info_from_synth_histories(runner, synthetic_data)
+
+    synth_years, synth_days, synth_hours = [synthetic_data[ind] for ind in self._time_index_map]
+    synth_scenarios  = range(self._num_samples)
+    proj_years_range = self._test_project_year_range
+    map_synth2proj   = self._test_map_synth_to_proj
+
+    # restructure the synthetic history dictionary to match DISPATCHES
+    synthetic_data_reformat = {}
+    synthetic_data_reformat['signals'] = {}
+    # converting to dictionary that plays nice with DISPATCHES/IDAES
+    for key, data in synthetic_data.items():
+      # assuming the keys are in format "Realization_i"
+      if "Realization" in key:
+        # realizations (known as scenarios in DISPATCHES) index starting at 0
+        k = int( key.split('_')[-1] )
+        # years indexed by integer year (2020, etc.)
+        # clusters and hours indexed starting at 1
+        synthetic_data_reformat['signals'][synth_scenarios[k-1]] = {year: {day: {hour: data[y, day-1, hour-1]
+                                                                  for hour in synth_hours}
+                                                        for day in synth_days}
+                                                  for y, year in enumerate(synth_years)}
+    # save set time data for use within DISPATCHES
+    synthetic_data_reformat["sets"] = {}
+    synthetic_data_reformat["sets"]["synth_scenarios"] = list(synth_scenarios) # DISPATCHES wants this as a list
+    synthetic_data_reformat["sets"]["synth_years"]  = np.unique(synth_years) # DISPATCHES wants this as a list
+    synthetic_data_reformat["sets"]["synth_days"]   = np.unique(synth_days)  # DISPATCHES wants this as a range
+    synthetic_data_reformat["sets"]["synth_hours"]  = np.unique(synth_hours) # DISPATCHES wants this as a range
+    synthetic_data_reformat["sets"]["map_synth2proj"] = map_synth2proj # used only for tests
+    synthetic_data_reformat["sets"]["proj_years_range"] = proj_years_range # used only for tests
+    # getting weights_days - how many days does each cluster represent?
+    synthetic_data_reformat["weights_days"] = synthetic_data['weights_days']
+
+    # saving a copy to self, referred to later when adding timesets to Pyomo model
+    self._synth_histories[signal] = copy.deepcopy(synthetic_data_reformat)
+    return synthetic_data_reformat
+
+  def loadStaticHistory(self, signal, multiplier):
     """
-      Load synthetic history data specifically from a JSON file (very specific for testing)
-      @ In, None
-      @ Out, fullHist, dict, synthetic history with set data
+      Loads static history for a specified signal,
+      also sets yearly hours and pyomo indexing sets
+      @ In, signal, string, name of signal to sample
+      @ In, multiplier, int/float, value to multiply synthetic history evaluations by
+      @ Out, synthetic_data, dict, contains data from evaluated ROM
     """
+    if signal == 'price' and multiplier == -1:
+      multiplier *= -1 # undoing negative multiplier from one step above, price != demand
+
+    #=========================================================
     # paths to LMP signal JSON within DISPATCHES
     # TODO: move a copy of this file to HERD? or convert to static history
     disp_nuc_path = path.dirname( build_multiperiod_design.__code__.co_filename )
@@ -371,41 +459,22 @@ class HERD(MOPED):
 
     # we have to rebuild the LMP signal, using set_years as a map for when to duplicate data
     if len(synth_years) < self._test_proj_life:
-      full_hist = {}
+      synthetic_data = {}
       # looping through scenarios, re-building LMP signal if necessary
       for r in set_scenarios:
         # output dict key is actual year, input dict key is mapped year with duplicates
-        full_hist[str(r)] = {str(y): synth_hist[str(r)][str(i)]
+        synthetic_data[str(r)] = {str(y): synth_hist[str(r)][str(i)]
                                 for i,y in zip(set_years_map, proj_life_range)}
     else:
       # same dictionary
-      full_hist = synth_hist
+      synthetic_data = synth_hist
 
     n_days = len(synth_hist['0']['2020'].keys())
     n_time = len(synth_hist['0']['2020']['1'].keys()) - 1
-    full_hist['years'] = synth_years
-    full_hist['days']  = range(1, int(n_days + 1) )
-    full_hist['hours'] = range(1, int(n_time + 1) )
-
-    return full_hist
-
-  def loadSyntheticHistory(self, signal, multiplier):
-    """
-      Loads synthetic history for a specified signal, also sets yearly hours.
-      Calls the parent method and restructures dictionary to match DISPATCHES format.
-      @ In, signal, string, name of signal to sample
-      @ Out, new_ist, dict, contains data from evaluated ROM
-    """
-    if signal == 'price' and multiplier == -1:
-      multiplier *= -1 # undoing negative multiplier from one step above, price != demand
-
-    # calling parent method for loading synthetic history
-    test_JSON = (signal == 'dispatches-test' and self._test_mode)
-
-    if test_JSON:
-      synth_hist = self.load_synthetic_history_from_JSON()
-    else: # normal extraction
-      synth_hist = self.sample_from_ROM(signal, multiplier)
+    synthetic_data['years'] = synth_years
+    synthetic_data['days']  = range(1, int(n_days + 1) )
+    synthetic_data['hours'] = range(1, int(n_time + 1) )
+    #=========================================================
 
     synth_years, synth_days, synth_hours = [synth_hist[ind] for ind in self._time_index_map]
     synth_scenarios = range(self._num_samples)
@@ -415,25 +484,13 @@ class HERD(MOPED):
     new_hist = {}
     new_hist['signals'] = {}
     # converting to dictionary that plays nice with DISPATCHES/IDAES
-    if test_JSON:
-      for scenario in synth_scenarios:
-        new_hist['signals'][scenario] = {year: {day: {hour:
-                                        synth_hist[str(scenario)][str(year)][str(day)][str(hour)]
-                                                      for hour in synth_hours}
-                                              for day in synth_days}
-                                      for year in proj_years_range}
-    else:
-      for key, data in synth_hist.items():
-        # assuming the keys are in format "Realization_i"
-        if "Realization" in key:
-          # realizations known as scenarios in DISPATCHES, index starting at 0
-          k = int( key.split('_')[-1] )
-          # years indexed by integer year (2020, etc.)
-          # clusters and hours indexed starting at 1
-          new_hist['signals'][synth_scenarios[k-1]] = {year: {day: {hour: data[y, day-1, hour-1]
-                                                                    for hour in synth_hours}
-                                                          for day in synth_days}
-                                                    for y, year in enumerate(synth_years)}
+    for scenario in synth_scenarios:
+      new_hist['signals'][scenario] = {year: {day: {hour:
+                                      synth_hist[str(scenario)][str(year)][str(day)][str(hour)]
+                                                    for hour in synth_hours}
+                                            for day in synth_days}
+                                    for year in proj_years_range}
+
     # save set time data for use within DISPATCHES
     new_hist["sets"] = {}
     new_hist["sets"]["synth_scenarios"] = list(synth_scenarios) # DISPATCHES wants this as a list
@@ -443,16 +500,12 @@ class HERD(MOPED):
     new_hist["sets"]["map_synth2proj"] = map_synth2proj # used only for tests
     new_hist["sets"]["proj_years_range"] = proj_years_range # used only for tests
     # getting weights_days - how many days does each cluster represent?
-    if test_JSON:
-      new_hist["weights_days"] = {yr: {cl: synth_hist[str(0)][str(yr)][str(cl)]["num_days"]
-                                      for cl in synth_days}
-                                for yr in synth_years}
-    else:
-      new_hist["weights_days"] = synth_hist['weights_days']
-
+    new_hist["weights_days"] = {yr: {cl: synth_hist[str(0)][str(yr)][str(cl)]["num_days"]
+                                    for cl in synth_days}
+                              for yr in synth_years}
     # saving a copy to self, referred to later when adding timesets to Pyomo model
     self._synth_histories[signal] = copy.deepcopy(new_hist)
-    return new_hist
+    return synthetic_data
 
   def _check_dispatches_compatibility(self):
     """

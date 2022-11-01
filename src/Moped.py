@@ -185,6 +185,19 @@ class MOPED(Base):
     self._m.t = pyo.Set(initialize=np.arange(hour_count))
     return synthetic_data
 
+  def loadStaticHistory(self, signal, multiplier):
+    """
+      Loads static history for a specified signal,
+      also sets yearly hours and pyomo indexing sets
+      @ In, signal, string, name of signal to sample
+      @ In, multiplier, int/float, value to multiply synthetic history evaluations by
+      @ Out, synthetic_data, dict, contains data from evaluated ROM
+    """
+    synthetic_data = {}
+    # TODO: this is being implemented in HERD but makes sense to also add in MOPED
+    raise IOError('Static histories not yet implemented in MOPED.')
+    return synthetic_data
+
   def setCapacityMeta(self, mode, resource, comp, element, kind='produces'):
     """
       Checks the capacity type, dispatch type, and resources involved for each component
@@ -251,6 +264,13 @@ class MOPED(Base):
       capacity = self.loadSyntheticHistory(element._capacity._vp._var_name, capacity_mult)
       # TODO how to better handle capacities based on Synth Histories
       self._component_meta[comp.name]['Capacity'] = capacity
+    elif mode == 'StaticHistory':
+      self.raiseADebug(f'Building capacity with static histories for '
+                       f'{comp.name}')
+      # This method runs external ROM loader and defines some pyomo sets
+      capacity = self.loadStaticHistory(element._capacity._vp._var_name, capacity_mult)
+      # TODO how to better handle capacities based on Synth Histories
+      self._component_meta[comp.name]['Capacity'] = capacity
     if mode != 'SyntheticHistory':
       # TODO smarter way to do this check?
       self._component_meta[comp.name]['Capacity'] = getattr(self._m, f'{comp.name}')
@@ -295,6 +315,9 @@ class MOPED(Base):
         if cf._alpha.type == 'SyntheticHistory':
           signal = cf._alpha._vp._var_name
           alpha = self.loadSyntheticHistory(signal, multiplier)
+        elif cf._alpha.type == 'StaticHistory':
+          signal = cf._alpha._vp._var_name
+          alpha = self.loadStaticHistory(signal, multiplier)
         else:
           alpha = cf._alpha._vp._parametric * multiplier
         if cf._type == 'one-time':

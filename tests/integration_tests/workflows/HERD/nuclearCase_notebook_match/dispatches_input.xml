@@ -235,7 +235,7 @@
           </driver>
           <reference_price>
             <!-- ballpark $25/MWh -->
-            <CSV variable="dispatches-test">dispatches-test</CSV> <!-- assumed $/MWh-->
+            <CSV variable="Signal">dispatches-test</CSV> <!-- assumed $/MWh-->
               <!-- convert to $/kWh -->
             </reference_price>
         </CashFlow>
@@ -269,7 +269,7 @@
 
   <DataGenerators>
     <!-- to trigger the use of the JSON LMP signal, name needs to be 'dispatches-test'-->
-    <CSV name='dispatches-test' variable="Signal">LMP_Static.csv</CSV>
+    <CSV name='dispatches-test' variable="Signal">%BASE_WORKING_DIR%/../LMP_Static.csv</CSV>
   </DataGenerators>
 
 </HERON>

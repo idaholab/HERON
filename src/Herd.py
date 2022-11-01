@@ -5,7 +5,6 @@
   (HE)RON (R)uns (D)ISPATCHES (HERD)
 """
 import os.path as path
-import json
 import sys
 import copy
 import operator
@@ -151,7 +150,7 @@ class HERD(MOPED):
       @ In, None
       @ Out, None
     """
-    self._test_synth_years = [2022]
+    self._test_synth_years = [2022, 2032]
     self._test_proj_life = 20
     # range of years through intended project life (_test_synth_years contained within this set)
     #   year[0]-1 is the construction year
@@ -344,6 +343,90 @@ class HERD(MOPED):
 
     return synthetic_data
 
+  def _get_synthetic_histories_from_dataframe(self, data_frame, signal, multiplier):
+    """
+      Samples from external ROM given a signal and multiplier for said signal
+      @ In, data_frame, Pandas DataFrame object, dataframe with imported csv signals
+      @ In, signal, str, name of signal to sample
+      @ In, multiplier, float or int, multiplier for given signal
+      @ Out, synthetic_data, dict, dictionary of samples from ROM
+    """
+    macro_var_name = self._case.get_year_name() # e.g., Year
+    micro_var_name = self._case.get_time_name() # e.g., Time
+
+    # check that all required columns are present in dataframe
+    required_columns = ['RAVEN_sample_ID', macro_var_name, micro_var_name,
+                         signal, 'Cluster_weight']
+    assert np.all([rcol in data_frame.columns for rcol in required_columns])
+
+    # data is the same for 2022-2031, and 2032-2041
+    #   to save on # of variables, just duplicate LMP values
+    assert len(self._test_synth_years) <= self._test_proj_life
+
+    # building array of simulation years
+    years_range = self._test_project_year_range # actual year range for project [2022->2041]
+    years_map   = self._test_map_synth_to_proj # array => [2022, 2022, ...., 2032, 2032, ...]
+
+    # calculating time set lengths from full CSV
+    n_pts = len( data_frame )
+    n_scenarios  = len( np.unique( getattr(data_frame, 'RAVEN_sample_ID') ) )
+    n_years_data = len( np.unique( getattr(data_frame, macro_var_name) ) )
+    n_time       = len( np.unique( getattr(data_frame, micro_var_name) ) )
+    n_clusters   = int( n_pts / n_scenarios / n_years_data / n_time )
+
+    # creating set data for time series
+    set_scenarios  = range(self._num_samples)
+    set_days = range(1, int(n_clusters+1) )
+    set_time = range(1, int(n_time+1) )
+
+    # create empty data dictionary
+    synthetic_data = {}
+    synthetic_data['signals'] = {}
+    synthetic_data['weights_days'] = {}
+    synthetic_data['sets'] = {}
+
+    # sample realizations/scenarios from CSV
+    for real in set_scenarios:
+      synthetic_data['signals'][real] = {}  # empty dict for this scenario signals
+      df_realization = data_frame.loc[data_frame['RAVEN_sample_ID'] == real] # subset of dataframe
+
+      # loop through the year map + actual continuous project year range
+      for y_map, y_actual in zip(years_map, years_range):
+        synthetic_data['signals'][real][y_actual]      = {}  # empty dict for this year signals
+        synthetic_data['weights_days'][y_actual] = {}
+        df_year = df_realization.loc[df_realization[macro_var_name] == y_map] # subset of dataframe
+
+        # loop through all clusters/days per year
+        for cluster in set_days:
+          # number of days represented by first 24 hrs
+          cluster_num = df_year['Cluster_weight'].head(1).to_list()[0]
+          synthetic_data["weights_days"][y_actual][cluster] = cluster_num
+
+          # subset of dataframe for given cluster
+          df_cluster = df_year.loc[df_year['Cluster_weight'] == cluster_num]
+
+          # get signal for given cluster, set to dict indexed by Time
+          signal_data = df_cluster.head(n_time)[signal].to_numpy()
+          signal_data *= multiplier
+          synthetic_data['signals'][real][y_actual][cluster] = dict( zip(set_time, signal_data) )
+
+          # remove data points that have already been used
+          df_year = df_year.drop(df_cluster.index[:n_time])
+          # delete temporary dataframe subsets
+          del df_cluster
+        del df_year
+      del df_realization
+
+    # save set time data for use within DISPATCHES
+    synthetic_data["sets"]["synth_scenarios"] = list(set_scenarios) # DISPATCHES wants this as a list
+    synthetic_data["sets"]["synth_years"]  = self._test_synth_years # DISPATCHES wants this as a list
+    synthetic_data["sets"]["synth_days"]   = set_days  # DISPATCHES wants this as a range
+    synthetic_data["sets"]["synth_hours"]  = set_time # DISPATCHES wants this as a range
+    synthetic_data["sets"]["map_synth2proj"]   = years_map # used only for tests
+    synthetic_data["sets"]["proj_years_range"] = years_range # used only for tests
+
+    return synthetic_data
+
   def loadSyntheticHistory(self, signal, multiplier):
     """
       Loads synthetic history for a specified signal, also sets yearly hours.
@@ -423,76 +506,22 @@ class HERD(MOPED):
     if signal == 'price' and multiplier == -1:
       multiplier *= -1 # undoing negative multiplier from one step above, price != demand
 
-    #=========================================================
-    # paths to LMP signal JSON within DISPATCHES
-    # TODO: move a copy of this file to HERD? or convert to static history
-    disp_nuc_path = path.dirname( build_multiperiod_design.__code__.co_filename )
-    lmp_path  = path.abspath( path.join(disp_nuc_path, "lmp_signal.json") )
+    # NOTE self._sources[0]._var_names are the user assigned signal names in DataGenerators
+    source = getattr(self, "_sources")[0]
+    source_var_names = getattr(source, "_var_names")
 
-    # loading JSON data
-    with open(lmp_path, encoding='utf-8') as fp:
-      synth_hist = json.load(fp)
+    # check that signal name is available within data generator
+    if signal not in source_var_names:
+      raise IOError('The requested signal name is not available'
+                    'from the static history, check DataGenerators node in input')
 
-    # data is the same for 2022-2031, and 2032-2041
-    #   to save on # of variables, just duplicate LMP values
-    synth_years = self._test_synth_years # actual years to gather data from e.g., [2022, 2032]
+    # paths to LMP signal data in CSV (reformatted from DISPATCHES JSON file)
+    lmp_path  = getattr(source, "_target_file")
+    data_frame = pd.read_csv(lmp_path) # loading csv data
+    synthetic_data = self._get_synthetic_histories_from_dataframe( data_frame, signal, multiplier)
 
-    # building array of simulation years
-    proj_life_range = self._test_project_year_range # actual year range for full project [2022->2041]
-    set_years_map = self._test_map_synth_to_proj # array looks like [2022, 2022, ...., 2032, 2032, ...]
-
-    # creating set of scenarios/realizations/samples
-    n_scenarios = self._num_samples
-    set_scenarios = list( range(n_scenarios) )
-
-    # we have to rebuild the LMP signal, using set_years as a map for when to duplicate data
-    if len(synth_years) < self._test_proj_life:
-      synthetic_data = {}
-      # looping through scenarios, re-building LMP signal if necessary
-      for r in set_scenarios:
-        # output dict key is actual year, input dict key is mapped year with duplicates
-        synthetic_data[str(r)] = {str(y): synth_hist[str(r)][str(i)]
-                                for i,y in zip(set_years_map, proj_life_range)}
-    else:
-      # same dictionary
-      synthetic_data = synth_hist
-
-    n_days = len(synth_hist['0']['2020'].keys())
-    n_time = len(synth_hist['0']['2020']['1'].keys()) - 1
-    synthetic_data['years'] = synth_years
-    synthetic_data['days']  = range(1, int(n_days + 1) )
-    synthetic_data['hours'] = range(1, int(n_time + 1) )
-    #=========================================================
-
-    synth_years, synth_days, synth_hours = [synth_hist[ind] for ind in self._time_index_map]
-    synth_scenarios = range(self._num_samples)
-    proj_years_range = self._test_project_year_range
-    map_synth2proj = self._test_map_synth_to_proj
-    # restructure the synthetic history dictionary to match DISPATCHES
-    new_hist = {}
-    new_hist['signals'] = {}
-    # converting to dictionary that plays nice with DISPATCHES/IDAES
-    for scenario in synth_scenarios:
-      new_hist['signals'][scenario] = {year: {day: {hour:
-                                      synth_hist[str(scenario)][str(year)][str(day)][str(hour)]
-                                                    for hour in synth_hours}
-                                            for day in synth_days}
-                                    for year in proj_years_range}
-
-    # save set time data for use within DISPATCHES
-    new_hist["sets"] = {}
-    new_hist["sets"]["synth_scenarios"] = list(synth_scenarios) # DISPATCHES wants this as a list
-    new_hist["sets"]["synth_years"]  = np.unique(synth_years) # DISPATCHES wants this as a list
-    new_hist["sets"]["synth_days"]   = np.unique(synth_days)  # DISPATCHES wants this as a range
-    new_hist["sets"]["synth_hours"]  = np.unique(synth_hours) # DISPATCHES wants this as a range
-    new_hist["sets"]["map_synth2proj"] = map_synth2proj # used only for tests
-    new_hist["sets"]["proj_years_range"] = proj_years_range # used only for tests
-    # getting weights_days - how many days does each cluster represent?
-    new_hist["weights_days"] = {yr: {cl: synth_hist[str(0)][str(yr)][str(cl)]["num_days"]
-                                    for cl in synth_days}
-                              for yr in synth_years}
     # saving a copy to self, referred to later when adding timesets to Pyomo model
-    self._synth_histories[signal] = copy.deepcopy(new_hist)
+    self._synth_histories[signal] = copy.deepcopy(synthetic_data)
     return synthetic_data
 
   def _check_dispatches_compatibility(self):

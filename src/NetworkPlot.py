@@ -47,7 +47,7 @@ class NetworkPlot:
         self._resources.add(ri)
         self._graph.add_edge(ri, c.name)
         self._edges.append((ri, c.name))
-            
+
       rsc_out = c.get_outputs()
       for ro in rsc_out:
         self._resources.add(ro)
@@ -57,11 +57,11 @@ class NetworkPlot:
   def _build_table(self) -> None:
     """
       Table should have two major sections: economic info and optimization parameters
-        
+
       Economic info:
         - Cash flows (just the names?)
         - Lifetime?
-        
+
       Optimization settings:
         - dispatch (fixed, independent, dependent)
         - optimized, swept, or fixed?
@@ -124,5 +124,10 @@ class NetworkPlot:
     ax.axis('off')
     fig.set_facecolor('darkgrey')
 
-  def save(self, filename):
+  def save(self, filename: str) -> None:
+    """
+      Save resource graph to file
+      @ In, filename, str, path to file
+      @ Out, None
+    """
     plt.savefig(filename)

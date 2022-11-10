@@ -14,6 +14,7 @@ import pyomo.environ as pyo
 from pyomo.opt import SolverFactory
 import numpy as np
 import _utils as hutils
+from functools import partial
 import logging
 try:
   import ravenframework
@@ -136,6 +137,7 @@ class HERD(MOPED):
     self._demand_meta = {} # saving demand data to separate dict (in case it is also sampled)
     self._synth_histories = {}  # nested dict of all synthetic histories
     self._time_sets = {}
+    self._multiperiod_options = {}
 
     # Testing - using LMP signals from JSON script as used in example Jupyter notebook
     #    intended years to test out (2022-2031, use same data. 2032-2041, use same data)
@@ -151,7 +153,7 @@ class HERD(MOPED):
       @ In, None
       @ Out, None
     """
-    self._test_synth_years = [2022]
+    self._test_synth_years = [2022,]
     self._test_proj_life = 20
     # range of years through intended project life (_test_synth_years contained within this set)
     #   year[0]-1 is the construction year
@@ -617,12 +619,58 @@ class HERD(MOPED):
     time_sets['set_years_map'] = sets['map_synth2proj'] if self._test_mode \
                                                      else sets['synth_years']
     time_sets['set_scenarios'] = sets['synth_scenarios']
+    time_sets['n_time_points'] = len(time_sets['set_time'])
 
     # transferring information on weightings
     time_sets['weights_days'] = market_synthetic_history['weights_days']
     # NOTE: equal probability for all scenarios
     time_sets['weights_scenarios'] = {s:1/self._num_samples for s in range(self._num_samples)}
     return time_sets
+
+  def _get_multiperiod_flowsheet_options(self):
+    """
+      Getting extra arguments/options for flowsheet, initialization, and unfix_DOF methods
+      To be used within MultiPeriodModel init.
+      @ In, None
+      @ Out, multiperiod_options, dict, extra arguments for flowsheet and ancilliary methods
+    """
+    multiperiod_options = {}
+
+    multiperiod_options['flowsheet_options'] = {"np_capacity": 1000}
+    multiperiod_options['initialization_options'] = {
+                                "split_frac_grid": 0.8,
+                                "tank_holdup_previous": 0,
+                                "flow_mol_to_pipeline": 10,
+                                "flow_mol_to_turbine": 10,
+                              }
+    multiperiod_options['unfix_dof_options'] = {}
+    multiperiod_options['staging_params'] = {}
+
+    return multiperiod_options
+
+  def flowsheet_block(self, mdl, fs_options, staging_params):
+    """
+      Staging area for calling flowsheet from the IDAES MultiPeriodModel class.
+      Note that the `staging_params` input is not part of the MultiPeriodModel call; it is
+      snuck in using `functools.partial` from the HERD call.
+      @ In, mdl, Pyomo ConcreteModel or Pyomo BlockData object
+      @ In, fs_options, dict, arguments for flowsheet
+      @ In, staging_params, dict, extra arguments not intended for flowsheet
+      @ Out, None
+    """
+    if isinstance(mdl, pyo.ConcreteModel):
+      # building a simple model for the initialization method
+      mdl = build_ne_flowsheet(mdl, **fs_options)
+    else:
+      # this means mdl is a _BlockData object, being called from `build_stochastic_multi_period` for
+      # a given period (e.g., hr:10, d:2, yr:2022)
+      if 'pyo_model' not in staging_params.keys():
+        # if this is the first call, creates a Pyomo model with flowsheet attributes
+        # then saves it to the staging_params dictionary.
+        staging_params['pyo_model'] = build_ne_flowsheet(**fs_options)
+      # on subsequent calls, it just pulls the saved model, clones it, and transfers
+      # attributes to current period model
+      mdl.transfer_attributes_from(staging_params['pyo_model'].clone())
 
   def _add_capacity_variables(self, mdl):
     """
@@ -700,19 +748,21 @@ class HERD(MOPED):
     """
     # add time sets to Pyomo model from given synthetic history and desired project lifetime
     self._time_sets = self._get_time_sets()
-    n_time_points = len(self._time_sets['set_time'])
     set_days      = self._time_sets['set_days']
     set_years     = self._time_sets['set_years']
     set_scenarios = self._time_sets['set_scenarios']
+    n_time_points = self._time_sets['n_time_points']
 
-    flowsheet_options = {"np_capacity": 1000}
-    initialization_options = {
-                              "split_frac_grid": 0.8,
-                              "tank_holdup_previous": 0,
-                              "flow_mol_to_pipeline": 10,
-                              "flow_mol_to_turbine": 10,
-                            }
-    unfix_dof_options = {}
+    # get extra arguments/options to pass into Multiperiod model for flowsheet
+    self._multiperiod_options = self._get_multiperiod_flowsheet_options()
+    init_options      = self._multiperiod_options['initialization_options']
+    unfix_dof_options = self._multiperiod_options['unfix_dof_options']
+    # wrapping fs options in a dict allow extraction downstream and keep staging_params intact
+    flowsheet_options = {'fs_options':self._multiperiod_options['flowsheet_options']}
+
+    # using partial to sneak in an extra dictionary input to the call
+    staging_params = self._multiperiod_options['staging_params']
+    process_func   = partial(self.flowsheet_block, staging_params=staging_params)
 
     # NOTE: within the build process, a tmp JSON file is created in wdir...
     self._dmdl = MultiPeriodModel(
@@ -720,12 +770,12 @@ class HERD(MOPED):
                     set_days=set_days,
                     set_years=set_years,
                     set_scenarios=set_scenarios,
-                    process_model_func=build_ne_flowsheet, # this should be a staging function that calls flowsheet
+                    process_model_func=process_func, # this should be a staging function that calls flowsheet
                     initialization_func=fix_dof_and_initialize,
                     unfix_dof_func=self.unfixDof,
                     linking_variable_func=self._get_linking_variable_pairs,
                     flowsheet_options=flowsheet_options,
-                    initialization_options=initialization_options,
+                    initialization_options=init_options,
                     unfix_dof_options=unfix_dof_options,
                     use_stochastic_build=True,
                     outlvl=logging.INFO,
@@ -755,6 +805,7 @@ class HERD(MOPED):
       scenario_metric = RunCashFlow.run(self._econ_settings, teal_components, {}, pyomoVar=True)
       self._metrics.append( scenario_metric )
       del scenario_metric
+
 
   def _initialize_cash_flows(self):
     """
@@ -1119,6 +1170,8 @@ class HERD(MOPED):
       @ In, None
       @ Out, None
     """
+    import time
+    time_start = time.time()
     # original workflow from MOPED
     self.buildEconSettings()  # overloaded method
     self.buildComponentMeta() # overloaded method
@@ -1130,9 +1183,10 @@ class HERD(MOPED):
     self._get_demand_data()
 
     # building the Pyomo model using DISPATCHES
-    self._dmdl = pyo.ConcreteModel(name=self._case.name)
     self._build_dispatches_model()
     self._add_non_anticipativity_constraints()
     self._add_objective()
     self._solve_dispatches_model()
     self._export_results()
+    time_end = time.time()
+    print(f'Total Elapsed Time: {time_end-time_start} s')

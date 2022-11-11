@@ -129,6 +129,7 @@ class HERD(MOPED):
 
     # extra parameters for HERD
     self._dmdl = None # Pyomo model specific to DISPATCHES (different from _m)
+    self._dispatches_model_name = ''
     self._dispatches_model_template = None # Template of DISPATCHES Model for HERON comparison
     self._dispatches_model_comp_names = None # keys of the dispatches_model_template
     self._time_index_map = ['years', 'days', 'hours'] # index map to save time sets to dict later
@@ -536,8 +537,7 @@ class HERD(MOPED):
   # ===========================
   def _check_dispatches_compatibility(self):
     """
-      Checks HERON components to match compatibility with available
-      DISPATCHES flowsheets.
+      Checks HERON components to match compatibility with available DISPATCHES flowsheets.
       @ In, None
       @ Out, None
     """
@@ -595,6 +595,7 @@ class HERD(MOPED):
       break
 
     self.raiseADebug(f'|HERON Case is compatible with {dName} DISPATCHES Model|')
+    self._dispatches_model_name = dName
     self._dispatches_model_template = DISPATCHES_MODEL_COMPONENT_META[dName] # NOTE: NOT using copy
     self._dispatches_model_comp_names = list(self._dispatches_model_template.keys())
 
@@ -711,6 +712,15 @@ class HERD(MOPED):
       @ Out, multiperiod_options, dict, extra arguments for flowsheet and ancilliary methods
     """
     multiperiod_options = {}
+
+    data_sources = self._sources
+    available_func_sources = [src for src in data_sources if getattr(src,'_type') == 'Function']
+    func_sources = [func for func in available_func_sources if func.name == 'extra-params']
+
+    if len(available_func_sources) > 0 and len(func_sources) > 0:
+      func_source  = func_sources[0]
+      methods      = getattr(func_source, '_module_methods')
+      extra_params = methods['get_RE_Case_parameters']()
 
     multiperiod_options['flowsheet_options'] = {"np_capacity": 1000}
     multiperiod_options['initialization_options'] = {

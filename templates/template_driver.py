@@ -254,7 +254,7 @@ class Template(TemplateBase, Base):
     if case.useParallel:
       #XXX this doesn't handle non-mpi modes like torque or other custom ones
       mode = xmlUtils.newNode('mode', text='mpi')
-      mode.append(xmlUtils.newNode('runQSUB'))
+      # mode.append(xmlUtils.newNode('runQSUB'))  # I'd rather this were optional; not desired when running on a local machine
       if 'memory' in case.parallelRunInfo:
         mode.append(xmlUtils.newNode('memory', text=case.parallelRunInfo.pop('memory')))
       for sub in case.parallelRunInfo:
@@ -557,29 +557,32 @@ class Template(TemplateBase, Base):
 
     for component in components:
       interaction = component.get_interaction()
-      # NOTE this algorithm does not check for everthing to be swept! Future work could expand it.
+      # NOTE this algorithm does not check for everything to be swept! Future work could expand it.
       # This is approached by the labels feature above
       ## Currently checked: Component.Interaction.Capacity
       ## --> this really needs to be made generic for all kinds of valued params!
       name = component.name
-      var_name = self.namingTemplates['variable'].format(unit=name, feature='capacity')
-      cap = interaction.get_capacity(None, raw=True)
-      # do we already know the capacity values?
-      if cap.is_parametric():
-        vals = cap.get_value(debug=case.debug['enabled'])
-        # is the capacity variable being swept over?
-        if isinstance(vals, list):
-          # make new Distribution, Sampler.Grid.variable
-          dist, xml = self._create_new_sweep_capacity(name, var_name, vals, sampler)
-          dists_node.append(dist)
-          samps_node.append(xml)
-          # NOTE assumption (input checked): only one interaction per component
-        # if not being swept, then it's just a fixed value.
+      valued_param_vars = interaction.get_valued_param_vars()
+      for vp_name in valued_param_vars:
+        vp = getattr(interaction, vp_name)
+        feature_name = vp_name[1:]  # vp_name should have a leading underscore that we don't want to keep
+        # do we already know the parameter values?
+        if vp.is_parametric():
+          vals =  vp.get_value(debug=case.debug['enabled'])
+          var_name = self.namingTemplates['variable'].format(unit=name, feature=feature_name)
+          # is the variable being swept over?
+          if isinstance(vals, list):
+            # make new Distribution, Sampler.Grid.variable
+            dist, xml = self._create_new_sweep_capacity(name, var_name, vals, sampler)
+            dists_node.append(dist)
+            samps_node.append(xml)
+            # NOTE assumption (input checked): only one interaction per component
+          # if not being swept, then it's just a fixed value.
+          else:
+            samps_node.append(xmlUtils.newNode('constant', text=vals, attrib={'name': var_name}))
         else:
-          samps_node.append(xmlUtils.newNode('constant', text=vals, attrib={'name': var_name}))
-      else:
-        # this capacity will be evaluated by ARMA/Function, and doesn't need to be added here.
-        pass
+          # this capacity will be evaluated by ARMA/Function, and doesn't need to be added here.
+          pass
     if case.outerParallel == 0 and case.useParallel:
       #XXX if we had a way to calculate this ahead of time,
       # this could be done in _modify_outer_runinfo
@@ -689,6 +692,8 @@ class Template(TemplateBase, Base):
     # distribution
     if 'capacity' in var_name:
       dist_name = self.namingTemplates['distribution'].format(unit=comp_name, feature='capacity')
+    elif 'RTE' in var_name:
+      dist_name = self.namingTemplates['distribution'].format(unit=comp_name, feature='RTE')
     else:
       dist_name = self.namingTemplates['distribution'].format(unit=comp_name, feature='dispatch')
     dist = copy.deepcopy(self.dist_template)

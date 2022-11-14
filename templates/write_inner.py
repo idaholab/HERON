@@ -12,6 +12,8 @@ def modifyInput(root,mod_dict):
   comps = list(x.split(':')[-1].rsplit('_',1)[0] for x in mod_dict.keys() if '_capacity' in x)
   for comp in comps:
     capacities[comp] = mod_dict['Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:{}_capacity'.format(comp)]
+  # TODO: other technical variables (e.g. RTE)
+  # TODO: how can we handle this generally for any swept or optimized variable?
 
   # sequence
 

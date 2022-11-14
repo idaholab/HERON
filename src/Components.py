@@ -421,8 +421,9 @@ class Interaction(Base):
     self._function_method_map = {}      # maps things that call functions to the method within the function that needs calling
     self._transfer = None               # the production rate (if any), in produces per consumes
                                         #   for example, {(Producer, 'capacity'): 'method'}
-    self._sqrt_rte = 1.0                # sqrt of the round-trip efficiency for this interaction
+    self._sqrt_rte = None               # sqrt of the round-trip efficiency for this interaction
     self._tracking_vars = []            # list of trackable variables for dispatch activity
+    self._valued_param_vars = []        # list of variables which may be sampled (i.e. defined by a ValuedParam)
 
   def read_input(self, specs, mode, comp_name):
     """
@@ -467,11 +468,15 @@ class Interaction(Base):
       @ In, mode, string, case mode to operate in (e.g. 'sweep' or 'opt')
       @ Out, None
     """
+    self._valued_param_vars.append(name)
     vp = ValuedParamHandler(name)
     signal = vp.read(comp, spec, mode)
     self._signals.update(signal)
     self._crossrefs[name] = vp
     setattr(self, name, vp)
+
+  def get_valued_param_vars(self):
+    return self._valued_param_vars
 
   def get_capacity(self, meta, raw=False):
     """
@@ -523,14 +528,18 @@ class Interaction(Base):
       evaluated, meta = self._minimum.evaluate(meta, target_var=self._minimum_var)
     return evaluated, meta
 
-  def get_sqrt_RTE(self):
+  def get_sqrt_RTE(self, meta, raw=False):
     """
       Provide the square root of the round-trip efficiency for this component.
       Note we use the square root due to splitting loss across the input and output.
       @ In, None
       @ Out, RTE, float, round-trip efficiency as a multiplier
     """
-    return self._sqrt_rte
+    if raw:
+      return self._sqrt_rte
+    meta['request'] = {self._capacity_var: None}
+    evaluated, meta = self._sqrt_rte.evaluate(meta, target_var=self._capacity_var)
+    return evaluated, meta
 
   def get_crossrefs(self):
     """
@@ -899,7 +908,7 @@ class Storage(Interaction):
     descr=r"""control strategy for operating the storage. If not specified, uses a perfect foresight strategy. """
     specs.addSub(vp_factory.make_input_specs('strategy', allowed=['Function'], descr=descr))
     descr = r"""round-trip efficiency for this component as a scalar multiplier. \default{1.0}"""
-    specs.addSub(InputData.parameterInputFactory('RTE', contentType=InputTypes.FloatType, descr=descr))
+    specs.addSub(vp_factory.make_input_specs('RTE', descr=descr))
     return specs
 
   def __init__(self, **kwargs):
@@ -934,7 +943,10 @@ class Storage(Interaction):
       elif item.getName() == 'strategy':
         self._set_valued_param('_strategy', comp_name, item, mode)
       elif item.getName() == 'RTE':
-        self._sqrt_rte = np.sqrt(item.value)
+        self._set_valued_param('_sqrt_rte', comp_name, item, mode)
+        rte_vals = self._sqrt_rte.get_value()
+        sqrt_rte_vals = [rte ** 0.5 for rte in rte_vals]  # want to store square root of given RTE values
+        self._sqrt_rte.set_value(sqrt_rte_vals)
     assert len(self._stores) == 1, 'Multiple storage resources given for component "{}"'.format(comp_name)
     self._stores = self._stores[0]
     # checks and defaults
@@ -944,6 +956,12 @@ class Storage(Interaction):
       vp = ValuedParamHandler('initial_stored')
       vp.set_const_VP(0.0)
       self._initial_stored = vp
+    if self._sqrt_rte is None:
+      self.raiseAWarning('RTE for "{}" was not provided! Defaulting to 1.0.'.format(comp_name))
+      # RTE defaults to 1.0 if not provided
+      vp = ValuedParamHandler('sqrt_rte')
+      vp.set_const_VP(1.0)
+      self._sqrt_rte = vp
     # the capacity is limited by the stored resource.
     self._capacity_var = self._stores
 

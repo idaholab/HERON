@@ -3,6 +3,7 @@
     type = HeronMoped
     input = moped_input.xml
     heavy = true
+    needed_executable = 'ipopt'
     # prereq = NYArma
     [./csv]
       type = OrderedCSV

@@ -55,7 +55,9 @@
         <initial_stored>
           <fixed_value>1</fixed_value>
         </initial_stored>
-        <RTE>0.9</RTE>
+        <RTE>
+	  <fixed_value>0.9</fixed_value>
+	</RTE>
       </stores>
       <economics>
         <lifetime>10</lifetime>

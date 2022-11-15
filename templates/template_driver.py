@@ -257,7 +257,7 @@ class Template(TemplateBase, Base):
     if case.useParallel:
       #XXX this doesn't handle non-mpi modes like torque or other custom ones
       mode = xmlUtils.newNode('mode', text='mpi')
-      # mode.append(xmlUtils.newNode('runQSUB'))  # I'd rather this were optional; not desired when running on a local machine
+      mode.append(xmlUtils.newNode('runQSUB'))  # I'd rather this were optional; not desired when running on a local machine
       if 'memory' in case.parallelRunInfo:
         mode.append(xmlUtils.newNode('memory', text=case.parallelRunInfo.pop('memory')))
       for sub in case.parallelRunInfo:
@@ -462,10 +462,13 @@ class Template(TemplateBase, Base):
       text = 'Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:{}'
 
     for component in components:
-      name = component.name
-      attribs = {'variable': f'{name}_capacity', 'type':'input'}
-      new = xmlUtils.newNode('alias', text=text.format(name + '_capacity'), attrib=attribs)
-      raven.append(new)
+      comp_name = component.name
+      interaction = component.get_interaction()
+      for vp in interaction.get_valued_param_vars():
+        var_name = comp_name + vp
+        attribs = {'variable': var_name, 'type': 'input'}
+        new = xmlUtils.newNode('alias', text=text.format(var_name), attrib=attribs)
+        raven.append(new)
 
     # Now we check for any non-component dispatch variables and assign aliases
     for name in case.dispatch_vars.keys():

@@ -948,7 +948,10 @@ class Storage(Interaction):
       elif item.getName() == 'RTE':
         self._set_valued_param('_sqrt_rte', comp_name, item, mode)
         rte_vals = self._sqrt_rte.get_value()
-        sqrt_rte_vals = [rte ** 0.5 for rte in rte_vals]  # want to store square root of given RTE values
+        if isinstance(rte_vals, list):
+          sqrt_rte_vals = [rte ** 0.5 for rte in rte_vals]  # want to store square root of given RTE values
+        else:  # float or int
+          sqrt_rte_vals = rte ** 0.5
         self._sqrt_rte.set_value(sqrt_rte_vals)
     assert len(self._stores) == 1, 'Multiple storage resources given for component "{}"'.format(comp_name)
     self._stores = self._stores[0]

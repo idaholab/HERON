@@ -137,7 +137,7 @@ class HERD(MOPED):
     self._results = None   # results from Dispatch solve
     self._num_samples = 0  # number of samples/scenarios/realizations for easier retrievability
     self._demand_meta = {} # saving demand data to separate dict (in case it is also sampled)
-    self._synth_histories = {}  # nested dict of all synthetic histories
+    self._synth_histories = {}  # nested dict of all generated synthetic histories
     self._time_sets = {}
     self._multiperiod_options = {}
 
@@ -155,7 +155,7 @@ class HERD(MOPED):
       @ In, None
       @ Out, None
     """
-    self._test_synth_years = [2022,]
+    self._test_synth_years = [2022, ]
     self._test_proj_life = 20
     # range of years through intended project life (_test_synth_years contained within this set)
     #   year[0]-1 is the construction year
@@ -289,7 +289,7 @@ class HERD(MOPED):
       @ In, signal, string, name of signal to sample
       @ Out, synthetic_histories, dict, contains data from evaluated ROM
     """
-    if signal == 'price' and multiplier == -1:
+    if signal.lower() == 'price' and multiplier == -1:
       multiplier *= -1 # undoing negative multiplier from one step above, price != demand
 
     # NOTE self._sources[0]._var_names are the user assigned signal names in DataGenerators
@@ -427,7 +427,7 @@ class HERD(MOPED):
       @ In, multiplier, int/float, value to multiply synthetic history evaluations by
       @ Out, synthetic_data, dict, contains data from evaluated ROM
     """
-    if signal == 'price' and multiplier == -1:
+    if signal.lower() == 'price' and multiplier == -1:
       multiplier *= -1 # undoing negative multiplier from one step above, price != demand
 
     # NOTE self._sources[0]._var_names are the user assigned signal names in DataGenerators
@@ -442,7 +442,7 @@ class HERD(MOPED):
     # paths to LMP signal data in CSV (reformatted from DISPATCHES JSON file)
     lmp_path  = getattr(source, "_target_file")
     data_frame = pd.read_csv(lmp_path) # loading csv data
-    synthetic_data = self._get_synthetic_histories_from_dataframe( data_frame, signal, multiplier)
+    synthetic_data = self._get_synthetic_histories_from_dataframe(data_frame, signal, multiplier)
 
     # saving a copy to self, referred to later when adding timesets to Pyomo model
     self._synth_histories[signal] = copy.deepcopy(synthetic_data)
@@ -460,8 +460,7 @@ class HERD(MOPED):
     micro_var_name = self._case.get_time_name() # e.g., Time
 
     # check that all required columns are present in dataframe
-    required_columns = ['RAVEN_sample_ID', macro_var_name, micro_var_name,
-                         signal, 'Cluster_weight']
+    required_columns = ['RAVEN_sample_ID', macro_var_name, micro_var_name, signal]
     assert np.all([rcol in data_frame.columns for rcol in required_columns])
 
     # data is the same for 2022-2031, and 2032-2041
@@ -473,15 +472,20 @@ class HERD(MOPED):
     years_map   = self._test_map_synth_to_proj # array => [2022, 2022, ...., 2032, 2032, ...]
 
     # calculating time set lengths from full CSV
-    n_pts = len( data_frame )
+    n_columns = len(data_frame.columns)
+    n_pts     = len( data_frame )
     n_scenarios  = len( np.unique( getattr(data_frame, 'RAVEN_sample_ID') ) )
     n_years_data = len( np.unique( getattr(data_frame, macro_var_name) ) )
     n_time       = len( np.unique( getattr(data_frame, micro_var_name) ) )
-    n_clusters   = int( n_pts / n_scenarios / n_years_data / n_time )
+    n_clusters   = int( n_pts / n_scenarios / n_years_data / n_time ) # if == 1, full year data
+
+    if 'Cluster_weight' not in data_frame.columns:
+      ones = np.ones(n_pts, dtype=int)
+      data_frame.insert(loc=n_columns, column="Cluster_weight", value=ones)
 
     # creating set data for time series
     set_scenarios  = range(self._num_samples)
-    set_days = range(1, int(n_clusters+1) )
+    set_days = range(1, int(n_clusters+1) ) if n_clusters != 1 else [1]
     set_time = range(1, int(n_time+1) )
 
     # create empty data dictionary
@@ -499,6 +503,8 @@ class HERD(MOPED):
       for y_map, y_actual in zip(years_map, years_range):
         synthetic_data['signals'][real][y_actual] = {}  # empty dict for this year signals
         synthetic_data['weights_days'][y_actual]  = {}
+
+        assert np.sum(df_realization[macro_var_name] == y_map) > 0
         df_year = df_realization.loc[df_realization[macro_var_name] == y_map] # subset of dataframe
 
         # loop through all clusters/days per year
@@ -619,6 +625,7 @@ class HERD(MOPED):
     self._multiperiod_options = self._get_multiperiod_flowsheet_options()
     init_options      = self._multiperiod_options['initialization_options']
     unfix_dof_options = self._multiperiod_options['unfix_dof_options']
+
     # wrapping fs options in a dict allow extraction downstream and keep staging_params intact
     flowsheet_options = {'fs_options':self._multiperiod_options['flowsheet_options']}
 
@@ -632,7 +639,7 @@ class HERD(MOPED):
                     set_days=set_days,
                     set_years=set_years,
                     set_scenarios=set_scenarios,
-                    process_model_func=process_func, # this should be a staging function that calls flowsheet
+                    process_model_func=process_func,
                     initialization_func=fix_dof_and_initialize,
                     unfix_dof_func=self.unfixDof,
                     linking_variable_func=self._get_linking_variable_pairs,
@@ -674,18 +681,10 @@ class HERD(MOPED):
       @ In, None
       @ Out, time_sets, dict, time set information for simulation
     """
-    synth_hist_keys = list( self._synth_histories.keys() )
-    accepted_signals = ['dispatches-test', 'price', 'Signal']
-    found_signals = [signal in synth_hist_keys for signal in accepted_signals]
-
-    # check to see that we are using signal/ARMA model we are prepared for...
-    # TODO: find more general approach
-    if np.any(found_signals):
-      # NOTE: we are assuming only 1 signal at a time by indexing 0
-      accepted_signal = accepted_signals[np.where(found_signals)[0][0]]
-      market_synthetic_history = self._synth_histories[accepted_signal]
-    else:
-      raise IOError('Signal name not found in generated synthetic history dictionary')
+    # NOTE: assuming here that we're not importing both static histories and synthetic histories
+    #       therefore all time sets are presumably the same (generated through the same method)
+    signal_name = list(self._synth_histories.keys())[0] # from our assumption, any signal will do
+    market_synthetic_history = self._synth_histories[signal_name]
 
     # transferring information on Sets
     sets = market_synthetic_history['sets']
@@ -715,12 +714,12 @@ class HERD(MOPED):
 
     data_sources = self._sources
     available_func_sources = [src for src in data_sources if getattr(src,'_type') == 'Function']
-    func_sources = [func for func in available_func_sources if func.name == 'extra-params']
+    func_sources = [func for func in available_func_sources if func.name == 'input-params']
 
     if len(available_func_sources) > 0 and len(func_sources) > 0:
       func_source  = func_sources[0]
       methods      = getattr(func_source, '_module_methods')
-      extra_params = methods['get_RE_Case_parameters']()
+      extra_params = methods['load_parameters'](self._time_sets)
 
     multiperiod_options['flowsheet_options'] = {"np_capacity": 1000}
     multiperiod_options['initialization_options'] = {
@@ -737,9 +736,13 @@ class HERD(MOPED):
   #==== METHODS CALLED THROUGH IDAES ====#
   def flowsheet_block(self, mdl, fs_options, staging_params):
     """
-      Staging area for calling flowsheet from the IDAES MultiPeriodModel class.
+      Staging area for flowsheet call through the IDAES MultiPeriodModel class.
       Note that the `staging_params` input is not part of the MultiPeriodModel call; it is
       snuck in using `functools.partial` from the HERD call.
+
+      This is partially taken from
+      `dispatches.dispatches.case_studies.renewables_case.wind_battery_LMP.py`,
+      from the `wind_battery_mp_block( )` method.
       @ In, mdl, Pyomo ConcreteModel or Pyomo BlockData object
       @ In, fs_options, dict, arguments for flowsheet
       @ In, staging_params, dict, extra arguments not intended for flowsheet
@@ -762,9 +765,10 @@ class HERD(MOPED):
   def unfixDof(self, ps, **kwargs):
     """
       This function unfixes a few degrees of freedom for optimization.
-      This particular method is taken from the DISPATCHES jupyter notebook
-      found in "dispatches/dispatches/models/nuclear_case/flowsheets"
-      titled "multiperiod_design_pricetaker"
+
+      This is taken from `multiperiod_design_pricetaker.ipynb` in the DISPATCHES repository
+      found in `dispatches/dispatches/case_studies/nuclear_case/`
+      (currently not callable, so replicated here).
       @In, ps, Pyomo model for period within a given scenario
       @In, kwargs, extra arguments for flowsheet parameters
       @ Out, None
@@ -805,6 +809,10 @@ class HERD(MOPED):
   def _get_linking_variable_pairs(self, mdl_start, mdl_end):
     """
       Yield pairs of variables that need to be connected across time periods.
+
+      This is taken from `multiperiod_design_pricetaker.ipynb` in the DISPATCHES repository
+      found in `dispatches/dispatches/case_studies/nuclear_case/`
+      (currently not callable, so replicated here).
       @ In, mdl_start, Pyomo model, current time step
       @ In, mdl_end, Pyomo model, next time step
       @ Out, pairs, list, pair of Pyomo expressions to link
@@ -818,7 +826,9 @@ class HERD(MOPED):
     """
       Setting first-stage capacity variables for model.
       Also sets upper bound constraints on resource production not exceeding capacity.
+
       This is taken from `multiperiod_design_pricetaker.ipynb` in the DISPATCHES repository
+      found in `dispatches/dispatches/case_studies/nuclear_case/`
       (currently not callable, so replicated here).
       @ In, mdl, Pyomo model
       @ Out, None
@@ -852,7 +862,9 @@ class HERD(MOPED):
   def _add_additional_constraints(self, mdl):
     """
       Method to add additional constraints not included in DISPATCHES flowsheet
-      This is taken from `multiperiod_design_pricetaker.ipynb` in the DISPATCHES repository
+
+      Some content is taken from `multiperiod_design_pricetaker.ipynb` in the DISPATCHES repository
+      found in `dispatches/dispatches/case_studies/nuclear_case/`
       (currently not callable, so replicated here).
       @ In, mdl, Pyomo scenario model
       @ Out, None
@@ -875,6 +887,10 @@ class HERD(MOPED):
     """
       Adding non-anticipativity constraints, ensuring that all capacity variables are the same
       for all scenarios.
+
+      Content is taken from `multiperiod_design_pricetaker.ipynb` in the DISPATCHES repository
+      found in `dispatches/dispatches/case_studies/nuclear_case/`
+      (currently not callable, so replicated here).
       @ In, None
       @ Out, None
     """

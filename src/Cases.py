@@ -23,8 +23,11 @@ from HERON.src.validators.Factory import known as known_validators
 from HERON.src.validators.Factory import get_class as get_validator
 
 import HERON.src._utils as hutils
-framework_path = hutils.get_raven_loc()
-sys.path.append(framework_path)
+try:
+  import ravenframework
+except ModuleNotFoundError:
+  framework_path = hutils.get_raven_loc()
+  sys.path.append(framework_path)
 from ravenframework.utils import InputData, InputTypes
 
 class Case(Base):
@@ -102,7 +105,8 @@ class Case(Base):
                                                        strictMode=True, descr=desc_verbosity_options))
 
     workflow_options = InputTypes.makeEnumType('WorkflowOptions', 'WorkflowOptionsType',
-                                               ['standard', 'MOPED', 'combined'])
+                                               ['standard', 'MOPED', 'combined', 'DISPATCHES'])
+
     desc_workflow_options = r"""determines the desired workflow(s) for the HERON analysis. \default{standard}.
                             If ``standard'' runs HERON as usual (writes outer/inner for RAVEN workflow).
                             If ``MOPED'' runs monolithic solver MOPED using the information in xml input.
@@ -406,7 +410,6 @@ class Case(Base):
         'inner_samples': 1,            # how many inner realizations to sample
         'macro_steps': 1,              # how many "years" for inner realizations
         'dispatch_plot': True          # whether to output a plot in debug mode
-
     }
 
     self.data_handling = {             # data handling options

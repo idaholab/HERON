@@ -21,7 +21,7 @@ from ravenframework.utils import InputData, InputTypes
 # allows pyomo to solve on threaded processes
 import pyutilib.subprocess.GlobalData
 pyutilib.subprocess.GlobalData.DEFINE_SIGNAL_HANDLERS_DEFAULT = False
-from pyutilib.common._exceptions import ApplicationError
+from pyomo.common.errors import ApplicationError
 
 from .Dispatcher import Dispatcher
 from .DispatchState import DispatchState, NumpyState
@@ -33,9 +33,9 @@ except (ModuleNotFoundError, ImportError):
 
 # Choose solver; CBC is a great choice unless we're on Windows
 if platform.system() == 'Windows':
-  SOLVER = 'glpk'
+  SOLVERS = ['glpk', 'cbc', 'ipopt']
 else:
-  SOLVER = 'cbc'
+  SOLVERS = ['cbc', 'glpk', 'ipopt']
 
 
 class Pyomo(Dispatcher):
@@ -109,15 +109,21 @@ class Pyomo(Dispatcher):
     if solver_node is not None:
       self._solver = solver_node.value
 
-    # check solver exists
     if self._solver is None:
-      self._solver = SOLVER
-    found_solver = True
-    try:
-      if not pyo.SolverFactory(self._solver).available():
+      solvers_to_check = SOLVERS
+    else:
+      solvers_to_check = [self._solver]
+    # check solver exists
+    for solver in solvers_to_check:
+      self._solver = solver
+      found_solver = True
+      try:
+        if not pyo.SolverFactory(self._solver).available():
+          found_solver = False
+        else:
+          break
+      except ApplicationError:
         found_solver = False
-    except ApplicationError:
-      found_solver = False
     # NOTE: we probably need a consistent way to test and check viable solvers,
     # maybe through a unit test that mimics the model setup here. For now, I assume
     # that anything that shows as not available or starts with an underscore is not

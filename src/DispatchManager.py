@@ -17,14 +17,18 @@ from typing_extensions import final
 from . import _utils as hutils
 from . import SerializationManager
 
-raven_path = hutils.get_raven_loc()
-sys.path.append(raven_path)
-from ravenframework.PluginBaseClasses.ExternalModelPluginBase import ExternalModelPluginBase
-sys.path.pop()
+try:
+  from ravenframework.PluginBaseClasses.ExternalModelPluginBase import ExternalModelPluginBase
+  import TEAL
+except ModuleNotFoundError:
+  raven_path = hutils.get_raven_loc()
+  sys.path.append(raven_path)
+  from ravenframework.PluginBaseClasses.ExternalModelPluginBase import ExternalModelPluginBase
+  sys.path.pop()
 
-cashflow_path = os.path.abspath(os.path.join(hutils.get_cashflow_loc(raven_path=raven_path), '..'))
-sys.path.append(cashflow_path)
-import TEAL
+  cashflow_path = os.path.abspath(os.path.join(hutils.get_cashflow_loc(raven_path=raven_path), '..'))
+  sys.path.append(cashflow_path)
+  import TEAL
 from TEAL.src import CashFlows
 from TEAL.src.main import run as CashFlow_run
 
@@ -36,9 +40,10 @@ class DispatchRunner:
     Manages the interface between RAVEN and running the dispatch
   """
   # TODO move naming templates to a common place for consistency!
-  naming_template = {'comp capacity': '{comp}_capacity',
-                     'dispatch var': 'Dispatch__{comp}__{tracker}__{res}',
-                    }
+  naming_template = {
+    'comp capacity': '{comp}_capacity',
+    'dispatch var': 'Dispatch__{comp}__{tracker}__{res}',
+  }
 
   def __init__(self):
     """
@@ -87,10 +92,10 @@ class DispatchRunner:
     """
     pass_vars = {}
     history_structure = {}
-    # investigate sources for required ARMA information
+    # investigate sources for required ARMA/CSV information
     for source in self._sources:
-      if source.is_type('ARMA'):
-        # get structure of ARMA
+      if source.is_type('ARMA') or source.is_type("CSV"):
+        # get structure of ARMA/CSV
         vars_needed = source.get_variable()
         for v in vars_needed:
           pass_vars[v] = getattr(raven, v)
@@ -100,10 +105,10 @@ class DispatchRunner:
       pass_vars['_indexMap'] = raven._indexMap[0] # 0 is only because of how RAVEN EnsembleModel handles variables
       # collect all indices # TODO limit to those needed by sources?
       for target, required_indices in pass_vars['_indexMap'].items():
-        for index in (i for i in required_indices if i not in pass_vars):
+        for index in filter(lambda idx: idx not in pass_vars, required_indices):
           pass_vars[index] = getattr(raven, index)
     else:
-      # NOTE this should ONLY BE POSSIBLE if no ARMAs are in use!
+      # NOTE this should ONLY BE POSSIBLE if no ARMAs or CSVs are in use!
       pass
 
     # variable for "time" discretization, if present
@@ -531,12 +536,34 @@ class DispatchRunner:
       @ Out, all_structure, dict, structure (multiyear, cluster/segments, etc) specifications
     """
     all_structure = {'details': {}, 'summary': {}}
+    found = False
+    assert self._sources is not None
     for source in self._sources:
-      # only need ARMA information, not Functions
-      if not source.is_type('ARMA'):
-        continue
-      structure = hutils.get_synthhist_structure(source._target_file)
-      all_structure['details'][source] = structure
+      if source.is_type("ARMA"):
+        structure = hutils.get_synthhist_structure(source._target_file)
+        all_structure["details"][source] = structure
+        found = True
+        break
+
+    if not found:
+      for source in self._sources:
+        if source.is_type("CSV"):
+          structure = hutils.get_csv_structure(
+              source._target_file,
+              self._case.get_year_name(),
+              self._case.get_time_name()
+          )
+          all_structure['details'][source] = structure
+          found = True
+          break
+
+    # It's important to note here. We do not anticipate users mixing
+    # ARMA & CSV sources, we also don't account for discrepancies in
+    # time-steps between CSV and ARMA. Eventually we may need to modify
+    # the code to allow for mixed use and determine compatibility of
+    # time-steps.
+    if not found:
+      raise RuntimeError('No ARMA or CSV found in sources! Temporal mapping is missing.')
 
     # TODO check consistency between ROMs?
     # for now, just summarize what we found -> take it from the first source
@@ -548,7 +575,7 @@ class DispatchRunner:
     all_structure['summary'] = {'interpolated': interpolated,
                                 'clusters': clusters,
                                 'segments': 0, # FIXME XXX
-                                'macro_info': summary_info['macro'],
+                                'macro_info': summary_info['macro'] if 'macro' in summary_info else {},
                                 'cluster_info': first_year_clusters,
                                 } # TODO need to add index/representivity references!
     return all_structure

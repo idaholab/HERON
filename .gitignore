@@ -39,9 +39,14 @@ __pycache__
 *outer.xml
 *inner.xml
 *cash.xml
+*romMeta.xml
+*write_inner.py
 /tests/integration_tests/ARMA/Sine/synthetic.*
 /tests/integration_tests/workflows/MOPED/*/*.csv
-/tests/*/**/write_inner.py
 *_o/
 tests/integration_tests/mechanics/optimizedDispatch2Hybrid/hybrid_compatible_dispatch.txt
 tests/integration_tests/mechanics/optimizedDispatch2Hybrid/user_input.txt
+/tests/integration_tests/workflows/HERD/*/*.csv
+tests/integration_tests/mechanics/hybrid_load/heron_input.xml
+tests/integration_tests/workflows/HERD/nuclearCase_Sine/temp_initialized_model.json
+tests/integration_tests/workflows/HERD/nuclearCase_notebook_match/temp_initialized_model.json

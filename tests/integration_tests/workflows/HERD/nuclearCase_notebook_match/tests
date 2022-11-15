@@ -1,0 +1,16 @@
+[Tests]
+ [./NuclearCaseNotebookMatch]
+  type = HeronMoped
+  input = dispatches_input.xml
+  max_time = 600
+  required_libraries = 'dispatches'
+  heavy = true
+  [./csv]
+    type = OrderedCSV
+    output = 'opt_solution__nuclearCase_notebook_match.csv'
+    zero_threshold = 1e-6
+    rel_err = 1e-6
+  [../]
+ [../]
+
+[]

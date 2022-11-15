@@ -6,6 +6,7 @@ from ravenframework.utils import InputData, InputTypes
 from ravenframework.EntityFactoryBase import EntityFactory
 
 from .SyntheticHistory import SyntheticHistory
+from .StaticHistory import StaticHistory
 from .ROM import ROM
 from .Function import Function
 from .Parametric import Parametric, FixedValue, OptBounds, SweepValues
@@ -35,22 +36,29 @@ class ValuedParamFactory(EntityFactory):
       @ In, kind, str, optional, kind of ValuedParam grouping (default)
       @ Out, spec, InputData, specification
     """
+    add_descr = ''
     if allowed is None:
       allowed = allowable[kind]
-    allowed_str = ', '.join(['\\xmlNode{{{}}}'.format(a) for a in allowed])
-    add_descr = rf"""This value can be taken from any \emph{{one}} of the sources as subnodes
-                (described below): {allowed_str}."""
+      allowed_str = ', '.join(['\\xmlNode{{{}}}'.format(a) for a in allowed])
+      add_descr = rf"""This value can be taken from any \emph{{one}} of the sources as subnodes (described below): {allowed_str}."""
+
     if descr is None:
       description = add_descr
     else:
       description = descr + r"""\\ \\""" + add_descr
+
     spec = InputData.parameterInputFactory(name, descr=description)
     for typ, klass in self._registeredTypes.items():
       if typ in allowed:
         spec.addSub(klass.get_input_specs())
-    # addons
-    spec.addSub(InputData.parameterInputFactory('multiplier', contentType=InputTypes.FloatType,
-        descr=r"""Multiplies any value obtained by this parameter by the given value. \default{1}"""))
+        # addons
+    spec.addSub(
+      InputData.parameterInputFactory(
+        'multiplier',
+        contentType=InputTypes.FloatType,
+        descr=r"""Multiplies any value obtained by this parameter by the given value. \default{1}"""
+      )
+    )
     return spec
 
 factory = ValuedParamFactory('ValuedParam')
@@ -61,6 +69,7 @@ factory.registerType('sweep_values', SweepValues)
 factory.registerType('opt_bounds', OptBounds)
 factory.registerType('variable', Variable)
 # frequent revaluation
+factory.registerType('CSV', StaticHistory)
 factory.registerType('ARMA', SyntheticHistory)
 factory.registerType('ROM', ROM)
 factory.registerType('Function', Function)
@@ -76,10 +85,17 @@ allowable = {}
 # transfer functions, such as producing components' transfer functions
 allowable['transfer'] = ['linear', 'Function']
 # single evaluations, like cashflow prices and component capacities
-allowable['singular'] = ['fixed_value', 'sweep_values', 'opt_bounds', 'variable',
-               'ARMA', 'Function', 'ROM']
+allowable['singular'] = [
+  'fixed_value',
+  'sweep_values',
+  'opt_bounds',
+  'variable',
+  'ARMA',
+  'Function',
+  'ROM',
+  'CSV'
+]
 # evaluations available only after dispatch (e.g. for economics)
 ## for example, we can't base a capacity on the dispatch activity ... right?
 allowable['post-dispatch'] = allowable['singular'] + ['activity']
-# all
 allowable['all'] = list(factory.knownTypes())

@@ -14,11 +14,13 @@ from HERON.src.ValuedParamHandler import ValuedParamHandler
 from HERON.src import _utils as hutils
 sys.path.pop()
 
-# Load RAVEN tools
-sys.path.append(hutils.get_raven_loc())
+try:
+  import ravenframework
+except ModuleNotFoundError:
+    # Load RAVEN tools
+    sys.path.append(hutils.get_raven_loc())
 from ravenframework.utils import InputData, xmlUtils,InputTypes
 import ravenframework.MessageHandler as MessageHandler
-sys.path.pop()
 
 results = {"pass":0,"fail":0}
 

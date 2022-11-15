@@ -8,7 +8,21 @@ import sys
 import importlib
 import xml.etree.ElementTree as ET
 import warnings
+import pickle
+try:
+  from functools import cache
+except ImportError:
+  from functools import lru_cache
+  def cache(user_function):
+     """
+       use lru_cache for older versions of python
+       @ In, user_function, function
+       @ Out, user_function, function that caches values
+     """
+     return lru_cache(maxsize=None)(user_function)
 from os import path
+
+import pandas as pd
 
 
 def get_heron_loc():
@@ -26,6 +40,14 @@ def get_raven_loc():
     @ In, None
     @ Out, loc, string, absolute location of RAVEN
   """
+  try:
+    import ravenframework
+    print("WARNING: get_raven_loc deprecated")
+    import traceback
+    traceback.print_stack()
+    return path.dirname(ravenframework.__path__[0])
+  except ModuleNotFoundError:
+    pass
   config = path.abspath(path.join(path.dirname(__file__),'..','.ravenconfig.xml'))
   if not path.isfile(config):
     raise IOError(
@@ -105,6 +127,7 @@ def get_project_lifetime(case, components):
   econ_settings.setParams(econ_params)
   return getProjectLength(econ_settings, econ_comps)
 
+@cache
 def get_synthhist_structure(fpath):
   """
     Extracts synthetic history info from ROM (currently ARMA ROM)
@@ -113,28 +136,30 @@ def get_synthhist_structure(fpath):
   """
   # TODO could this be a function of the ROM itself?
   # TODO or could we interrogate the ROM directly instead of the XML?
-  raven_loc = get_raven_loc()
-  scripts_path = path.join(raven_loc, '..', 'scripts')
-  sys.path.append(scripts_path)
-  from externalROMloader import ravenROMexternal as ravenROM
-  # Why should we get warnings from RAVEN when we are just trying to write an input file.
-  with warnings.catch_warnings():
-    warnings.simplefilter('ignore')
-    rom = ravenROM(fpath, raven_loc).rom
-  meta = rom.writeXML().getRoot()
+  try:
+    import ravenframework
+  except ModuleNotFoundError:
+    #If ravenframework not in path, need to add, otherwise loading rom will fail
+    raven_path = hutils.get_raven_loc()
+    sys.path.append(os.path.expanduser(raven_path))
+  rom = pickle.load(open(fpath, 'rb'))
+
   structure = {}
+  meta = rom.writeXML().getRoot()
   # interpolation information
   interp_node = meta.find('InterpolatedMultiyearROM')
   if interp_node:
     macro_id = interp_node.find('MacroParameterID').text.strip()
-    structure['macro'] = {'id': macro_id,
-                          'num': int(interp_node.find('MacroSteps').text),
-                          'first': int(interp_node.find('MacroFirstStep').text),
-                          'last': int(interp_node.find('MacroLastStep').text),
-                          }
+    structure['macro'] = {
+      'id': macro_id,
+      'num': int(interp_node.find('MacroSteps').text),
+      'first': int(interp_node.find('MacroFirstStep').text),
+      'last': int(interp_node.find('MacroLastStep').text),
+    }
     macro_nodes = meta.findall('MacroStepROM')
   else:
     macro_nodes = [meta]
+
   # cluster information
   structure['clusters'] = {}
   for macro in macro_nodes:
@@ -147,14 +172,47 @@ def get_synthhist_structure(fpath):
     cluster_nodes = macro.findall('ClusterROM')
     if cluster_nodes:
       for node in cluster_nodes:
-        info = {'id': int(node.attrib['cluster']),
-                'represents': node.find('segments_represented').text.split(','),
-                'indices': list(int(x) for x in node.find('indices').text.split(','))
-               }
+        info = {
+          'id': int(node.attrib['cluster']),
+          'represents': node.find('segments_represented').text.split(','),
+          'indices': list(int(x) for x in node.find('indices').text.split(','))
+        }
         clusters_info.append(info)
   # segment information
   # -> TODO
   structure['segments'] = {}
+  return structure
+
+def get_csv_structure(fpath, macro_var, micro_var):
+  """
+    Returns CSV structure in a way RAVEN & HERON understand
+    @ In, fpath, str, file path to CSV file
+    @ In, macro_var, str, Macro Variable name - typically 'Year'
+    @ In, micro_var, str, Micro Variable name - typically 'Time'
+    @ Out, structure, dict, Nested structure of the CSV dataframe.
+  """
+  data = pd.read_csv(fpath)
+  structure = {}
+  if macro_var in data.columns:
+    macro_steps = pd.unique(data[macro_var].values)
+    structure['macro'] = {
+      'id': macro_var,
+      'num': len(macro_steps) + 1,
+      'first': min(macro_steps),
+      'last': max(macro_steps)
+    }
+  else:
+    data[macro_var] = 0
+
+  structure['clusters'] = {}
+  for macro_step, df in data.groupby(macro_var):
+    structure['clusters'][macro_step] = [{
+      'id': 0,
+      'indices': [0, len(df[micro_var].values)],
+      'represents': ['0']
+    }]
+
+  structure['segments'] = {}  # TODO
   return structure
 
 

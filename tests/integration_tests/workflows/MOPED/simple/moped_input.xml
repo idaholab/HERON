@@ -109,7 +109,7 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='synth' variable="TOTALLOAD,SOLAR">../arma_202112_nyiso_def.pk</ARMA>
+    <ARMA name='synth' variable="TOTALLOAD,SOLAR">%BASE_WORKING_DIR%/../../../../ARMA/NYISO/nyiso_arma_2yr.pk</ARMA>
   </DataGenerators>
 
 </HERON>

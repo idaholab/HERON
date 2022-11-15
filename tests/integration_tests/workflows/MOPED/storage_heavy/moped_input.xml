@@ -138,7 +138,7 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='synth' variable="TOTALLOAD">../arma_202112_nyiso_def.pk</ARMA>
+    <ARMA name='synth' variable="TOTALLOAD">%HERON%/tests/integration_tests/ARMA/NYISO/nyiso_arma_2yr.pk</ARMA>
   </DataGenerators>
 
 </HERON>

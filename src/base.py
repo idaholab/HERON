@@ -8,8 +8,11 @@ import os
 import sys
 
 import HERON.src._utils as hutils
-raven_path = hutils.get_raven_loc()
-sys.path.append(os.path.expanduser(raven_path))
+try:
+  import ravenframework
+except ModuleNotFoundError:
+  raven_path = hutils.get_raven_loc()
+  sys.path.append(os.path.expanduser(raven_path))
 from ravenframework.BaseClasses import MessageUser
 
 

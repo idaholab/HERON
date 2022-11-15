@@ -71,8 +71,8 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='placeholder' variable="Signal">%HERON%/tests/integration_tests/ARMA/Sine/arma.pk</ARMA>
-    <ROM name="myROM">%HERON%/tests/integration_tests/ROM/linear_rom.pk</ROM>
+    <ARMA name='placeholder' variable="Signal">%BASE_WORKING_DIR%/../../../ARMA/Sine/arma.pk</ARMA>
+    <ROM name="myROM">%BASE_WORKING_DIR%/../../../ROM/linear_rom.pk</ROM>
   </DataGenerators>
 
 </HERON>

@@ -12,14 +12,15 @@ import copy
 import HERON.src._utils as hutils
 from HERON.src.base import Base
 
-FRAMEWORK_PATH = hutils.get_raven_loc()
-sys.path.append(FRAMEWORK_PATH)
+try:
+  import ravenframework
+except ModuleNotFoundError:
+  FRAMEWORK_PATH = hutils.get_raven_loc()
+  sys.path.append(FRAMEWORK_PATH)
 from ravenframework.utils import InputData, InputTypes, utils, xmlUtils
-sys.path.pop()
 
-sys.path.append(os.path.join(FRAMEWORK_PATH, 'scripts'))
-from externalROMloader import ravenROMexternal
-sys.path.pop()
+from ravenframework.ROMExternal import ROMLoader
+
 
 class Placeholder(Base):
   """
@@ -119,7 +120,7 @@ class Placeholder(Base):
       @ Out, is_type, bool, True if matching request
     """
     # maybe it's not anything we know about
-    if typ not in ['ARMA', 'Function', 'ROM']:
+    if typ not in ['ARMA', 'Function', 'ROM', 'CSV']:
       return False
     return eval('isinstance(self, {})'.format(typ))
 
@@ -379,7 +380,8 @@ class ROM(Placeholder):
       @ Out, None
     """
     super().read_input(xml)
-    self._runner = ravenROMexternal(self._target_file, FRAMEWORK_PATH)
+
+    self._runner = ROMLoader(self._target_file)
     # TODO is this serializable? or get/set state for this?
 
   def evaluate(self, rlz):
@@ -392,13 +394,11 @@ class ROM(Placeholder):
     return result
 
 
-
-
-class Resampling_time(Placeholder):
+class CSV(Placeholder):
   """
-    Placeholder for signals coming from the ARMA
-    FIXME Probably note used any more, and should be removed.
+    Placeholder for values taken from a comma-separated file.
   """
+
   @classmethod
   def get_input_specs(cls):
     """
@@ -406,28 +406,104 @@ class Resampling_time(Placeholder):
       @ In, None
       @ Out, specs, InputData, specs
     """
-    specs = InputData.parameterInputFactory('Resampling_time', contentType=InputTypes.StringType, ordered=False, baseNode=None)
+    specs = InputData.parameterInputFactory(
+      "CSV",
+      contentType=InputTypes.StringType,
+      ordered=False,
+      baseNode=None,
+      descr="""This data source is a static comma separated values (CSV) file.
+               The text of this node indicates the location of the CSV file.
+               This location is usually relative with respect to the HERON XML input file;
+               however, a full absolute path can be used, or the path can be prepended
+               with ``\%HERON\%'' to be relative to the installation directory of HERON.
+               It is expected that variables contained in this file are defined as headers
+               in the first row."""
+    )
+
+    specs.addParam(
+      "name",
+      param_type=InputTypes.StringType,
+      required=True,
+      descr="""identifier for this data source in HERON and in the HERON input file.""",
+    )
+
+    specs.addParam(
+      'variable',
+      param_type=InputTypes.StringListType,
+      required=True,
+      descr="""provides the names of the variables found in the CSV file
+               and will be used in the workflow. Please note that all CSV files
+               used in HERON for the purpose of input data must contain a variable
+               titled ``RAVEN_sample_ID''. This variable can be a column of constant
+               values (i.e., 0 or 1). This variable is unlikely to be used in the workflow
+               but is required by RAVEN.""",
+    )
     return specs
 
   def __init__(self, **kwargs):
     """
-      Constructor.
-      @ In, kwargs, dict, passthrough arguments
+      Constructor
+      @ In, kwargs, dict, passthrough args
       @ Out, None
     """
-    Placeholder.__init__(self, **kwargs)
-    self._type = 'Resampling_time'
+    super().__init__(**kwargs)
+    self._type = 'CSV'
+    self._data = None
+    self.eval_mode = "full"
+    self.needs_multiyear = 1
+    self.limit_interp = 1
 
   def read_input(self, xml):
     """
-      Sets settings from input file
-      @ In, xml, xml.etree.ElementTree.Element, input from user
+      Sets settings from input file.
+      @ In, xml, xml.etree.ElementTree.Element, input from user.
       @ Out, None
     """
-    specs = Placeholder.read_input(self, xml)
+    specs = super().read_input(xml)
     self._var_names = specs.parameterValues['variable']
+    with open(self._target_file, 'r', encoding='utf-8-sig') as f:
+      headers = list(s.strip() for s in f.readline().split(','))
+    for var in self._var_names:
+      if var not in headers:
+        self.raiseAnError(
+          KeyError,
+          f'Variable "{var}" requested for "{self.name}" but not found in "{self._target_file}"! Found: {headers}'
+        )
 
-
-
-
-
+  def checkValid(self, case, components, sources):
+    """
+      Check validity of placeholder given rest of system
+      @ In, case, HERON.Case, case
+      @ In, components, list(HERON.Component), components
+      @ In, sources, list(HERON.Placeholder), sources
+      @ Out, None
+    """
+    self.raiseAMessage(f'Checking CSV at "{self._target_file}"')
+    structure = hutils.get_csv_structure(self._target_file, case.get_year_name(), case.get_time_name())
+    interpolated = 'macro' in structure
+    clustered = bool(structure['clusters'])
+    # segmented = bool(structure['segments']) # TODO
+    self.raiseAMessage(
+        f'For DataGenerator <{self._type}> "{self.name}", detected: {"" if interpolated else "NOT"} interpolated, ' +
+        f'{"" if clustered else "NOT"} clustered.'
+    )
+    # expect that project life == num macro years
+    project_life = hutils.get_project_lifetime(case, components) - 1 # one less for construction year
+    if interpolated:
+      # if interpolated, needs more checking
+      interp_years = structure['macro']['num']
+      if interp_years >= project_life:
+        self.raiseADebug(
+            f'"{self.name}" interpolates {interp_years} macro steps, and project life is {project_life}, so histories will be trunctated.'
+        )
+        self.limit_interp = project_life
+      else:
+        self.raiseAnError(
+            RuntimeError, f'"{self.name}" interpolates {interp_years} macro steps, but project life is {project_life}!'
+        )
+    else:
+      # if single year, we can use multiyear so np
+      self.raiseADebug(
+          f'"{self.name}" will be extended to project life ({project_life}) macro steps using <Multicycle>.'
+      )
+      self.needs_multiyear = project_life

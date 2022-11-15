@@ -8,8 +8,11 @@
 """
 import sys
 from HERON.src import _utils as hutils
-framework_path = hutils.get_raven_loc()
-sys.path.append(framework_path)
+try:
+  import ravenframework
+except ModuleNotFoundError:
+  framework_path = hutils.get_raven_loc()
+  sys.path.append(framework_path)
 from ravenframework.utils import InputData, InputTypes
 from ravenframework.BaseClasses import MessageUser
 
@@ -43,6 +46,14 @@ class ValuedParam(MessageUser):
     self._source_name = None # name of source object (HERON tracking name, given by user)
     self._target_obj = None  # Placeholder object for this VP, if needed
     self._value = None       # None for most VP, for Parametric may be valued
+
+  def __repr__(self) -> str:
+    """
+      Return Object Representation String
+      @ In, None
+      @ Out, None
+    """
+    return f"<HERON {self._source_kind}>"
 
   def read(self, comp_name, spec, mode, alias_dict=None):
     """

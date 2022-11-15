@@ -17,13 +17,15 @@ import matplotlib.pyplot as plt
 
 from HERON.src import _utils as hutils
 from HERON.src.base import Base
-path_to_raven = hutils.get_raven_loc()
-sys.path.append(os.path.abspath(os.path.join(path_to_raven, 'scripts')))
-sys.path.append(os.path.abspath(os.path.join(path_to_raven, 'plugins')))
-sys.path.append(path_to_raven)
+try:
+  import ravenframework
+except ModuleNotFoundError:
+  path_to_raven = hutils.get_raven_loc()
+  sys.path.append(os.path.abspath(os.path.join(path_to_raven, 'plugins')))
+  sys.path.append(path_to_raven)
 from TEAL.src import main as RunCashFlow
 from TEAL.src import CashFlows
-import externalROMloader as ROMloader
+from ravenframework.ROMExternal import ROMLoader
 from ravenframework.MessageHandler import MessageHandler
 
 class MOPED(Base):
@@ -153,9 +155,7 @@ class MOPED(Base):
     if signal not in self._sources[0]._var_names:
       raise IOError('The requested signal name is not available'
                     'from the synthetic history, check DataGenerators node in input')
-    # Initializing ravenROMexternal object gives PATH access to xmlUtils
-    runner = ROMloader.ravenROMexternal(self._sources[0]._target_file,
-                                        hutils.get_raven_loc())
+    runner = ROMLoader(self._sources[0]._target_file)
     from ravenframework.utils import xmlUtils
     inp = {'scaling': [1]}
     # TODO expand to change other pickledROM settings withing this method

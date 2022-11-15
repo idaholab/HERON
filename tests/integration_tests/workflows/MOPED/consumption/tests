@@ -2,6 +2,7 @@
   [./Moped_consumption]
     type = HeronMoped
     input = moped_input.xml
+    needed_executable = 'ipopt'
     # prereq = sineARMA
     [./csv]
       type = OrderedCSV

@@ -14,7 +14,7 @@ jobs:
       - run: cd .. && rm -Rf raven && git clone https://github.com/idaholab/raven.git
       - run: python3 ../raven/scripts/install_plugins.py -s TEAL
       - run: python3 ../raven/scripts/install_plugins.py -s ${{ github.workspace }}
-      - run: WD=`(cd ../../.. && pwd)`; export RAVEN_LIBS_NAME="raven_libs_"`basename $WD`; ../raven/scripts/establish_conda_env.sh --install
+      - run: WD=`(cd ../../.. && pwd)` && export RAVEN_LIBS_NAME="raven_libs_"`basename $WD` && ../raven/scripts/establish_conda_env.sh --install
       - run: cd ../raven && ./build_raven
       - run: ../raven/run_tests --library-report
       - run: ../raven/run_tests -j4 --plugins --re=HERON

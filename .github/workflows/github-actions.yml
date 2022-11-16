@@ -1,0 +1,36 @@
+name: GitHub Action HERON test
+run-name: ${{ github.actor }} is testing out HERON
+on: [push]
+jobs:
+  Test-HERON-Action-Linux:
+    runs-on: [self-hosted, linux]
+    steps:
+      - run: echo " The job was automatically triggered by a ${{ github.event_name }} event."
+      - run: echo " This job is now running on a ${{ runner.os }} server"
+      - run: echo " The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - run: pwd
+      - run: cd .. && rm -Rf raven && git clone https://github.com/idaholab/raven.git
+      - run: python3 ../raven/scripts/install_plugins.py -s TEAL
+      - run: python3 ../raven/scripts/install_plugins.py -s ${{ github.workspace }}
+      - run: WD=`(cd ../../.. && pwd)` && export RAVEN_LIBS_NAME="raven_libs_"`basename $WD` && ../raven/scripts/establish_conda_env.sh --install
+      - run: cd ../raven && ./build_raven
+      - run: ../raven/run_tests --library-report
+      - run: ../raven/run_tests -j4 --plugins --re=HERON
+  Test-HERON-Action-Windows:
+    runs-on: [self-hosted, windows]
+    steps:
+      - run: echo " The job was automatically triggered by a ${{ github.event_name }} event."
+      - run: echo " This job is now running on a ${{ runner.os }} server"
+      - run: echo " The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - run: pwd
+      - run: cd ..; if (Test-Path raven) {Remove-Item -Recurse -Force raven}; git clone https://github.com/idaholab/raven.git
+      - run: python ../raven/scripts/install_plugins.py -s TEAL
+      - run: python ../raven/scripts/install_plugins.py -s ${{ github.workspace }}
+      - run: $Env:RAVEN_LIBS_NAME =  "raven_libraries_"+(Get-Location).Path.Split("\")[-4]; bash ../raven/scripts/establish_conda_env.sh --install --conda-defs $HOME/Miniconda3/etc/profile.d/conda.sh
+      - run: cd ../raven; bash ./build_raven
+      - run: bash ../raven/run_tests --library-report
+      - run: bash ../raven/run_tests -j4 --plugins --re=HERON

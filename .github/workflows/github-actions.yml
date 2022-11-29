@@ -1,8 +1,8 @@
-name: GitHub Action HERON test
+name: GitHub HERON test
 run-name: ${{ github.actor }} is testing out HERON
-on: [push]
+on: [push, pull_request]
 jobs:
-  Test-HERON-Action-Linux:
+  Test-HERON-Linux:
     runs-on: [self-hosted, linux]
     steps:
       - run: echo " The job was automatically triggered by a ${{ github.event_name }} event."
@@ -18,7 +18,7 @@ jobs:
       - run: cd ../raven && ./build_raven
       - run: ../raven/run_tests --library-report
       - run: ../raven/run_tests -j4 --plugins --re=HERON
-  Test-HERON-Action-Windows:
+  Test-HERON-Windows:
     runs-on: [self-hosted, windows]
     steps:
       - run: echo " The job was automatically triggered by a ${{ github.event_name }} event."

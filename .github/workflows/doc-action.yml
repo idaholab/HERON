@@ -21,4 +21,6 @@ jobs:
        uses: actions/upload-artifact@v3
        with:
          name: pdfs
-         path: doc/pdfs
+         path: |
+          doc/pdfs
+          doc/sqa/sqa_built_documents

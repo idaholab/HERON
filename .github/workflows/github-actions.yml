@@ -1,6 +1,6 @@
 name: GitHub Action HERON test
 run-name: ${{ github.actor }} is testing out HERON
-on: [push]
+on: [push, pull_request]
 jobs:
   Test-HERON-Action-Linux:
     runs-on: [self-hosted, linux]

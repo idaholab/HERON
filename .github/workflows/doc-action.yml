@@ -20,7 +20,6 @@ jobs:
         source ./scripts/establish_conda_env.sh --load
         cd ../HERON
         ./doc/make_docs.sh
-     - run: update_heron_docs.sh doc/pdfs/*.pdf doc/sqa/sqa_built_documents/*.pdf
      - name: Archive documents
        uses: actions/upload-artifact@v3
        with:
@@ -28,3 +27,4 @@ jobs:
          path: |
           doc/pdfs
           doc/sqa/sqa_built_documents
+     - run: update_heron_docs.sh doc/pdfs/*.pdf doc/sqa/sqa_built_documents/*.pdf

@@ -2,6 +2,7 @@
   [./Storage]
     type = HeronIntegration
     input = heron_input.xml
+    needed_executable = 'ipopt'
     # prereq = SineArma
     [./csv]
       type = OrderedCSV

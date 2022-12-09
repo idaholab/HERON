@@ -18,8 +18,8 @@
     <num_arma_samples>1</num_arma_samples>
     <workflow>DISPATCHES</workflow>
     <time_discretization>
-      <year_variable>YEAR</year_variable>
-      <time_variable>HOUR</time_variable>
+      <year_variable>Year</year_variable>
+      <time_variable>Time</time_variable>
       <end_time>23</end_time>
       <num_steps>24</num_steps>
     </time_discretization>
@@ -235,7 +235,7 @@
           </driver>
           <reference_price>
             <!-- ballpark $25/MWh -->
-            <ARMA variable="dispatches-test">dispatches-test</ARMA> <!-- assumed $/MWh-->
+            <CSV variable="Signal">dispatches-test</CSV> <!-- assumed $/MWh-->
               <!-- convert to $/kWh -->
             </reference_price>
         </CashFlow>
@@ -269,7 +269,7 @@
 
   <DataGenerators>
     <!-- to trigger the use of the JSON LMP signal, name needs to be 'dispatches-test'-->
-    <ARMA name='dispatches-test' variable="TOTALLOAD">%BASE_WORKING_DIR%/../../../../ARMA/NYISO/nyiso_arma_2yr.pk</ARMA>
+    <CSV name='dispatches-test' variable="Signal">%BASE_WORKING_DIR%/../LMP_Static.csv</CSV>
   </DataGenerators>
 
 </HERON>

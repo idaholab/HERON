@@ -25,8 +25,9 @@
       <Output         class='OutStreams'  type='Print'           >opt_soln</Output>
     </MultiRun>
     <IOStep name="plot">
-      <Input class="DataObjects" type="PointSet">opt_soln</Input>
-      <Output class='OutStreams' type='Plot'>opt_path</Output>
+      <Input  class='DataObjects' type='PointSet'>opt_soln</Input>
+      <Output class='OutStreams'  type='Plot'    >opt_path</Output>
+      <Output class='OutStreams'  type='Print'   >opt_soln</Output>
     </IOStep>
   </Steps>
 

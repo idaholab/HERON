@@ -20,6 +20,7 @@ from HERON.src import input_loader
 from HERON.src.base import Base
 from HERON.src.Moped import MOPED
 from HERON.src.Herd import HERD
+from HERON.src.NetworkPlot import NetworkPlot
 
 from ravenframework.MessageHandler import MessageHandler
 
@@ -45,7 +46,7 @@ class HERON(Base):
                                'suppressErrs': False,})
     self.messageHandler = messageHandler
 
-  def read_input(self, name):
+  def read_input(self, name: str) -> None:
     """
       Loads data from input
       @ In, name, str, name of file to read from
@@ -68,7 +69,7 @@ class HERON(Base):
     """
     return '<HERON Simulation>'
 
-  def print_me(self, tabs=0, tab='  '):
+  def print_me(self, tabs=0, tab='  ') -> None:
     """
       Prints info about self.
       @ In, tabs, int, number of tabs to insert
@@ -85,6 +86,19 @@ class HERON(Base):
       comp.print_me(tabs=tabs+1, tab=tab)
     for source in self._sources:
       source.print_me(tabs=tabs+1, tab=tab)
+
+  def plot_resource_graph(self) -> None:
+    """
+      Plots the resource graph of the HERON simulation using components
+      from the input file.
+
+      @ In, None
+      @ Out, None
+    """
+    if self._case.debug['enabled']:  # TODO do this every time?
+      graph = NetworkPlot(self._components)
+      img_path = os.path.join(self._input_dir, 'network.png')
+      graph.save(img_path)
 
   def create_raven_workflow(self, case=None):
     """
@@ -154,13 +168,14 @@ def main():
   sim.read_input(args.xml_input_file) # TODO expand to use arguments?
   # print details
   sim.print_me()
+  sim.plot_resource_graph()
+
   if sim._case._workflow == 'standard':
     sim.create_raven_workflow()
   elif sim._case._workflow == 'MOPED':
     sim.run_moped_workflow()
   elif sim._case._workflow == 'DISPATCHES':
     sim.run_dispatches_workflow()
-  # TODO someday? sim.run()
 
 
 if __name__ == '__main__':

@@ -74,7 +74,7 @@
           <opt_bounds>1,15</opt_bounds>
         </capacity>
         <initial_stored>
-          <fixed_value>1</fixed_value>
+          <fixed_value>0.5</fixed_value>
         </initial_stored>
         <RTE>0.9</RTE>
       </stores>

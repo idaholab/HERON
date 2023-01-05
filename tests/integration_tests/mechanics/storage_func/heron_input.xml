@@ -49,7 +49,7 @@
           <fixed_value>100</fixed_value>
         </capacity>
         <initial_stored>
-          <fixed_value>1</fixed_value>
+          <fixed_value>0.01</fixed_value>
         </initial_stored>
         <strategy>
           <Function method="tiered">storage_control</Function>

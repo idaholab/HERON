@@ -2,7 +2,7 @@
   <main>
     <networkx/>
     <dill>0.3.5</dill>
-    <dispatches source='pip' optional='True'>1.0</dispatches>
+    <dispatches source='pip' optional='True'>1.1.0</dispatches>
     <pyomo source='forge'/>
     <pyutilib source='forge'/>
     <glpk source='forge' skip_check='True'/>

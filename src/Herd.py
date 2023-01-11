@@ -80,9 +80,8 @@ DISPATCHES_MODEL_COMPONENT_META={
           "Expressions": 'h2_turbine_capacity',
         },
         "Dispatch":{
-          "Expressions": ['fs.h2_turbine.turbine.work_mechanical',
-            'fs.h2_turbine.compressor.work_mechanical'],
-          "Multiplier":  [-1, -1] # extra multiplier to ensure correct sign
+          "Expressions": ['fs.h2_turbine.work_mechanical'],
+          "Multiplier":  [-1] # extra multiplier to ensure correct sign
         },
       },
     },
@@ -92,9 +91,8 @@ DISPATCHES_MODEL_COMPONENT_META={
       "Cashflows":{
         "Dispatch":{
           "Expressions": ['fs.np_power_split.np_to_grid_port.electricity',
-            'fs.h2_turbine.turbine.work_mechanical',
-            'fs.h2_turbine.compressor.work_mechanical'],
-          "Multiplier":  [1e-3, -1e-6, -1e-6] # NOTE: h2 turbine is in W, convert to kW
+            'fs.h2_turbine.work_mechanical'],
+          "Multiplier":  [1e-3, -1e-6] # NOTE: h2 turbine is in W, convert to kW
         },
       },
     },
@@ -448,7 +446,7 @@ class HERD(MOPED):
       @ In, signal, string, name of signal to sample
       @ Out, synthetic_histories, dict, contains data from evaluated ROM
     """
-    if signal == 'price' and multiplier == -1:
+    if signal == 'Signal' and multiplier == -1:
       multiplier *= -1 # undoing negative multiplier from one step above, price != demand
 
     # NOTE self._sources[0]._var_names are the user assigned signal names in DataGenerators
@@ -517,7 +515,7 @@ class HERD(MOPED):
       @ In, multiplier, int/float, value to multiply synthetic history evaluations by
       @ Out, synthetic_data, dict, contains data from evaluated ROM
     """
-    if signal == 'price' and multiplier == -1:
+    if signal == 'Signal' and multiplier == -1:
       multiplier *= -1 # undoing negative multiplier from one step above, price != demand
 
     # NOTE self._sources[0]._var_names are the user assigned signal names in DataGenerators

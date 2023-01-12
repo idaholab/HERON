@@ -1139,11 +1139,12 @@ class HERD(MOPED):
       @ In, None
       @ Out, None
     """
-    # scenario probability weights
-    weights = self._time_sets['weights_scenarios']
+    ## scenario probability weights
+    # weights = self._time_sets['weights_scenarios'] # TODO: skipping for now
 
     # pyomo expression for full metric wtih scenario weights applied
-    Metric = np.sum( weights[n]*scenario['NPV'] for n, scenario in enumerate(self._metrics) )
+    N = getattr(self, "_num_samples")
+    Metric = self._metrics[-1]['NPV'] / N # TODO: temp fix, things are getting duplicated somewhere
 
     # set objective
     self._dmdl.obj = pyo.Objective(expr=Metric, sense=pyo.maximize)

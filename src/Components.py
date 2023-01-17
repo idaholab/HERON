@@ -896,9 +896,10 @@ class Storage(Interaction):
     # TODO unused, please implement ... :
     # descr = r"""the limiting charge/discharge rate of this storage. """
     # specs.addSub(ValuedParam.get_input_specs('rate'))
-    descr=r"""initial quantity of resource assumed to be present in the storage unit at the beginning
-          of a given calculation, in units of quantity (not rate). \default{0}. """
-    specs.addSub(vp_factory.make_input_specs('initial_stored', descr=descr))
+    descr=r"""indicates what percent of the storage unit is full at the start of each optimization sequence,
+              from 0 to 1. \default{0.0}. """
+    sub = vp_factory.make_input_specs('initial_stored', descr=descr)
+    specs.addSub(sub)
     descr=r"""control strategy for operating the storage. If not specified, uses a perfect foresight strategy. """
     specs.addSub(vp_factory.make_input_specs('strategy', allowed=['Function'], descr=descr))
     descr = r"""round-trip efficiency for this component as a scalar multiplier. \default{1.0}"""
@@ -938,11 +939,11 @@ class Storage(Interaction):
         self._set_valued_param('_strategy', comp_name, item, mode)
       elif item.getName() == 'RTE':
         self._sqrt_rte = np.sqrt(item.value)
-    assert len(self._stores) == 1, 'Multiple storage resources given for component "{}"'.format(comp_name)
+    assert len(self._stores) == 1, f'Multiple storage resources given for component "{comp_name}"'
     self._stores = self._stores[0]
     # checks and defaults
     if self._initial_stored is None:
-      self.raiseAWarning('Initial storage level for "{}" was not provided! Defaulting to 0.'.format(comp_name))
+      self.raiseAWarning(f'Initial storage level for "{comp_name}" was not provided! Defaulting to 0%.')
       # make a fake reader node for a 0 value
       vp = ValuedParamHandler('initial_stored')
       vp.set_const_VP(0.0)
@@ -1103,7 +1104,13 @@ class Storage(Interaction):
     res = self.get_resource()
     request = {res: None}
     meta['request'] = request
-    return self._initial_stored.evaluate(meta, target_var=res)[0][res]
+    pct = self._initial_stored.evaluate(meta, target_var=res)[0][res]
+    if not (0 <= pct <= 1):
+      self.raiseAnError(ValueError, f'While calculating initial storage level for storage "{self.tag}", ' +
+          f'an invalid percent was provided/calculated ({pct}). Initial levels should be between 0 and 1, inclusive.')
+    amt = pct * self.get_capacity(meta)[0][res]
+    return amt
+
 
 
 

@@ -6,6 +6,7 @@
 """
 import os.path as path
 import sys
+import time
 import copy
 import operator
 import pandas as pd
@@ -14,6 +15,8 @@ import pyomo.environ as pyo
 from pyomo.opt import SolverFactory
 import numpy as np
 import _utils as hutils
+from functools import partial
+import logging
 try:
   import ravenframework
 except ModuleNotFoundError:
@@ -23,14 +26,13 @@ except ModuleNotFoundError:
 from ravenframework.utils import xmlUtils
 from ravenframework.ROMExternal import ROMLoader
 
-
 # NOTE: these paths will change for next DISPATCHES release
 try:
   # Nuclear flowsheet function imports
-  from dispatches.models.nuclear_case.flowsheets.nuclear_flowsheet import (build_ne_flowsheet,
-                                                                           fix_dof_and_initialize)
+  from dispatches.case_studies.nuclear_case.nuclear_flowsheet import (build_ne_flowsheet,
+                                                                      fix_dof_and_initialize)
   # Import function for the construction of the multiperiod model
-  from dispatches.models.nuclear_case.flowsheets.multiperiod import build_multiperiod_design
+  from idaes.apps.grid_integration import MultiPeriodModel
   from idaes.core.solvers import get_solver
 except ModuleNotFoundError:
   print("DISPATCHES has not been found in current conda environment. This is only needed when "+
@@ -78,9 +80,8 @@ DISPATCHES_MODEL_COMPONENT_META={
           "Expressions": 'h2_turbine_capacity',
         },
         "Dispatch":{
-          "Expressions": ['fs.h2_turbine.turbine.work_mechanical',
-            'fs.h2_turbine.compressor.work_mechanical'],
-          "Multiplier":  [-1, -1] # extra multiplier to ensure correct sign
+          "Expressions": ['fs.h2_turbine.work_mechanical'],
+          "Multiplier":  [-1] # extra multiplier to ensure correct sign
         },
       },
     },
@@ -90,9 +91,8 @@ DISPATCHES_MODEL_COMPONENT_META={
       "Cashflows":{
         "Dispatch":{
           "Expressions": ['fs.np_power_split.np_to_grid_port.electricity',
-            'fs.h2_turbine.turbine.work_mechanical',
-            'fs.h2_turbine.compressor.work_mechanical'],
-          "Multiplier":  [1e-3, -1e-6, -1e-6] # NOTE: h2 turbine is in W, convert to kW
+            'fs.h2_turbine.work_mechanical'],
+          "Multiplier":  [1e-3, -1e-6] # NOTE: h2 turbine is in W, convert to kW
         },
       },
     },
@@ -127,6 +127,7 @@ class HERD(MOPED):
 
     # extra parameters for HERD
     self._dmdl = None # Pyomo model specific to DISPATCHES (different from _m)
+    self._dispatches_model_name = ''
     self._dispatches_model_template = None # Template of DISPATCHES Model for HERON comparison
     self._dispatches_model_comp_names = None # keys of the dispatches_model_template
     self._time_index_map = ['years', 'days', 'hours'] # index map to save time sets to dict later
@@ -134,7 +135,9 @@ class HERD(MOPED):
     self._results = None   # results from Dispatch solve
     self._num_samples = 0  # number of samples/scenarios/realizations for easier retrievability
     self._demand_meta = {} # saving demand data to separate dict (in case it is also sampled)
-    self._synth_histories = {}  # nested dict of all synthetic histories
+    self._synth_histories = {}  # nested dict of all generated synthetic histories
+    self._time_sets = {}
+    self._multiperiod_options = {}
 
     # Testing - using LMP signals from JSON script as used in example Jupyter notebook
     #    intended years to test out (2022-2031, use same data. 2032-2041, use same data)
@@ -150,7 +153,7 @@ class HERD(MOPED):
       @ In, None
       @ Out, None
     """
-    self._test_synth_years = [2022, 2032]
+    self._test_synth_years = [2022, ]
     self._test_proj_life = 20
     # range of years through intended project life (_test_synth_years contained within this set)
     #   year[0]-1 is the construction year
@@ -161,6 +164,9 @@ class HERD(MOPED):
     self._test_map_synth_to_proj = np.array([test_synth_years[sum(y>=test_synth_years) - 1]
                                             for y in self._test_project_year_range])
 
+  # ===================
+  # COLLECT METADATA
+  # ===================
   def buildEconSettings(self, verbosity=0):
     """
       Builds TEAL economic settings for running cashflows
@@ -355,8 +361,7 @@ class HERD(MOPED):
     micro_var_name = self._case.get_time_name() # e.g., Time
 
     # check that all required columns are present in dataframe
-    required_columns = ['RAVEN_sample_ID', macro_var_name, micro_var_name,
-                         signal, 'Cluster_weight']
+    required_columns = ['RAVEN_sample_ID', macro_var_name, micro_var_name, signal]
     assert np.all([rcol in data_frame.columns for rcol in required_columns])
 
     # data is the same for 2022-2031, and 2032-2041
@@ -368,15 +373,20 @@ class HERD(MOPED):
     years_map   = self._test_map_synth_to_proj # array => [2022, 2022, ...., 2032, 2032, ...]
 
     # calculating time set lengths from full CSV
-    n_pts = len( data_frame )
+    n_columns = len(data_frame.columns)
+    n_pts     = len( data_frame )
     n_scenarios  = len( np.unique( getattr(data_frame, 'RAVEN_sample_ID') ) )
     n_years_data = len( np.unique( getattr(data_frame, macro_var_name) ) )
     n_time       = len( np.unique( getattr(data_frame, micro_var_name) ) )
-    n_clusters   = int( n_pts / n_scenarios / n_years_data / n_time )
+    n_clusters   = int( n_pts / n_scenarios / n_years_data / n_time ) # if == 1, full year data
+
+    if 'Cluster_weight' not in data_frame.columns:
+      ones = np.ones(n_pts, dtype=int)
+      data_frame.insert(loc=n_columns, column="Cluster_weight", value=ones)
 
     # creating set data for time series
     set_scenarios  = range(self._num_samples)
-    set_days = range(1, int(n_clusters+1) )
+    set_days = range(1, int(n_clusters+1) ) if n_clusters != 1 else [1]
     set_time = range(1, int(n_time+1) )
 
     # create empty data dictionary
@@ -392,8 +402,10 @@ class HERD(MOPED):
 
       # loop through the year map + actual continuous project year range
       for y_map, y_actual in zip(years_map, years_range):
-        synthetic_data['signals'][real][y_actual]      = {}  # empty dict for this year signals
-        synthetic_data['weights_days'][y_actual] = {}
+        synthetic_data['signals'][real][y_actual] = {}  # empty dict for this year signals
+        synthetic_data['weights_days'][y_actual]  = {}
+
+        assert np.sum(df_realization[macro_var_name] == y_map) > 0
         df_year = df_realization.loc[df_realization[macro_var_name] == y_map] # subset of dataframe
 
         # loop through all clusters/days per year
@@ -434,7 +446,7 @@ class HERD(MOPED):
       @ In, signal, string, name of signal to sample
       @ Out, synthetic_histories, dict, contains data from evaluated ROM
     """
-    if signal == 'price' and multiplier == -1:
+    if signal == 'Signal' and multiplier == -1:
       multiplier *= -1 # undoing negative multiplier from one step above, price != demand
 
     # NOTE self._sources[0]._var_names are the user assigned signal names in DataGenerators
@@ -503,7 +515,7 @@ class HERD(MOPED):
       @ In, multiplier, int/float, value to multiply synthetic history evaluations by
       @ Out, synthetic_data, dict, contains data from evaluated ROM
     """
-    if signal == 'price' and multiplier == -1:
+    if signal == 'Signal' and multiplier == -1:
       multiplier *= -1 # undoing negative multiplier from one step above, price != demand
 
     # NOTE self._sources[0]._var_names are the user assigned signal names in DataGenerators
@@ -524,10 +536,12 @@ class HERD(MOPED):
     self._synth_histories[signal] = copy.deepcopy(synthetic_data)
     return synthetic_data
 
+  # ===========================
+  # DISPATCHES COMPATIBILITY
+  # ===========================
   def _check_dispatches_compatibility(self):
     """
-      Checks HERON components to match compatibility with available
-      DISPATCHES flowsheets.
+      Checks HERON components to match compatibility with available DISPATCHES flowsheets.
       @ In, None
       @ Out, None
     """
@@ -585,53 +599,40 @@ class HERD(MOPED):
       break
 
     self.raiseADebug(f'|HERON Case is compatible with {dName} DISPATCHES Model|')
+    self._dispatches_model_name = dName
     self._dispatches_model_template = DISPATCHES_MODEL_COMPONENT_META[dName] # NOTE: NOT using copy
     self._dispatches_model_comp_names = list(self._dispatches_model_template.keys())
 
-  def _add_sets_to_pyomo(self):
+  # ==============
+  # BUILD MODEL
+  # ==============
+  def _get_time_sets(self):
     """
-      Create new DISPATCHES Pyomo Model with available data
+      Getting time set data from a saved synthetic history
       @ In, None
-      @ Out, None
+      @ Out, time_sets, dict, time set information for simulation
     """
-    signals = list( self._synth_histories.keys() )
-
-    if 'dispatches-test' in signals:
-      market_synthetic_history = self._synth_histories['dispatches-test']
-    elif 'price' in signals:
-      market_synthetic_history = self._synth_histories['price']
-    elif 'Signal' in signals:
-      market_synthetic_history = self._synth_histories['Signal']
-    else:
-      raise IOError('Signal name not found in generated synthetic history dictionary')
+    # NOTE: assuming here that we're not importing both static histories and synthetic histories
+    #       therefore all time sets are presumably the same (generated through the same method)
+    signal_name = list(self._synth_histories.keys())[0] # from our assumption, any signal will do
+    market_synthetic_history = self._synth_histories[signal_name]
 
     # transferring information on Sets
     sets = market_synthetic_history['sets']
-    self._dmdl.set_time  = np.unique(sets['synth_hours'])
-    self._dmdl.set_days  = np.unique(sets['synth_days'])
-    self._dmdl.set_years = np.unique(sets['synth_years'])
-    self._dmdl.set_years_map = sets['map_synth2proj'] if self._test_mode else sets['synth_years']
-    self._dmdl.set_scenarios = sets['synth_scenarios']
-
-    # transferring information on LMP Synthetic History signal
-    self._dmdl.LMP = market_synthetic_history['signals']
+    time_sets = {}
+    time_sets['set_time']  = np.unique(sets['synth_hours'])
+    time_sets['set_days']  = np.unique(sets['synth_days'])
+    time_sets['set_years'] = np.unique(sets['synth_years'])
+    time_sets['set_years_map'] = sets['map_synth2proj'] if self._test_mode \
+                                                     else sets['synth_years']
+    time_sets['set_scenarios'] = sets['synth_scenarios']
+    time_sets['n_time_points'] = len(time_sets['set_time'])
 
     # transferring information on weightings
-    self._dmdl.weights_days = market_synthetic_history['weights_days']
-
+    time_sets['weights_days'] = market_synthetic_history['weights_days']
     # NOTE: equal probability for all scenarios
-    self._dmdl.weights_scenarios = {s:1/self._num_samples for s in range(self._num_samples)}
-
-  def _add_additional_constraints(self, mdl):
-    """
-      Method to add additional constraints not included in DISPATCHES flowsheet
-      @ In, mdl, Pyomo model
-      @ Out, None
-    """
-    @mdl.Constraint(self._dmdl.set_time, self._dmdl.set_days, self._dmdl.set_years)
-    def hydrogen_demand_constraint(blk, t, d, y):
-      return blk.period[t, d, y].fs.h2_tank.outlet_to_pipeline.flow_mol[0] \
-                <= self._demand_meta['h2_market']["Demand"] / 2.016e-3 # convert from kg to mol
+    time_sets['weights_scenarios'] = {s:1/self._num_samples for s in range(self._num_samples)}
+    return time_sets
 
   def _build_dispatches_model(self):
     """
@@ -640,34 +641,49 @@ class HERD(MOPED):
       @ Out, None
     """
     # add time sets to Pyomo model from given synthetic history and desired project lifetime
-    self._add_sets_to_pyomo()
+    self._time_sets = self._get_time_sets()
+    set_days      = self._time_sets['set_days']
+    set_years     = self._time_sets['set_years']
+    set_scenarios = self._time_sets['set_scenarios']
+    n_time_points = self._time_sets['n_time_points']
 
-    # pointing to necessary IDAES/DISPATCHES Physics models
-    mdl_flowsheet = build_ne_flowsheet # pointing to the imported DISPATCHES nuclear flowsheet
-    mdl_init  = fix_dof_and_initialize # pointing to the imported DISPATCHES fix/init method
-    mdl_unfix = self.unfixDof # we add a method to unfix certain DoFs based on DISPATCHES jupyter notebooks
+    # get extra arguments/options to pass into Multiperiod model for flowsheet
+    self._multiperiod_options = self._get_multiperiod_flowsheet_options()
+    init_options      = self._multiperiod_options['initialization_options']
+    unfix_dof_options = self._multiperiod_options['unfix_dof_options']
+
+    # wrapping fs options in a dict allow extraction downstream and keep staging_params intact
+    flowsheet_options = {'fs_options':self._multiperiod_options['flowsheet_options']}
+
+    # using partial to sneak in an extra dictionary input to the call
+    staging_params = self._multiperiod_options['staging_params']
+    process_func   = partial(self.flowsheet_block, staging_params=staging_params)
 
     # NOTE: within the build process, a tmp JSON file is created in wdir...
-    build_multiperiod_design(self._dmdl,
-                         flowsheet=mdl_flowsheet,
-                         initialization=mdl_init,
-                         unfix_dof=mdl_unfix,
-                         unfix_dof_options={},
-                         multiple_days=True,
-                         multiyear=True,
-                         stochastic=True,
-                         verbose=False)
+    self._dmdl = MultiPeriodModel(
+                    n_time_points=n_time_points,
+                    set_days=set_days,
+                    set_years=set_years,
+                    set_scenarios=set_scenarios,
+                    process_model_func=process_func,
+                    initialization_func=fix_dof_and_initialize,
+                    unfix_dof_func=self.unfixDof,
+                    linking_variable_func=self._get_linking_variable_pairs,
+                    flowsheet_options=flowsheet_options,
+                    initialization_options=init_options,
+                    unfix_dof_options=unfix_dof_options,
+                    use_stochastic_build=True,
+                    outlvl=logging.INFO,
+                  )
 
     # list of initialized TEAL components; filters out HERON components that don't have cash flows
     teal_components, heron_components = self._initialize_cash_flows()
 
     # looping through all sampled scenarios
-    for s in self._dmdl.set_scenarios:
-      # Build the connecting constraints
-      self.build_connecting_constraints(self._dmdl.scenario[s],
-                                  set_time=self._dmdl.set_time,
-                                  set_days=self._dmdl.set_days,
-                                  set_years=self._dmdl.set_years)
+    for s in self._time_sets['set_scenarios']:
+
+      # Add first-stage variables
+      self._add_capacity_variables(self._dmdl.scenario[s])
 
       # Hydrogen demand constraint (Divide the RHS by the molecular mass to convert kg/s to mol/s)
       self._add_additional_constraints(self._dmdl.scenario[s])
@@ -685,6 +701,96 @@ class HERD(MOPED):
       self._metrics.append( scenario_metric )
       del scenario_metric
 
+  def _get_multiperiod_flowsheet_options(self):
+    """
+      Getting extra arguments/options for flowsheet, initialization, and unfix_DOF methods
+      To be used within MultiPeriodModel init.
+      @ In, None
+      @ Out, multiperiod_options, dict, extra arguments for flowsheet and ancilliary methods
+    """
+    multiperiod_options = {}
+    multiperiod_options['flowsheet_options'] = {"np_capacity": 1000}
+    multiperiod_options['initialization_options'] = {
+                                "split_frac_grid": 0.8,
+                                "tank_holdup_previous": 0,
+                                "flow_mol_to_pipeline": 10,
+                                "flow_mol_to_turbine": 10,
+                              }
+    multiperiod_options['unfix_dof_options'] = {}
+    multiperiod_options['staging_params'] = {}
+
+    return multiperiod_options
+
+  #==== METHODS CALLED THROUGH IDAES ====#
+  def flowsheet_block(self, mdl, fs_options, staging_params):
+    """
+      Staging area for flowsheet call through the IDAES MultiPeriodModel class.
+      Note that the `staging_params` input is not part of the MultiPeriodModel call; it is
+      snuck in using `functools.partial` from the HERD call.
+
+      This is partially taken from
+      `dispatches.dispatches.case_studies.renewables_case.wind_battery_LMP.py`,
+      from the `wind_battery_mp_block( )` method.
+      @ In, mdl, Pyomo ConcreteModel or Pyomo BlockData object
+      @ In, fs_options, dict, arguments for flowsheet
+      @ In, staging_params, dict, extra arguments not intended for flowsheet
+      @ Out, None
+    """
+    if isinstance(mdl, pyo.ConcreteModel):
+      # building a simple model for the initialization method
+      mdl = build_ne_flowsheet(mdl, **fs_options)
+    else:
+      # this means mdl is a _BlockData object, being called from `build_stochastic_multi_period` for
+      # a given period (e.g., hr:10, d:2, yr:2022)
+      if 'pyo_model' not in staging_params.keys():
+        # if this is the first call, creates a Pyomo model with flowsheet attributes
+        # then saves it to the staging_params dictionary.
+        staging_params['pyo_model'] = build_ne_flowsheet(**fs_options)
+      # on subsequent calls, it just pulls the saved model, clones it, and transfers
+      # attributes to current period model
+      mdl.transfer_attributes_from(staging_params['pyo_model'].clone())
+
+  def _get_linking_variable_pairs(self, mdl_start, mdl_end):
+    """
+      Yield pairs of variables that need to be connected across time periods.
+
+      This is taken from `multiperiod_design_pricetaker.ipynb` in the DISPATCHES repository
+      found in `dispatches/dispatches/case_studies/nuclear_case/`
+      (currently not callable, so replicated here).
+      @ In, mdl_start, Pyomo model, current time step
+      @ In, mdl_end, Pyomo model, next time step
+      @ Out, pairs, list, pair of Pyomo expressions to link
+    """
+    pairs = [(mdl_start.fs.h2_tank.tank_holdup[0],
+              mdl_end.fs.h2_tank.tank_holdup_previous[0])]
+    return pairs
+
+  #==== METHODS FOR FLOWSHEET-SPECIFIC PYOMO PROCESSES ====#
+  def _add_additional_constraints(self, mdl):
+    """
+      Method to add additional constraints not included in DISPATCHES flowsheet
+
+      Some content is taken from `multiperiod_design_pricetaker.ipynb` in the DISPATCHES repository
+      found in `dispatches/dispatches/case_studies/nuclear_case/`
+      (currently not callable, so replicated here).
+      @ In, mdl, Pyomo scenario model
+      @ Out, None
+    """
+    set_time  = mdl.parent_block().set_time
+    set_days  = mdl.parent_block().set_days
+    set_years = mdl.parent_block().set_years
+
+    # Set initial holdup for each day (Assumed to be zero at the beginning of each day)
+    for y in set_years:
+      for d in set_days:
+        mdl.period[1, d, y].fs.h2_tank.tank_holdup_previous.fix(0)
+
+    @mdl.Constraint(set_time, set_days, set_years)
+    def hydrogen_demand_constraint(blk, t, d, y):
+      return blk.period[t, d, y].fs.h2_tank.outlet_to_pipeline.flow_mol[0] \
+                <= self._demand_meta['h2_market']["Demand"] / 2.016e-3 # convert from kg to mol
+
+  #==== METHODS CREATING TEAL CASHFLOWS ====#
   def _initialize_cash_flows(self):
     """
       Initialize and populate TEAL cash flows for all components
@@ -823,7 +929,7 @@ class HERD(MOPED):
     n_years = len(self._dmdl.set_years)
     n_hours_per_year = n_hours * n_days # sometimes number of days refers to clusters < 365
 
-    set_years_map = np.hstack([0, self._dmdl.set_years_map])
+    set_years_map = np.hstack([0, self._time_sets['set_years_map'] ])
 
     # template array for holding dispatch Pyomo expressions/objects
     dispatch_array = np.zeros((project_life, n_hours_per_year), dtype=object)
@@ -840,7 +946,8 @@ class HERD(MOPED):
     dispatch_strs  = dispatch_dict['Expressions']
 
     # time indeces for DISPATCHES, as array of tuples
-    indeces = np.array([tuple(i) for i in mdl.period_index], dtype="i,i,i")
+    set_period = mdl.parent_block().set_period
+    indeces = np.array([tuple(i) for i in set_period], dtype="i,i,i")
     time_shape = (n_years, n_hours_per_year) # reshaping the tuples array to match HERON dispatch
     indeces = indeces.reshape(time_shape)
 
@@ -866,7 +973,7 @@ class HERD(MOPED):
 
         # getting weights for each day/cluster
         dy, yr = ind[1:]
-        weight = self._dmdl.weights_days[yr][dy]  # extracting weight for year + day
+        weight = self._time_sets['weights_days'][yr][dy]  # extracting weight for year + day
 
         # storing individual Pyomo dispatch
         dispatch_array[p, time] = dispatch_driver * weight
@@ -908,12 +1015,16 @@ class HERD(MOPED):
 
     return reshaped_alpha
 
+  # =======================
+  # SOLVING OPTIMIZATION
+  # =======================
   def unfixDof(self, ps, **kwargs):
     """
       This function unfixes a few degrees of freedom for optimization.
-      This particular method is taken from the DISPATCHES jupyter notebook
-      found in "dispatches/dispatches/models/nuclear_case/flowsheets"
-      titled "multiperiod_design_pricetaker"
+
+      This is taken from `multiperiod_design_pricetaker.ipynb` in the DISPATCHES repository
+      found in `dispatches/dispatches/case_studies/nuclear_case/`
+      (currently not callable, so replicated here).
       @In, ps, Pyomo model for period within a given scenario
       @In, kwargs, extra arguments for flowsheet parameters
       @ Out, None
@@ -951,60 +1062,51 @@ class HERD(MOPED):
 
     ps.fs.mixer.hydrogen_feed.flow_mol[0].setlb(0.001)
 
-  def build_connecting_constraints(self, scenario, set_time, set_days, set_years):
+  def _add_capacity_variables(self, mdl):
     """
-      This function declares the first-stage variables or design decisions,
-      adds constraints that ensure that the operational variables never exceed their
-      design values, and adds constraints connecting variables at t - 1 and t
-      @ In, scenario, Pyomo model for given scenario
-      @ In, set_time, list of hours in day
-      @ In, set_days, list of days/clusters per year
-      @ In, set_years, list of years per scenario
+      Setting first-stage capacity variables for model.
+      Also sets upper bound constraints on resource production not exceeding capacity.
+
+      This is taken from `multiperiod_design_pricetaker.ipynb` in the DISPATCHES repository
+      found in `dispatches/dispatches/case_studies/nuclear_case/`
+      (currently not callable, so replicated here).
+      @ In, mdl, Pyomo model
       @ Out, None
     """
+    set_period = mdl.parent_block().set_period
+
     # Declare first-stage variables (Design decisions)
-    scenario.pem_capacity = pyo.Var(within=pyo.NonNegativeReals,
-                                    doc="Maximum capacity of the PEM electrolyzer (in kW)")
-    scenario.tank_capacity = pyo.Var(within=pyo.NonNegativeReals,
-                                     doc="Maximum holdup of the tank (in mol)")
-    scenario.h2_turbine_capacity = pyo.Var(within=pyo.NonNegativeReals,
-                                           doc="Maximum power output from the turbine (in W)")
+    mdl.pem_capacity = pyo.Var(within=pyo.NonNegativeReals,
+                                doc="Maximum capacity of the PEM electrolyzer (in kW)" )
+    mdl.tank_capacity = pyo.Var(within=pyo.NonNegativeReals,
+                                 doc="Maximum holdup of the tank (in mol)")
+    mdl.h2_turbine_capacity = pyo.Var(within=pyo.NonNegativeReals,
+                                       doc="Maximum power output from the turbine (in W)")
 
-    # Ensure that the electricity to the PEM elctrolyzer does not exceed the PEM capacity
-    @scenario.Constraint(set_time, set_days, set_years)
-    def pem_capacity_constraint(blk, t, d, y):
-      return blk.period[t, d, y].fs.pem.electricity[int(0)] <= scenario.pem_capacity
+    # initializing capacity constraints using set period from block
+    mdl.pem_capacity_constraint = pyo.Constraint(set_period)
+    mdl.tank_capacity_constraint = pyo.Constraint(set_period)
+    mdl.turbine_capacity_constraint = pyo.Constraint(set_period)
 
-    # Ensure that the final tank holdup does not exceed the tank capacity
-    @scenario.Constraint(set_time, set_days, set_years)
-    def tank_capacity_constraint(blk, t, d, y):
-      return blk.period[t, d, y].fs.h2_tank.tank_holdup[int(0)] <= scenario.tank_capacity
-
-    # Ensure that the power generated by the turbine does not exceed the turbine capacity
-    @scenario.Constraint(set_time, set_days, set_years)
-    def turbine_capacity_constraint(blk, t, d, y):
-      return (
-          - blk.period[t, d, y].fs.h2_turbine.turbine.work_mechanical[int(0)]
-          - blk.period[t, d, y].fs.h2_turbine.compressor.work_mechanical[int(0)] <=
-          scenario.h2_turbine_capacity  )
-
-    # Connect the initial tank holdup at time t with the final tank holdup at time t - 1
-    @scenario.Constraint(set_time, set_days, set_years)
-    def tank_holdup_constraints(blk, t, d, y):
-      if t == 1:
-        # Each day begins with an empty tank
-        return (
-          blk.period[t, d, y].fs.h2_tank.tank_holdup_previous[int(0)] == 0  )
-      else:
-        # Initial holdup at time t = final holdup at time t - 1
-        return (
-          blk.period[t, d, y].fs.h2_tank.tank_holdup_previous[int(0)] ==
-          blk.period[t - 1, d, y].fs.h2_tank.tank_holdup[int(0)]   )
+    for t in set_period:
+      # Ensure that the electricity to the PEM elctrolyzer does not exceed the PEM capacity
+      mdl.pem_capacity_constraint.add(t,
+          mdl.period[t].fs.pem.electricity[0] <= mdl.pem_capacity)
+      # Ensure that the final tank holdup does not exceed the tank capacity
+      mdl.tank_capacity_constraint.add(t,
+          mdl.period[t].fs.h2_tank.tank_holdup[0] <= mdl.tank_capacity)
+      # Ensure that the power generated by the turbine does not exceed the turbine capacity
+      mdl.turbine_capacity_constraint.add(t,
+          -mdl.period[t].fs.h2_turbine.work_mechanical[0] <= mdl.h2_turbine_capacity)
 
   def _add_non_anticipativity_constraints(self):
     """
       Adding non-anticipativity constraints, ensuring that all capacity variables are the same
       for all scenarios.
+
+      Content is taken from `multiperiod_design_pricetaker.ipynb` in the DISPATCHES repository
+      found in `dispatches/dispatches/case_studies/nuclear_case/`
+      (currently not callable, so replicated here).
       @ In, None
       @ Out, None
     """
@@ -1037,11 +1139,12 @@ class HERD(MOPED):
       @ In, None
       @ Out, None
     """
-    # scenario probability weights
-    weights = self._dmdl.weights_scenarios
+    ## scenario probability weights
+    # weights = self._time_sets['weights_scenarios'] # TODO: skipping for now
 
     # pyomo expression for full metric wtih scenario weights applied
-    Metric = np.sum( weights[n]*scenario['NPV'] for n, scenario in enumerate(self._metrics) )
+    N = getattr(self, "_num_samples")
+    Metric = self._metrics[-1]['NPV'] / N # TODO: temp fix, things are getting duplicated somewhere
 
     # set objective
     self._dmdl.obj = pyo.Objective(expr=Metric, sense=pyo.maximize)
@@ -1091,12 +1194,16 @@ class HERD(MOPED):
     output_data = pd.DataFrame([values], columns=columns)
     output_data.to_csv(f'opt_solution__{case_name}.csv')
 
+  # ================
+  # MAIN WORKFLOW
+  # ================
   def run(self):
     """
       Runs the DISPATCHES workflow
       @ In, None
       @ Out, None
     """
+    time_start = time.time()
     # original workflow from MOPED
     self.buildEconSettings()  # overloaded method
     self.buildComponentMeta() # overloaded method
@@ -1108,9 +1215,10 @@ class HERD(MOPED):
     self._get_demand_data()
 
     # building the Pyomo model using DISPATCHES
-    self._dmdl = pyo.ConcreteModel(name=self._case.name)
     self._build_dispatches_model()
     self._add_non_anticipativity_constraints()
     self._add_objective()
     self._solve_dispatches_model()
     self._export_results()
+    time_end = time.time()
+    print(f'Total Elapsed Time: {time_end-time_start} s')

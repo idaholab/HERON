@@ -138,7 +138,7 @@ class HERON(Base):
     """
     # checking to see if DISPATCHES is properly installed
     try:
-      import dispatches.models as tmp_lib
+      import dispatches.case_studies as tmp_lib
       del tmp_lib
     except ModuleNotFoundError as mnferr:
       raise IOError('DISPATCHES has not been found in current conda environment.' +

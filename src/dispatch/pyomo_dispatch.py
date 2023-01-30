@@ -240,7 +240,7 @@ class Pyomo(Dispatcher):
     C = np.arange(0, len(components), dtype=int) # indexes component
     R = np.arange(0, len(resources), dtype=int) # indexes resources
     # T = np.arange(start_index, end_index, dtype=int) # indexes resources
-    T = np.arange(0, len(time), dtype=int) # indexes resources
+    T = np.arange(0, len(time), dtype=int) # indexes time
     m.C = pyo.Set(initialize=C)
     m.R = pyo.Set(initialize=R)
     m.T = pyo.Set(initialize=T)
@@ -461,7 +461,7 @@ class Pyomo(Dispatcher):
     ## Method 2: set variable bounds directly --> TODO more work needed, but would be nice
     # self._create_capacity(m, comp, prod_name, meta)    # capacity constraints
     # transfer function governs input -> output relationship
-    self._create_transfer(m, comp, prod_name)
+    self._create_transfer(m, comp, meta, prod_name)
     # ramp rates TODO ## INCLUDING previous-time boundary condition TODO
 
   def _create_production_variable(self, m, comp, meta, tag=None, add_bounds=True, **kwargs):
@@ -469,6 +469,7 @@ class Pyomo(Dispatcher):
       Creates production pyomo variable object for a component
       @ In, m, pyo.ConcreteModel, associated model
       @ In, comp, HERON Component, component to make production variables for
+      @ In, meta, dict, dictionary of state variables
       @ In, tag, str, optional, if not None then name will be component_[tag]; otherwise "production"
       @ In, add_bounds, bool, optional, if True then determine and set bounds for variable
       @ In, kwargs, dict, optional, passalong kwargs to pyomo variable
@@ -569,29 +570,58 @@ class Pyomo(Dispatcher):
       mins.append(minimum)
     return caps, mins
 
-  def _create_transfer(self, m, comp, prod_name):
+  def _create_transfer(self, m, comp, meta, prod_name):
     """
       Creates pyomo transfer function constraints
       @ In, m, pyo.ConcreteModel, associated model
       @ In, comp, HERON Component, component to make variables for
+      @ In, meta, dict, dictionary of state variables
       @ In, prod_name, str, name of production variable
       @ Out, None
     """
     name = comp.name
-    # transfer functions
-    # e.g. 2A + 3B -> 1C + 2E
-    # get linear coefficients
-    # TODO this could also take a transfer function from an external Python function assuming
-    #    we're careful about how the expression-vs-float gets used
-    #    and figure out how to handle multiple ins, multiple outs
-    ratios = self._get_transfer_coeffs(m, comp)
-    ref_r, ref_name, _ = ratios.pop('__reference', (None, None, None))
-    for resource, ratio in ratios.items():
-      r = m.resource_index_map[comp][resource]
-      rule_name = '{c}_{r}_{fr}_transfer'.format(c=name, r=resource, fr=ref_name)
-      rule = lambda mod, t: self._transfer_rule(ratio, r, ref_r, prod_name, mod, t)
-      constr = pyo.Constraint(m.T, rule=rule)
-      setattr(m, rule_name, constr)
+    transfer = comp.get_interaction().get_transfer()  # get the transfer ValuedParam, if any
+    # if no transfer found, do nothing
+    if transfer is not None:
+      # transfer functions: either Linear or an external Function
+      if transfer.type == 'Linear':
+        # e.g. 2A + 3B -> 1C + 2E
+        # get linear coefficients
+        ratios = self._get_transfer_coeffs(m, comp)
+        ref_r, ref_name, _ = ratios.pop('__reference', (None, None, None))
+        for resource, ratio in ratios.items():
+          r = m.resource_index_map[comp][resource]
+          rule_name = '{c}_{r}_{fr}_transfer'.format(c=name, r=resource, fr=ref_name)
+          rule = lambda mod, t: self._transfer_rule(ratio, r, ref_r, prod_name, mod, t)
+          constr = pyo.Constraint(m.T, rule=rule)
+          setattr(m, rule_name, constr)
+      elif transfer.type == 'Function':
+        # TODO this could also take a transfer function from an external Python function assuming
+        #    we're careful about how the expression-vs-float gets used
+        #    and figure out how to handle multiple ins, multiple outs
+        # NOTE: We can implement an external function call for the transfer constraints in 2 ways:
+        #    1) The user can provide coefficient(s) calculated in a custom way (hard mode)
+        #    2) The user can provide the constraint(s) already calculated (expert mode)
+        # HACK how do we differentiate? for now, a check after function call to see if return type
+        #    is a dict, if not is it a function/lambda supposed to be used as a rule?
+        #    - Initial thought was make it a "strategy" like Storage but this is not that. Still want variable usage
+        # TODO: Method (1) will require a check to see if all resources have an associated coeff
+        #    - Output should be a dictionary
+        #    - User will need to provide `{resource}_{ref_name}` as dict key
+        # TODO: Method (2) will return a Pyomo expression/constraint.
+        #    - ???: do we `setattr` here or let user do it? Leaning towards here...
+        #    - Regardless, user will need to populate each rule name with resource (template func provided)
+        rule_name = lambda name, resource, ref_name: f'{name}_{resource}_{ref_name}_transfer'
+        meta['request'] = {'component': comp,
+                           'time': m.Times,
+                           'model':m,
+                           'rule_name_template': rule_name}
+        coeffs = transfer.evaluate(meta)[0]['production']
+        if isinstance(coeffs) == dict:
+          pass
+        else:
+          pass
+
 
   def _create_storage(self, m, comp, initial_storage, meta):
     """
@@ -717,8 +747,6 @@ class Pyomo(Dispatcher):
     """
     name = comp.name
     transfer = comp.get_interaction().get_transfer()  # get the transfer ValuedParam, if any
-    if transfer is None:
-      return {}
     coeffs = transfer.get_coefficients() # linear transfer coefficients, dict as {resource: coeff}, SIGNS MATTER
     # it's all about ratios -> store as ratio of resource / first resource (arbitrary)
     first_r = None

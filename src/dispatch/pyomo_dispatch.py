@@ -616,11 +616,11 @@ class Pyomo(Dispatcher):
                            'time': m.Times,
                            'model':m,
                            'rule_name_template': rule_name}
-        coeffs = transfer.evaluate(meta)[0]['production']
-        if isinstance(coeffs) == dict:
-          pass
-        else:
-          pass
+        m = transfer.evaluate(meta)[0]['model']
+        # if isinstance(coeffs) == dict:
+        #   pass
+        # else:
+        #   pass
 
 
   def _create_storage(self, m, comp, initial_storage, meta):

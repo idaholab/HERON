@@ -876,9 +876,9 @@ class Case(Base):
     """
     # load templates
     template_class = self._load_template()
-    inner, outer, cash = template_class.createWorkflow(self, components, sources)
+    inner, outer = template_class.createWorkflow(self, components, sources)
 
-    template_class.writeWorkflow((inner, outer, cash), loc)
+    template_class.writeWorkflow((inner, outer), loc)
 
   #### UTILITIES ####
   def _load_template(self):

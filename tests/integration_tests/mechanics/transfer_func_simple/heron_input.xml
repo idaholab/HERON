@@ -1,0 +1,103 @@
+<HERON>
+  <TestInfo>
+    <name>TransferFuncSimple</name>
+    <author>sotogj</author>
+    <created>2023-02-06</created>
+    <description>
+      Tests using a resource transfer functions to determine resource production via a Function
+      rather than a Linear definition.
+    </description>
+    <classesTested>HERON</classesTested>
+  </TestInfo>
+
+  <Case name="Sweep_Runs">
+    <mode>sweep</mode>
+    <verbosity>debug</verbosity>
+    <num_arma_samples>3</num_arma_samples>
+    <time_discretization>
+      <time_variable>Time</time_variable>
+      <end_time>2</end_time>
+      <num_steps>21</num_steps>
+    </time_discretization>
+    <economics>
+      <ProjectTime>3</ProjectTime>
+      <DiscountRate>0.08</DiscountRate>
+      <tax>0.0</tax>
+      <inflation>0.0</inflation>
+      <verbosity>50</verbosity>
+    </economics>
+    <dispatcher>
+      <pyomo/>
+    </dispatcher>
+  </Case>
+
+  <Components>
+    <Component name="steamer">
+      <produces resource="steam" dispatch="fixed">
+        <capacity resource="steam">
+          <sweep_values>1, 100</sweep_values>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>27</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="steam_storage">
+      <stores resource="steam" dispatch="independent">
+        <capacity resource="steam">
+          <fixed_value>100</fixed_value>
+        </capacity>
+        <initial_stored>
+          <fixed_value>0.01</fixed_value>
+        </initial_stored>
+      </stores>
+      <economics>
+        <lifetime>10</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="generator">
+      <produces resource="electricity" dispatch="independent">
+        <consumes>steam</consumes>
+        <capacity resource="steam">
+          <fixed_value>-1000</fixed_value>
+        </capacity>
+        <transfer>
+          <Function method="temp_dependent_efficiency">transfer_func</Function>
+        </transfer>
+      </produces>
+      <economics>
+        <lifetime>27</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="electr_market">
+      <demands resource="electricity" dispatch="dependent">
+        <capacity>
+          <fixed_value>-1e200</fixed_value>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>30</lifetime>
+        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <fixed_value>0.5</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+  </Components>
+
+  <DataGenerators>
+    <ARMA name='Price' variable="Signal">%BASE_WORKING_DIR%/../../../ARMA/Sine/arma.pk</ARMA>
+    <!-- <ARMA name='synth' variable="SOLAR">%BASE_WORKING_DIR%/../../../ARMA/NYISO/nyiso_arma_2yr.pk</ARMA> we will call this in Function -->
+    <Function name="transfer_func">transfers.py</Function>
+  </DataGenerators>
+
+</HERON>

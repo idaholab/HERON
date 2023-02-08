@@ -579,49 +579,60 @@ class Pyomo(Dispatcher):
       @ In, prod_name, str, name of production variable
       @ Out, None
     """
+    # NOTE: We can implement an external function call for the transfer constraints in 2 ways:
+    #    1) The user can provide coefficient(s) calculated in a custom way (hard mode)
+    #    2) The user can provide the constraint(s) already calculated (expert mode)
+
     name = comp.name
     transfer = comp.get_interaction().get_transfer()  # get the transfer ValuedParam, if any
     # if no transfer found, do nothing
-    if transfer is not None:
-      # transfer functions: either Linear or an external Function
-      if transfer.type == 'Linear':
-        # e.g. 2A + 3B -> 1C + 2E
-        # get linear coefficients
-        ratios = self._get_transfer_coeffs(m, comp)
-        ref_r, ref_name, _ = ratios.pop('__reference', (None, None, None))
-        for resource, ratio in ratios.items():
+    if transfer is None:
+      return
+    # transfer functions: either Linear or an external Function
+    if transfer.type == 'Linear':
+      # e.g. 2A + 3B -> 1C + 2E
+      # get linear coefficients
+      ratios = self._get_transfer_coeffs(m, comp)
+      ref_r, ref_name, _ = ratios.pop('__reference', (None, None, None))
+      for resource, ratio in ratios.items():
+        r = m.resource_index_map[comp][resource]
+        rule_name = '{c}_{r}_{fr}_transfer'.format(c=name, r=resource, fr=ref_name)
+        rule = lambda mod, t: self._transfer_rule(ratio, r, ref_r, prod_name, mod, t)
+        constr = pyo.Constraint(m.T, rule=rule)
+        setattr(m, rule_name, constr)
+    # calling an external Function for transfer
+    elif transfer.type == 'Function':
+      rule_name = lambda name, resource, ref_name: f'{name}_{resource}_{ref_name}_transfer'
+      # setting up input dictionary with useful parameters
+      meta['request'] = {'component': comp,
+                          'time': m.Times,
+                          'rule_name_template': rule_name,
+                          'T_index': m.T,
+                          'r_index': m.resource_index_map}
+      # call method, extract 'transfers' key from output dictionary
+      res_transfers = transfer.evaluate(meta)[0]['transfers']
+      # ensure that user reported back an output type
+      assert 'ratio_type' in res_transfers.keys()
+      if res_transfers['ratio_type'] == 'lists':
+        # User has decided to specify a list of ratios indexed by T for given producer
+        ratios = res_transfers['lists']
+        ref_name = ratios.pop('__reference', None)
+        ref_r = m.resource_index_map[comp][ref_name]
+        for resource, ratio_list in ratios.items():
+          assert len(ratio_list) == len(m.T._ordered_values)
           r = m.resource_index_map[comp][resource]
           rule_name = '{c}_{r}_{fr}_transfer'.format(c=name, r=resource, fr=ref_name)
-          rule = lambda mod, t: self._transfer_rule(ratio, r, ref_r, prod_name, mod, t)
+          rule = lambda mod, t: self._transfer_rule_with_varying_ratio(ratio_list, r, ref_r, prod_name, mod, t)
           constr = pyo.Constraint(m.T, rule=rule)
           setattr(m, rule_name, constr)
-      elif transfer.type == 'Function':
-        # TODO this could also take a transfer function from an external Python function assuming
-        #    we're careful about how the expression-vs-float gets used
-        #    and figure out how to handle multiple ins, multiple outs
-        # NOTE: We can implement an external function call for the transfer constraints in 2 ways:
-        #    1) The user can provide coefficient(s) calculated in a custom way (hard mode)
-        #    2) The user can provide the constraint(s) already calculated (expert mode)
-        # HACK how do we differentiate? for now, a check after function call to see if return type
-        #    is a dict, if not is it a function/lambda supposed to be used as a rule?
-        #    - Initial thought was make it a "strategy" like Storage but this is not that. Still want variable usage
-        # TODO: Method (1) will require a check to see if all resources have an associated coeff
-        #    - Output should be a dictionary
-        #    - User will need to provide `{resource}_{ref_name}` as dict key
-        # TODO: Method (2) will return a Pyomo expression/constraint.
-        #    - ???: do we `setattr` here or let user do it? Leaning towards here...
-        #    - Regardless, user will need to populate each rule name with resource (template func provided)
-        rule_name = lambda name, resource, ref_name: f'{name}_{resource}_{ref_name}_transfer'
-        meta['request'] = {'component': comp,
-                           'time': m.Times,
-                           'model':m,
-                           'rule_name_template': rule_name}
-        m = transfer.evaluate(meta)[0]['model']
-        # if isinstance(coeffs) == dict:
-        #   pass
-        # else:
-        #   pass
-
+      elif res_transfers['ratio_type'] == 'custom_pyomo':
+        # User has decided to define the constraints themselves
+        print("No guarantees here") # FIXME
+        pyomo_objects = res_transfers['custom_pyomo']
+        for pyo_name, pyo_obj in pyomo_objects.items():
+          setattr(m, pyo_name, pyo_obj)
+      else:
+        raise TypeError
 
   def _create_storage(self, m, comp, initial_storage, meta):
     """
@@ -968,6 +979,20 @@ class Pyomo(Dispatcher):
     """
     prod = getattr(m, prod_name)
     return prod[r, t] == prod[ref_r, t] * ratio # TODO tolerance??
+
+  def _transfer_rule_with_varying_ratio(self, ratio_list, r, ref_r, prod_name, m, t):
+    """
+      Constructs transfer function constraints using time-varying ratio
+      @ In, ratio_list, list, ratio for resource to nominal first resource, indexed by t
+      @ In, r, int, index of transfer resource
+      @ In, ref_r, int, index of reference resource
+      @ In, prod_name, str, name of production variable
+      @ In, m, pyo.ConcreteModel, associated model
+      @ In, t, int, index of time variable
+      @ Out, transfer, bool, transfer ratio check
+    """
+    prod  = getattr(m, prod_name)
+    return prod[r, t] == prod[ref_r, t] * ratio_list[t] # TODO tolerance??
 
   ### DEBUG
   def _debug_pyomo_print(self, m):

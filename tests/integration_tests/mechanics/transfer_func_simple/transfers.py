@@ -13,7 +13,10 @@ INTCPT = 70
 
 def temp_dependent_efficiency(data, meta):
   """
-    Determines transfer coefficient between steam and electricity (i.e. efficiency) as a time series
+    Determines transfer coefficient between steam and electricity (i.e. efficiency) as a time series.
+    This example uses a Sine wave as a proxy for varying temperature throughout the day and simulates
+    decrease in power cycle efficiency when air temperatures are high (for an air-cooled plant).
+
     NOTE: the information within `data` should be in a specific format. User must specify what
     data type is being returned in the `ratio_type` entry:
       - data['ratio_type'] : str, could be either 'lists' **or** 'custom_pyomo'

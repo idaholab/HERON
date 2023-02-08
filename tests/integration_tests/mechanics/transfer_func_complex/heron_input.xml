@@ -1,12 +1,12 @@
 <HERON>
   <TestInfo>
-    <name>TransferFuncSimple</name>
+    <name>TransferFuncComplex</name>
     <author>sotogj</author>
-    <created>2023-02-06</created>
+    <created>2023-02-08</created>
     <description>
       Tests using a resource transfer functions to determine resource production via a Function
-      rather than a Linear definition. Within this function, user has the option to define linear
-      transfer ratios between resources as a list indexed by time (or the pivotParameter).
+      rather than a Linear definition. Within this function, user has the option to create their
+      own Pyomo Constraints.
     </description>
     <classesTested>HERON</classesTested>
   </TestInfo>
@@ -65,7 +65,7 @@
           <fixed_value>-1000</fixed_value>
         </capacity>
         <transfer>
-          <Function method="temp_dependent_efficiency">transfer_func</Function>
+          <Function method="storage_dependent_efficiency">transfer_func</Function>
         </transfer>
       </produces>
       <economics>

@@ -613,8 +613,8 @@ class Pyomo(Dispatcher):
       res_transfers = transfer.evaluate(meta)[0]['transfers']
       # ensure that user reported back an output type
       assert 'ratio_type' in res_transfers.keys()
+      # User has decided to specify a list of ratios indexed by T for given producer
       if res_transfers['ratio_type'] == 'lists':
-        # User has decided to specify a list of ratios indexed by T for given producer
         ratios = res_transfers['lists']
         ref_name = ratios.pop('__reference', None)
         ref_r = m.resource_index_map[comp][ref_name]
@@ -625,8 +625,8 @@ class Pyomo(Dispatcher):
           rule = lambda mod, t: self._transfer_rule_with_varying_ratio(ratio_list, r, ref_r, prod_name, mod, t)
           constr = pyo.Constraint(m.T, rule=rule)
           setattr(m, rule_name, constr)
+      # User has decided to define the constraints themselves
       elif res_transfers['ratio_type'] == 'custom_pyomo':
-        # User has decided to define the constraints themselves
         print("No guarantees here") # FIXME
         pyomo_objects = res_transfers['custom_pyomo']
         for pyo_name, pyo_obj in pyomo_objects.items():

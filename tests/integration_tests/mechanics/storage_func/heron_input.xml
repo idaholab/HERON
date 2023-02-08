@@ -112,7 +112,7 @@
             <multiplier>-1</multiplier>
           </driver>
           <reference_price>
-            <Function method="flex_price">transfers</Function>
+            <Function method="flex_price">flex</Function>
           </reference_price>
         </CashFlow>
       </economics>
@@ -122,7 +122,7 @@
 
   <DataGenerators>
     <ARMA name='Price' variable="Signal">%BASE_WORKING_DIR%/../../../ARMA/Sine/arma.pk</ARMA>
-    <Function name="transfers">transfers.py</Function>
+    <Function name="flex">flex_reference_price.py</Function>
     <Function name="storage_control">run_storage.py</Function>
   </DataGenerators>
 

@@ -36,7 +36,10 @@ def emitDefinition(cls, level=0, occurs=None):
   """
   print (indent(level), cls.getName(), "{")
   if cls.description:
-    print (indent(level+1),"Description=\""+cls.description.replace("\n"," ").replace("                          ", " ").replace("\"","'")+"\"")
+    print (indent(level+1),"Description=\""+cls.description.replace("\n"," ") \
+                                                           .replace("               ", " ") \
+                                                           .replace("\"","'") \
+                                                           .replace("         ","")+"\"")
   templateName = "'element'"
   if occurs is not None:
     # None indicates the default of 0 and NoLimit and not need to be output
@@ -132,5 +135,7 @@ def print_input_definition():
   for obj in [Placeholders.CSV(loc="~"),Placeholders.ARMA(loc="~"), Placeholders.Function(loc="~"), Placeholders.ROM(loc="~")]:
     emitDefinition(obj.get_input_specs(), level=1, occurs=None)
   print ("}")
+  # Ensure value nodes cannot exist at the root of the document
+  print(indent(0),"value(UNKNOWN){}")
   print ("%-END-SON-DEFINITION-%")
 

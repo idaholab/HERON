@@ -34,7 +34,6 @@ __pycache__
 /doc/version.tex
 
 # test files
-*network.png
 *arma.pk
 *heron.lib
 *outer.xml

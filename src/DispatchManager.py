@@ -29,8 +29,6 @@ except ModuleNotFoundError:
   cashflow_path = os.path.abspath(os.path.join(hutils.get_cashflow_loc(raven_path=raven_path), '..'))
   sys.path.append(cashflow_path)
   import TEAL
-# from TEAL.src import CashFlows
-# from TEAL.src.main import run as CashFlow_run
 
 # make functions findable
 sys.path.append(os.getcwd())

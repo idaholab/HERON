@@ -1,15 +1,15 @@
 <HERON>
   <TestInfo>
-    <name>Cashflows</name>
+    <name>Deprecate</name>
     <author>talbpaul</author>
-    <created>2020-10-16</created>
+    <created>2022-02-01</created>
     <description>
-      Tests various kinds of cashflows
+      Tests generation and use of deprecation cash flow, specifically.
     </description>
     <classesTested>HERON</classesTested>
   </TestInfo>
 
-    <Case name="Runs">
+    <Case name="depreciate">
       <mode>sweep</mode>
       <num_arma_samples>3</num_arma_samples>
       <time_discretization>
@@ -21,7 +21,7 @@
         <ProjectTime>20</ProjectTime>
         <DiscountRate>0.08</DiscountRate>
         <tax>0.25</tax>
-        <inflation>0.00</inflation>
+        <inflation>0.02</inflation>
         <verbosity>50</verbosity>
       </economics>
       <dispatcher>
@@ -37,10 +37,10 @@
           </capacity>
         </produces>
         <economics>
-          <lifetime>30</lifetime>
+          <lifetime>10</lifetime>
           <CashFlow name="capex" type="one-time" taxable="False" inflation="none" mult_target="False">
             <driver>
-              <Function method="capacity">functions</Function>
+              <variable>source_capacity</variable>
             </driver>
             <reference_price>
               <fixed_value>10000.0</fixed_value>
@@ -52,11 +52,11 @@
             <scaling_factor_x>
               <fixed_value>0.999</fixed_value>
             </scaling_factor_x>
-          <!--  <depreciate>5</depreciate> -->
+           <depreciate>5</depreciate>
           </CashFlow>
           <CashFlow name="FOM" type="repeating" period='year' taxable="False" inflation="none" mult_target="False">
             <driver>
-              <Function method="capacity">functions</Function>
+              <variable>source_capacity</variable>
             </driver>
             <reference_price>
               <fixed_value>100.0</fixed_value>
@@ -102,8 +102,7 @@
     </Components>
 
     <DataGenerators>
-      <ARMA name='flex' variable="Signal">%BASE_WORKING_DIR%/../../../ARMA/Sine30yr/arma_30yr.pk</ARMA>
-      <Function name="functions">functions.py</Function>
+      <ARMA name='flex' variable="Signal">%HERON%/tests/integration_tests/ARMA/Sine30yr/arma_30yr.pk</ARMA>
     </DataGenerators>
 </HERON>
 

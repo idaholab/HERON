@@ -280,6 +280,74 @@ class HERD(MOPED):
       for con in getattr(action, "_consumes"):
         self._component_meta[comp.name]['Consumes'][con] = getattr(action, "_transfer")
 
+  def loadSyntheticHistory(self, signal, multiplier):
+    """
+      Loads synthetic history for a specified signal, also sets yearly hours.
+      Calls the parent method and restructures dictionary to match DISPATCHES format.
+      @ In, signal, string, name of signal to sample
+      @ Out, synthetic_histories, dict, contains data from evaluated ROM
+    """
+    if signal == 'Signal' and multiplier == -1:
+      multiplier *= -1 # undoing negative multiplier from one step above, price != demand
+
+    # NOTE self._sources[0]._var_names are the user assigned signal names in DataGenerators
+    source = getattr(self, "_sources")[0]
+    source_var_names = getattr(source, "_var_names")
+
+    # check that signal name is available within data generator
+    if signal not in source_var_names:
+      raise IOError('The requested signal name is not available'
+                    'from the synthetic history, check DataGenerators node in input')
+
+    # Initializing ravenROMexternal object gives PATH access to xmlUtils
+    target_file = getattr(source, "_target_file")
+    runner = ROMLoader( binaryFileName=target_file)
+
+    # TODO expand to change other pickledROM settings withing this method
+    synthetic_data = self._generate_synthetic_histories(runner, signal, multiplier)
+
+    # check that evaluation mode is either clustered or full
+    if self._eval_mode not in ['clustered', 'full']:
+      raise IOError('Improper ROM evaluation mode detected, try "clustered" or "full".')
+
+    # extracting cluster info from ROM - how many days of year per cluster?
+    synthetic_data = self._get_cluster_info_from_synth_histories(runner, synthetic_data)
+
+    synth_years, synth_days, synth_hours = [synthetic_data[ind] for ind in self._time_index_map]
+    synth_scenarios  = range(self._num_samples)
+    proj_years_range = self._test_project_year_range
+    map_synth2proj   = self._test_map_synth_to_proj
+
+    # restructure the synthetic history dictionary to match DISPATCHES
+    synth_histories = {}
+    synth_histories['signals'] = {}
+    # converting to dictionary that plays nice with DISPATCHES/IDAES
+    for key, data in synthetic_data.items():
+      # assuming the keys are in format "Realization_i"
+      if "Realization" in key:
+        # realizations (known as scenarios in DISPATCHES) index starting at 0
+        k = int( key.split('_')[-1] )
+        # years indexed by integer year (2020, etc.)
+        # clusters and hours indexed starting at 1
+        synth_histories['signals'][synth_scenarios[k-1]] = {year: {day: {hour: data[y, day-1, hour-1]
+                                                                  for hour in synth_hours}
+                                                        for day in synth_days}
+                                                  for y, year in enumerate(synth_years)}
+    # save set time data for use within DISPATCHES
+    synth_histories["sets"] = {}
+    synth_histories["sets"]["synth_scenarios"] = list(synth_scenarios) # DISPATCHES wants this as a list
+    synth_histories["sets"]["synth_years"]  = np.unique(synth_years) # DISPATCHES wants this as a list
+    synth_histories["sets"]["synth_days"]   = np.unique(synth_days)  # DISPATCHES wants this as a range
+    synth_histories["sets"]["synth_hours"]  = np.unique(synth_hours) # DISPATCHES wants this as a range
+    synth_histories["sets"]["map_synth2proj"] = map_synth2proj # used only for tests
+    synth_histories["sets"]["proj_years_range"] = proj_years_range # used only for tests
+    # getting weights_days - how many days does each cluster represent?
+    synth_histories["weights_days"] = synthetic_data['weights_days']
+
+    # saving a copy to self, referred to later when adding timesets to Pyomo model
+    self._synth_histories[signal] = copy.deepcopy(synth_histories)
+    return synth_histories
+
   def _generate_synthetic_histories(self, runner, signal, multiplier):
     """
       Samples from external ROM given a signal and multiplier for said signal
@@ -347,6 +415,35 @@ class HERD(MOPED):
         index = int(cluster-1)
         synthetic_data['weights_days'][year][cluster] = len(cluster_map[index])
 
+    return synthetic_data
+
+  def loadStaticHistory(self, signal, multiplier):
+    """
+      Loads static history for a specified signal,
+      also sets yearly hours and pyomo indexing sets
+      @ In, signal, string, name of signal to sample
+      @ In, multiplier, int/float, value to multiply synthetic history evaluations by
+      @ Out, synthetic_data, dict, contains data from evaluated ROM
+    """
+    if signal == 'Signal' and multiplier == -1:
+      multiplier *= -1 # undoing negative multiplier from one step above, price != demand
+
+    # NOTE self._sources[0]._var_names are the user assigned signal names in DataGenerators
+    source = getattr(self, "_sources")[0]
+    source_var_names = getattr(source, "_var_names")
+
+    # check that signal name is available within data generator
+    if signal not in source_var_names:
+      raise IOError('The requested signal name is not available'
+                    'from the static history, check DataGenerators node in input')
+
+    # paths to LMP signal data in CSV (reformatted from DISPATCHES JSON file)
+    lmp_path  = getattr(source, "_target_file")
+    data_frame = pd.read_csv(lmp_path) # loading csv data
+    synthetic_data = self._get_synthetic_histories_from_dataframe( data_frame, signal, multiplier)
+
+    # saving a copy to self, referred to later when adding timesets to Pyomo model
+    self._synth_histories[signal] = copy.deepcopy(synthetic_data)
     return synthetic_data
 
   def _get_synthetic_histories_from_dataframe(self, data_frame, signal, multiplier):
@@ -439,103 +536,6 @@ class HERD(MOPED):
 
     return synthetic_data
 
-  def loadSyntheticHistory(self, signal, multiplier):
-    """
-      Loads synthetic history for a specified signal, also sets yearly hours.
-      Calls the parent method and restructures dictionary to match DISPATCHES format.
-      @ In, signal, string, name of signal to sample
-      @ Out, synthetic_histories, dict, contains data from evaluated ROM
-    """
-    if signal == 'Signal' and multiplier == -1:
-      multiplier *= -1 # undoing negative multiplier from one step above, price != demand
-
-    # NOTE self._sources[0]._var_names are the user assigned signal names in DataGenerators
-    source = getattr(self, "_sources")[0]
-    source_var_names = getattr(source, "_var_names")
-
-    # check that signal name is available within data generator
-    if signal not in source_var_names:
-      raise IOError('The requested signal name is not available'
-                    'from the synthetic history, check DataGenerators node in input')
-
-    # Initializing ravenROMexternal object gives PATH access to xmlUtils
-    target_file = getattr(source, "_target_file")
-    runner = ROMLoader( binaryFileName=target_file)
-
-    # TODO expand to change other pickledROM settings withing this method
-    synthetic_data = self._generate_synthetic_histories(runner, signal, multiplier)
-
-    # check that evaluation mode is either clustered or full
-    if self._eval_mode not in ['clustered', 'full']:
-      raise IOError('Improper ROM evaluation mode detected, try "clustered" or "full".')
-
-    # extracting cluster info from ROM - how many days of year per cluster?
-    synthetic_data = self._get_cluster_info_from_synth_histories(runner, synthetic_data)
-
-    synth_years, synth_days, synth_hours = [synthetic_data[ind] for ind in self._time_index_map]
-    synth_scenarios  = range(self._num_samples)
-    proj_years_range = self._test_project_year_range
-    map_synth2proj   = self._test_map_synth_to_proj
-
-    # restructure the synthetic history dictionary to match DISPATCHES
-    synth_histories = {}
-    synth_histories['signals'] = {}
-    # converting to dictionary that plays nice with DISPATCHES/IDAES
-    for key, data in synthetic_data.items():
-      # assuming the keys are in format "Realization_i"
-      if "Realization" in key:
-        # realizations (known as scenarios in DISPATCHES) index starting at 0
-        k = int( key.split('_')[-1] )
-        # years indexed by integer year (2020, etc.)
-        # clusters and hours indexed starting at 1
-        synth_histories['signals'][synth_scenarios[k-1]] = {year: {day: {hour: data[y, day-1, hour-1]
-                                                                  for hour in synth_hours}
-                                                        for day in synth_days}
-                                                  for y, year in enumerate(synth_years)}
-    # save set time data for use within DISPATCHES
-    synth_histories["sets"] = {}
-    synth_histories["sets"]["synth_scenarios"] = list(synth_scenarios) # DISPATCHES wants this as a list
-    synth_histories["sets"]["synth_years"]  = np.unique(synth_years) # DISPATCHES wants this as a list
-    synth_histories["sets"]["synth_days"]   = np.unique(synth_days)  # DISPATCHES wants this as a range
-    synth_histories["sets"]["synth_hours"]  = np.unique(synth_hours) # DISPATCHES wants this as a range
-    synth_histories["sets"]["map_synth2proj"] = map_synth2proj # used only for tests
-    synth_histories["sets"]["proj_years_range"] = proj_years_range # used only for tests
-    # getting weights_days - how many days does each cluster represent?
-    synth_histories["weights_days"] = synthetic_data['weights_days']
-
-    # saving a copy to self, referred to later when adding timesets to Pyomo model
-    self._synth_histories[signal] = copy.deepcopy(synth_histories)
-    return synth_histories
-
-  def loadStaticHistory(self, signal, multiplier):
-    """
-      Loads static history for a specified signal,
-      also sets yearly hours and pyomo indexing sets
-      @ In, signal, string, name of signal to sample
-      @ In, multiplier, int/float, value to multiply synthetic history evaluations by
-      @ Out, synthetic_data, dict, contains data from evaluated ROM
-    """
-    if signal == 'Signal' and multiplier == -1:
-      multiplier *= -1 # undoing negative multiplier from one step above, price != demand
-
-    # NOTE self._sources[0]._var_names are the user assigned signal names in DataGenerators
-    source = getattr(self, "_sources")[0]
-    source_var_names = getattr(source, "_var_names")
-
-    # check that signal name is available within data generator
-    if signal not in source_var_names:
-      raise IOError('The requested signal name is not available'
-                    'from the static history, check DataGenerators node in input')
-
-    # paths to LMP signal data in CSV (reformatted from DISPATCHES JSON file)
-    lmp_path  = getattr(source, "_target_file")
-    data_frame = pd.read_csv(lmp_path) # loading csv data
-    synthetic_data = self._get_synthetic_histories_from_dataframe( data_frame, signal, multiplier)
-
-    # saving a copy to self, referred to later when adding timesets to Pyomo model
-    self._synth_histories[signal] = copy.deepcopy(synthetic_data)
-    return synthetic_data
-
   # ===========================
   # DISPATCHES COMPATIBILITY
   # ===========================
@@ -606,34 +606,6 @@ class HERD(MOPED):
   # ==============
   # BUILD MODEL
   # ==============
-  def _get_time_sets(self):
-    """
-      Getting time set data from a saved synthetic history
-      @ In, None
-      @ Out, time_sets, dict, time set information for simulation
-    """
-    # NOTE: assuming here that we're not importing both static histories and synthetic histories
-    #       therefore all time sets are presumably the same (generated through the same method)
-    signal_name = list(self._synth_histories.keys())[0] # from our assumption, any signal will do
-    market_synthetic_history = self._synth_histories[signal_name]
-
-    # transferring information on Sets
-    sets = market_synthetic_history['sets']
-    time_sets = {}
-    time_sets['set_time']  = np.unique(sets['synth_hours'])
-    time_sets['set_days']  = np.unique(sets['synth_days'])
-    time_sets['set_years'] = np.unique(sets['synth_years'])
-    time_sets['set_years_map'] = sets['map_synth2proj'] if self._test_mode \
-                                                     else sets['synth_years']
-    time_sets['set_scenarios'] = sets['synth_scenarios']
-    time_sets['n_time_points'] = len(time_sets['set_time'])
-
-    # transferring information on weightings
-    time_sets['weights_days'] = market_synthetic_history['weights_days']
-    # NOTE: equal probability for all scenarios
-    time_sets['weights_scenarios'] = {s:1/self._num_samples for s in range(self._num_samples)}
-    return time_sets
-
   def _build_dispatches_model(self):
     """
       Builds full DISPATCHES Pyomo model
@@ -701,6 +673,34 @@ class HERD(MOPED):
       self._metrics.append( scenario_metric )
       del scenario_metric
 
+  def _get_time_sets(self):
+    """
+      Getting time set data from a saved synthetic history
+      @ In, None
+      @ Out, time_sets, dict, time set information for simulation
+    """
+    # NOTE: assuming here that we're not importing both static histories and synthetic histories
+    #       therefore all time sets are presumably the same (generated through the same method)
+    signal_name = list(self._synth_histories.keys())[0] # from our assumption, any signal will do
+    market_synthetic_history = self._synth_histories[signal_name]
+
+    # transferring information on Sets
+    sets = market_synthetic_history['sets']
+    time_sets = {}
+    time_sets['set_time']  = np.unique(sets['synth_hours'])
+    time_sets['set_days']  = np.unique(sets['synth_days'])
+    time_sets['set_years'] = np.unique(sets['synth_years'])
+    time_sets['set_years_map'] = sets['map_synth2proj'] if self._test_mode \
+                                                     else sets['synth_years']
+    time_sets['set_scenarios'] = sets['synth_scenarios']
+    time_sets['n_time_points'] = len(time_sets['set_time'])
+
+    # transferring information on weightings
+    time_sets['weights_days'] = market_synthetic_history['weights_days']
+    # NOTE: equal probability for all scenarios
+    time_sets['weights_scenarios'] = {s:1/self._num_samples for s in range(self._num_samples)}
+    return time_sets
+
   def _get_multiperiod_flowsheet_options(self):
     """
       Getting extra arguments/options for flowsheet, initialization, and unfix_DOF methods
@@ -750,6 +750,50 @@ class HERD(MOPED):
       # attributes to current period model
       mdl.transfer_attributes_from(staging_params['pyo_model'].clone())
 
+  def unfixDof(self, ps, **kwargs):
+    """
+      This function unfixes a few degrees of freedom for optimization.
+
+      This is taken from `multiperiod_design_pricetaker.ipynb` in the DISPATCHES repository
+      found in `dispatches/dispatches/case_studies/nuclear_case/`
+      (currently not callable, so replicated here).
+      @In, ps, Pyomo model for period within a given scenario
+      @In, kwargs, extra arguments for flowsheet parameters
+      @ Out, None
+    """
+    # Set defaults in case options are not passed to the function
+    options = kwargs.get("options", {})
+    air_h2_ratio = options.get("air_h2_ratio", 10.76)
+
+    # Unfix the electricity split in the electrical splitter
+    ps.fs.np_power_split.split_fraction["np_to_grid", 0].unfix()
+
+    # Unfix the holdup_previous and outflow variables
+    ps.fs.h2_tank.tank_holdup_previous.unfix()
+    ps.fs.h2_tank.outlet_to_turbine.flow_mol.unfix()
+    ps.fs.h2_tank.outlet_to_pipeline.flow_mol.unfix()
+
+    # Unfix the flowrate of air to the mixer
+    ps.fs.mixer.air_feed.flow_mol.unfix()
+
+    # Add a constraint to maintain the air to hydrogen flow ratio
+    ps.fs.mixer.air_h2_ratio = pyo.Constraint(
+                expr=ps.fs.mixer.air_feed.flow_mol[int(0)] ==
+                      air_h2_ratio * ps.fs.mixer.hydrogen_feed.flow_mol[int(0)])
+
+    # Set bounds on variables. A small non-zero value is set as the lower
+    # bound on molar flowrates to avoid convergence issues
+    ps.fs.pem.outlet.flow_mol[0].setlb(0.001)
+
+    ps.fs.h2_tank.inlet.flow_mol[0].setlb(0.001)
+    ps.fs.h2_tank.outlet_to_turbine.flow_mol[0].setlb(0.001)
+    ps.fs.h2_tank.outlet_to_pipeline.flow_mol[0].setlb(0.001)
+
+    ps.fs.translator.inlet.flow_mol[0].setlb(0.001)
+    ps.fs.translator.outlet.flow_mol[0].setlb(0.001)
+
+    ps.fs.mixer.hydrogen_feed.flow_mol[0].setlb(0.001)
+
   def _get_linking_variable_pairs(self, mdl_start, mdl_end):
     """
       Yield pairs of variables that need to be connected across time periods.
@@ -766,6 +810,43 @@ class HERD(MOPED):
     return pairs
 
   #==== METHODS FOR FLOWSHEET-SPECIFIC PYOMO PROCESSES ====#
+  def _add_capacity_variables(self, mdl):
+    """
+      Setting first-stage capacity variables for model.
+      Also sets upper bound constraints on resource production not exceeding capacity.
+
+      This is taken from `multiperiod_design_pricetaker.ipynb` in the DISPATCHES repository
+      found in `dispatches/dispatches/case_studies/nuclear_case/`
+      (currently not callable, so replicated here).
+      @ In, mdl, Pyomo model
+      @ Out, None
+    """
+    set_period = mdl.parent_block().set_period
+
+    # Declare first-stage variables (Design decisions)
+    mdl.pem_capacity = pyo.Var(within=pyo.NonNegativeReals,
+                                doc="Maximum capacity of the PEM electrolyzer (in kW)" )
+    mdl.tank_capacity = pyo.Var(within=pyo.NonNegativeReals,
+                                 doc="Maximum holdup of the tank (in mol)")
+    mdl.h2_turbine_capacity = pyo.Var(within=pyo.NonNegativeReals,
+                                       doc="Maximum power output from the turbine (in W)")
+
+    # initializing capacity constraints using set period from block
+    mdl.pem_capacity_constraint = pyo.Constraint(set_period)
+    mdl.tank_capacity_constraint = pyo.Constraint(set_period)
+    mdl.turbine_capacity_constraint = pyo.Constraint(set_period)
+
+    for t in set_period:
+      # Ensure that the electricity to the PEM elctrolyzer does not exceed the PEM capacity
+      mdl.pem_capacity_constraint.add(t,
+          mdl.period[t].fs.pem.electricity[0] <= mdl.pem_capacity)
+      # Ensure that the final tank holdup does not exceed the tank capacity
+      mdl.tank_capacity_constraint.add(t,
+          mdl.period[t].fs.h2_tank.tank_holdup[0] <= mdl.tank_capacity)
+      # Ensure that the power generated by the turbine does not exceed the turbine capacity
+      mdl.turbine_capacity_constraint.add(t,
+          -mdl.period[t].fs.h2_turbine.work_mechanical[0] <= mdl.h2_turbine_capacity)
+
   def _add_additional_constraints(self, mdl):
     """
       Method to add additional constraints not included in DISPATCHES flowsheet
@@ -789,6 +870,40 @@ class HERD(MOPED):
     def hydrogen_demand_constraint(blk, t, d, y):
       return blk.period[t, d, y].fs.h2_tank.outlet_to_pipeline.flow_mol[0] \
                 <= self._demand_meta['h2_market']["Demand"] / 2.016e-3 # convert from kg to mol
+
+  def _add_non_anticipativity_constraints(self):
+    """
+      Adding non-anticipativity constraints, ensuring that all capacity variables are the same
+      for all scenarios.
+
+      Content is taken from `multiperiod_design_pricetaker.ipynb` in the DISPATCHES repository
+      found in `dispatches/dispatches/case_studies/nuclear_case/`
+      (currently not callable, so replicated here).
+      @ In, None
+      @ Out, None
+    """
+    # temporary object pointing to model
+    dmdl = self._dmdl
+
+    # Add non-anticipativity constraints
+    dmdl.pem_capacity = pyo.Var(within=pyo.NonNegativeReals,
+                                doc="Design PEM capacity (in kW)")
+    dmdl.tank_capacity = pyo.Var(within=pyo.NonNegativeReals,
+                                 doc="Design tank capacity (in mol)")
+    dmdl.h2_turbine_capacity = pyo.Var(within=pyo.NonNegativeReals,
+                                       doc="Design turbine capacity (in W)")
+
+    @dmdl.Constraint(dmdl.set_scenarios)
+    def non_anticipativity_pem(blk, s):
+      return blk.pem_capacity == blk.scenario[s].pem_capacity
+
+    @dmdl.Constraint(dmdl.set_scenarios)
+    def non_anticipativity_tank(blk, s):
+      return blk.tank_capacity == blk.scenario[s].tank_capacity
+
+    @dmdl.Constraint(dmdl.set_scenarios)
+    def non_anticipativity_turbine(blk, s):
+      return blk.h2_turbine_capacity == blk.scenario[s].h2_turbine_capacity
 
   #==== METHODS CREATING TEAL CASHFLOWS ====#
   def _initialize_cash_flows(self):
@@ -1018,121 +1133,6 @@ class HERD(MOPED):
   # =======================
   # SOLVING OPTIMIZATION
   # =======================
-  def unfixDof(self, ps, **kwargs):
-    """
-      This function unfixes a few degrees of freedom for optimization.
-
-      This is taken from `multiperiod_design_pricetaker.ipynb` in the DISPATCHES repository
-      found in `dispatches/dispatches/case_studies/nuclear_case/`
-      (currently not callable, so replicated here).
-      @In, ps, Pyomo model for period within a given scenario
-      @In, kwargs, extra arguments for flowsheet parameters
-      @ Out, None
-    """
-    # Set defaults in case options are not passed to the function
-    options = kwargs.get("options", {})
-    air_h2_ratio = options.get("air_h2_ratio", 10.76)
-
-    # Unfix the electricity split in the electrical splitter
-    ps.fs.np_power_split.split_fraction["np_to_grid", 0].unfix()
-
-    # Unfix the holdup_previous and outflow variables
-    ps.fs.h2_tank.tank_holdup_previous.unfix()
-    ps.fs.h2_tank.outlet_to_turbine.flow_mol.unfix()
-    ps.fs.h2_tank.outlet_to_pipeline.flow_mol.unfix()
-
-    # Unfix the flowrate of air to the mixer
-    ps.fs.mixer.air_feed.flow_mol.unfix()
-
-    # Add a constraint to maintain the air to hydrogen flow ratio
-    ps.fs.mixer.air_h2_ratio = pyo.Constraint(
-                expr=ps.fs.mixer.air_feed.flow_mol[int(0)] ==
-                      air_h2_ratio * ps.fs.mixer.hydrogen_feed.flow_mol[int(0)])
-
-    # Set bounds on variables. A small non-zero value is set as the lower
-    # bound on molar flowrates to avoid convergence issues
-    ps.fs.pem.outlet.flow_mol[0].setlb(0.001)
-
-    ps.fs.h2_tank.inlet.flow_mol[0].setlb(0.001)
-    ps.fs.h2_tank.outlet_to_turbine.flow_mol[0].setlb(0.001)
-    ps.fs.h2_tank.outlet_to_pipeline.flow_mol[0].setlb(0.001)
-
-    ps.fs.translator.inlet.flow_mol[0].setlb(0.001)
-    ps.fs.translator.outlet.flow_mol[0].setlb(0.001)
-
-    ps.fs.mixer.hydrogen_feed.flow_mol[0].setlb(0.001)
-
-  def _add_capacity_variables(self, mdl):
-    """
-      Setting first-stage capacity variables for model.
-      Also sets upper bound constraints on resource production not exceeding capacity.
-
-      This is taken from `multiperiod_design_pricetaker.ipynb` in the DISPATCHES repository
-      found in `dispatches/dispatches/case_studies/nuclear_case/`
-      (currently not callable, so replicated here).
-      @ In, mdl, Pyomo model
-      @ Out, None
-    """
-    set_period = mdl.parent_block().set_period
-
-    # Declare first-stage variables (Design decisions)
-    mdl.pem_capacity = pyo.Var(within=pyo.NonNegativeReals,
-                                doc="Maximum capacity of the PEM electrolyzer (in kW)" )
-    mdl.tank_capacity = pyo.Var(within=pyo.NonNegativeReals,
-                                 doc="Maximum holdup of the tank (in mol)")
-    mdl.h2_turbine_capacity = pyo.Var(within=pyo.NonNegativeReals,
-                                       doc="Maximum power output from the turbine (in W)")
-
-    # initializing capacity constraints using set period from block
-    mdl.pem_capacity_constraint = pyo.Constraint(set_period)
-    mdl.tank_capacity_constraint = pyo.Constraint(set_period)
-    mdl.turbine_capacity_constraint = pyo.Constraint(set_period)
-
-    for t in set_period:
-      # Ensure that the electricity to the PEM elctrolyzer does not exceed the PEM capacity
-      mdl.pem_capacity_constraint.add(t,
-          mdl.period[t].fs.pem.electricity[0] <= mdl.pem_capacity)
-      # Ensure that the final tank holdup does not exceed the tank capacity
-      mdl.tank_capacity_constraint.add(t,
-          mdl.period[t].fs.h2_tank.tank_holdup[0] <= mdl.tank_capacity)
-      # Ensure that the power generated by the turbine does not exceed the turbine capacity
-      mdl.turbine_capacity_constraint.add(t,
-          -mdl.period[t].fs.h2_turbine.work_mechanical[0] <= mdl.h2_turbine_capacity)
-
-  def _add_non_anticipativity_constraints(self):
-    """
-      Adding non-anticipativity constraints, ensuring that all capacity variables are the same
-      for all scenarios.
-
-      Content is taken from `multiperiod_design_pricetaker.ipynb` in the DISPATCHES repository
-      found in `dispatches/dispatches/case_studies/nuclear_case/`
-      (currently not callable, so replicated here).
-      @ In, None
-      @ Out, None
-    """
-    # temporary object pointing to model
-    dmdl = self._dmdl
-
-    # Add non-anticipativity constraints
-    dmdl.pem_capacity = pyo.Var(within=pyo.NonNegativeReals,
-                                doc="Design PEM capacity (in kW)")
-    dmdl.tank_capacity = pyo.Var(within=pyo.NonNegativeReals,
-                                 doc="Design tank capacity (in mol)")
-    dmdl.h2_turbine_capacity = pyo.Var(within=pyo.NonNegativeReals,
-                                       doc="Design turbine capacity (in W)")
-
-    @dmdl.Constraint(dmdl.set_scenarios)
-    def non_anticipativity_pem(blk, s):
-      return blk.pem_capacity == blk.scenario[s].pem_capacity
-
-    @dmdl.Constraint(dmdl.set_scenarios)
-    def non_anticipativity_tank(blk, s):
-      return blk.tank_capacity == blk.scenario[s].tank_capacity
-
-    @dmdl.Constraint(dmdl.set_scenarios)
-    def non_anticipativity_turbine(blk, s):
-      return blk.h2_turbine_capacity == blk.scenario[s].h2_turbine_capacity
-
   def _add_objective(self):
     """
       Adding objective function using TEAL metrics.

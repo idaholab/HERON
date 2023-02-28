@@ -29,8 +29,6 @@ except ModuleNotFoundError:
   cashflow_path = os.path.abspath(os.path.join(hutils.get_cashflow_loc(raven_path=raven_path), '..'))
   sys.path.append(cashflow_path)
   import TEAL
-from TEAL.src import CashFlows
-from TEAL.src.main import run as CashFlow_run
 
 # make functions findable
 sys.path.append(os.getcwd())
@@ -304,53 +302,73 @@ class DispatchRunner:
       @ In, heron_components, list, HERON component instances
       @ In, project_life, int, number of years to evaluate project
       @ Out, global_settings, CashFlow.GlobalSettings instance, settings for CashFlow analysis
-      @ Out, cf_components, dict, CashFlow component instances
+      @ Out, teal_components, dict, CashFlow component instances
     """
     heron_econs = list(comp.get_economics() for comp in heron_components)
     # build global econ settings for CashFlow
     global_params = heron_case.get_econ(heron_econs)
-    global_settings = CashFlows.GlobalSettings()
+    global_settings = TEAL.src.CashFlows.GlobalSettings()
     global_settings.setParams(global_params)
     global_settings._verbosity = 0 # FIXME direct access, also make user option?
-    # build CashFlow component instances
-    cf_components = {}
+    # build TEAL CashFlow component instances
+    teal_components = {}
     for c, cfg in enumerate(heron_econs):
       # cfg is the cashflowgroup connected to the heron component
       # get the associated heron component
       heron_comp = heron_components[c]
       comp_name = heron_comp.name
-      # build CashFlow equivalent component
-      cf_comp = CashFlows.Component()
-      cf_comp_params = {'name': comp_name,
+      # build TEAL equivalent component
+      teal_comp = TEAL.src.CashFlows.Component()
+      teal_comp_params = {'name': comp_name,
                         'Life_time': cfg.get_lifetime(),
-                        # TODO StartTime, Repetitions, tax, inflation
+                        # TODO StartTime, Repetitions, custom tax/inflation rate
                        }
-      cf_comp.setParams(cf_comp_params)
-      cf_components[comp_name] = cf_comp
-      # create all the CashFlow.CashFlows (cf_cf) for the CashFlow.Component
-      cf_cfs = []
+      teal_comp.setParams(teal_comp_params)
+      teal_components[comp_name] = teal_comp
+      # create all the TEAL.CashFlows (teal_cf) for the TEAL.Component
+      teal_cfs = []
       for heron_cf in cfg.get_cashflows():
         cf_name = heron_cf.name
         # the way to build it slightly changes depending on the CashFlow type
         if heron_cf._type == 'repeating': # FIXME protected access
-          cf_cf = CashFlows.Recurring()
-          cf_cf_params = {'name': cf_name,
+          teal_cf = TEAL.src.CashFlows.Recurring()
+          # NOTE: the params are listed in order of how they're read in TEAL.CashFlows.CashFlow.setParams
+          teal_cf_params = {'name': cf_name,
+                          # driver: comes later
+                          'tax': heron_cf._taxable,
+                          'inflation': heron_cf._inflation,
+                          'mult_target': heron_cf._mult_target,
+                          # multiply: do we ever use this?
+                          # alpha: comes later
+                          # reference: not relevant for recurring
                           'X': 1.0,
-                          'mult_target': heron_cf._mult_target, # FIXME protected access
+                          # depreciate: not relevant for recurring
                           }
-          cf_cf.setParams(cf_cf_params)
-          cf_cf.initParams(project_life)
-        elif heron_cf._type == 'one-time': # FIXME protected access
-          cf_cf = CashFlows.Capex()
-          cf_cf.name = cf_name
-          cf_cf.initParams(cf_comp.getLifetime())
+          teal_cf.setParams(teal_cf_params)
+          teal_cf.initParams(project_life)
+        elif heron_cf._type == 'one-time':
+          teal_cf = TEAL.src.CashFlows.Capex()
+          teal_cf.name = cf_name
+          teal_cf_params = {'name': cf_name,
+                            'driver': 1.0, # handled in segment_cashflow
+                            'tax': heron_cf._taxable,
+                            'inflation': heron_cf._inflation,
+                            'mult_target': heron_cf._mult_target,
+                            # multiply: do we ever use this?
+                            'alpha': 1.0, # handled in segment_cashflow
+                            'reference': 1.0, # actually handled in segment_cashflow
+                            'X': 1.0,
+                            # depreciate: handled in segment_cashflow
+                           }
+          teal_cf.setParams(teal_cf_params)
+          teal_cf.initParams(teal_comp.getLifetime())
           # alpha, driver aren't known yet, so set those later
         else:
           raise NotImplementedError(f'Unknown HERON CashFlow Type: {heron_cf._type}')
         # store new object
-        cf_cfs.append(cf_cf)
-      cf_comp.addCashflows(cf_cfs)
-    return global_settings, cf_components
+        teal_cfs.append(teal_cf)
+      teal_comp.addCashflows(teal_cfs)
+    return global_settings, teal_components
 
   def _update_meta_for_segment(self, meta, seg, interp_year, yearly_cluster_data,
                                interp_years, active_index, all_structure) -> int:
@@ -404,20 +422,20 @@ class DispatchRunner:
     resource_indexer = meta['HERON']['resource_indexer']
     for comp in self._components:
       # get corresponding current and final CashFlow.Component
-      cf_comp = local_comps[comp.name]
+      teal_comp = local_comps[comp.name]
       final_comp = final_components[comp.name]
       # sanity check
-      if comp.name != cf_comp.name: raise RuntimeError
+      if comp.name != teal_comp.name: raise RuntimeError
       specific_meta['HERON']['component'] = comp
       specific_meta['HERON']['all_activity'] = dispatch
       specific_activity = {}
       final_cashflows = final_comp.getCashflows()
       for f, heron_cf in enumerate(comp.get_cashflows()):
-        # get the corresponding CashFlow.CashFlow
-        cf_cf = cf_comp.getCashflows()[f]
+        # get the corresponding TEAL.CashFlow
+        teal_cf = teal_comp.getCashflows()[f]
         final_cf = final_cashflows[f]
         # sanity continued
-        if not (cf_cf.name == final_cf.name == heron_cf.name):
+        if not (teal_cf.name == final_cf.name == heron_cf.name):
             raise RuntimeError
 
         ## FIXME time then cashflow, or cashflow then time?
@@ -431,19 +449,24 @@ class DispatchRunner:
         ## TODO we assume Capex and Recurring Year do not depend
         ## on the Activity
 
-        if cf_cf.type == 'Capex':
+        if teal_cf.type == 'Capex':
           # Capex cfs should only be constructed in the first  of the project life
           # FIXME is this doing capex once per segment, or once per life?
           if year == 0 and s == 0:
             params = heron_cf.calculate_params(specific_meta) # a, D, Dp, x, cost
-            cf_params = {'name': cf_cf.name,
-                          'mult_target': heron_cf._mult_target,
-                          'depreciate': heron_cf._depreciate,
-                          'alpha': params['alpha'],
-                          'driver': params['driver'],
-                          'reference': params['ref_driver'],
-                          'X': params['scaling'],}
-            cf_cf.setParams(cf_params)
+            # NOTE: listing params in order of TEAL.CashFlows.CashFlow.setParams
+            cf_params = {'name': teal_cf.name,
+                         'driver': params['driver'],
+                         'tax': heron_cf._taxable,
+                         'inflation': heron_cf._inflation,
+                         'mult_target': heron_cf._mult_target,
+                         # TODO "multiply" needed? Can't think of an application right now.
+                         'alpha': params['alpha'],
+                         'reference': params['ref_driver'],
+                         'X': params['scaling'],
+                         'depreciate': heron_cf._depreciate,
+                        }
+            teal_cf.setParams(cf_params)
 
             ## Because alpha, driver, etc are only set once for capex cash flows,
             ## we can just hot swap this cashflow into the final_comp, I think ...
@@ -451,14 +474,14 @@ class DispatchRunner:
             ## I believe we can do this because Capex are division-independent?
             ## Can we just do it once instead of once per division?
 
-            final_comp._cashFlows[f] = cf_cf
+            final_comp._cashFlows[f] = teal_cf
             # depreciators
             # FIXME do we need to know alpha, drivers first??
-            if heron_cf._depreciate and cf_cf.getAmortization() is None:
-              cf_cf.setAmortization('MACRS', heron_cf._depreciate)
-              deprs = cf_comp._createDepreciation(cf_cf)
+            if heron_cf._depreciate and teal_cf.getAmortization() is None:
+              teal_cf.setAmortization('MACRS', heron_cf._depreciate)
+              deprs = teal_comp._createDepreciation(teal_cf)
               final_comp._cashFlows.extend(deprs)
-        elif cf_cf.type == 'Recurring':
+        elif teal_cf.type == 'Recurring':
           # yearly recurring only need setting up once per year
           if heron_cf.get_period() == 'year':
             if s == 0:
@@ -488,7 +511,7 @@ class DispatchRunner:
             )
         else:
             raise NotImplementedError(
-                f'Unrecognized CashFlow type for "{comp.name}" cashflow "{heron_cf.name}": {cf_cf.type}'
+                f'Unrecognized CashFlow type for "{comp.name}" cashflow "{heron_cf.name}": {teal_cf.type}'
             )
         # end CashFlow type if
       # end CashFlow per Component loop
@@ -519,7 +542,7 @@ class DispatchRunner:
         if hasattr(cf, '_yearlyCashflow'):
           print(f' ... ... ... hourly', cf._yearlyCashflow)
     # END DEBUGG
-    cf_metrics = CashFlow_run(final_settings, list(final_components.values()), raven_vars)
+    cf_metrics = TEAL.src.main.run(final_settings, list(final_components.values()), raven_vars)
     # DEBUGG
     print('****************************************')
     print('DEBUGG final cashflow metrics:')

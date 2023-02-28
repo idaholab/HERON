@@ -142,8 +142,7 @@ class Template(TemplateBase, Base):
     # modify the templates
     inner = self._modify_inner(inner, case, components, sources)
     outer = self._modify_outer(outer, case, components, sources)
-    cash = self._modify_cash(cash, case, components, sources)
-    return inner, outer, cash
+    return inner, outer
 
   def writeWorkflow(self, templates, destination, run=False):
     """
@@ -155,23 +154,23 @@ class Template(TemplateBase, Base):
     """
     # TODO use destination?
     # write templates
-    inner, outer, cash = templates
+    inner, outer = templates
     outer_file = os.path.abspath(os.path.join(destination, 'outer.xml'))
     inner_file = os.path.abspath(os.path.join(destination, 'inner.xml'))
-    cash_file = os.path.abspath(os.path.join(destination, 'cash.xml'))
+
     self.raiseAMessage('========================')
     self.raiseAMessage('HERON: writing files ...')
     self.raiseAMessage('========================')
+
     msg_format = 'Wrote "{1}" to "{0}/"'
     with open(outer_file, 'w') as f:
       f.write(xmlUtils.prettify(outer))
     self.raiseAMessage(msg_format.format(*os.path.split(outer_file)))
+
     with open(inner_file, 'w') as f:
       f.write(xmlUtils.prettify(inner))
     self.raiseAMessage(msg_format.format(*os.path.split(inner_file)))
-    with open(cash_file, 'w') as f:
-      f.write(xmlUtils.prettify(cash))
-    self.raiseAMessage(msg_format.format(*os.path.split(cash_file)))
+
     # write library of info so it can be read in dispatch during inner run
     data = (self.__case, self.__components, self.__sources)
     lib_file = os.path.abspath(os.path.join(destination, self.namingTemplates['lib file']))
@@ -1232,100 +1231,6 @@ class Template(TemplateBase, Base):
       db = template.find('Steps').find('.//IOStep[@name="database"]').find('.//Output[@class="Databases"]')
       db.attrib.update({'class': 'OutStreams', 'type': 'Print'})
       # the database and outstream print have the same name, so don't need to change text of node
-
-
-  ##### CASHFLOW #####
-  def _modify_cash(self, template, case, components, sources):
-    """
-      Defines modifications to the cash.xml extension to RAVEN input file.
-      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
-      @ In, case, HERON Case, defining Case instance
-      @ In, components, list, list of HERON Component instances for this run
-      @ In, sources, list, list of HERON Placeholder instances for this run
-      @ Out, template, xml.etree.ElementTree.Element, modified template
-    """
-    self._modify_cash_Global(template, case)
-    self._modify_cash_components(template, case, components)
-    return template
-
-  def _modify_cash_Global(self, template, case):
-    """
-      Defines modifications to Global of cash.xml extension to RAVEN input file.
-      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
-      @ In, case, HERON Case, defining Case instance
-      @ Out, None
-    """
-    # load variables
-    tax = case._global_econ['tax']
-    verbosity = case._global_econ['verbosity']
-    inflation = case._global_econ['inflation']
-    indicator = case._global_econ['Indicator']
-    discountRate = case._global_econ['DiscountRate']
-    projectTime = case._global_econ.get('ProjectTime', None)
-    # set variables
-    template.attrib['verbosity'] = str(verbosity)
-    cash_global = template.find('Global')
-    cash_global.find('DiscountRate').text = str(discountRate)
-    cash_global.find('tax').text = str(tax)
-    cash_global.find('inflation').text = str(inflation)
-    cash_global.find('Indicator').attrib['name'] = indicator['name'][0]
-    cash_global.find('Indicator').text = '\n      '.join(indicator['active'][:])
-    if projectTime is not None:
-      cash_global.append(xmlUtils.newNode('ProjectTime', text=str(projectTime)))
-
-  def _modify_cash_components(self, template, case, components):
-    """
-      Defines modifications to Components of cash.xml extension to RAVEN input file.
-      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
-      @ In, case, HERON Case, defining Case instance
-      @ In, components, list, list of HERON Component instances for this run
-      @ Out, template, xml.etree.ElementTree.Element, modified template
-    """
-    for component in components:
-      subComp = xmlUtils.newNode('Component', attrib={'name': component.name}, text='')
-      subEconomics = component.get_economics()
-      Life_time = subEconomics._lifetime
-      subComp.append(xmlUtils.newNode('Life_time', text=str(Life_time)))
-      cfs=xmlUtils.newNode('CashFlows')
-      for subCash in subEconomics._cash_flows:
-        driverName  = self.namingTemplates['cashfname'].format(component=subCash._component.name, cashname=subCash._driver.name)
-        driverType   = subCash._driver.type
-
-        inflation    = subCash._inflation
-        mult_target  = subCash._mult_target
-        name         = subCash.name
-        tax          = subCash._taxable
-        depreciation = subCash._depreciate
-        if subCash._type == 'one-time':
-          cfNode =  xmlUtils.newNode('Capex', text='', attrib={'name': f'{name}',
-                                                                'tax':tax,
-                                                                'inflation': inflation,
-                                                                'mult_target': mult_target
-                                                                })
-          cfNode.append(xmlUtils.newNode('driver',text = driverName))
-          cfNode.append(xmlUtils.newNode('alpha',text = subCash._alpha.get_value()))
-          cfNode.append(xmlUtils.newNode('reference',text = subCash._reference.get_value()))
-          cfNode.append(xmlUtils.newNode('X',text = subCash._scale.get_value()))
-          if depreciation:
-            cfNode.append(xmlUtils.newNode('depreciation',attrib={'scheme':'MACRS'}, text = depreciation))
-          cfs.append(cfNode)
-        else:
-          cfNode =  xmlUtils.newNode('Recurring', text='', attrib={'name': f'{name}',
-                                                                   'tax':tax,
-                                                                   'inflation': inflation,
-                                                                   'mult_target': mult_target
-                                                                    })
-          cfNode.append(xmlUtils.newNode('driver',
-          text = self.namingTemplates['re_cash'].format(period=subCash._period,
-                                                        driverType = driverType,
-                                                        driverName = f'_{component.name}_{name}')))
-
-          cfNode.append(xmlUtils.newNode('alpha',text = '-1.0'))
-          cfs.append(cfNode)
-      subComp.append(cfs)
-      template.append(subComp)
-
-
 
   ##### OTHER UTILS #####
   def _add_arma_to_ensemble(self, template, source):

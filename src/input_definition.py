@@ -74,11 +74,11 @@ def emitDefinition(cls, level=0, occurs=None):
       # complex types (those not a part of xsd) are captured by 
       # other constraints. We don't output string as this is the default
       isXSD = xmltype.startswith("xsd:")
-      
+
       print(indent(level+2),"value{")
       if isXSD and xmltype != "xsd:string":
         print (indent(level+3), "ValType=", {"double":"Real", "integer":"Int"}[xmltype[4:]])
-        
+
       if not isXSD:        
         emitValEnumDefinition(cls.contentType, level+3)
       print (indent(level+3),"MinOccurs=0 MaxOccurs=NoLimit")
@@ -98,7 +98,7 @@ def emitDefinition(cls, level=0, occurs=None):
       print(indent(level+2),"value{MinOccurs=1 MaxOccurs=1")
       emitValEnumDefinition(dataType, level+3)
       print(indent(level+2),"}")
-    
+
     if isRequired:
       print(indent(level+2), 'MinOccurs=1 MaxOccurs=1')
     else:
@@ -107,7 +107,6 @@ def emitDefinition(cls, level=0, occurs=None):
     print (indent(level+2), "InputTmpl='attribute'")
     print(indent(level+1), "} % end of attribute ", parameter)
   if cls.subs:
-    
     # if element has a 'name' attribute we alias name to first value
     # else no name AND sub elements we must highlight 'value' nodes are UNKNOWN
     if hasName == False:

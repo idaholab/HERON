@@ -165,9 +165,9 @@ def main():
   parser.add_argument('xml_input_file', nargs='?', default="", help='HERON XML input file')
   parser.add_argument('--definition', action="store_true", dest="definition", help='HERON input file definition compatible with the NEAMS Workbench')
   args = parser.parse_args()
-  
+
   sim = HERON()
-  
+
   # User requested the input definition be printed
   if args.definition:
     from HERON.src import input_definition
@@ -187,7 +187,6 @@ def main():
     sim.run_moped_workflow()
   elif sim._case._workflow == 'DISPATCHES':
     sim.run_dispatches_workflow()
-
 
 if __name__ == '__main__':
   main()

@@ -44,7 +44,7 @@ def emitDefinition(cls, level=0, occurs=None):
   if occurs is not None:
     # None indicates the default of 0 and NoLimit and not need to be output
     print (indent(level), "MinOccurs=",occurs[0]," MaxOccurs=",occurs[1])
-  if cls.subs:      
+  if cls.subs:
       if cls.subOrder is not None:
         subList = cls.subOrder
       else:
@@ -61,17 +61,17 @@ def emitDefinition(cls, level=0, occurs=None):
           elif quantity == Quantity.one_to_infinity:
             subOccurs = ('1','NoLimit')
           else:
-            print("ERROR unexpected quantity ",quantity)          
+            print("ERROR unexpected quantity ",quantity)
         emitDefinition(sub, level+1, subOccurs)
   else:
-    
+
     if hasattr(cls, 'enumList') and cls.enumList is not None:
         print(indent(level+2),"value{MinOccurs=1 MaxOccurs=1")
         emitValEnumDefinition(cls, level+3)
         print(indent(level+2),"}")
     if cls.contentType is not None:
       xmltype = cls.contentType.getXMLType()
-      # complex types (those not a part of xsd) are captured by 
+      # complex types (those not a part of xsd) are captured by
       # other constraints. We don't output string as this is the default
       isXSD = xmltype.startswith("xsd:")
 
@@ -79,7 +79,7 @@ def emitDefinition(cls, level=0, occurs=None):
       if isXSD and xmltype != "xsd:string":
         print (indent(level+3), "ValType=", {"double":"Real", "integer":"Int"}[xmltype[4:]])
 
-      if not isXSD:        
+      if not isXSD:
         emitValEnumDefinition(cls.contentType, level+3)
       print (indent(level+3),"MinOccurs=0 MaxOccurs=NoLimit")
       print(indent(level+2),"}")
@@ -124,7 +124,7 @@ def print_input_definition():
   """
   print ("%-START-SON-DEFINITION-%")
   print ("% SON-DEFINITION is defined by rules documented at https://code.ornl.gov/neams-workbench/wasp/-/blob/master/wasphive/README.md")
-  
+
   emitDefinition(Cases.Case("~").get_input_specs(), level=0, occurs=None)
   print ("Components{ MinOccurs=1 InputTmpl=element")
   emitDefinition(Components.Component(loc="~").get_input_specs(), level=0, occurs=None)

@@ -22,17 +22,26 @@ from ravenframework.utils import xmlUtils
 from ravenframework.utils.InputData import Quantity
 
 def indent(level):
-    """Obtain an indent prefix whitespace string"""
+    """
+      Obtain an indent prefix whitespace string.
+      @ In, int, the number of indentation levels to use.
+      @ Out, indent, the resultant indentation
+    """
     return " "*level*2
 
 def emitValEnumDefinition(cls, level):
-    """Emit the value enumeration restriction"""
+    """
+       Emit the value enumeration restriction
+       @ In, int, the number of indentation levels to use for this component.
+    """
     enum = ' '.join(cls.enumList)
     print (indent(level),"ValEnums[",enum,"]")
 
 def emitDefinition(cls, level=0, occurs=None):
   """
     Generates the input definition information for this node.
+    @ In, int, the number of indentation levels to use for this component.
+    @ In, the occurrence restriction for this component
   """
   print (indent(level), cls.getName(), "{")
   if cls.description:
@@ -121,6 +130,8 @@ def emitDefinition(cls, level=0, occurs=None):
 def print_input_definition():
   """
     Obtain object input specifications and print input definition to stdout
+    @ In, None
+    @ Out, the SON-formatted input requirements
   """
   print ("%-START-SON-DEFINITION-%")
   print ("% SON-DEFINITION is defined by rules documented at https://code.ornl.gov/neams-workbench/wasp/-/blob/master/wasphive/README.md")

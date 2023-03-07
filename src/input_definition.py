@@ -37,7 +37,7 @@ def emitValEnumDefinition(cls, level):
        @ Out, None
     """
     enum = ' '.join(cls.enumList)
-    print (indent(level),"ValEnums[",enum,"]")
+    print(indent(level),"ValEnums[",enum,"]")
 
 def emitDefinition(cls, level=0, occurs=None):
   """
@@ -47,16 +47,16 @@ def emitDefinition(cls, level=0, occurs=None):
     @ In, occurs, tuple(min,max), the occurrence restriction for this component. Max can be 'NoLimit'
     @ Out, None
   """
-  print (indent(level), cls.getName(), "{")
+  print(indent(level), cls.getName(), "{")
   if cls.description:
-    print (indent(level+1),"Description=\""+cls.description.replace("\n"," ") \
+    print(indent(level+1),"Description=\""+cls.description.replace("\n"," ") \
                                                            .replace("               ", " ") \
                                                            .replace("\"","'") \
                                                            .replace("         ","")+"\"")
   templateName = "'element'"
   if occurs is not None:
     # None indicates the default of 0 and NoLimit and not need to be output
-    print (indent(level), "MinOccurs=",occurs[0]," MaxOccurs=",occurs[1])
+    print(indent(level), "MinOccurs=",occurs[0]," MaxOccurs=",occurs[1])
   if cls.subs:
       if cls.subOrder is not None:
         subList = cls.subOrder
@@ -90,11 +90,11 @@ def emitDefinition(cls, level=0, occurs=None):
 
       print(indent(level+2),"value{")
       if isXSD and xmltype != "xsd:string":
-        print (indent(level+3), "ValType=", {"double":"Real", "integer":"Int"}[xmltype[4:]])
+        print(indent(level+3), "ValType=", {"double":"Real", "integer":"Int"}[xmltype[4:]])
 
       if not isXSD:
         emitValEnumDefinition(cls.contentType, level+3)
-      print (indent(level+3),"MinOccurs=0 MaxOccurs=NoLimit")
+      print(indent(level+3),"MinOccurs=0 MaxOccurs=NoLimit")
       print(indent(level+2),"}")
   #generate attributes and determine if it has a 'name' attribute
   hasName = False
@@ -117,19 +117,19 @@ def emitDefinition(cls, level=0, occurs=None):
     else:
       # attributes can only occur maximally once
       print(indent(level+3), "MaxOccurs=1")
-    print (indent(level+2), "InputTmpl='attribute'")
+    print(indent(level+2), "InputTmpl='attribute'")
     print(indent(level+1), "} % end of attribute ", parameter)
   if cls.subs:
     # if element has a 'name' attribute we alias name to first value
     # else no name AND sub elements we must highlight 'value' nodes are UNKNOWN
     if hasName == False:
-      print (indent(level+1), "InputTmpl='element'")
+      print(indent(level+1), "InputTmpl='element'")
       print(indent(level+1),"value(UNKNOWN){}")
     else:
-      print (indent(level+1), "InputTmpl='named-element'")
+      print(indent(level+1), "InputTmpl='named-element'")
   else:
-    print (indent(level+1), "InputTmpl='leaf-element'")
-  print (indent(level), '} % end of element ', cls.getName())
+    print(indent(level+1), "InputTmpl='leaf-element'")
+  print(indent(level), '} % end of element ', cls.getName())
 
 def print_input_definition():
   """
@@ -137,19 +137,19 @@ def print_input_definition():
     @ In, None
     @ Out, None
   """
-  print ("%-START-SON-DEFINITION-%")
-  print ("% SON-DEFINITION is defined by rules documented at https://code.ornl.gov/neams-workbench/wasp/-/blob/master/wasphive/README.md")
+  print("%-START-SON-DEFINITION-%")
+  print("% SON-DEFINITION is defined by rules documented at https://code.ornl.gov/neams-workbench/wasp/-/blob/master/wasphive/README.md")
 
   emitDefinition(Cases.Case("~").get_input_specs(), level=0, occurs=None)
-  print ("Components{ MinOccurs=1 InputTmpl=element")
+  print("Components{ MinOccurs=1 InputTmpl=element")
   emitDefinition(Components.Component(loc="~").get_input_specs(), level=0, occurs=None)
-  print ("}")
+  print("}")
   # deal with DataGenerators
   print("DataGenerators{ MinOccurs=1 InputTmpl=element")
   for obj in [Placeholders.CSV(loc="~"),Placeholders.ARMA(loc="~"), Placeholders.Function(loc="~"), Placeholders.ROM(loc="~")]:
     emitDefinition(obj.get_input_specs(), level=1, occurs=None)
-  print ("}")
+  print("}")
   # Ensure value nodes cannot exist at the root of the document
   print(indent(0),"value(UNKNOWN){}")
-  print ("%-END-SON-DEFINITION-%")
+  print("%-END-SON-DEFINITION-%")
 

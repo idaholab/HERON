@@ -10,6 +10,7 @@ mpl.use('Agg') # Prevents the script from blocking while plotting
 import matplotlib.pyplot as plt
 from typing import List, Dict
 import random
+import numpy as np
 
 try:
   from ravenframework.PluginBaseClasses.OutStreamPlotPlugin import PlotPlugin, InputTypes, InputData
@@ -105,6 +106,15 @@ class DispatchPlot(PlotPlugin):
         gr[key] = [var]
     return gr
 
+  def align_yaxis(ax1, v1, ax2, v2):
+    """adjust ax2 ylimit so that v2 in ax2 is aligned to v1 in ax1"""
+    _, y1 = ax1.transData.transform((0, v1))
+    _, y2 = ax2.transData.transform((0, v2))
+    inv = ax2.transData.inverted()
+    _, dy = inv.transform((0, 0)) - inv.transform((0, y1-y2))
+    miny, maxy = ax2.get_ylim()
+    ax2.set_ylim(miny+dy, maxy+dy)
+
   def plot_component(self, fig, axes, df, grp_vars, comp_idx, sid, mstep, cid, cdict) -> None:
     """
       Plot and output the optimized dispatch for a specific sample, year, and cluster.
@@ -133,11 +143,13 @@ class DispatchPlot(PlotPlugin):
       level_dat = []
       level_label = []
       level_color = []
+
+      # Secondary y axis for levels
+      ax2 = ax.twinx()
       # Fill the lists
       for var in group:
         _, comp_name, tracker, _ = var.split('__')
         comp_label = comp_name.replace('_', ' ').title()
-        plot_ax = ax
         var_label = f'{comp_label}, {tracker.title()}'
         ls = '-'
         # Fill the positive, negative, and level lists
@@ -158,16 +170,18 @@ class DispatchPlot(PlotPlugin):
                 negative_color.append(cdict.get(cindex))
       # Plot the micro-step variable on the x-axis (i.e Time)
       # Stackplot
-      plot_ax.stackplot(df[self._microName],*[df[key] for key in positive_dat],labels= positive_label, baseline='zero', colors= [color+alpha for color in positive_color[:len(negative_dat)]]+[Gray])
-      plot_ax.stackplot(df[self._microName],*[df[key] for key in negative_dat], labels= negative_label, baseline='zero', colors= [color+alpha for color in negative_color[:len(negative_dat)]] +[Gray])
+      ax.stackplot(df[self._microName],*[df[key] for key in positive_dat],labels= positive_label, baseline='zero', colors= [color+alpha for color in positive_color[:len(negative_dat)]]+[Gray])
+      ax.stackplot(df[self._microName],*[df[key] for key in negative_dat], labels= negative_label, baseline='zero', colors= [color+alpha for color in negative_color[:len(negative_dat)]] +[Gray])
       # Lineplot
       for key, c, llabel in zip(level_dat, level_color[:len(level_dat)] + [Dark], level_label[:len(level_dat)]):
-        plot_ax.plot(df[self._microName], df[key], linestyle=ls, label=llabel, color=c )
+        ax2.plot(df[self._microName], df[key], linestyle=ls, label=llabel, color=c )
       # Set figure title, label, legend, and grid
       ax.set_title(key.title().split('_')[-1])
       ax.set_xlabel(self._microName)
-      ax.legend(loc='center left', bbox_to_anchor=(1.03, 0.5), fontsize = 10)
-      ax.grid(False)
+      ax.legend(loc='upper left', bbox_to_anchor=(1.1, 0.6), fontsize = 10)
+      ax2.legend(loc='lower left', bbox_to_anchor=(1.1, 0.6), fontsize = 10)
+      ax.grid(None)
+      ax2.grid(None)
     # Output and save the image
     file_name = f"dispatch_id{sid}_y{mstep}_c{cid}.png"
     fig.tight_layout()
@@ -203,7 +217,7 @@ class DispatchPlot(PlotPlugin):
   def color_style(self, grp_vars):
     """
       @ In, grp_vars, Dict[str, List[str]], a dictionary mapping components to variables.
-      @ Out, cdict, Dict[str, str], contains color code for variables
+      @ Out, colors, Dict[str, str], contains color code for variables
     """
     resources = [] # Determine the number of colormaps
     technologis = [] # Determine the number of colors obtained from a colormap
@@ -215,8 +229,8 @@ class DispatchPlot(PlotPlugin):
     # remve duplicates
     resources = list(dict.fromkeys(resources))
     technologis = list(dict.fromkeys(technologis))
-    # colormap codes - can be changed to preferred colormaps - 18 in total 'Sequential' series
-    cm_codes = ['Greys', 'Purples', 'Blues', 'Greens', 'Oranges', 'Reds','YlOrBr', 'YlOrRd', 'OrRd', 'PuRd', 'RdPu', 'BuPu','GnBu', 'PuBu', 'YlGnBu', 'PuBuGn', 'BuGn', 'YlGn']
+    # colormap codes - can be changed to preferred colormaps - 17 in total 'Sequential' series
+    cm_codes = ['Purples', 'Blues', 'Greens', 'Oranges', 'Reds','YlOrBr', 'YlOrRd', 'OrRd', 'PuRd', 'RdPu', 'BuPu','GnBu', 'PuBu', 'YlGnBu', 'PuBuGn', 'BuGn', 'YlGn']
     sample_cm = random.sample(cm_codes, len(resources))
     resource_cm = {} # E.g. {'heat': 'OrRd', 'electricity': 'GnBu'} all string
     i = 0
@@ -235,6 +249,8 @@ class DispatchPlot(PlotPlugin):
     colors = {}
     for s in resources:
       cm = mpl.cm.get_cmap(name= resource_cm[s])
+      # Get a subset of color map from 0 - 0.8 to avoid invisble light colors
+      cm = mpl.colors.LinearSegmentedColormap.from_list('trunc({n},{a:.2f},{b:.2f})'.format(n=cm.name, a=0, b=0.8),cm(np.linspace(0, 0.8)))
       j = 0
       for t in technologis:
         clist = [cm(1.*i/resource_count[s]) for i in range(resource_count[s])] #color list

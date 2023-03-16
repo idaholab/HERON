@@ -4,7 +4,6 @@
     <author>sotogj</author>
     <created>2023-03-15</created>
     <description>
-    <description>
       Script used to generate gold data. This was the old way of implementing capacity factors
       for a wind farm: the synthetic history is the capacity, the multiplier represents the actual
       nameplate capacity.

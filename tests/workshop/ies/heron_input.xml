@@ -39,18 +39,17 @@
     <Component name="npp">
       <produces resource="steam" dispatch="independent">
         <capacity resource="steam">
-          <sweep_values>15, 20</sweep_values>
+          <sweep_values>15, 20</sweep_values> <!-- MW -->
         </capacity>
       </produces>
       <economics>
         <lifetime>5</lifetime>
-        <!-- construction cost -->
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
           <driver>
             <variable>npp_capacity</variable>
           </driver>
           <reference_price>
-            <fixed_value>-300_000_000.0</fixed_value> <!-- Try a different value -->
+            <fixed_value>-3_000_000.0</fixed_value> <!-- Try a different value -->
           </reference_price>
         </CashFlow>
         <CashFlow name="var_OM" type="repeating" taxable='True' inflation='none' mult_target='False'>
@@ -68,7 +67,7 @@
       <produces resource="electricity" dispatch="independent">
         <consumes>steam</consumes>
         <capacity resource="electricity">
-          <fixed_value>50</fixed_value>
+          <fixed_value>50</fixed_value> <!-- MW -->
         </capacity>
         <transfer>
           <linear>
@@ -93,10 +92,10 @@
         <lifetime>5</lifetime>
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
           <driver>
-            <fixed_value>10</fixed_value> <!-- CHANGE ME TOO -->
+            <fixed_value>10</fixed_value>
           </driver>
           <reference_price>
-            <fixed_value>-147_000_000.00</fixed_value> <!-- Try a different value -->
+            <fixed_value>-900_000.00</fixed_value> <!-- Try a different value -->
           </reference_price>
         </CashFlow>
       </economics>
@@ -105,7 +104,7 @@
     <Component name="HTSE">
       <produces resource="H2" dispatch="independent">
         <capacity resource="H2">
-          <sweep_values>10, 15</sweep_values>
+          <sweep_values>10, 15</sweep_values> <!-- MW -->
         </capacity>
         <consumes>electricity,steam</consumes>
         <transfer>
@@ -123,7 +122,7 @@
             <variable>HTSE_capacity</variable>
           </driver>
           <reference_price>
-            <fixed_value>-545_263_737.00</fixed_value> <!-- Try a different value -->
+            <fixed_value>-54_526_374.00</fixed_value> <!-- Try a different value -->
           </reference_price>
         </CashFlow>
         <CashFlow name="fixed_OM" type="repeating" period="year" taxable="True" inflation="none" mult_target="False">
@@ -131,7 +130,7 @@
             <variable>HTSE_capacity</variable>
           </driver>
           <reference_price>
-            <fixed_value>-70_752_705.00</fixed_value> <!-- Try a different value -->
+            <fixed_value>-7_075_705.00</fixed_value> <!-- Try a different value -->
           </reference_price>
         </CashFlow>
       </economics>
@@ -140,7 +139,7 @@
     <Component name="H2_storage">
       <stores resource="H2" dispatch="independent">
         <capacity resource="H2">
-          <sweep_values>0, 5, 8</sweep_values>
+          <sweep_values>0, 5, 8</sweep_values> <!-- MW -->
         </capacity>
         <initial_stored>
           <fixed_value>0.8</fixed_value>
@@ -171,9 +170,10 @@
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
           <driver>
             <activity>electricity</activity>
+            <multiplier>-1</multiplier> <!-- Flip the sign since we expect grid activity to be negative already -->
           </driver>
           <reference_price>
-            <fixed_value>150_000.00</fixed_value> <!-- Try a different value -->
+            <fixed_value>75_000.00</fixed_value> <!-- Try a different value -->
           </reference_price>
         </CashFlow>
       </economics>
@@ -182,8 +182,7 @@
     <Component name="H2_market">
       <demands resource="H2" dispatch="fixed">
         <capacity>
-          <fixed_value>10</fixed_value>
-          <multiplier>-1</multiplier>
+          <fixed_value>-10</fixed_value>
         </capacity>
       </demands>
       <economics>
@@ -191,10 +190,10 @@
         <CashFlow name="H2_sales" type="repeating" taxable="True" inflation="none" mult_target="False">
           <driver>
             <activity>H2</activity>
-            <multiplier>-1</multiplier>
+            <multiplier>-1</multiplier> <!-- Flip the sign since we expect H2 activity to be negative already -->
           </driver>
           <reference_price>
-            <fixed_value>100_000.00</fixed_value> <!-- Try a different value -->
+            <fixed_value>15_000.00</fixed_value> <!-- Try a different value -->
           </reference_price>
         </CashFlow>
       </economics>

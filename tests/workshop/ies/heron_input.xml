@@ -11,8 +11,13 @@
 
   <Case name="IES">
     <mode>sweep</mode>
-    <debug/>
-    <num_arma_samples>20</num_arma_samples>
+    <!-- Uncomment this node to turn on debug mode! -->
+    <!-- <debug>
+        <inner_samples>5</inner_samples>
+        <macro_steps>1</macro_steps>
+        <dispatch_plot>True</dispatch_plot>
+    </debug> -->
+    <num_arma_samples>100</num_arma_samples>
     <time_discretization>
       <year_variable>YEAR</year_variable>
       <time_variable>HOUR</time_variable>
@@ -35,7 +40,7 @@
     <Component name="npp">
       <produces resource="steam" dispatch="independent">
         <capacity resource="steam">
-          <sweep_values>30, 50</sweep_values>
+          <sweep_values>15, 20</sweep_values>
         </capacity>
       </produces>
       <economics>
@@ -46,28 +51,25 @@
             <variable>npp_capacity</variable>
           </driver>
           <reference_price>
-            <fixed_value>-3e8</fixed_value> <!-- $3000/kW * 1e6 kW/GW, but note reduced project length -->
+            <fixed_value>-300_000_000.0</fixed_value> <!-- $3000/kW * 1e6 kW/GW, but note reduced project length -->
           </reference_price>
         </CashFlow>
         <CashFlow name="var_OM" type="repeating" taxable='True' inflation='none' mult_target='False'>
           <driver>
             <activity>steam</activity>
-            <multiplier>-1</multiplier>
           </driver>
           <reference_price>
-            <fixed_value>13e3</fixed_value> <!-- ballpark $/MWh -->
+            <fixed_value>-130_000.0</fixed_value> <!-- ballpark $/MWh -->
           </reference_price>
         </CashFlow>
       </economics>
     </Component>
 
     <Component name="turbine">
-      <!-- Indpendent & Dependent dispatch are currently the same thing -->
-      <!-- This needs to be fixed to be flexible -->
       <produces resource="electricity" dispatch="independent">
         <consumes>steam</consumes>
         <capacity resource="electricity">
-          <fixed_value>100</fixed_value>
+          <fixed_value>50</fixed_value>
         </capacity>
         <transfer>
           <linear>
@@ -96,9 +98,7 @@
             <fixed_value>10</fixed_value> <!-- CHANGE ME TOO -->
           </driver>
           <reference_price>
-            <!-- 1470 $/kW * 1e6 kW/GW = 1.47e9 est cost for 1 GW wind -->
-            <!-- adjust for short project length-->
-            <fixed_value>-1.47e8</fixed_value>
+            <fixed_value>-147_000_000.00</fixed_value> <!-- $/GW -->
           </reference_price>
         </CashFlow>
       </economics>
@@ -107,7 +107,7 @@
     <Component name="HTSE">
       <produces resource="H2" dispatch="independent">
         <capacity resource="H2">
-          <sweep_values>10, 20</sweep_values> <!-- Change Me -->
+          <sweep_values>10, 15</sweep_values> <!-- Change Me -->
         </capacity>
         <consumes>electricity,steam</consumes>
         <transfer>
@@ -125,7 +125,7 @@
             <variable>HTSE_capacity</variable>
           </driver>
           <reference_price>
-            <fixed_value>-545263737</fixed_value>
+            <fixed_value>-545_263_737.00</fixed_value>
           </reference_price>
         </CashFlow>
         <CashFlow name="fixed_OM" type="repeating" period="year" taxable="True" inflation="none" mult_target="False">
@@ -133,7 +133,7 @@
             <variable>HTSE_capacity</variable>
           </driver>
           <reference_price>
-            <fixed_value>-70752705</fixed_value>
+            <fixed_value>-70_752_705.00</fixed_value>
           </reference_price>
         </CashFlow>
       </economics>
@@ -142,10 +142,10 @@
     <Component name="H2_storage">
       <stores resource="H2" dispatch="independent">
         <capacity resource="H2">
-          <sweep_values>5, 10</sweep_values>
+          <sweep_values>0, 5, 8</sweep_values>
         </capacity>
         <initial_stored>
-          <fixed_value>0</fixed_value>
+          <fixed_value>0.8</fixed_value>
         </initial_stored>
       </stores>
       <economics>
@@ -155,14 +155,14 @@
             <variable>H2_storage_capacity</variable>
           </driver>
           <reference_price>
-            <fixed_value>-550</fixed_value>
+            <fixed_value>-550_000_000.00</fixed_value>
           </reference_price>
         </CashFlow>
       </economics>
     </Component>
 
     <Component name="grid">
-      <demands resource="electricity" dispatch="fixed">
+      <demands resource="electricity" dispatch="independent">
         <capacity>
           <ARMA variable="TOTALLOAD">synth</ARMA>
           <multiplier>-1</multiplier>
@@ -175,7 +175,7 @@
             <activity>electricity</activity>
           </driver>
           <reference_price>
-            <fixed_value>50e3</fixed_value>
+            <fixed_value>150_000.00</fixed_value>
           </reference_price>
         </CashFlow>
       </economics>
@@ -196,7 +196,7 @@
             <multiplier>-1</multiplier>
           </driver>
           <reference_price>
-            <fixed_value>100</fixed_value> <!-- Change me -->
+            <fixed_value>100_000.00</fixed_value> <!-- Change me -->
           </reference_price>
         </CashFlow>
       </economics>

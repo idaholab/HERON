@@ -401,7 +401,7 @@ class Interaction(Base):
     descr = r"""the actual value at which this component can act, as a unitless fraction of total rated capacity.
             Note that these factors are applied within the dispatch optimization; we assume that the capacity factor
             is not a variable in the outer optimization."""
-    capfactor = vp_factory.make_input_specs('capacity_factor', descr=descr, allowed=['ARMA'])
+    capfactor = vp_factory.make_input_specs('capacity_factor', descr=descr, allowed=['ARMA', 'CSV'])
     specs.addSub(capfactor)
 
     descr = r"""provides the minimum value at which this component can act, in units of the indicated resource. """

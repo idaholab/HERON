@@ -282,7 +282,7 @@ class Template(TemplateBase, Base):
     # Add component opt vars
     for comp in components:
       comp_cap_type = comp.get_capacity(None, raw=True).type
-      if comp_cap_type  not in ['Function', 'ARMA', 'SyntheticHistory']:
+      if comp_cap_type  not in ['Function', 'ARMA', 'SyntheticHistory', 'StaticHistory']:
         var_list.append(f'{comp.name}_capacity')
 
     # Add dispatch opt vars
@@ -1005,7 +1005,7 @@ class Template(TemplateBase, Base):
         mc.append(xmlUtils.newNode('constant', attrib={'name': cap_name}, text=cap_val))
         # add component to applicable variable groups
         self._updateCommaSeperatedList(groups['capacities'], cap_name)
-      elif capacity.type in ['SyntheticHistory', 'Function', 'Variable']:
+      elif capacity.type in ['StaticHistory', 'SyntheticHistory', 'Function', 'Variable']:
         # capacity is limited by a signal, so it has to be handled in the dispatch; don't include it here.
         # OR capacity is limited by a function, and we also can't handle it here, but in the dispatch.
         pass

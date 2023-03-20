@@ -142,7 +142,7 @@
           <sweep_values>0, 5, 8</sweep_values> <!-- MW -->
         </capacity>
         <initial_stored>
-          <fixed_value>0.8</fixed_value>
+          <fixed_value>0.2</fixed_value> <!-- Try a different value -->
         </initial_stored>
       </stores>
       <economics>
@@ -198,7 +198,6 @@
         </CashFlow>
       </economics>
     </Component>
-
   </Components>
 
 

@@ -1,0 +1,167 @@
+<HERON>
+  <TestInfo>
+    <name>capacity_factor_test</name>
+    <author>sotogj</author>
+    <created>2023-03-15</created>
+    <description>
+      Testing usage of a capacity factor applied to overall component capacity via a synthetic
+      history model. Here we implement this on a wind farm - we sweep over nameplate capacities
+      for the Wind component but actual per unit time capacity is scaled by the capacity factor
+      (meant to be a stand-in for effect of wind speed). Tests are compared against those generated
+      using `heron_input_old.xml`: the synthetic history is the capacity, the multiplier
+      represents the actual nameplate capacity.
+    </description>
+    <classesTested>HERON</classesTested>
+  </TestInfo>
+
+  <Case name="wind">
+    <mode>sweep</mode>
+    <num_arma_samples>3</num_arma_samples>
+    <time_discretization>
+      <time_variable>Time</time_variable>
+      <!-- <year_variable>YEAR</year_variable> -->
+      <end_time>2</end_time>
+      <num_steps>21</num_steps>
+    </time_discretization>
+    <economics>
+      <ProjectTime>3</ProjectTime>
+      <DiscountRate>0.08</DiscountRate>
+      <tax>0.1</tax>
+      <inflation>0.1</inflation>
+      <verbosity>50</verbosity>
+    </economics>
+    <dispatcher>
+      <pyomo/>
+    </dispatcher>
+  </Case>
+
+
+  <Components>
+    <Component name="wind">
+      <produces resource="electricity" dispatch="independent">
+        <capacity resource="electricity">
+          <sweep_values debug_value="10">10, 20</sweep_values>
+        </capacity>
+        <capacity_factor>
+          <CSV variable="Signal">synth</CSV>
+        </capacity_factor>
+      </produces>
+      <economics>
+        <lifetime>5</lifetime>
+        <!-- construction cost -->
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <variable>wind_capacity</variable>
+          </driver>
+          <reference_price>
+            <!-- 1470 $/kW * 1e6 kW/GW = 1.47e9 est cost for 1 GW wind -->
+            <!-- adjust for short project length-->
+            <fixed_value>-1.47e8</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+
+    <Component name="npp">
+      <produces resource="electricity" dispatch="independent">
+        <capacity resource="electricity">
+          <fixed_value>20</fixed_value>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>10</lifetime>
+        <!-- construction cost -->
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <variable>npp_capacity</variable>
+          </driver>
+          <reference_price>
+            <!-- $3000/kW * 1e6 kW/GW, but note reduced project length -->
+            <fixed_value>-3e8</fixed_value>
+          </reference_price>
+        </CashFlow>
+        <CashFlow name="var_OM" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <!-- from Lazard (2019) -  3.5 $/MWh * 1e3 MWh/GWh -->
+            <fixed_value>3.5e3</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+
+    <Component name="grid">
+      <demands resource="electricity" dispatch="fixed">
+        <capacity>
+          <fixed_value>35</fixed_value>
+          <multiplier>-1</multiplier>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>1</lifetime>
+        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <fixed_value>50e3</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+
+    <Component name="import">
+      <produces resource="electricity" dispatch="independent">
+        <capacity resource="electricity">
+          <fixed_value>100</fixed_value>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>1</lifetime>
+        <CashFlow name="import" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <fixed_value>1e6</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+
+    <Component name="export">
+      <demands resource="electricity" dispatch="independent">
+        <capacity>
+          <fixed_value>-100</fixed_value> <!-- GW -->
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>1</lifetime>
+        <CashFlow name="export" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>electricity</activity>
+          </driver>
+          <reference_price>
+            <fixed_value>1e6</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+  </Components>
+
+
+  <DataGenerators>
+    <CSV name='synth' variable="Signal">%BASE_WORKING_DIR%/../../../mechanics/capacity_factors/Static.csv</CSV>
+  </DataGenerators>
+
+</HERON>

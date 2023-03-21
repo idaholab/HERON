@@ -398,6 +398,12 @@ class Interaction(Base):
               of the value of this node.""")
     specs.addSub(cap)
 
+    descr = r"""the actual value at which this component can act, as a unitless fraction of total rated capacity.
+            Note that these factors are applied within the dispatch optimization; we assume that the capacity factor
+            is not a variable in the outer optimization."""
+    capfactor = vp_factory.make_input_specs('capacity_factor', descr=descr, allowed=['ARMA', 'CSV'])
+    specs.addSub(capfactor)
+
     descr = r"""provides the minimum value at which this component can act, in units of the indicated resource. """
     minn = vp_factory.make_input_specs('minimum', descr=descr)
     minn.addParam('resource', param_type=InputTypes.StringType,
@@ -416,6 +422,7 @@ class Interaction(Base):
     Base.__init__(self, **kwargs)
     self._capacity = None               # upper limit of this interaction
     self._capacity_var = None           # which variable limits the capacity (could be produced or consumed?)
+    self._capacity_factor = None        # ratio of actual output as fraction of _capacity
     self._signals = set()               # dependent signals for this interaction
     self._crossrefs = defaultdict(dict) # crossrefs objects needed (e.g. armas, etc), as {attr: {tag, name, obj})
     self._dispatchable = None           # independent, dependent, or fixed?
@@ -439,7 +446,7 @@ class Interaction(Base):
     self._dispatchable = specs.parameterValues['dispatch']
     for item in specs.subparts:
       name = '_' + item.getName()
-      if name in ['_capacity', '_minimum']:
+      if name in ['_capacity', '_capacity_factor', '_minimum']:
         # common reading for valued params
         self._set_valued_param(name, comp_name, item, mode)
         if name == '_capacity':
@@ -486,9 +493,14 @@ class Interaction(Base):
       @ Out, meta, dict, additional variable passthrough
     """
     if raw:
+      #NOTE: not returing capacity_factor since it will not be used as a variable
       return self._capacity
     meta['request'] = {self._capacity_var: None}
     evaluated, meta = self._capacity.evaluate(meta, target_var=self._capacity_var)
+    # apply capacity factor to get actual capacity for given timestep
+    if self._capacity_factor is not None:
+      capacity_factor = self._capacity_factor.evaluate(meta, target_var=self._capacity_var)[0]
+      evaluated[self._capacity_var] *= capacity_factor[self._capacity_var]
     return evaluated, meta
 
   def get_capacity_var(self):

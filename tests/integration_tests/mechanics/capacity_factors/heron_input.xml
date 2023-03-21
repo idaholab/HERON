@@ -16,10 +16,10 @@
 
   <Case name="wind">
     <mode>sweep</mode>
-    <!-- <debug/> -->
-    <num_arma_samples>10</num_arma_samples>
+    <num_arma_samples>3</num_arma_samples>
     <time_discretization>
       <time_variable>Time</time_variable>
+      <!-- <year_variable>YEAR</year_variable> -->
       <end_time>2</end_time>
       <num_steps>21</num_steps>
     </time_discretization>
@@ -40,11 +40,10 @@
     <Component name="wind">
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <sweep_values>10, 20</sweep_values>
-          <multiplier>1</multiplier> <!-- CHANGE ME -->
+          <sweep_values debug_value="10">10, 20</sweep_values>
         </capacity>
         <capacity_factor>
-          <ARMA variable="Signal">synth</ARMA>
+          <CSV variable="Signal">synth</CSV>
         </capacity_factor>
       </produces>
       <economics>
@@ -67,7 +66,7 @@
     <Component name="npp">
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <fixed_value>25</fixed_value>
+          <fixed_value>20</fixed_value>
         </capacity>
       </produces>
       <economics>
@@ -88,8 +87,8 @@
             <multiplier>-1</multiplier>
           </driver>
           <reference_price>
-            <!-- ballpark $/MWh -->
-            <fixed_value>13e3</fixed_value>
+            <!-- from Lazard (2019) -  3.5 $/MWh * 1e3 MWh/GWh -->
+            <fixed_value>3.5e3</fixed_value>
           </reference_price>
         </CashFlow>
       </economics>
@@ -162,7 +161,7 @@
 
 
   <DataGenerators>
-    <ARMA name='synth' variable="Signal">%BASE_WORKING_DIR%/../../../ARMA/Sine/arma.pk</ARMA>
+    <CSV name='synth' variable="Signal">%BASE_WORKING_DIR%/../../../mechanics/capacity_factors/Static.csv</CSV>
   </DataGenerators>
 
 </HERON>

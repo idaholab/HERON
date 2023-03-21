@@ -13,8 +13,7 @@
 
   <Case name="wind_20">
     <mode>sweep</mode>
-    <!-- <debug/> -->
-    <num_arma_samples>10</num_arma_samples>
+    <num_arma_samples>3</num_arma_samples>
     <time_discretization>
       <time_variable>Time</time_variable>
       <end_time>2</end_time>
@@ -37,7 +36,7 @@
     <Component name="wind">
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <ARMA variable="Signal">synth</ARMA>
+          <CSV variable="Signal">synth</CSV>
           <!-- NOTE: if you change this multiplier, also change the capex driver
                       fixed value for this component!  -->
           <!-- LOOP: 10, 20-->
@@ -65,7 +64,7 @@
     <Component name="npp">
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <sweep_values>25, 30</sweep_values> <!-- NOTE: will just using the 25 value -->
+          <sweep_values>0, 20</sweep_values> <!-- NOTE: will just using the 20 value -->
         </capacity>
       </produces>
       <economics>
@@ -86,8 +85,8 @@
             <multiplier>-1</multiplier>
           </driver>
           <reference_price>
-            <!-- ballpark $/MWh -->
-            <fixed_value>13e3</fixed_value>
+            <!-- from Lazard (2019) -  3.5 $/MWh * 1e3 MWh/GWh -->
+            <fixed_value>3.5e3</fixed_value>
           </reference_price>
         </CashFlow>
       </economics>
@@ -160,7 +159,7 @@
 
 
   <DataGenerators>
-    <ARMA name='synth' variable="Signal">%BASE_WORKING_DIR%/../../../ARMA/Sine/arma.pk</ARMA>
+    <CSV name='synth' variable="Signal">%BASE_WORKING_DIR%/../../Static.csv</CSV>
   </DataGenerators>
 
 </HERON>

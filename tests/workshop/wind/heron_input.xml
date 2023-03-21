@@ -1,6 +1,6 @@
 <HERON>
   <TestInfo>
-    <name>wind</name>
+    <name>wind_cf</name>
     <author>talbpaul</author>
     <created>2022-05-24</created>
     <description>
@@ -10,8 +10,8 @@
     <classesTested>HERON</classesTested>
   </TestInfo>
 
-  <Case name="wind">
-    <mode>sweep</mode>
+  <Case name="wind_simple">
+    <mode>swwep</mode>
     <!-- <debug/> -->
     <num_arma_samples>20</num_arma_samples>
     <time_discretization>
@@ -37,21 +37,19 @@
     <Component name="wind">
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <!-- TODO: we need a way to have the capacity be opt or fixed
-                     and allow the variability to be in the multiplier
-                     or a capacity factor.  -->
+          <!-- CHANGE THE DEBUG VALUE -->
+          <sweep_values debug_value="30">0, 10, 30, 50, 70, 90</sweep_values>
+        </capacity>
+        <capacity_factor>
           <ARMA variable="WIND">synth</ARMA>
-          <!-- NOTE: if you change this multiplier, also change the capex driver
-                     fixed value for this component!  -->
-        <multiplier>0</multiplier> <!-- CHANGE ME -->
-      </capacity>
+        </capacity_factor>
     </produces>
     <economics>
       <lifetime>5</lifetime>
       <!-- construction cost -->
       <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
         <driver>
-          <fixed_value>0</fixed_value> <!-- CHANGE ME TOO -->
+          <variable>wind_capacity</variable>
         </driver>
         <reference_price>
           <!-- 1470 $/kW * 1e6 kW/GW = 1.47e9 est cost for 1 GW wind -->
@@ -66,7 +64,8 @@
   <Component name="npp">
     <produces resource="electricity" dispatch="independent">
       <capacity resource="electricity">
-        <sweep_values debug_value="10">0, 20, 40, 60</sweep_values>
+         <!-- CHANGE THE DEBUG VALUE -->
+        <sweep_values debug_value="20">0, 20, 40, 60</sweep_values>
       </capacity>
     </produces>
     <economics>
@@ -88,7 +87,7 @@
         </driver>
         <reference_price>
           <!-- ballpark $/MWh -->
-          <fixed_value>13e3</fixed_value>
+          <fixed_value>3.5e3</fixed_value>
         </reference_price>
       </CashFlow>
     </economics>

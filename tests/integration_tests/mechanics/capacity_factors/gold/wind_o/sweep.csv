@@ -1,0 +1,3 @@
+wind_capacity,npp_capacity,grid_capacity,import_capacity,export_capacity,mean_NPV,med_NPV,max_NPV,min_NPV,perc_5_NPV,perc_95_NPV,samp_NPV,ProbabilityWeight,prefix,PointProbability,ProbabilityWeight-wind_capacity
+10,20,35,100,-100,-7114312549,-7114312549,-7114312549,-7114312549,-7114312549,-7114312549,3,0.5,1,0.1,0.5
+20,20,35,100,-100,-8215549940,-8215549940,-8215549940,-8215549940,-8215549940,-8215549940,3,0.5,2,0.1,0.5

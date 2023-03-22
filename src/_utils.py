@@ -42,9 +42,10 @@ def get_raven_loc():
   """
   try:
     import ravenframework
-    print("WARNING: get_raven_loc deprecated")
-    import traceback
-    traceback.print_stack()
+    # Commented for now -- TODO: address these messages in the future
+    # print("WARNING: get_raven_loc deprecated")
+    # import traceback
+    # traceback.print_stack()
     return path.dirname(ravenframework.__path__[0])
   except ModuleNotFoundError:
     pass

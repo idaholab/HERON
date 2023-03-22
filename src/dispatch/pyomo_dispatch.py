@@ -321,7 +321,7 @@ class Pyomo(Dispatcher):
         self._debug_pyomo_print(m)
         print('Resource Map:')
         pprint.pprint(m.resource_index_map)
-        raise RuntimeError
+        raise RuntimeError(f"Solve was unsuccessful! Status: {soln.solver.status} Termination: {soln.solver.termination_condition}")
       # try validating
       print('DEBUGG ... validating ...')
       validation_errs = self.validate(m.Components, m.Activity, m.Times, meta)
@@ -488,6 +488,9 @@ class Pyomo(Dispatcher):
     prod_name = f'{name}_{tag}'
     caps, mins = self._find_production_limits(m, comp, meta)
     if min(caps) < 0:
+      # quick check that capacities signs are consistent #FIXME: revisit, this is an assumption
+      assert max(caps) < 0, \
+        'Capacities are inconsistent: mix of positive and negative values not currently  supported.'
       # we have a unit that's consuming, so we need to flip the variables to be sensible
       mins, caps = caps, mins
       inits = caps

@@ -166,11 +166,16 @@ class DispatchPlot(PlotPlugin):
       # Lineplot
       for key, c, llabel in zip(level_dat, level_color[:len(level_dat)] + [Dark], level_label[:len(level_dat)]):
         ax2.plot(df[self._microName], df[key], linestyle=ls, label=llabel, color=c )
-      # Set figure title, label, legend, and grid
+      # Set figure title, legend, and grid
       ax.set_title(key.title().split('_')[-1])
       ax.set_xlabel(self._microName)
       ax.legend(loc='upper left', bbox_to_anchor=(1.1, 0.6), fontsize = 10)
       ax2.legend(loc='lower left', bbox_to_anchor=(1.1, 0.6), fontsize = 10)
+      # Add the label and adjust location
+      ax.set_ylabel('Level', fontsize=10, rotation=0)
+      ax2.set_ylabel('Activity', fontsize=10, rotation=0)
+      ax.yaxis.set_label_coords(-0.01,1.02)
+      ax2.yaxis.set_label_coords(1,1.07)
       ax.grid(None)
       ax2.grid(None)
     # Output and save the image

@@ -10,9 +10,9 @@
     <classesTested>HERON</classesTested>
   </TestInfo>
 
-  <Case name="wind_npp_storage__opt__TES_Batt_OPT">
-    <mode>opt</mode>
-    <!-- <mode>sweep</mode> -->
+  <Case name="npp_wind_storage">
+    <mode>sweep</mode>
+    <!-- Uncomment below to run in debug mode! -->
     <!-- <debug/> -->
     <num_arma_samples>20</num_arma_samples>
     <time_discretization>
@@ -31,14 +31,6 @@
     <dispatcher>
       <pyomo/>
     </dispatcher>
-    <optimization_settings>
-      <convergence>
-        <gradient>1e-2</gradient>
-        <objective>1e-4</objective>
-      </convergence>
-      <metric>expectedValue</metric>
-      <type>max</type>
-    </optimization_settings>
   </Case>
 
 
@@ -46,10 +38,7 @@
     <Component name="wind">
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-           <!-- CHANGE THE DEBUG VALUE -->
-           <!-- <fixed_value>0</fixed_value> -->
-           <opt_bounds debug_value="30">0,50</opt_bounds>
-          <!-- <sweep_values debug_value="30">0, 30</sweep_values> -->
+          <sweep_values debug_value="30">0, 90</sweep_values> <!-- CHANGE THE DEBUG VALUE; ADD MORE!  -->
         </capacity>
         <capacity_factor>
           <ARMA variable="WIND">synth</ARMA>
@@ -57,7 +46,6 @@
       </produces>
       <economics>
         <lifetime>5</lifetime>
-        <!-- construction cost -->
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
           <driver>
             <variable>wind_capacity</variable>
@@ -72,25 +60,22 @@
     </Component>
 
 
-    <Component name="npp">
-      <produces resource="heat" dispatch="independent">
+    <Component name="reactor">
+      <produces resource="heat" dispatch="fixed"> <!-- CHANGE to independent dispatch-->
         <capacity resource="heat">
-          <!-- CHANGE THE DEBUG VALUE -->
-          <opt_bounds debug_value="30">0,100</opt_bounds>
-          <!-- <sweep_values debug_value="20">40, 60, 80, 100</sweep_values> -->
+          <sweep_values debug_value="20">0, 120</sweep_values> <!-- CHANGE THE DEBUG VALUE; ADD MORE! -->
         </capacity>
       </produces>
       <economics>
         <lifetime>10</lifetime>
-        <!-- construction cost -->
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
           <driver>
-            <variable>npp_capacity</variable>
+            <variable>reactor_capacity</variable>
           </driver>
           <reference_price>
-            <!-- $3000/kW * 1e6 kW/GW, but note reduced project length -->
+            <!-- $3000/kWe * 1e6 kW/GW, but note reduced project length -->
             <fixed_value>-3e8</fixed_value>
-            <multiplier>0.33</multiplier> <!-- TRY THIS! basically add an efficiency term-->
+            <multiplier>0.5</multiplier> <!-- Efficiency Term (MWe/MWt)-->
           </reference_price>
         </CashFlow>
         <CashFlow name="var_OM" type="repeating" taxable='True' inflation='none' mult_target='False'>
@@ -99,9 +84,10 @@
             <multiplier>-1</multiplier>
           </driver>
           <reference_price>
-            <!-- ballpark $/MWh -->
+            <!-- ballpark $/MWhe -->
+            <!-- https://www.lazard.com/media/451086/lazards-levelized-cost-of-energy-version-130-vf.pdf -->
             <fixed_value>3.5e3</fixed_value>
-            <multiplier>0.33</multiplier>
+            <multiplier>0.5</multiplier> <!-- Efficiency Term (MWe/MWt)-->
           </reference_price>
         </CashFlow>
       </economics>
@@ -126,6 +112,8 @@
           </driver>
           <reference_price>
             <!-- numbers based on molten salt TES numbers used for concentrated solar plants-->
+            <!-- Jacob, R. et al. 2017 "Capital cost expenditure of high temperature
+                    latent and sensible thermal energy storage systems"-->
             <!-- $30/kWth * 1e6 kW/GW, but note reduced project length -->
             <fixed_value>-3e6</fixed_value>
           </reference_price>
@@ -137,12 +125,12 @@
       <produces resource="electricity" dispatch="dependent">
         <consumes>heat</consumes>
         <capacity resource="electricity">
-          <fixed_value>500</fixed_value>
+          <fixed_value>200</fixed_value>
         </capacity>
         <transfer>
           <linear>
             <rate resource="heat">-1</rate>
-            <rate resource="electricity">0.33</rate>
+            <rate resource="electricity">0.5</rate>  <!-- Efficiency Term (MWe/MWt)-->
           </linear>
         </transfer>
       </produces>
@@ -164,10 +152,11 @@
         <lifetime>10</lifetime>
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
           <driver>
-            <variable>tes_capacity</variable>
+            <variable>battery_capacity</variable>
           </driver>
           <reference_price>
             <!-- numbers based on lithium ion battery prices 2022-->
+            <!-- https://about.bnef.com/blog/lithium-ion-battery-pack-prices-rise-for-first-time-to-an-average-of-151-kwh/-->
             <!-- $151/kWth * 1e6 kW/GW, but note reduced project length -->
             <fixed_value>-15.1e6</fixed_value>
           </reference_price>

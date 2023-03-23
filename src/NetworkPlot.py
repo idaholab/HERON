@@ -114,7 +114,7 @@ class NetworkPlot:
     }
 
     fig, ax = plt.subplots(figsize=(7,7))
-    pos = nx.spring_layout(self._graph)
+    pos = nx.circular_layout(self._graph)
 
     nx.draw_networkx_nodes(self._graph, pos, nodelist=list(self._resources), **resrc_options)
     nx.draw_networkx_nodes(self._graph, pos, nodelist=list(self._producers_and_consumers), **tech_options)

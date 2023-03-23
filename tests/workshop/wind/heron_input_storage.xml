@@ -10,8 +10,9 @@
     <classesTested>HERON</classesTested>
   </TestInfo>
 
-  <Case name="wind_npp_noTES_wEff0_5">
-    <mode>sweep</mode>
+  <Case name="wind_npp_storage__opt__TES_Batt_OPT">
+    <mode>opt</mode>
+    <!-- <mode>sweep</mode> -->
     <!-- <debug/> -->
     <num_arma_samples>20</num_arma_samples>
     <time_discretization>
@@ -30,6 +31,14 @@
     <dispatcher>
       <pyomo/>
     </dispatcher>
+    <optimization_settings>
+      <convergence>
+        <gradient>1e-2</gradient>
+        <objective>1e-4</objective>
+      </convergence>
+      <metric>expectedValue</metric>
+      <type>max</type>
+    </optimization_settings>
   </Case>
 
 
@@ -38,7 +47,9 @@
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
            <!-- CHANGE THE DEBUG VALUE -->
-          <sweep_values debug_value="30">0, 10, 30, 50, 70, 90</sweep_values>
+           <!-- <fixed_value>0</fixed_value> -->
+           <opt_bounds debug_value="30">0,50</opt_bounds>
+          <!-- <sweep_values debug_value="30">0, 30</sweep_values> -->
         </capacity>
         <capacity_factor>
           <ARMA variable="WIND">synth</ARMA>
@@ -65,7 +76,8 @@
       <produces resource="heat" dispatch="independent">
         <capacity resource="heat">
           <!-- CHANGE THE DEBUG VALUE -->
-          <sweep_values debug_value="20">0, 40, 80, 120</sweep_values>
+          <opt_bounds debug_value="30">0,100</opt_bounds>
+          <!-- <sweep_values debug_value="20">40, 60, 80, 100</sweep_values> -->
         </capacity>
       </produces>
       <economics>
@@ -78,7 +90,7 @@
           <reference_price>
             <!-- $3000/kW * 1e6 kW/GW, but note reduced project length -->
             <fixed_value>-3e8</fixed_value>
-            <multiplier>0.5</multiplier> <!-- TRY THIS! basically add an efficiency term-->
+            <multiplier>0.33</multiplier> <!-- TRY THIS! basically add an efficiency term-->
           </reference_price>
         </CashFlow>
         <CashFlow name="var_OM" type="repeating" taxable='True' inflation='none' mult_target='False'>
@@ -89,17 +101,18 @@
           <reference_price>
             <!-- ballpark $/MWh -->
             <fixed_value>3.5e3</fixed_value>
-            <multiplier>0.5</multiplier>
+            <multiplier>0.33</multiplier>
           </reference_price>
         </CashFlow>
       </economics>
     </Component>
 
 
-    <!-- <Component name="tes">
+    <Component name="tes">
       <stores resource="heat" dispatch="independent">
         <capacity resource="heat">
-          <fixed_value>0</fixed_value>
+          <opt_bounds debug_value="30">0,100</opt_bounds>
+          <!-- <sweep_values debug_value="30">0, 10, 30, 50, 70, 90</sweep_values> -->
         </capacity>
         <initial_stored>
           <fixed_value>0.01</fixed_value>
@@ -107,19 +120,29 @@
       </stores>
       <economics>
         <lifetime>10</lifetime>
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <variable>tes_capacity</variable>
+          </driver>
+          <reference_price>
+            <!-- numbers based on molten salt TES numbers used for concentrated solar plants-->
+            <!-- $30/kWth * 1e6 kW/GW, but note reduced project length -->
+            <fixed_value>-3e6</fixed_value>
+          </reference_price>
+        </CashFlow>
       </economics>
-    </Component> -->
+    </Component>
 
     <Component name="turbine">
       <produces resource="electricity" dispatch="dependent">
         <consumes>heat</consumes>
         <capacity resource="electricity">
-          <fixed_value>100</fixed_value>
+          <fixed_value>500</fixed_value>
         </capacity>
         <transfer>
           <linear>
             <rate resource="heat">-1</rate>
-            <rate resource="electricity">0.5</rate>
+            <rate resource="electricity">0.33</rate>
           </linear>
         </transfer>
       </produces>
@@ -128,10 +151,10 @@
       </economics>
     </Component>
 
-    <!-- <Component name="battery">
+    <Component name="battery">
       <stores resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <fixed_value>0</fixed_value>
+          <opt_bounds debug_value="30">0,100</opt_bounds>
         </capacity>
         <initial_stored>
           <fixed_value>0.01</fixed_value>
@@ -139,8 +162,18 @@
       </stores>
       <economics>
         <lifetime>10</lifetime>
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <variable>tes_capacity</variable>
+          </driver>
+          <reference_price>
+            <!-- numbers based on lithium ion battery prices 2022-->
+            <!-- $151/kWth * 1e6 kW/GW, but note reduced project length -->
+            <fixed_value>-15.1e6</fixed_value>
+          </reference_price>
+        </CashFlow>
       </economics>
-    </Component> -->
+    </Component>
 
     <Component name="grid">
       <demands resource="electricity" dispatch="fixed">

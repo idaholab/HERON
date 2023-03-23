@@ -38,7 +38,7 @@
     <Component name="wind">
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <sweep_values debug_value="30">0, 90</sweep_values> <!-- CHANGE THE DEBUG VALUE; ADD MORE!  -->
+          <sweep_values debug_value="30">0, 10, 30, 50, 70, 90</sweep_values> <!-- CHANGE THE DEBUG VALUE -->
         </capacity>
         <capacity_factor>
           <ARMA variable="WIND">synth</ARMA>
@@ -61,9 +61,9 @@
 
 
     <Component name="npp">
-      <produces resource="electricity" dispatch="fixed"> <!-- CHANGE to independent dispatch-->
+      <produces resource="electricity" dispatch="independent"> <!-- TRY with fixed dispatch-->
         <capacity resource="electricity">
-          <sweep_values debug_value="20">0, 60</sweep_values> <!-- CHANGE THE DEBUG VALUE; ADD MORE! -->
+          <sweep_values debug_value="20">0, 20, 40, 60</sweep_values> <!-- CHANGE THE DEBUG VALUE -->
         </capacity>
       </produces>
       <economics>

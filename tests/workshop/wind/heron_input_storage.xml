@@ -38,7 +38,7 @@
     <Component name="wind">
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <sweep_values debug_value="30">0, 15</sweep_values> <!-- CHANGE THE DEBUG VALUE; ADD MORE!  -->
+          <sweep_values debug_value="10">0, 15</sweep_values> <!-- CHANGE THE DEBUG VALUE; ADD MORE!  -->
         </capacity>
         <capacity_factor>
           <ARMA variable="WIND">synth</ARMA>
@@ -97,7 +97,7 @@
     <Component name="tes">
       <stores resource="heat" dispatch="independent">
         <capacity resource="heat">
-          <sweep_values debug_value="30">0, 10</sweep_values> <!-- CHANGE THE DEBUG VALUE; ADD MORE!  -->
+          <sweep_values debug_value="5">0, 10</sweep_values> <!-- CHANGE THE DEBUG VALUE; ADD MORE!  -->
         </capacity>
         <initial_stored>
           <fixed_value>0.01</fixed_value>
@@ -141,7 +141,7 @@
     <Component name="battery">
       <stores resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <sweep_values debug_value="30">0, 5</sweep_values> <!-- CHANGE THE DEBUG VALUE; ADD MORE!  -->
+          <sweep_values debug_value="2">0, 5</sweep_values> <!-- CHANGE THE DEBUG VALUE; ADD MORE!  -->
         </capacity>
         <initial_stored>
           <fixed_value>0.01</fixed_value>

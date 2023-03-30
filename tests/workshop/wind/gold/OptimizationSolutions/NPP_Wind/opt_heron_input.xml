@@ -10,10 +10,10 @@
     <classesTested>HERON</classesTested>
   </TestInfo>
 
-  <Case name="npp_wind">
-    <mode>sweep</mode>
-    <!-- Uncomment below to run in debug mode! -->
-    <!-- <debug/> -->
+  <Case name="wind_coarse_opt">
+    <mode>opt</mode>
+    <!-- <mode>sweep</mode> -->
+    <debug/>
     <num_arma_samples>20</num_arma_samples>
     <time_discretization>
       <year_variable>YEAR</year_variable>
@@ -31,6 +31,14 @@
     <dispatcher>
       <pyomo/>
     </dispatcher>
+    <optimization_settings>
+      <convergence>
+        <gradient>1e-2</gradient>
+        <objective>1e-4</objective>
+      </convergence>
+      <metric>expectedValue</metric>
+      <type>max</type>
+    </optimization_settings>
   </Case>
 
 
@@ -38,7 +46,9 @@
     <Component name="wind">
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <sweep_values debug_value="30">0, 10, 30, 50, 70, 90</sweep_values> <!-- CHANGE THE DEBUG VALUE -->
+          <!-- CHANGE THE DEBUG VALUE -->
+          <opt_bounds debug_value="30">30,50</opt_bounds>
+          <!-- <sweep_values debug_value="30">0, 10, 30, 50, 70, 90</sweep_values> -->
         </capacity>
         <capacity_factor>
           <ARMA variable="WIND">synth</ARMA>
@@ -46,6 +56,7 @@
       </produces>
       <economics>
         <lifetime>5</lifetime>
+        <!-- construction cost -->
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
           <driver>
             <variable>wind_capacity</variable>
@@ -61,9 +72,11 @@
 
 
     <Component name="npp">
-      <produces resource="electricity" dispatch="independent"> <!-- TRY with fixed dispatch-->
+      <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <sweep_values debug_value="20">0, 20, 40, 60</sweep_values> <!-- CHANGE THE DEBUG VALUE -->
+          <!-- CHANGE THE DEBUG VALUE -->
+          <opt_bounds debug_value="20">15,40</opt_bounds>
+          <!-- <sweep_values debug_value="20">0, 20, 40, 60</sweep_values> -->
         </capacity>
       </produces>
       <economics>
@@ -85,7 +98,6 @@
           </driver>
           <reference_price>
             <!-- ballpark $/MWh -->
-            <!-- https://www.lazard.com/media/451086/lazards-levelized-cost-of-energy-version-130-vf.pdf -->
             <fixed_value>3.5e3</fixed_value>
           </reference_price>
         </CashFlow>

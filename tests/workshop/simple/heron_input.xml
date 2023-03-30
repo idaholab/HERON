@@ -10,11 +10,9 @@
   </TestInfo>
 
   <Case name="1_simple">
-    <mode>opt</mode>
+    <mode>sweep</mode>
     <num_arma_samples>20</num_arma_samples>
-    <!-- <parallel>
-        <inner>2</inner>
-      </parallel> -->
+    <!--<verbosity>debug</verbosity>-->
     <time_discretization>
       <year_variable>YEAR</year_variable>
       <time_variable>HOUR</time_variable>
@@ -38,8 +36,9 @@
     <Component name="ngcc">
 
       <produces resource="electricity" dispatch="independent">
-        <capacity resource="electricity">
-          <opt_bounds>10, 40</opt_bounds> <!-- GW -->
+        <capacity resource="electricity"><!-- GW -->
+          <sweep_values>10, 20, 30, 40, 50, 60</sweep_values>
+          <!-- <opt_bounds>30, 50</opt_bounds> -->
         </capacity>
       </produces>
 
@@ -52,7 +51,7 @@
           </driver>
           <reference_price>
             <!-- 1000 $/kW * 1e6 kW/GW = 1e9 est cost for 1 GW NGCC -->
-            <fixed_value>-1e5</fixed_value>
+            <fixed_value>-1e9</fixed_value>
           </reference_price>
           <!-- <depreciate>15</depreciate> -->
         </CashFlow>
@@ -88,7 +87,7 @@
           </driver>
           <reference_price>
             <!-- ballpark $100/MWh -->
-            <fixed_value>100e3</fixed_value>
+            <fixed_value>1e10</fixed_value>
           </reference_price>
         </CashFlow>
       </economics>

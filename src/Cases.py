@@ -105,7 +105,7 @@ class Case(Base):
                                                        strictMode=True, descr=desc_verbosity_options))
 
     workflow_options = InputTypes.makeEnumType('WorkflowOptions', 'WorkflowOptionsType',
-                                               ['standard', 'MOPED', 'combined', 'DISPATCHES'])
+                                               ['standard', 'MOPED', 'combined', 'DISPATCHES','ABCE'])
 
     desc_workflow_options = r"""determines the desired workflow(s) for the HERON analysis. \default{standard}.
                             If ``standard'' runs HERON as usual (writes outer/inner for RAVEN workflow).

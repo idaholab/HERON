@@ -76,7 +76,7 @@
     <Component name="wind">
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <sweep_values debug_value="10">5, 10</sweep_values> <!-- MW -->
+          <sweep_values debug_value="10">5, 10</sweep_values>
         </capacity>
         <capacity_factor>
           <ARMA variable="WIND">synth</ARMA>
@@ -124,7 +124,7 @@
             <variable>HTSE_capacity</variable>
           </driver>
           <reference_price>
-            <fixed_value>-1_893_333.00</fixed_value> <!-- Try a different value -->
+            <fixed_value>-2_840_000.00</fixed_value> <!-- Try a different value -->
           </reference_price>
         </CashFlow>
         <CashFlow name="fixed_OM" type="repeating" period="year" taxable="True" inflation="none" mult_target="False">
@@ -132,7 +132,7 @@
             <variable>HTSE_capacity</variable>
           </driver>
           <reference_price>
-            <fixed_value>-131_333.00</fixed_value> <!-- Try a different value -->
+            <fixed_value>-197_000.00</fixed_value> <!-- Try a different value -->
           </reference_price>
         </CashFlow>
       </economics>
@@ -141,7 +141,7 @@
     <Component name="H2_storage">
       <stores resource="H2" dispatch="independent">
         <capacity resource="H2">
-          <sweep_values debug_value="5">0, 5, 8</sweep_values> <!-- MW -->
+          <sweep_values debug_value="25">0, 25, 50</sweep_values>
         </capacity>
         <initial_stored>
           <fixed_value>0.2</fixed_value> <!-- Try a different value -->

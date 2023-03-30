@@ -1,5 +1,5 @@
 [Tests]
-  [./Workshop_HTSE_Simple1]
+  [./Workshop_Simple]
     type = HeronIntegration
     input = heron_input.xml
     heavy = true

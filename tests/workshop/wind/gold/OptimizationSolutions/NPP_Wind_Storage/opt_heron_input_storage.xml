@@ -1,6 +1,6 @@
 <HERON>
   <TestInfo>
-    <name>wind_cf</name>
+    <name>arbitrage</name>
     <author>talbpaul</author>
     <created>2022-05-24</created>
     <description>
@@ -10,9 +10,9 @@
     <classesTested>HERON</classesTested>
   </TestInfo>
 
-  <Case name="npp_wind">
-    <mode>sweep</mode>
-    <!-- Uncomment below to run in debug mode! -->
+  <Case name="wind_npp_storage__opt_eff0_5____x2">
+    <mode>opt</mode>
+    <!-- <mode>sweep</mode> -->
     <!-- <debug/> -->
     <num_arma_samples>20</num_arma_samples>
     <time_discretization>
@@ -31,6 +31,14 @@
     <dispatcher>
       <pyomo/>
     </dispatcher>
+    <optimization_settings>
+      <convergence>
+        <gradient>1e-4</gradient>
+        <objective>1e-6</objective>
+      </convergence>
+      <metric>expectedValue</metric>
+      <type>max</type>
+    </optimization_settings>
   </Case>
 
 
@@ -38,7 +46,10 @@
     <Component name="wind">
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <sweep_values debug_value="30">0, 10, 30, 50, 70, 90</sweep_values> <!-- CHANGE THE DEBUG VALUE -->
+           <!-- CHANGE THE DEBUG VALUE -->
+           <!-- <fixed_value>0</fixed_value> -->
+           <opt_bounds debug_value="30">0,50</opt_bounds>
+          <!-- <sweep_values debug_value="30">0, 30</sweep_values> -->
         </capacity>
         <capacity_factor>
           <ARMA variable="WIND">synth</ARMA>
@@ -46,6 +57,7 @@
       </produces>
       <economics>
         <lifetime>5</lifetime>
+        <!-- construction cost -->
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
           <driver>
             <variable>wind_capacity</variable>
@@ -61,9 +73,11 @@
 
 
     <Component name="npp">
-      <produces resource="electricity" dispatch="independent"> <!-- TRY with fixed dispatch-->
-        <capacity resource="electricity">
-          <sweep_values debug_value="20">0, 20, 40, 60</sweep_values> <!-- CHANGE THE DEBUG VALUE -->
+      <produces resource="heat" dispatch="independent">
+        <capacity resource="heat">
+          <!-- CHANGE THE DEBUG VALUE -->
+          <opt_bounds debug_value="30">0,100</opt_bounds>
+          <!-- <sweep_values debug_value="20">40, 60, 80, 100</sweep_values> -->
         </capacity>
       </produces>
       <economics>
@@ -76,22 +90,93 @@
           <reference_price>
             <!-- $3000/kW * 1e6 kW/GW, but note reduced project length -->
             <fixed_value>-3e8</fixed_value>
+            <multiplier>0.5</multiplier> <!-- TRY THIS! basically add an efficiency term-->
           </reference_price>
         </CashFlow>
         <CashFlow name="var_OM" type="repeating" taxable='True' inflation='none' mult_target='False'>
           <driver>
-            <activity>electricity</activity>
+            <activity>heat</activity>
             <multiplier>-1</multiplier>
           </driver>
           <reference_price>
             <!-- ballpark $/MWh -->
-            <!-- https://www.lazard.com/media/451086/lazards-levelized-cost-of-energy-version-130-vf.pdf -->
             <fixed_value>3.5e3</fixed_value>
+            <multiplier>0.5</multiplier>
           </reference_price>
         </CashFlow>
       </economics>
     </Component>
 
+
+    <Component name="tes">
+      <stores resource="heat" dispatch="independent">
+        <capacity resource="heat">
+          <opt_bounds debug_value="30">0,100</opt_bounds>
+          <!-- <sweep_values debug_value="30">0, 10, 30, 50, 70, 90</sweep_values> -->
+        </capacity>
+        <initial_stored>
+          <fixed_value>0.01</fixed_value>
+        </initial_stored>
+      </stores>
+      <economics>
+        <lifetime>10</lifetime>
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <variable>tes_capacity</variable>
+          </driver>
+          <reference_price>
+            <!-- numbers based on molten salt TES numbers used for concentrated solar plants-->
+            <!-- Jacob, R. et al. 2017 "Capital cost expenditure of high temperature
+                    latent and sensible thermal energy storage systems"-->
+            <!-- $30/kWth * 1e6 kW/GW, but note reduced project length -->
+            <fixed_value>-3e6</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="turbine">
+      <produces resource="electricity" dispatch="dependent">
+        <consumes>heat</consumes>
+        <capacity resource="electricity">
+          <fixed_value>200</fixed_value>
+        </capacity>
+        <transfer>
+          <linear>
+            <rate resource="heat">-1</rate>
+            <rate resource="electricity">0.5</rate>
+          </linear>
+        </transfer>
+      </produces>
+      <economics>
+        <lifetime>10</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="battery">
+      <stores resource="electricity" dispatch="independent">
+        <capacity resource="electricity">
+          <opt_bounds debug_value="30">0,100</opt_bounds>
+        </capacity>
+        <initial_stored>
+          <fixed_value>0.01</fixed_value>
+        </initial_stored>
+      </stores>
+      <economics>
+        <lifetime>10</lifetime>
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <variable>battery_capacity</variable>
+          </driver>
+          <reference_price>
+            <!-- numbers based on lithium ion battery prices 2022-->
+            <!-- https://about.bnef.com/blog/lithium-ion-battery-pack-prices-rise-for-first-time-to-an-average-of-151-kwh/-->
+            <!-- $151/kWth * 1e6 kW/GW, but note reduced project length -->
+            <fixed_value>-15.1e6</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
 
     <Component name="grid">
       <demands resource="electricity" dispatch="fixed">
@@ -113,7 +198,6 @@
         </CashFlow>
       </economics>
     </Component>
-
 
     <Component name="import">
       <produces resource="electricity" dispatch="independent">

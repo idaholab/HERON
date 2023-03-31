@@ -245,7 +245,18 @@ class DispatchRunner:
           getattr(raven, var_name)[y, c] = data
           getattr(raven, '_indexMap')[0][var_name] = [year_name, clst_name, time_name]
     for metric, value in metrics.items():
-      setattr(raven, metric, np.atleast_1d(value))
+      if metric not in ['outputType', 'all_data']:
+        setattr(raven, metric, np.atleast_1d(value))
+      elif metric == 'all_data':
+        # XXX TODO standardize naming carefully
+        # XXX where do cfYears come from?? -> project life
+        setattr(raven, 'cfYears', np.arange(len(value['source']['capex'])))
+        for comp, comp_data in value.items():
+          for cf, cf_values in comp_data.items():
+            name = f'{comp}_{cf}_CashFlow'
+            print('DEBUGG setting raven var', name)
+            setattr(raven, name, np.atleast_1d(cf_values))
+        print('DEBUGG all data keys:', [x for x in value.keys()])
     # if component capacities weren't given by Outer, save them as part of Inner
     for comp in self._components:
       cap_name = self.naming_template['comp capacity'].format(comp=comp.name)
@@ -268,6 +279,8 @@ class DispatchRunner:
     structure = all_structure['summary']
     ## FINAL settings/components/cashflows use the multiplicity of divisions for aggregated evaluation
     final_settings, final_components = self._build_econ_objects(self._case, self._components, project_life)
+    # XXX TODO pass this in from Case on debug
+    final_settings.setParams({'Output': True})
     active_index = {}
     dispatch_results = {}
     yearly_cluster_data = next(iter(all_structure['details'].values()))['clusters']
@@ -547,7 +560,8 @@ class DispatchRunner:
     print('****************************************')
     print('DEBUGG final cashflow metrics:')
     for k, v in cf_metrics.items():
-      print('  ', k, v)
+      if k not in ['outputType', 'all_data']:
+        print('  ', k, v)
     print('****************************************')
     # END DEBUGG
     return cf_metrics

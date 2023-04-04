@@ -244,19 +244,29 @@ class DispatchRunner:
             setattr(raven, var_name, np.empty(shape)) # NOTE could use np.zeros, but slower?
           getattr(raven, var_name)[y, c] = data
           getattr(raven, '_indexMap')[0][var_name] = [year_name, clst_name, time_name]
+    cfYears = None
     for metric, value in metrics.items():
       if metric not in ['outputType', 'all_data']:
         setattr(raven, metric, np.atleast_1d(value))
       elif metric == 'all_data':
-        # XXX TODO standardize naming carefully
-        # XXX where do cfYears come from?? -> project life
-        setattr(raven, 'cfYears', np.arange(len(value['source']['capex'])))
+        # store the cashflow years index cfYears
+        ## implicitly assume the first cashflow has representative years
+        # store each of the cashflows
         for comp, comp_data in value.items():
           for cf, cf_values in comp_data.items():
-            name = f'{comp}_{cf}_CashFlow'
-            print('DEBUGG setting raven var', name)
+            print('DEBUGG ... in DM:', cf, len(cf_values))
+            if cfYears is None:
+              cfYears = len(cf_values)
+            if 'depreciation_tax_credit' in cf:
+              name = f'{comp}_{cf}_depreciation_tax_credit'
+            elif 'depreciation' in cf:
+              name = f'{comp}_{cf}_depreciation'
+            else:
+              name = f'{comp}_{cf}_CashFlow'
             setattr(raven, name, np.atleast_1d(cf_values))
-        print('DEBUGG all data keys:', [x for x in value.keys()])
+    if cfYears is not None:
+      setattr(raven, 'cfYears', np.arange(cfYears))
+
     # if component capacities weren't given by Outer, save them as part of Inner
     for comp in self._components:
       cap_name = self.naming_template['comp capacity'].format(comp=comp.name)

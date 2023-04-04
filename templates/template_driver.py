@@ -1355,9 +1355,9 @@ class Template(TemplateBase, Base):
         cf_name = cashflow.name
         name = f'{comp_name}_{cf_name}_CashFlow'
         cfs.append(name)
-        # if cashflow._depreciate is not None:
-        #   cfs.append(f'{comp_name}_{cf_name}_depreciation')
-        #   cfs.append(f'{comp_name}_{cf_name}_depreciation_tax_credit')
+        if cashflow._depreciate is not None:
+          cfs.append(f'{comp_name}_{cf_name}_depreciation')
+          cfs.append(f'{comp_name}_{cf_name}_depreciation_tax_credit')
     return cfs
 
   def _iostep_load_rom(self, template, case, components, source):

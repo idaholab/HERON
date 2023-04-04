@@ -257,12 +257,11 @@ class DispatchRunner:
             print('DEBUGG ... in DM:', cf, len(cf_values))
             if cfYears is None:
               cfYears = len(cf_values)
-            if 'depreciation_tax_credit' in cf:
-              name = f'{comp}_{cf}_depreciation_tax_credit'
-            elif 'depreciation' in cf:
-              name = f'{comp}_{cf}_depreciation'
+            if cf.endswith(('depreciation_tax_credit', 'depreciation')):
+              name = cf
             else:
               name = f'{comp}_{cf}_CashFlow'
+            print(f'DEBUGG ... ... saving "{name}"')
             setattr(raven, name, np.atleast_1d(cf_values))
     if cfYears is not None:
       setattr(raven, 'cfYears', np.arange(cfYears))

@@ -254,14 +254,12 @@ class DispatchRunner:
         # store each of the cashflows
         for comp, comp_data in value.items():
           for cf, cf_values in comp_data.items():
-            print('DEBUGG ... in DM:', cf, len(cf_values))
             if cfYears is None:
               cfYears = len(cf_values)
             if cf.endswith(('depreciation_tax_credit', 'depreciation')):
               name = cf
             else:
               name = f'{comp}_{cf}_CashFlow'
-            print(f'DEBUGG ... ... saving "{name}"')
             setattr(raven, name, np.atleast_1d(cf_values))
     if cfYears is not None:
       setattr(raven, 'cfYears', np.arange(cfYears))
@@ -288,8 +286,9 @@ class DispatchRunner:
     structure = all_structure['summary']
     ## FINAL settings/components/cashflows use the multiplicity of divisions for aggregated evaluation
     final_settings, final_components = self._build_econ_objects(self._case, self._components, project_life)
-    # XXX TODO pass this in from Case on debug
-    final_settings.setParams({'Output': True})
+    # enable additional cashflow outputs if in debug mode
+    if self._case.debug['enabled']:
+      final_settings.setParams({'Output': True})
     active_index = {}
     dispatch_results = {}
     yearly_cluster_data = next(iter(all_structure['details'].values()))['clusters']

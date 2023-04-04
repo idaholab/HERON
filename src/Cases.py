@@ -140,6 +140,10 @@ class Case(Base):
         descr=r"""provides a dispatch plot after running through \xmlNode{inner_samples} and
               \xmlNode{macro_steps} provided. To prevent plotting output during debug mode set to "False".
               \default{True}"""))
+    debug.addSub(InputData.parameterInputFactory('cashflow_plot', contentType=InputTypes.BoolType,
+        descr=r"""provides a cashflow plot after running through \xmlNode{inner_samples} and
+              \xmlNode{macro_steps} provided. To prevent plotting output during debug mode set to "False".
+              \default{True}"""))
     input_specs.addSub(debug)
 
     parallel = InputData.parameterInputFactory('parallel', descr=r"""Describes how to parallelize this run. If not present defaults to no parallelization (1 outer, 1 inner)""")
@@ -409,7 +413,8 @@ class Case(Base):
         'enabled': False,              # whether to enable debug mode
         'inner_samples': 1,            # how many inner realizations to sample
         'macro_steps': 1,              # how many "years" for inner realizations
-        'dispatch_plot': True          # whether to output a plot in debug mode
+        'dispatch_plot': True,         # whether to output a dispatch plot in debug mode
+        'cashflow_plot': True          # whether to output a cashflow plot in debug mode
     }
 
     self.data_handling = {             # data handling options

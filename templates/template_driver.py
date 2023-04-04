@@ -545,6 +545,7 @@ class Template(TemplateBase, Base):
           if new is not None:
             signals.update(set(new))
         out_plot_signals.text = ', '.join(signals)
+      if case.debug['cashflow_plot']:
         # cashflow plot
         cf_plot = ET.SubElement(OSs, 'Plot', attrib={'name': 'cashflow_plot', 'subType': 'TEAL.CashFlowPlot'})
         cf_plot_source = ET.SubElement(cf_plot, 'source')
@@ -724,6 +725,7 @@ class Template(TemplateBase, Base):
       if case.debug['dispatch_plot']:
         io_output_dispatch = ET.SubElement(io_step, 'Output', attrib={'class': 'OutStreams', 'type': 'Plot'})
         io_output_dispatch.text = 'dispatchPlot'
+      if case.debug['cashflow_plot']:
         io_output_cashflow = ET.SubElement(io_step, 'Output', attrib={'class': 'OutStreams', 'type': 'Plot'})
         io_output_cashflow.text = 'cashflow_plot'
 

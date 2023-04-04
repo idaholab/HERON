@@ -45,7 +45,7 @@
           <lifetime>30</lifetime>
           <CashFlow name="capex" type="one-time" taxable="False" inflation="none" mult_target="False">
             <driver>
-              <Function method="capacity">functions</Function>
+              <variable>source_capacity</variable>
             </driver>
             <reference_price>
               <fixed_value>10000.0</fixed_value>
@@ -61,7 +61,7 @@
           </CashFlow>
           <CashFlow name="FOM" type="repeating" period='year' taxable="False" inflation="none" mult_target="False">
             <driver>
-              <Function method="capacity">functions</Function>
+              <variable>source_capacity</variable>
             </driver>
             <reference_price>
               <fixed_value>100.0</fixed_value>
@@ -108,7 +108,6 @@
 
     <DataGenerators>
       <ARMA name='flex' variable="Signal">%BASE_WORKING_DIR%/../../../ARMA/Sine30yr/arma_30yr.pk</ARMA>
-      <Function name="functions">functions.py</Function>
     </DataGenerators>
 </HERON>
 

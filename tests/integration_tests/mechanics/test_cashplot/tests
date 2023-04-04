@@ -5,7 +5,6 @@
     [./dispatch_db]
       type = NetCDF
       output = 'Runs_o/dispatch.nc'
-      gold_files = 'dispatch.nc'
     [../]
     [./cashflow_csv]
       type = UnorderedCSV

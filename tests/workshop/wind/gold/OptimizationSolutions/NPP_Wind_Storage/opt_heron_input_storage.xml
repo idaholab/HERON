@@ -1,0 +1,249 @@
+<HERON>
+  <TestInfo>
+    <name>arbitrage</name>
+    <author>talbpaul</author>
+    <created>2022-05-24</created>
+    <description>
+      Simple workshop case, adding fixed-capacity variable-availability wind to the ``simple'' case.
+      Also adds export component for excess production.
+    </description>
+    <classesTested>HERON</classesTested>
+  </TestInfo>
+
+  <Case name="wind_npp_storage__opt_eff0_5____x2">
+    <mode>opt</mode>
+    <!-- <mode>sweep</mode> -->
+    <!-- <debug/> -->
+    <num_arma_samples>20</num_arma_samples>
+    <time_discretization>
+      <year_variable>YEAR</year_variable>
+      <time_variable>HOUR</time_variable>
+      <end_time>23</end_time>
+      <num_steps>24</num_steps>
+    </time_discretization>
+    <economics>
+      <ProjectTime>3</ProjectTime>
+      <DiscountRate>0.08</DiscountRate>
+      <tax>0.1</tax>
+      <inflation>0.1</inflation>
+      <verbosity>50</verbosity>
+    </economics>
+    <dispatcher>
+      <pyomo/>
+    </dispatcher>
+    <optimization_settings>
+      <convergence>
+        <gradient>1e-4</gradient>
+        <objective>1e-6</objective>
+      </convergence>
+      <metric>expectedValue</metric>
+      <type>max</type>
+    </optimization_settings>
+  </Case>
+
+
+  <Components>
+    <Component name="wind">
+      <produces resource="electricity" dispatch="independent">
+        <capacity resource="electricity">
+           <!-- CHANGE THE DEBUG VALUE -->
+           <!-- <fixed_value>0</fixed_value> -->
+           <opt_bounds debug_value="30">0,50</opt_bounds>
+          <!-- <sweep_values debug_value="30">0, 30</sweep_values> -->
+        </capacity>
+        <capacity_factor>
+          <ARMA variable="WIND">synth</ARMA>
+        </capacity_factor>
+      </produces>
+      <economics>
+        <lifetime>5</lifetime>
+        <!-- construction cost -->
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <variable>wind_capacity</variable>
+          </driver>
+          <reference_price>
+            <!-- 1470 $/kW * 1e6 kW/GW = 1.47e9 est cost for 1 GW wind -->
+            <!-- adjust for short project length-->
+            <fixed_value>-1.47e8</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+
+    <Component name="npp">
+      <produces resource="heat" dispatch="independent">
+        <capacity resource="heat">
+          <!-- CHANGE THE DEBUG VALUE -->
+          <opt_bounds debug_value="30">0,100</opt_bounds>
+          <!-- <sweep_values debug_value="20">40, 60, 80, 100</sweep_values> -->
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>10</lifetime>
+        <!-- construction cost -->
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <variable>npp_capacity</variable>
+          </driver>
+          <reference_price>
+            <!-- $3000/kW * 1e6 kW/GW, but note reduced project length -->
+            <fixed_value>-3e8</fixed_value>
+            <multiplier>0.5</multiplier> <!-- TRY THIS! basically add an efficiency term-->
+          </reference_price>
+        </CashFlow>
+        <CashFlow name="var_OM" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>heat</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <!-- ballpark $/MWh -->
+            <fixed_value>3.5e3</fixed_value>
+            <multiplier>0.5</multiplier>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+
+    <Component name="tes">
+      <stores resource="heat" dispatch="independent">
+        <capacity resource="heat">
+          <opt_bounds debug_value="30">0,100</opt_bounds>
+          <!-- <sweep_values debug_value="30">0, 10, 30, 50, 70, 90</sweep_values> -->
+        </capacity>
+        <initial_stored>
+          <fixed_value>0.01</fixed_value>
+        </initial_stored>
+      </stores>
+      <economics>
+        <lifetime>10</lifetime>
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <variable>tes_capacity</variable>
+          </driver>
+          <reference_price>
+            <!-- numbers based on molten salt TES numbers used for concentrated solar plants-->
+            <!-- Jacob, R. et al. 2017 "Capital cost expenditure of high temperature
+                    latent and sensible thermal energy storage systems"-->
+            <!-- $30/kWth * 1e6 kW/GW, but note reduced project length -->
+            <fixed_value>-3e6</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="turbine">
+      <produces resource="electricity" dispatch="dependent">
+        <consumes>heat</consumes>
+        <capacity resource="electricity">
+          <fixed_value>200</fixed_value>
+        </capacity>
+        <transfer>
+          <linear>
+            <rate resource="heat">-1</rate>
+            <rate resource="electricity">0.5</rate>
+          </linear>
+        </transfer>
+      </produces>
+      <economics>
+        <lifetime>10</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="battery">
+      <stores resource="electricity" dispatch="independent">
+        <capacity resource="electricity">
+          <opt_bounds debug_value="30">0,100</opt_bounds>
+        </capacity>
+        <initial_stored>
+          <fixed_value>0.01</fixed_value>
+        </initial_stored>
+      </stores>
+      <economics>
+        <lifetime>10</lifetime>
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <variable>battery_capacity</variable>
+          </driver>
+          <reference_price>
+            <!-- numbers based on lithium ion battery prices 2022-->
+            <!-- https://about.bnef.com/blog/lithium-ion-battery-pack-prices-rise-for-first-time-to-an-average-of-151-kwh/-->
+            <!-- $151/kWth * 1e6 kW/GW, but note reduced project length -->
+            <fixed_value>-15.1e6</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="grid">
+      <demands resource="electricity" dispatch="fixed">
+        <capacity>
+          <ARMA variable="TOTALLOAD">synth</ARMA>
+          <multiplier>-1</multiplier>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>1</lifetime>
+        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <fixed_value>50e3</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="import">
+      <produces resource="electricity" dispatch="independent">
+        <capacity resource="electricity">
+          <fixed_value>100</fixed_value>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>1</lifetime>
+        <CashFlow name="import" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <fixed_value>1e6</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+
+    <Component name="export">
+      <demands resource="electricity" dispatch="independent">
+        <capacity>
+          <fixed_value>-100</fixed_value> <!-- GW -->
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>1</lifetime>
+        <CashFlow name="export" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>electricity</activity>
+          </driver>
+          <reference_price>
+            <fixed_value>1e6</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+  </Components>
+
+
+  <DataGenerators>
+    <ARMA name='synth' variable="TOTALLOAD,WIND">%HERON%/tests/integration_tests/ARMA/NYISO/nyiso_arma_2yr.pk</ARMA>
+  </DataGenerators>
+
+</HERON>

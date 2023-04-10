@@ -5,7 +5,19 @@
     heavy = true
     [./csv]
       type = OrderedCSV
-      output = 'wind_o/sweep.csv'
+      output = 'npp_wind_o/sweep.csv'
+      zero_threshold = 1e-6
+      rel_err = 3
+    [../]
+  [../]
+
+  [./Workshop_Wind_Storage]
+    type = HeronIntegration
+    input = heron_input_storage.xml
+    heavy = true
+    [./csv]
+      type = OrderedCSV
+      output = 'npp_wind_storage_o/sweep.csv'
       zero_threshold = 1e-6
       rel_err = 3
     [../]

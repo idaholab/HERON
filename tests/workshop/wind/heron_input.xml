@@ -1,6 +1,6 @@
 <HERON>
   <TestInfo>
-    <name>wind</name>
+    <name>wind_cf</name>
     <author>talbpaul</author>
     <created>2022-05-24</created>
     <description>
@@ -10,8 +10,9 @@
     <classesTested>HERON</classesTested>
   </TestInfo>
 
-  <Case name="wind">
+  <Case name="npp_wind">
     <mode>sweep</mode>
+    <!-- Uncomment below to run in debug mode! -->
     <!-- <debug/> -->
     <num_arma_samples>20</num_arma_samples>
     <time_discretization>
@@ -37,127 +38,124 @@
     <Component name="wind">
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <!-- TODO: we need a way to have the capacity be opt or fixed
-                     and allow the variability to be in the multiplier
-                     or a capacity factor.  -->
+          <sweep_values debug_value="30">0, 10, 30, 50, 70, 90</sweep_values> <!-- CHANGE THE DEBUG VALUE -->
+        </capacity>
+        <capacity_factor>
           <ARMA variable="WIND">synth</ARMA>
-          <!-- NOTE: if you change this multiplier, also change the capex driver
-                     fixed value for this component!  -->
-        <multiplier>0</multiplier> <!-- CHANGE ME -->
-      </capacity>
-    </produces>
-    <economics>
-      <lifetime>5</lifetime>
-      <!-- construction cost -->
-      <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
-        <driver>
-          <fixed_value>0</fixed_value> <!-- CHANGE ME TOO -->
-        </driver>
-        <reference_price>
-          <!-- 1470 $/kW * 1e6 kW/GW = 1.47e9 est cost for 1 GW wind -->
-          <!-- adjust for short project length-->
-          <fixed_value>-1.47e8</fixed_value>
-        </reference_price>
-      </CashFlow>
-    </economics>
-  </Component>
+        </capacity_factor>
+      </produces>
+      <economics>
+        <lifetime>5</lifetime>
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <variable>wind_capacity</variable>
+          </driver>
+          <reference_price>
+            <!-- 1470 $/kW * 1e6 kW/GW = 1.47e9 est cost for 1 GW wind -->
+            <!-- adjust for short project length-->
+            <fixed_value>-1.47e8</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
 
 
-  <Component name="npp">
-    <produces resource="electricity" dispatch="independent">
-      <capacity resource="electricity">
-        <sweep_values debug_value="10">0, 20, 40, 60</sweep_values>
-      </capacity>
-    </produces>
-    <economics>
-      <lifetime>10</lifetime>
-      <!-- construction cost -->
-      <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
-        <driver>
-          <variable>npp_capacity</variable>
-        </driver>
-        <reference_price>
-          <!-- $3000/kW * 1e6 kW/GW, but note reduced project length -->
-          <fixed_value>-3e8</fixed_value>
-        </reference_price>
-      </CashFlow>
-      <CashFlow name="var_OM" type="repeating" taxable='True' inflation='none' mult_target='False'>
-        <driver>
-          <activity>electricity</activity>
+    <Component name="npp">
+      <produces resource="electricity" dispatch="independent"> <!-- TRY with fixed dispatch-->
+        <capacity resource="electricity">
+          <sweep_values debug_value="20">0, 20, 40, 60</sweep_values> <!-- CHANGE THE DEBUG VALUE -->
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>10</lifetime>
+        <!-- construction cost -->
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <variable>npp_capacity</variable>
+          </driver>
+          <reference_price>
+            <!-- $3000/kW * 1e6 kW/GW, but note reduced project length -->
+            <fixed_value>-3e8</fixed_value>
+          </reference_price>
+        </CashFlow>
+        <CashFlow name="var_OM" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <!-- ballpark $/MWh -->
+            <!-- https://www.lazard.com/media/451086/lazards-levelized-cost-of-energy-version-130-vf.pdf -->
+            <fixed_value>3.5e3</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+
+    <Component name="grid">
+      <demands resource="electricity" dispatch="fixed">
+        <capacity>
+          <ARMA variable="TOTALLOAD">synth</ARMA>
           <multiplier>-1</multiplier>
-        </driver>
-        <reference_price>
-          <!-- ballpark $/MWh -->
-          <fixed_value>13e3</fixed_value>
-        </reference_price>
-      </CashFlow>
-    </economics>
-  </Component>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>1</lifetime>
+        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <fixed_value>50e3</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
 
 
-  <Component name="grid">
-    <demands resource="electricity" dispatch="fixed">
-      <capacity>
-        <ARMA variable="TOTALLOAD">synth</ARMA>
-        <multiplier>-1</multiplier>
-      </capacity>
-    </demands>
-    <economics>
-      <lifetime>1</lifetime>
-      <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
-        <driver>
-          <activity>electricity</activity>
-          <multiplier>-1</multiplier>
-        </driver>
-        <reference_price>
-          <fixed_value>50e3</fixed_value>
-        </reference_price>
-      </CashFlow>
-    </economics>
-  </Component>
+    <Component name="import">
+      <produces resource="electricity" dispatch="independent">
+        <capacity resource="electricity">
+          <fixed_value>100</fixed_value>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>1</lifetime>
+        <CashFlow name="import" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <fixed_value>1e6</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
 
 
-  <Component name="import">
-    <produces resource="electricity" dispatch="independent">
-      <capacity resource="electricity">
-        <fixed_value>100</fixed_value>
-      </capacity>
-    </produces>
-    <economics>
-      <lifetime>1</lifetime>
-      <CashFlow name="import" type="repeating" taxable='True' inflation='none' mult_target='False'>
-        <driver>
-          <activity>electricity</activity>
-          <multiplier>-1</multiplier>
-        </driver>
-        <reference_price>
-          <fixed_value>1e6</fixed_value>
-        </reference_price>
-      </CashFlow>
-    </economics>
-  </Component>
+    <Component name="export">
+      <demands resource="electricity" dispatch="independent">
+        <capacity>
+          <fixed_value>-100</fixed_value> <!-- GW -->
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>1</lifetime>
+        <CashFlow name="export" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>electricity</activity>
+          </driver>
+          <reference_price>
+            <fixed_value>1e6</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
 
-
-  <Component name="export">
-    <demands resource="electricity" dispatch="independent">
-      <capacity>
-        <fixed_value>-100</fixed_value> <!-- GW -->
-      </capacity>
-    </demands>
-    <economics>
-      <lifetime>1</lifetime>
-      <CashFlow name="export" type="repeating" taxable='True' inflation='none' mult_target='False'>
-        <driver>
-          <activity>electricity</activity>
-        </driver>
-        <reference_price>
-          <fixed_value>1e6</fixed_value>
-        </reference_price>
-      </CashFlow>
-    </economics>
-  </Component>
-
-</Components>
+  </Components>
 
 
   <DataGenerators>

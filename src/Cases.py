@@ -230,6 +230,31 @@ class Case(Base):
     econ.addSub(InputData.parameterInputFactory('verbosity', contentType=InputTypes.IntegerType,
                                                 descr=r"""the level of output to print from the CashFlow calculations.
                                                 Passed to the CashFlow module."""))
+
+    policies = InputData.parameterInputFactory('policies', ordered=False,
+                                                descr=r"""node containing general economic policy setting in which to perform ABCE analysis.""")
+
+    ctax = InputData.parameterInputFactory('CTAX', ordered=False,
+                                          descr=r"""node containing carbon tax setting in which to perform ABCE analysis.""")
+    ctax.addSub(InputData.parameterInputFactory('enabled', contentType=InputTypes.BoolType, descr=r"""enable carbon tax"""))
+    
+    ctax.addSub(InputData.parameterInputFactory('qty', contentType=InputTypes.FloatType, descr=r"""carbon tax rate"""))
+    
+    policies.addSub(ctax)
+
+    ptc = InputData.parameterInputFactory('PTC', ordered=False, descr=r"""node containing production tax credit setting in which to perform ABCE analysis.""")
+    
+    ptc.addSub(InputData.parameterInputFactory('enabled', contentType=InputTypes.BoolType, descr=r"""enable production tax credit"""))
+
+    ptc.addSub(InputData.parameterInputFactory('qty', contentType=InputTypes.FloatType, descr=r"""production tax credit rate"""))
+    
+    ptc.addSub(InputData.parameterInputFactory('eligible', contentType=InputTypes.StringListType, descr=r"""eligible technologies"""))
+
+    policies.addSub(ptc)
+
+    econ.addSub(policies)
+
+    econ.addSub(InputData.parameterInputFactory('allowed_xtr_types', contentType=InputTypes.StringListType, descr=r"""allowed construction types"""))
     # is this actually CashFlow verbosity or is it really HERON verbosity?
     input_specs.addSub(econ)
 
@@ -471,7 +496,17 @@ class Case(Base):
         self._time_discretization = self._read_time_discr(item)
       elif item.getName() == 'economics':
         for sub in item.subparts:
-          self._global_econ[sub.getName()] = sub.value
+          if sub.subparts:
+            self._global_econ[sub.getName()] = {}
+            for subsub in sub.subparts:
+              if subsub.subparts:
+                self._global_econ[sub.getName()][subsub.getName()] = {}
+                for subsubsub in subsub.subparts:
+                  self._global_econ[sub.getName()][subsub.getName()][subsubsub.getName()] = subsubsub.value
+              else:
+                self._global_econ[sub.getName()][subsub.getName()] = subsub.value
+          else:
+            self._global_econ[sub.getName()] = sub.value
           if self.debug['enabled'] and sub.getName() == "ProjectTime":
             self._global_econ[sub.getName()] = self.debug['macro_steps']
       elif item.getName() == 'dispatcher':

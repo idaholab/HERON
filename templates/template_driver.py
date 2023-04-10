@@ -1308,7 +1308,8 @@ class Template(TemplateBase, Base):
     for var in out_vars:
       self._updateCommaSeperatedList(group, var)
 
-  def _create_dataobject(self, dataobjects, typ, name, inputs=None, outputs=None, depends=None):
+  @staticmethod
+  def _create_dataobject(dataobjects, typ, name, inputs=None, outputs=None, depends=None):
     """
       Creates a data object candidate to go to base class
       @ In, dataobjects, xml.etree.ElementTreeElement, DataObjects node
@@ -1344,7 +1345,8 @@ class Template(TemplateBase, Base):
           new.append(xmlUtils.newNode('Index', attrib={'var':index}, text=', '.join(dep)))
     dataobjects.append(new)
 
-  def _find_cashflows(self, components):
+  @staticmethod
+  def _find_cashflows(components):
     """
       Loop through comps and collect all the full cashflow names
       @ In, components, list, list of HERON Component instances for this run
@@ -1439,7 +1441,8 @@ class Template(TemplateBase, Base):
     template.find('Steps').append(new_step)
     self._updateCommaSeperatedList(template.find('RunInfo').find('Sequence'), step_name, position=1)
 
-  def _remove_by_name(self, root, removable):
+  @staticmethod
+  def _remove_by_name(root, removable):
     """
       Removes subs of "root" whose "name" attribute is in "removable"
       @ In, root. ET.Element, node whose subs should be searched through
@@ -1453,7 +1456,8 @@ class Template(TemplateBase, Base):
     for node in to_remove:
       root.remove(node)
 
-  def _build_opt_metric_out_name(self, case):
+  @staticmethod
+  def _build_opt_metric_out_name(case):
     """
       Constructs the output name of the metric specified as the optimization objective
       @ In, case, HERON Case, defining Case instance
@@ -1477,7 +1481,8 @@ class Template(TemplateBase, Base):
 
     return opt_out_metric_name
 
-  def _build_result_statistic_names(self, case):
+  @staticmethod
+  def _build_result_statistic_names(case):
     """
       Constructs the names of the statistics requested for output
       @ In, case, HERON Case, defining Case instance

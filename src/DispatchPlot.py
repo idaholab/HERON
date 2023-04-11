@@ -172,8 +172,8 @@ class DispatchPlot(PlotPlugin):
       ax.legend(loc='upper left', bbox_to_anchor=(1.1, 0.6), fontsize = 10)
       ax2.legend(loc='lower left', bbox_to_anchor=(1.1, 0.6), fontsize = 10)
       # Add the label and adjust location
-      ax.set_ylabel('Level', fontsize=10, rotation=0)
-      ax2.set_ylabel('Activity', fontsize=10, rotation=0)
+      ax.set_ylabel('Activity', fontsize=10, rotation=0)
+      ax2.set_ylabel('Level', fontsize=10, rotation=0)
       ax.yaxis.set_label_coords(-0.01,1.02)
       ax2.yaxis.set_label_coords(1,1.07)
       ax.grid(None)

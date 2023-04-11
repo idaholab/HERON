@@ -9,6 +9,7 @@
     [./cashflow_csv]
       type = UnorderedCSV
       output = 'Runs_o/cashflows_0.csv'
+      rel_err = 1e-6
     [../]
     [./cashflow_plot]
       type = Exists

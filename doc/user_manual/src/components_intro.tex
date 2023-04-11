@@ -85,7 +85,7 @@ $y$-axis is in units of production rate.
 \end{figure}
 
 In Figure \ref{fig:storage_example}, the black dots indicate the statepoints that HERON reports,
-with units of emph{level}, not production rate. The red dotted line is the assumed level between
+with units of bf{level}, not production rate. The red dotted line is the assumed level between
 statepoints, and the green dashed lines are the equivalent production between each statepoint.
 Note the dual $y$-axis: one is in units of production rate (green, left), while the other is in units of level or
 quantity (red, right). That is, the storage unit filly slowly, then fills quickly, then totally depletes before
@@ -98,3 +98,16 @@ emission from storage.
   \caption{Storage Example}
   \label{fig:storage_example}
 \end{figure}
+
+\subsubsection{Transfer Functions}
+For components that \textbf{produce} and \textbf{consume} resources, a \xmlNode{transfer} subnode must be defined
+to convert one source of energy to another. The conversion relationship is defined via \textit{one} of two sources, implemented
+in the input script as subnodes: \xmlNode{linear} or \xmlNode{Function}. Instructions for the linear case are given in a later section.
+Implementation of the conversion defined within an external \xmlNode{Function} requires some extra specifications by the user. 
+For more information, see the examples in the \texttt{tests/integration_tests/mechanics/} folder.
+
+
+
+
+
+

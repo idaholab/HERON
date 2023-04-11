@@ -1,16 +1,19 @@
 <HERON>
   <TestInfo>
-    <name>StorageFunc</name>
-    <author>talbpaul</author>
-    <created>2021-08-30</created>
+    <name>TransferFuncComplex</name>
+    <author>sotogj</author>
+    <created>2023-02-08</created>
     <description>
-      Tests using a pre-determined storage control strategy via a Function.
+      Tests using a resource transfer functions to determine resource production via a Function
+      rather than a Linear definition. Within this function, user has the option to create their
+      own Pyomo Constraints.
     </description>
     <classesTested>HERON</classesTested>
   </TestInfo>
 
   <Case name="Sweep_Runs">
     <mode>sweep</mode>
+    <verbosity>debug</verbosity>
     <num_arma_samples>3</num_arma_samples>
     <time_discretization>
       <time_variable>Time</time_variable>
@@ -25,9 +28,7 @@
       <verbosity>50</verbosity>
     </economics>
     <dispatcher>
-      <pyomo>
-        <debug_mode>True</debug_mode>
-      </pyomo>
+      <pyomo/>
     </dispatcher>
   </Case>
 
@@ -51,9 +52,6 @@
         <initial_stored>
           <fixed_value>0.01</fixed_value>
         </initial_stored>
-        <strategy>
-          <Function method="tiered">storage_control</Function>
-        </strategy>
       </stores>
       <economics>
         <lifetime>10</lifetime>
@@ -67,10 +65,7 @@
           <fixed_value>-1000</fixed_value>
         </capacity>
         <transfer>
-          <linear>
-            <rate resource="steam">-1</rate>
-            <rate resource="electricity">0.5</rate>
-          </linear>
+          <Function method="storage_dependent_efficiency">transfer_func</Function>
         </transfer>
       </produces>
       <economics>
@@ -81,7 +76,7 @@
     <Component name="electr_market">
       <demands resource="electricity" dispatch="dependent">
         <capacity>
-          <fixed_value>-2</fixed_value>
+          <fixed_value>-1e200</fixed_value>
         </capacity>
       </demands>
       <economics>
@@ -98,32 +93,11 @@
       </economics>
     </Component>
 
-    <Component name="electr_flex">
-      <demands resource="electricity" dispatch="dependent">
-        <capacity>
-          <fixed_value>-1e200</fixed_value>
-        </capacity>
-      </demands>
-      <economics>
-        <lifetime>30</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
-          <driver>
-            <activity>electricity</activity>
-            <multiplier>-1</multiplier>
-          </driver>
-          <reference_price>
-            <Function method="flex_price">flex</Function>
-          </reference_price>
-        </CashFlow>
-      </economics>
-    </Component>
-
   </Components>
 
   <DataGenerators>
     <ARMA name='Price' variable="Signal">%BASE_WORKING_DIR%/../../../ARMA/Sine/arma.pk</ARMA>
-    <Function name="flex">flex_reference_price.py</Function>
-    <Function name="storage_control">run_storage.py</Function>
+    <Function name="transfer_func">transfers.py</Function>
   </DataGenerators>
 
 </HERON>

@@ -49,6 +49,7 @@
         <capacity resource="electricity">
           <fixed_value>200</fixed_value>
         </capacity>
+        <ramp_limit>100</ramp_limit> <!-- limit change in production per time step -->
         <transfer>
           <linear>
             <rate resource="steam">-1</rate>

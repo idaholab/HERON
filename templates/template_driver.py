@@ -878,6 +878,7 @@ class Template(TemplateBase, Base):
             )
         )
 
+
   def _modify_inner_caselabels(self, template, case):
     """
       Create GRO_case_labels VariableGroup if labels have been provided.
@@ -986,9 +987,18 @@ class Template(TemplateBase, Base):
                                                   attrib={'var': self.namingTemplates['cluster_index']},
                                                   text='GRO_dispatch_in_Time'))
 
+      elif source.is_type('CSV'):
+        if case.debug['enabled']:
+          # add signals to dispatch_in_Time variable group
+          dit = template.find('VariableGroups').find('.//Group[@name="GRO_dispatch_in_Time"]')
+          for var in source.get_variable():
+            if dit.text is None or var not in dit.text:
+              self._updateCommaSeperatedList(dit, var)
+
       elif source.is_type('Function'):
         # nothing to do ... ?
         pass
+
 
   def _modify_inner_components(self, template, case, components):
     """

@@ -875,7 +875,9 @@ class Template(TemplateBase, Base):
             xmlUtils.newNode(
                 "Index",
                 attrib={"var": self.namingTemplates['cluster_index']},
-                text=', '.join(source.get_variable())))
+                text=', '.join(source.get_variable())
+            )
+        )
       data_objs.append(new_data_set)
 
       # Modify <Models> by removing EnsembleModel and changing ExternalModel
@@ -1036,7 +1038,6 @@ class Template(TemplateBase, Base):
       elif source.is_type('Function'):
         # nothing to do ... ?
         pass
-
 
   def _modify_inner_components(self, template, case, components):
     """

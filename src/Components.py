@@ -339,7 +339,9 @@ class Component(Base, CashFlowUser):
   @property
   def ramp_limit(self):
     """
-      TODO
+      Accessor for ramp limits on interactions.
+      @ In, None
+      @ Out, limit, float, limit
     """
     return self.get_interaction().ramp_limit
 
@@ -750,7 +752,8 @@ class Producer(Interaction):
             'ramp_limit',
             contentType=InputTypes.FloatType,
             descr=r"""Limits the rate at which production can change between consecutive time steps,
-                  in either a positive or negative direction. For example, a generator with a
+                  in either a positive or negative direction, defined using the same resource used to
+                  define this component's capacity. For example, a generator with a
                   ramp limit of 10 cannot increase or decrease their generation rate by more than 10
                   in a single time interval. \default{unlimited}"""
         )

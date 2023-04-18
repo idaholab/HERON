@@ -316,7 +316,6 @@ class Template(TemplateBase, Base):
       if (new_metric_outer_results != 'missing') and (new_metric_outer_results not in group_outer_results.text):
         # additional results statistics have been requested, add this metric if not already present
         self._updateCommaSeperatedList(group_outer_results, new_metric_outer_results, position=0)
-
     # labels group
     if case.get_labels():
       case_labels = ET.SubElement(var_groups, 'Group', attrib={'name': 'GRO_case_labels'})
@@ -331,6 +330,9 @@ class Template(TemplateBase, Base):
           for resource in component.get_resources():
             var_name = self.namingTemplates['dispatch'].format(component=name, tracker=tracker, resource=resource)
             self._updateCommaSeperatedList(group, var_name)
+      group = var_groups.find(".//Group[@name='GRO_outer_debug_cashflows']")
+      cfs = self._find_cashflows(components)
+      group.text = ', '.join(cfs)
       # -> synthetic histories?
       group = var_groups.find(".//Group[@name='GRO_outer_debug_synthetics']")
       for source in sources:
@@ -386,6 +388,10 @@ class Template(TemplateBase, Base):
                               inputs=['scaling'],
                               outputs=debug_gro,
                               depends=deps)
+      # and similar for debug cashflows
+      debug_gro = ['GRO_outer_debug_cashflows']
+      deps = {'cfYears': debug_gro}
+      self._create_dataobject(DOs, 'HistorySet', 'cashflows', outputs=debug_gro, depends=deps)
 
   def _modify_outer_files(self, template, case, sources):
     """
@@ -489,7 +495,6 @@ class Template(TemplateBase, Base):
       output_node.tag = 'outputExportOutStreams'
       # no need to change name, as database and outstream have the same name
 
-
   def _modify_outer_outstreams(self, template, case, components, sources):
     """
       Defines modifications to the OutStreams of outer.xml RAVEN input file.
@@ -516,8 +521,16 @@ class Template(TemplateBase, Base):
       out = OSs.findall('Print')[0]
       out.attrib['name'] = 'dispatch_print'
       out.find('source').text = 'dispatch'
+      # cashflow output
+      cf_print = ET.SubElement(OSs, 'Print', attrib={'name': 'cashflows'})
+      src = ET.SubElement(cf_print, 'type')
+      src.text = 'csv'
+      src = ET.SubElement(cf_print, 'source')
+      src.text = 'cashflows'
+
       # handle dispatch plots for debug mode
       if case.debug['dispatch_plot']:
+        # dispatch plot
         out_plot = ET.SubElement(OSs, 'Plot', attrib={'name': 'dispatchPlot', 'subType': 'HERON.DispatchPlot'})
         out_plot_source = ET.SubElement(out_plot, 'source')
         out_plot_source.text = 'dispatch'
@@ -532,6 +545,11 @@ class Template(TemplateBase, Base):
           if new is not None:
             signals.update(set(new))
         out_plot_signals.text = ', '.join(signals)
+      if case.debug['cashflow_plot']:
+        # cashflow plot
+        cf_plot = ET.SubElement(OSs, 'Plot', attrib={'name': 'cashflow_plot', 'subType': 'TEAL.CashFlowPlot'})
+        cf_plot_source = ET.SubElement(cf_plot, 'source')
+        cf_plot_source.text = 'cashflows'
 
   def _modify_outer_samplers(self, template, case, components):
     """
@@ -694,15 +712,22 @@ class Template(TemplateBase, Base):
         sweep.remove(node)
       # add debug dispatch collector and printer
       sweep.append(self._assemblerNode('Output', 'DataObjects', 'DataSet', 'dispatch'))
+      sweep.append(self._assemblerNode('Output', 'DataObjects', 'HistorySet', 'cashflows'))
       sweep.append(self._assemblerNode('Output', 'Databases', 'NetCDF', 'dispatch'))
       # add an output step to print/plot summaries
       io_step = ET.SubElement(steps, 'IOStep', attrib={'name': 'debug_output'})
-      io_input = ET.SubElement(io_step, 'Input', attrib={'class': 'DataObjects', 'type': 'DataSet'})
-      io_input.text = 'dispatch'
+      io_input_dispatch = ET.SubElement(io_step, 'Input', attrib={'class': 'DataObjects', 'type': 'DataSet'})
+      io_input_dispatch.text = 'dispatch'
+      io_input_cashflow = ET.SubElement(io_step, 'Input', attrib={'class': 'DataObjects', 'type': 'HistorySet'})
+      io_input_cashflow.text = 'cashflows'
       io_step.append(self._assemblerNode('Output', 'OutStreams', 'Print', 'dispatch_print'))
+      io_step.append(self._assemblerNode('Output', 'OutStreams', 'Print', 'cashflows'))
       if case.debug['dispatch_plot']:
-        io_output = ET.SubElement(io_step, 'Output', attrib={'class': 'OutStreams', 'type': 'Plot'})
-        io_output.text = 'dispatchPlot'
+        io_output_dispatch = ET.SubElement(io_step, 'Output', attrib={'class': 'OutStreams', 'type': 'Plot'})
+        io_output_dispatch.text = 'dispatchPlot'
+      if case.debug['cashflow_plot']:
+        io_output_cashflow = ET.SubElement(io_step, 'Output', attrib={'class': 'OutStreams', 'type': 'Plot'})
+        io_output_cashflow.text = 'cashflow_plot'
 
   def _create_new_sweep_capacity(self, comp_name, var_name, capacities, sampler):
     """
@@ -1033,12 +1058,16 @@ class Template(TemplateBase, Base):
     for step in template.find('Steps'):
       if step.get('name') == 'arma_sampling':
         step.append(self._assemblerNode('Output', 'DataObjects', 'DataSet', 'disp_full'))
-      # elif step.get('name') == 'write_summary':
-      #   step.find('Output').text = 'disp_full'
+    # Variable Groups
+    grp = template.find('VariableGroups').find(".//Group[@name='GRO_cashflows']")
+    cfs = self._find_cashflows(components)
+    grp.text = ', '.join(cfs)
     # Model
     extmod_vars = template.find('Models').find('ExternalModel').find('variables')
     self._updateCommaSeperatedList(extmod_vars, 'GRO_full_dispatch')
     self._updateCommaSeperatedList(extmod_vars, 'GRO_full_dispatch_indices')
+    self._updateCommaSeperatedList(extmod_vars, 'GRO_cashflows')
+    self._updateCommaSeperatedList(extmod_vars, 'cfYears')
     # DataObject
     datasets = template.find('DataObjects').findall('DataSet')
     for ds in datasets:
@@ -1279,7 +1308,8 @@ class Template(TemplateBase, Base):
     for var in out_vars:
       self._updateCommaSeperatedList(group, var)
 
-  def _create_dataobject(self, dataobjects, typ, name, inputs=None, outputs=None, depends=None):
+  @staticmethod
+  def _create_dataobject(dataobjects, typ, name, inputs=None, outputs=None, depends=None):
     """
       Creates a data object candidate to go to base class
       @ In, dataobjects, xml.etree.ElementTreeElement, DataObjects node
@@ -1314,6 +1344,25 @@ class Template(TemplateBase, Base):
           assert isinstance(dep, list)
           new.append(xmlUtils.newNode('Index', attrib={'var':index}, text=', '.join(dep)))
     dataobjects.append(new)
+
+  @staticmethod
+  def _find_cashflows(components):
+    """
+      Loop through comps and collect all the full cashflow names
+      @ In, components, list, list of HERON Component instances for this run
+      @ Out, cfs, list, list of cashflow full names e.g. {comp}_{cf}_CashFlow
+    """
+    cfs = []
+    for comp in components:
+      comp_name = comp.name
+      for cashflow in comp.get_cashflows():
+        cf_name = cashflow.name
+        name = f'{comp_name}_{cf_name}_CashFlow'
+        cfs.append(name)
+        if cashflow._depreciate is not None:
+          cfs.append(f'{comp_name}_{cf_name}_depreciation')
+          cfs.append(f'{comp_name}_{cf_name}_depreciation_tax_credit')
+    return cfs
 
   def _iostep_load_rom(self, template, case, components, source):
     """
@@ -1392,7 +1441,8 @@ class Template(TemplateBase, Base):
     template.find('Steps').append(new_step)
     self._updateCommaSeperatedList(template.find('RunInfo').find('Sequence'), step_name, position=1)
 
-  def _remove_by_name(self, root, removable):
+  @staticmethod
+  def _remove_by_name(root, removable):
     """
       Removes subs of "root" whose "name" attribute is in "removable"
       @ In, root. ET.Element, node whose subs should be searched through
@@ -1406,7 +1456,8 @@ class Template(TemplateBase, Base):
     for node in to_remove:
       root.remove(node)
 
-  def _build_opt_metric_out_name(self, case):
+  @staticmethod
+  def _build_opt_metric_out_name(case):
     """
       Constructs the output name of the metric specified as the optimization objective
       @ In, case, HERON Case, defining Case instance
@@ -1430,7 +1481,8 @@ class Template(TemplateBase, Base):
 
     return opt_out_metric_name
 
-  def _build_result_statistic_names(self, case):
+  @staticmethod
+  def _build_result_statistic_names(case):
     """
       Constructs the names of the statistics requested for output
       @ In, case, HERON Case, defining Case instance

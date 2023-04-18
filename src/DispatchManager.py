@@ -244,8 +244,26 @@ class DispatchRunner:
             setattr(raven, var_name, np.empty(shape)) # NOTE could use np.zeros, but slower?
           getattr(raven, var_name)[y, c] = data
           getattr(raven, '_indexMap')[0][var_name] = [year_name, clst_name, time_name]
+    cfYears = None
     for metric, value in metrics.items():
-      setattr(raven, metric, np.atleast_1d(value))
+      if metric not in ['outputType', 'all_data']:
+        setattr(raven, metric, np.atleast_1d(value))
+      elif metric == 'all_data':
+        # store the cashflow years index cfYears
+        ## implicitly assume the first cashflow has representative years
+        # store each of the cashflows
+        for comp, comp_data in value.items():
+          for cf, cf_values in comp_data.items():
+            if cfYears is None:
+              cfYears = len(cf_values)
+            if cf.endswith(('depreciation_tax_credit', 'depreciation')):
+              name = cf
+            else:
+              name = f'{comp}_{cf}_CashFlow'
+            setattr(raven, name, np.atleast_1d(cf_values))
+    if cfYears is not None:
+      setattr(raven, 'cfYears', np.arange(cfYears))
+
     # if component capacities weren't given by Outer, save them as part of Inner
     for comp in self._components:
       cap_name = self.naming_template['comp capacity'].format(comp=comp.name)
@@ -268,6 +286,9 @@ class DispatchRunner:
     structure = all_structure['summary']
     ## FINAL settings/components/cashflows use the multiplicity of divisions for aggregated evaluation
     final_settings, final_components = self._build_econ_objects(self._case, self._components, project_life)
+    # enable additional cashflow outputs if in debug mode
+    if self._case.debug['enabled']:
+      final_settings.setParams({'Output': True})
     active_index = {}
     dispatch_results = {}
     yearly_cluster_data = next(iter(all_structure['details'].values()))['clusters']
@@ -547,7 +568,8 @@ class DispatchRunner:
     print('****************************************')
     print('DEBUGG final cashflow metrics:')
     for k, v in cf_metrics.items():
-      print('  ', k, v)
+      if k not in ['outputType', 'all_data']:
+        print('  ', k, v)
     print('****************************************')
     # END DEBUGG
     return cf_metrics

@@ -46,6 +46,7 @@
     <Group name='GRO_armasamples_out_scalar'>NPV</Group>
     <Group name='GRO_final_return'></Group>
     <Group name="GRO_full_dispatch"></Group>
+    <Group name="GRO_cashflows"></Group>
     <Group name="GRO_full_dispatch_indices"></Group>
     <Group name='GRO_interp'>stepwise</Group>
     <Group name='GRO_capacities'></Group>
@@ -64,10 +65,11 @@
       <Output>GRO_final_return</Output>
     </PointSet>
     <DataSet name="disp_full">
-      <Output>GRO_full_dispatch, GRO_dispatch</Output>
+      <Output>GRO_full_dispatch, GRO_dispatch, GRO_cashflows</Output>
       <Index var="Time">GRO_full_dispatch, GRO_dispatch_in_Time</Index>
       <Index var="Year">GRO_full_dispatch, GRO_dispatch_in_Time</Index>
       <Index var="_ROM_Cluster">GRO_full_dispatch, GRO_dispatch_in_Time</Index>
+      <Index var="cfYears">GRO_cashflows</Index>
     </DataSet>
     <DataSet name="dispatch_eval">
       <Input>GRO_dispatch_in</Input>

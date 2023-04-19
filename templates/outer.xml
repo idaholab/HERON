@@ -36,6 +36,7 @@
     <Group name='GRO_outer_results'></Group>
     <Group name='GRO_outer_debug_dispatch'></Group>
     <Group name='GRO_outer_debug_synthetics'></Group>
+    <Group name='GRO_outer_debug_cashflows'></Group>
   </VariableGroups>
 
   <DataObjects>

@@ -1,0 +1,21 @@
+[Tests]
+  [./DebugCashflows]
+    type = 'HeronIntegration'
+    input = heron_input.xml
+    [./dispatch_db]
+      type = NetCDF
+      output = 'Runs_o/dispatch.nc'
+    [../]
+    [./cashflow_csv]
+      type = UnorderedCSV
+      output = 'Runs_o/cashflows_0.csv'
+      rel_err = 1e-6
+    [../]
+    [./cashflow_plot]
+      type = Exists
+      output = 'Runs_o/Cash_Flows_from_Project_Year_0_to_20.png Runs_o/Cumulative_from_Project_Year_0_to_20.png Runs_o/Cumulative_pie_from_Project_Year_0_to_20.png'
+    [../]
+  [../]
+[]
+
+

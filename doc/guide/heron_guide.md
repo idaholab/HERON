@@ -150,3 +150,57 @@ After the optimization is complete, it is still common for analysts or project l
 Once an optimal point is found, it is typical for project leads to want cash flow and dispatch plots for example scenarios in addition to final optimization values. To this end, HERON's debug mode allows for specifying debug values to use, which will provide example dispatch plots and cash flow breakdowns for the optimal capacity point over the requested number of scenarios.
 
 Note that in a typical HERON analysis, on the order of two million dispatch optimizations might be performed, which makes storing all the data used along the way impractical. In addition, the stochastic nature of time series mean that we can show dispatch plots for _example scenarios_, but these are only indicative of expected performance. The metrics calculated by HERON are based on thousands of these dispatches in a typical analysis. However, a few scenarios can be illustrative of typical behaviors.
+
+
+## Advanced Features
+
+### Custom User Specified Functions
+
+HERON allows users to create their own functions that perform computations during simulation runtime. 
+
+Currently, these functions can only deal with computations that do not occur during the dispatch optimization. For example, a user can write a function that determines the `<reference_price>` parameter of a component's cashflow because cashflows are not computed during the inner dispatch optimization. 
+
+Currently, a user would _not_ be able to write a custom transfer function that informs the dispatcher on how resources are transformed while moving between components of the specified system. This is because transfer functions are required during the dispatch of the system and would require the user to write the function in a way that could be interpreted by our underlying optimization library. **While this feature is not currently available, it may be made available in the future.**
+
+Users can see examples of these custom functions in the [FORCE use case repository.](https://github.com/idaholab/FORCE/tree/main/use_cases)
+
+#### Custom Function API
+
+Users can write custom functions, but they must follow the API conventions to ensure they work properly during runtime.
+
+A custom function utilized in a HERON input file requires two input parameters that are always returned by the function:
+
+* `data`: A Python dictionary containing information related to associated component that is calling the function.
+* `meta`: A Python dictionary containing information pertaining to the case as a whole. 
+
+It is possible to specify ancillary functions in your python file that do not follow the API conventions, but realize that functions called in your HERON input file will require this specification. 
+
+For example, suppose a user wanted to write a function that computed the reference price for a particular component. In their input file under the `reference_price` node they would write:
+
+
+```xml
+...
+<reference_price>
+    <Function method="get_price">functions</Function>
+</reference_price>
+...
+
+<!-- Also make sure you specify down in DataGenerators the path to your python file -->
+<DataGenerators>
+    <Function name="functions">[path/to/python/functions/file]</Function>
+</DataGenerators>
+```
+
+Then in a file created by the user, they would write the following function:
+
+```python
+def get_price(data, meta):
+    
+    return {"reference_price": result}, meta
+```
+
+
+
+
+### Custom User Specified Dispatch
+

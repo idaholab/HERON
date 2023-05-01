@@ -169,8 +169,10 @@ class DispatchPlot(PlotPlugin):
       # Set figure title, legend, and grid
       ax.set_title(key.title().split('_')[-1])
       ax.set_xlabel(self._microName)
-      ax.legend(loc='upper left', bbox_to_anchor=(1.1, 0.6), fontsize = 10)
-      ax2.legend(loc='lower left', bbox_to_anchor=(1.1, 0.6), fontsize = 10)
+      if(len(positive_label) > 0 or len(negative_label) > 0):
+        ax.legend(loc='upper left', bbox_to_anchor=(1.1, 0.6), fontsize = 10)
+      if(len(level_label) > 0):
+        ax2.legend(loc='lower left', bbox_to_anchor=(1.1, 0.6), fontsize = 10)
       # Add the label and adjust location
       ax.set_ylabel('Activity', fontsize=10, rotation=0)
       ax2.set_ylabel('Level', fontsize=10, rotation=0)

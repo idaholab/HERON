@@ -424,7 +424,7 @@ class Case(Base):
     self._time_discretization = None   # (start, end, number) for constructing time discretization, same as argument to np.linspace
     self._Resample_T = None            # user-set increments for resources
     self._optimization_settings = None # optimization settings dictionary for outer optimization loop
-    self._workflow = 'standard' # setting for how to run HERON, default is through raven workflow
+    self._workflow = 'standard'        # setting for how to run HERON, default is through raven workflow
     self._result_statistics = {        # desired result statistics (keys) dictionary with attributes (values)
         'sigma': None,                 # user can specify additional result statistics
         'expectedValue': None,

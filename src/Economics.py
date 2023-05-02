@@ -201,7 +201,7 @@ class CashFlowGroup:
       # FIXME why is it "repeating" and not "Recurring"?
       cost = dict((cf.name, cf.evaluate_cost(activity, meta))
                     for cf in self.get_cashflows()
-                    if (cf._type == 'repeating' and cf.get_period() != 'year'))
+                    if (cf.get_type() == 'repeating' and cf.get_period() != 'year'))
     else:
       cost = dict((cf.name, cf.evaluate_cost(activity, meta))
                     for cf in self.get_cashflows())
@@ -396,13 +396,13 @@ class CashFlow:
         self._depreciate = sub.value
 
       else:
-        raise IOError('Unrecognized "CashFlow" node: "{}"'.format(sub.getName()))
+        raise IOError(f'Unrecognized "CashFlow" node: {sub.getName()}')
 
     # driver is required!
     if self._driver is None:
-      raise IOError('No <driver> node provided for CashFlow {}!'.format(self.name))
+      raise IOError(f'No <driver> node provided for CashFlow {self.name}!')
     if self._alpha is None:
-      raise IOError('No <reference_price> node provided for CashFlow {}!'.format(self.name))
+      raise IOError(f'No <reference_price> node provided for CashFlow {self.name}!')
 
     # defaults
     var_names = ['_reference', '_scale']
@@ -439,11 +439,11 @@ class CashFlow:
       @ Out, None
     """
     vp = ValuedParamHandler(name)
-    signal = vp.read('CashFlow \'{}\''.format(self.name), spec, None) # TODO what "mode" to use?
+    signal = vp.read(f'CashFlow \'{self.name}\'', spec, None) # TODO what "mode" to use?
     self._signals.update(signal)
     self._crossrefs[name] = vp
     # standard alias: redirect "capacity" variable
-    if isinstance(vp, ValuedParams.factory.returnClass('variable')) and vp._raven_var == 'capacity':
+    if isinstance(vp, ValuedParams.factory.returnClass('variable')) and vp.get_raven_var() == 'capacity':
       #NOTE: we are assuming here that capacity_factors are only applied in dispatch and
       # are not a variable in the outer optimization.
       vp = self._component.get_capacity_param()
@@ -463,7 +463,7 @@ class CashFlow:
       ext = np.ones(life+1, dtype=float)
       ext[0] = 0.0
     else:
-      raise NotImplementedError('type is: {}'.format(self._type))
+      raise NotImplementedError(f'type is: {self._type}')
     return ext
 
   def get_crossrefs(self):
@@ -529,13 +529,56 @@ class CashFlow:
     """
     # OLD
     params = {'name': self.name,
-              'reference': vals_dict['ref_driver'],
-              'driver': vals_dict['driver'],
-              'alpha': vals_dict['alpha'],
-              'X': vals_dict['scaling'],
+              'reference': values_dict['ref_driver'],
+              'driver': values_dict['driver'],
+              'alpha': values_dict['alpha'],
+              'X': values_dict['scaling'],
               'mult_target': self._mult_target,
               'inflation': self._inflation,
               'multiply': None,
               'tax': self._taxable,
               }
     return params
+
+  #######
+  # API #
+  #######
+  def get_type(self):
+    """
+      Getter for Cashflow Type
+      @ In, None
+      @ Out, type, str, one-time, yearly, repeating
+    """
+    return self._type
+
+  def get_depreciation(self):
+    """
+      Getter for Cashflow depreciation
+      @ In, None
+      @ Out, depreciate, int or None
+    """
+    return self._depreciate
+
+  def is_taxable(self):
+    """
+      Getter for Cashflow taxable boolean
+      @ In, None
+      @ Out, taxable, bool, is cashflow taxable?
+    """
+    return self._taxable
+
+  def is_inflation(self):
+    """
+      Getter for Cashflow inflation boolean
+      @ In, None
+      @ Out, inflation, bool, is inflation applied to cashflow?
+    """
+    return self._inflation
+
+  def is_mult_target(self):
+    """
+      Getter for Cashflow mult_target boolean
+      @ In, None
+      @ Out, taxable, bool, is cashflow a multiplier target?
+    """
+    return self._mult_target

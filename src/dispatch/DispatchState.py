@@ -101,7 +101,7 @@ class DispatchState:
       for tracker in comp.get_tracking_vars():
         for res, r in self._resources[comp].items():
           result = np.empty(len(self._times))
-          for t, time in enumerate(self._times):
+          for t in range(len(self._times)):
             result[t] = self.get_activity_indexed(comp, tracker, r, t)
           data[template.format(comp=comp.name, tracker=tracker, res=res)] = result
     return data

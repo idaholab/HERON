@@ -356,10 +356,10 @@ class Case(Base):
                                                    (prefix ``med'') are always returned with the results.
                                                    Each subnode is the RAVEN-style name of the desired
                                                    return statistic.""")
-    for stat in cls.metrics_mapping:
+    for stat, stat_info in cls.metrics_mapping.items():
       if stat not in ['expectedValue', 'sigma', 'median']:
         statistic = InputData.parameterInputFactory(stat, strictMode=True,
-                                                    descr=r"""{} uses the prefix ``{}'' in the result output.""".format(stat, cls.metrics_mapping[stat]['prefix']))
+                                                    descr=rf"""{stat} uses the prefix ``{stat_info['prefix']}'' in the result output.""")
         if stat == 'percentile':
           statistic.addParam('percent', param_type=InputTypes.StringType,
                             descr=r"""requested percentile (a floating point value between 0.0 and 100.0).

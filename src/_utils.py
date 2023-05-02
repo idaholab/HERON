@@ -227,4 +227,4 @@ if __name__ == '__main__':
   elif action == 'get_cashflow_loc':
     print(get_cashflow_loc())
   else:
-    raise IOError('Unrecognized action: "{}"'.format(action))
+    raise IOError(f'Unrecognized action: {action}')

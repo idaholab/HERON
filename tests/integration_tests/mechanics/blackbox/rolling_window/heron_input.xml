@@ -77,7 +77,7 @@
     <Component name="generator">
       <produces resource="electricity" dispatch="independent">
         <consumes>steam</consumes>
-        <capacity resource="steam">
+        <capacity resource="electricity">
           <fixed_value>-100</fixed_value>
         </capacity>
         <transfer>

@@ -17,7 +17,7 @@ def electric_consume(data, meta):
   # component = meta['HERON']['component']
   activity = meta['HERON']['activity']
   # TODO a get_activity method for the dispatcher -> returns object-safe activity (expression or value)?
-  amount = -1 * activity['electricity']
+  amount = -1 * activity['production']['electricity']
   data = {'driver': amount}
   return data, meta
 

@@ -10,7 +10,15 @@ from .Dispatcher import Dispatcher
 from .DispatchState import NumpyState
 from ravenframework.utils import InputData
 
-
+try:
+  import _utils as hutils
+except (ModuleNotFoundError, ImportError):
+  sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+  import _utils as hutils
+try:
+  from cyipopt import minimize_ipopt
+except:
+  print('Optional cyipopt dependency required for blackbox optimization')
 
 class BlackboxSolution(object):
   time = None
@@ -118,7 +126,7 @@ class BlackboxComponent(object):
 
   def get_resources(self):
     """
-    
+
     """
     return [t for t in set([*self.produces, self.stores, *self.consumes]) if t]
 
@@ -202,10 +210,6 @@ class ChickadeeDispatcher(object):
     @ In, window_length, the length of window that you want to evaluate
     @ Out, None
     """
-    try:
-      from cyipopt import minimize_ipopt
-    except:
-      raise ModuleNotFoundError('Optional cyipopt dependency required. Please install the optional dependencies')
     self._window_length = window_length
 
     # Defined on call to self.dispatch
@@ -233,9 +237,11 @@ class ChickadeeDispatcher(object):
       @ Out, float, SSE of resource constraint violations
       """
       x_dict = {}
-      for i, c in enumerate(self.components):
+      i = 0
+      for c in self.components:
         if c.dispatch_type != 'fixed':
           x_dict[c.name] = np.array(x[i*len(time_array):(i+1)*len(time_array)])
+          i += 1
       dispatch_window, _ = self.determine_dispatch(x_dict, time_array, start, end, init_store)
 
       err = np.zeros(len(time_array))
@@ -354,7 +360,7 @@ class ChickadeeDispatcher(object):
     @ In, x_index, integer
     @ In ramp_rate, float, the maximum ramp rate
     @ In, prev_val, float, the value from the last time window
-    @ In, side, string, whether it is the upper or lower limit 
+    @ In, side, string, whether it is the upper or lower limit
     """
     def constraint(x: List[float]) -> float:
       """
@@ -375,7 +381,7 @@ class ChickadeeDispatcher(object):
     @ In, window_length
     @ In, start_i, integer, the starting index
     @ In, prev_win_end, the ending index of the last window
-    @ Out, constraints 
+    @ Out, constraints
     """
     # Add the ramping constraints for each component
     # This could be accelerated by implementing analytic jacobians
@@ -594,7 +600,7 @@ class ChickadeeDispatcher(object):
     @ In, prev_win_end, dict, the ending values for the previous time window used for consistency constraints
     @ Out, win_opt_dispatch, BlackboxDispatch, the optimal dispatch over the time_window
     @ Out, store_lvl, storage levels of the storage components
-    @ Out, sol.fun 
+    @ Out, sol.fun
     """
     print(f'solving window: {start_i}-{end_i}')
     window_length = len(time_window)
@@ -628,7 +634,7 @@ class ChickadeeDispatcher(object):
         else:
           storage_levels[comp.name] = self.storage_levels[comp.name][start_i-1]
 
-# Make a map of the available storage elements for each resource
+    # Make a map of the available storage elements for each resource
     storage_dict = {res: [] for res in self.resources}
     for c in self.components:
       if c.stores:
@@ -834,11 +840,7 @@ class ChickadeeDispatcher(object):
 
     return self._dispatch_pool()
 
-try:
-  import _utils as hutils
-except (ModuleNotFoundError, ImportError):
-  sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-  import _utils as hutils
+
 
 def convert_dispatch(ch_dispatch: BlackboxDispatchState, resource_map: dict,
                       component_map: dict) -> NumpyState:
@@ -852,7 +854,6 @@ def convert_dispatch(ch_dispatch: BlackboxDispatchState, resource_map: dict,
 
   # This just needs to be a reliable unique identifier for each component.
   # In HERON it is a HERON Component. Here we just use the component names.
-  print('---------------- Covnerting Dispatch ! -------------------')
   np_dispatch = NumpyState()
 
   np_dispatch.initialize(component_map.values(), resource_map, ch_dispatch.time)
@@ -863,9 +864,6 @@ def convert_dispatch(ch_dispatch: BlackboxDispatchState, resource_map: dict,
   # Copy over all the activities
   for c, data in ch_dispatch.state.items():
     for res, values in data.items():
-      print(f'---------------- {c} {component_map[c]} {res} {start_i} {end_i} {values} -------------------')
-      print(np_dispatch._resources[component_map[c]])
-      print(np_dispatch._data[component_map[c].name+'_production'])
       np_dispatch.set_activity_vector(component_map[c], res,
               values, start_idx=start_i, end_idx=end_i)
 
@@ -891,24 +889,7 @@ def generate_transfer(comp, sources, dt):
     if thing is None:
       # For components that don't actually transfer, HERON never loads the functions
       return lambda x: {}
-  # We really need to dig for this one, but it lets us determine our own
-  # function signatures for the transfer functions by bypassing the HERON interfaces
-
   transfer = interaction.get_transfer()
-  # print('------------ Debug Me! -----------', dir(tf))
-  # print('------------ interaction -----------', dir(interaction))
-  # print('------------ _vp -----------', dir(tf._vp))
-  # print('------------ _function_method_map -----------', interaction._function_method_map)
-  # print('------------ get_source -----------', tf._vp.get_source())
-  # print('------------ get_source[0:1] -----------', type(tf._vp.get_source()[0]), type(interaction._transfer._vp.get_source()[1]))
-  # print('------------ _method_name -----------' , tf._vp._method_name)
-  # print('------------ _source_kind -----------' , tf._vp._source_kind)
-  # print('------------ _source_name -----------' , tf._vp._source_name)
-  # print('------------ _value -----------', type(tf._vp._value))
-  # print('------------ _target_obj -----------', tf._vp._target_obj)
-  # print('------------ _target_obj dir -----------', dir(tf._vp._target_obj))
-  # print('------------ _target_obj type -----------', type(tf._vp._target_obj))
-  # print('------------ _target_obj type -----------', type(tf._vp._target_obj._module_methods[tf._vp._method_name]))
   transfer_fcn = transfer._vp._target_obj._module_methods[transfer._vp._method_name]
   return transfer_fcn
 
@@ -928,6 +909,12 @@ class BlackBoxDispatcher(Dispatcher):
 
   def __init__(self):
     self.name = 'BlackboxDispatcher'
+    try:
+      import cyipopt
+    except ModuleNotFoundError as e:
+      raise ModuleNotFoundError(
+        'Optional cyipopt dependency required for blackbox optimization'
+        ) from e
 
   def dispatch(self, case, components, sources, meta):
     """
@@ -977,11 +964,8 @@ class BlackBoxDispatcher(Dispatcher):
     def objective(dispatchState: BlackboxDispatchState):
     #print(len(dispatchState.time), {key: { res: len(d) for res, d in dispatchState.state[key].items()}for key in dispatchState.state.keys()})
       np_dispatch = convert_dispatch(dispatchState, resource_map, comp_map)
-      print('---------------- Converting dispatch Complete ! -------------------')
-      print(np_dispatch._data['electr_flex_production'])
       cost = self._compute_cashflows(components, np_dispatch,
                                       dispatchState.time, meta)
-      print('---------------- Obj Fcn Complete ! -------------------')
       return cost
 
     # Dispatch using Chickadee

@@ -19,13 +19,14 @@ class BlackboxSolution(object):
   error = False
 
   def __init__(self, time, dispatch, storage, error, objval, time_windows=None):
-    '''Representation of the problem solution.
-    :param time: time horizon used in the problem
-    :param dispatch: an object/dict describing the optimal dispatch of the system
-    :param storage: an object/dict describing the usage of storage over the time horizon
-    :param error: the total constraint error of the final solution
-    :param objval: the final value of the objective function
-    :param time_windows: description of where the involved windows start and end
+    '''
+      Representation of the problem solution.
+      @ In, time, time horizon used in the problem
+      @ In, dispatch, an object/dict describing the optimal dispatch of the system
+      @ In, storage, an object/dict describing the usage of storage over the time horizon
+      @ In, error, the total constraint error of the final solution
+      @ In, objval, the final value of the objective function
+      @ In, time_windows, description of where the involved windows start and end
     '''
     self.time = time
     self.dispatch = dispatch
@@ -34,32 +35,33 @@ class BlackboxSolution(object):
     self.objval = objval
     self.time_windows = time_windows
 
-
 class BlackboxComponent(object):
   def __init__(self, name: str, capacity: np.ndarray, ramp_rate_up: np.ndarray, ramp_rate_down: np.ndarray,
               capacity_resource: str, transfer: Callable, cost_function: Callable,
               produces=None, consumes=None, stores=None, min_capacity=None, dispatch_type: str='independent',
               guess: np.ndarray=None, storage_init_level=0.0):
-    """A Component compatible with the PyOptSparse dispatcher
-    :param name: Name of the component. Used in representing dispatches
-    :param capacity: Maximum capacity of the component in terms of `capacity_resource`
-    :param ramp_rate_up: the maximum positive ramp rate of the component in terms of capacity resource units per time
-    :param ramp_rate_down: the maximum negative ramp rate of the component in terms of capacity resource units per time
-    :param transfer: a method for calculating the component transfer at a time point
-    :param cost_function: an function describing the economic cost of running the unit over a given dispatch
-    :param produces: a list of resources produced by the component
-    :param consumes: a list of resources consumed by the component
-    :param stores: resource stored by the component
-    :param min_capacity: Minimum capacity of the unit at each time point. Defaults to 0.
-    :param dispatch_type: the dispatch type of the component
-    :param guess: a guess at the optimal dispatch of the unit in terms of its `capacity_resource`. Defaults to the capacity.
-    :param storage_init_level: initial storage level
+    """
+      A Component compatible with the PyOptSparse dispatcher
+      @ In, name, Name of the component. Used in representing dispatches
+      @ In, capacity, Maximum capacity of the component in terms of `capacity_resource`
+      @ In, ramp_rate_up, the maximum positive ramp rate of the component in terms of capacity resource units per time
+      @ In, ramp_rate_down, the maximum negative ramp rate of the component in terms of capacity resource units per time
+      @ In, transfer, a method for calculating the component transfer at a time point
+      @ In, cost_function, an function describing the economic cost of running the unit over a given dispatch
+      @ In, produces, a list of resources produced by the component
+      @ In, consumes, a list of resources consumed by the component
+      @ In, stores, resource stored by the component
+      @ In, min_capacity, Minimum capacity of the unit at each time point. Defaults to 0.
+      @ In, dispatch_type, the dispatch type of the component
+      @ In, guess, a guess at the optimal dispatch of the unit in terms of its `capacity_resource`. Defaults to the capacity.
+      @ In, storage_init_level, initial storage level
+      @ Out, None
 
-    Note that a component cannot store resources in addition to producing or consuming
-    resources. Storage components must be separate from producers and consumers.
+      Note that a component cannot store resources in addition to producing or consuming
+      resources. Storage components must be separate from producers and consumers.
 
-    Components can only store a single resource at a time. This could be extended in the
-    future to interrelated storage of multiple resources.
+      Components can only store a single resource at a time. This could be extended in the
+      future to interrelated storage of multiple resources.
     """
     self.name = name
     self.capacity = capacity
@@ -115,12 +117,20 @@ class BlackboxComponent(object):
     self.storage_init_level = storage_init_level
 
   def get_resources(self):
+    """
+    
+    """
     return [t for t in set([*self.produces, self.stores, *self.consumes]) if t]
 
 
 class BlackboxDispatchState(object):
   '''Modeled after idaholab/HERON NumpyState object'''
   def __init__(self, components: List[BlackboxComponent], time: List[float]):
+    """
+    @ In, components, a list of BlackboxComponents
+    @ In, time, a list of floats
+    @ Out, None
+    """
     s = {}
 
     for c in components:
@@ -132,12 +142,25 @@ class BlackboxDispatchState(object):
     self.time = time
 
   def set_activity(self, component: BlackboxComponent, resource, activity, i=None):
+    """
+    @ In, component, a BlackboxComponent
+    @ In, resource,
+    @ In, activity,
+    @ In, i, an integer to use as an index
+    @ Out, None
+    """
     if i is None:
       self.state[component.name][resource] = activity
     else:
       self.state[component.name][resource][i] = activity
 
   def get_activity(self, component: BlackboxComponent, resource, i=None):
+    """
+    @ In, component, a BlackboxComponent
+    @ In, resource,
+    @ In, i, an integer to use as an index
+    @ Out, the state of that resource for that component
+    """
     try:
       if i is None:
         return self.state[component.name][resource]
@@ -149,9 +172,21 @@ class BlackboxDispatchState(object):
 
   def set_activity_vector(self, component: BlackboxComponent,
                           resource, start, end, activity):
+    """
+    @ In, component, a BlackboxComponent
+    @ In, resource,
+    @ In, start,
+    @ In, end,
+    @ In, activity,
+    @ Out, None
+    """
     self.state[component.name][resource][start:end] = activity
 
   def __repr__(self):
+    """
+    @ In, None
+    @ Out, None
+    """
     return pformat(self.state)
 
 
@@ -163,6 +198,10 @@ class ChickadeeDispatcher(object):
   slack_storage_added = False # In case slack storage is added in a loop
 
   def __init__(self, window_length=10):
+    """
+    @ In, window_length, the length of window that you want to evaluate
+    @ Out, None
+    """
     self.name = 'CyIpopt'
     self._window_length = window_length
 
@@ -172,18 +211,24 @@ class ChickadeeDispatcher(object):
     self.storage_levels = {}
 
   def _gen_pool_cons(self, resource, time_array, start, end, init_store) -> callable:
-    '''A closure for generating a pool constraint for a resource
-    :param resource: the resource to evaluate
-    :returns: a function representing the pool constraint
-    '''
+    """
+    A closure for generating a pool constraint for a resource
+    @ In, resource the resource to evaluate
+    @ In, time_array
+    @ In, start, start of time window
+    @ In, end, end of time window
+    @ In, init_store, insitial sotrage level of resource
+    @ Out, a function representing the pool constraint
+    """
 
     def pool_cons(x: List[float]) -> float:
-      '''A resource pool constraint
+      """
+      A resource pool constraint
       Checks that the net amount of a resource being consumed, produced and
       stored is zero.
-      :param x: the guess dispatch to evaluate
-      :returns: SSE of resource constraint violations
-      '''
+      @ In, x, a list of floats constaining the guess dispatch to evaluate
+      @ Out, float, SSE of resource constraint violations
+      """
       x_dict = {}
       for i, c in enumerate(self.components):
         if c.dispatch_type != 'fixed':
@@ -204,18 +249,25 @@ class ChickadeeDispatcher(object):
     return pool_cons
 
   def _gen_pool_cons2(self, resource, time_array, start, end, init_store, t) -> callable:
-    '''A closure for generating a pool constraint for a resource
-    :param resource: the resource to evaluate
-    :returns: a function representing the pool constraint
-    '''
+    """
+    A closure for generating a pool constraint for a resource
+    @ In, resource, the resource to evaluate
+    @ In, time_array,
+    @ In, start, the start of the time window
+    @ In, end, the end of the time window
+    @ In, int_store, the insitial storage level for the resource at the start of the window
+    @ In, t,
+    @ Out, a function representing the pool constraint
+    """
 
     def pool_cons(x: List[float]) -> float:
-      '''A resource pool constraint
+      """
+      A resource pool constraint
       Checks that the net amount of a resource being consumed, produced and
       stored is zero.
-      :param x: the guess dispatch to evaluate
-      :returns: SSE of resource constraint violations
-      '''
+      @ In, x, a list of floats containing the guess dispatch to evaluate
+      @ Out, the SSE of resource constraint violations
+      """
       x_dict = {}
       i = 0
       for c in self.components:
@@ -237,9 +289,14 @@ class ChickadeeDispatcher(object):
     return pool_cons
 
   def _build_pool_cons_individual(self, time, start, end, init_store) -> List[callable]:
-    '''Build the pool constraints
-    :returns: List[callable] a list of pool constraints, one for each resource
-    '''
+    """
+    Build the pool constraints
+    @ In, time,
+    @ In, start, the start of the time window
+    @ In, end, the end of the time window
+    @ In, init_store, the initial storage level at the start of the window
+    @ Out, cons, a callable list of pool constraints, one for each resource
+    """
 
     cons = []
     for res in self.resources:
@@ -251,9 +308,14 @@ class ChickadeeDispatcher(object):
     return cons
 
   def _build_pool_cons(self, time, start, end, init_store) -> List[callable]:
-    '''Build the pool constraints
-    :returns: List[callable] a list of pool constraints, one for each resource
-    '''
+    """
+    Build the pool constraints
+    @ In, time
+    @ In, start, the start of the time window
+    @ In, end, the end of the time window
+    @ In, init_store, the initial storage level at the start of the window
+    @ Out, cons, a callable list of pool constraints, one for each resource
+    """
 
     cons = []
     for res in self.resources:
@@ -265,7 +327,17 @@ class ChickadeeDispatcher(object):
     return cons
 
   def _gen_ramp_constraint(self, x_index: int, ramp_rate: float, side='upper') -> callable:
+    """
+    A closure that returns the function that defines the constraint
+    @ In, x_index, integer
+    @ In, ramp_rate, float
+    @ In, side
+    """
     def constraint(x: List[float]) -> float:
+      """
+      @ In, x, a list constaining floats
+      @ Out, constraint, float, if constraint is returned as negative then the constraint was met
+      """
       # non-negative result means constraint met
       if side == 'upper':
         return ramp_rate - (x[x_index+1] - x[x_index])
@@ -274,7 +346,18 @@ class ChickadeeDispatcher(object):
     return constraint
 
   def _gen_ramp_constraint_between_windows(self, x_index: int, ramp_rate: float, prev_val: float, side='upper'):
+    """
+    A closure that returns the functions that defines the constraint between windows
+    @ In, x_index, integer
+    @ In ramp_rate, float, the maximum ramp rate
+    @ In, prev_val, float, the value from the last time window
+    @ In, side, string, whether it is the upper or lower limit 
+    """
     def constraint(x: List[float]) -> float:
+      """
+      @ In, x, a list of float
+      @ Out, constraint, float, if constraint is returned as negative then the constraint was met
+      """
       if side == 'upper':
         return ramp_rate - (x[x_index] - prev_val)
       else:
@@ -282,6 +365,15 @@ class ChickadeeDispatcher(object):
     return constraint
 
   def _gen_ramp_constraints(self, comp, array_indexer, window_length, start_i, prev_win_end):
+    """
+    Generates the constraints for the ramp rate
+    @ In, comp
+    @ In, array_indexer
+    @ In, window_length
+    @ In, start_i, integer, the starting index
+    @ In, prev_win_end, the ending index of the last window
+    @ Out, constraints 
+    """
     # Add the ramping constraints for each component
     # This could be accelerated by implementing analytic jacobians
     # It would also likely be slightly faster if separate closures were used for upper and lower bounds
@@ -319,17 +411,18 @@ class ChickadeeDispatcher(object):
 
   def determine_dispatch(self, opt_vars: dict, time: List[float],
                         start_i: int, end_i: int, init_store: dict) -> BlackboxDispatchState:
-    '''Determine the dispatch from a given set of optimization
+    """
+    Determine the dispatch from a given set of optimization
     vars by running the transfer functions. Returns a Numpy dispatch
     object
-    :param opt_vars: dict, holder for all the optimization variables
-    :param time: list, time horizon to dispatch over
-    :param start_i:
-    :param end_i:
-    :param init_store:
-    :returns: BlackboxDispatchState, dispatch of the system
-    :returns: dict, storage levels of each storage component over time
-    '''
+    @ In, opt_vars, dict, holder for all the optimization variables
+    @ In, time, list, time horizon to dispatch over
+    @ In, start_i, int
+    @ In, end_i, int
+    @ In, init_store, dict
+    @ Out, dispatch, BlackboxDispatchState, dispatch of the system
+    @ Out, store_levels, dict, storage levels of each storage component over time
+    """
     # Initialize the dispatch
     dispatch = BlackboxDispatchState(self.components, time)
     store_lvls = {}
@@ -353,9 +446,9 @@ class ChickadeeDispatcher(object):
     return dispatch, store_lvls
 
   def _dispatch_pool(self) -> BlackboxSolution:
-    '''Dispatch the given system using a resource-pool method
-    :returns: DispatchState, the optimal dispatch of the system
-    :returns: dict, the storage levels of the storage components
+    """
+    Dispatch the given system using a resource-pool method
+    @ Out, solution, tuple(DispatchState,dict), optimal dispatch of the system and storage levels of the storage components
 
       Steps:
         - Assemble all the vars into a vars dict
@@ -373,7 +466,7 @@ class ChickadeeDispatcher(object):
                 d) set the optimization configuration (IPOPT/SNOPT, CS/FD...)
             4) Run the optimization and handle failed/unfeasible runs
             5) Set the activities on each of the components and return the result
-    '''
+    """
 
     objval = 0.0
 
@@ -467,15 +560,19 @@ class ChickadeeDispatcher(object):
     return solution
 
   def generate_objective(self) -> callable:
-    '''Assembles an objective function to minimize the system cost'''
+    '''
+    Closure that assembles an objective function to minimize the system cost
+    @ Out, objective function
+    '''
     if self.external_obj_func:
       return self.external_obj_func
     else:
 
       def objective(dispatch: BlackboxDispatchState) -> float:
-        '''The objective function. It is broken out to allow for easier scaling.
-        :param dispatch: the full dispatch of the system
-        :returns: float, value of the objective function
+        '''
+        The objective function. It is broken out to allow for easier scaling.
+        @ In, dispatch, the full dispatch of the system
+        @ Out, obj,  float, value of the objective function
         '''
         obj = 0.0
         for c in self.components:
@@ -485,14 +582,17 @@ class ChickadeeDispatcher(object):
 
   def _dispatch_window(self, time_window: List[float], start_i: int,
                       end_i: int, init_store, prev_win_end: dict=None) -> BlackboxSolution:
-    '''Dispatch a time-window using a resource-pool method
-    :param time_window: The time window to dispatch the system over
-    :param start_i: The time-array index for the start of the window
-    :param end_i: The time-array index for the end of the window
-    :param init_store: dict of the initial storage values of the storage components
-    :param prev_win_end: dict of the ending values for the previous time window used for consistency constraints
-    :returns: DispatchState, the optimal dispatch over the time_window
-    '''
+    """
+    Dispatch a time-window using a resource-pool method
+    @ In, time_window, list, The time window to dispatch the system over
+    @ In, start_i, int, The time-array index for the start of the window
+    @ In, end_i, int, The time-array index for the end of the window
+    @ In, init_store, dict, the initial storage values of the storage components
+    @ In, prev_win_end, dict, the ending values for the previous time window used for consistency constraints
+    @ Out, win_opt_dispatch, BlackboxDispatch, the optimal dispatch over the time_window
+    @ Out, store_lvl, storage levels of the storage components
+    @ Out, sol.fun 
+    """
     print(f'solving window: {start_i}-{end_i}')
     window_length = len(time_window)
 
@@ -562,6 +662,10 @@ class ChickadeeDispatcher(object):
           resource_errors[res][t] -= dguess
 
     def obj(x: List[float]) -> float:
+      """
+      @ In, x, a list of floats
+      @ Out, scaled objective of the dispatch
+      """
       # Unpack the array into a dict
       x_dict = {}
       for i, c in enumerate(self.components):
@@ -648,17 +752,40 @@ class ChickadeeDispatcher(object):
     return win_opt_dispatch, store_lvl, sol.fun
 
   def gen_slack_storage_trans(self, _) -> callable:
+    """
+    A closure that returns trans function
+    @ In, none
+    @ Out, trans
+    """
     def trans(inputs, init_store):
+      """
+      @ In, inputs
+      @ In, init_store, initial storage level
+      @ Out,
+      """
       tmp = np.insert(inputs, 0, init_store)
       return np.cumsum(tmp)[1:]
     return trans
 
   def gen_slack_storage_cost(self, res) -> callable:
+    """
+    A closure that returns the cost function
+    @ In, res
+    @ Out, cost
+    """
     def cost(dispatch):
+      """
+      @ In, dispatch
+      @ Out, summation of the cost of the dispatch
+      """
       return np.sum(1e6*dispatch[res])
     return cost
 
   def add_slack_storage(self) -> None:
+    """
+    @ In, none
+    @ Out, none
+    """
     for res in self.resources:
       num = 1e6*np.ones(len(self.time))
       guess = np.zeros(len(self.time))
@@ -675,18 +802,18 @@ class ChickadeeDispatcher(object):
                 time: List[float], external_obj_func: callable=None, meta=None,
                 verbose: bool=False, scale_objective: bool=True,
                 slack_storage: bool=False) -> BlackboxSolution:
-    """Optimally dispatch a given set of components over a time horizon
+    """
+    Optimally dispatch a given set of components over a time horizon
     using a list of TimeSeries
-
-    :param components: List of components to dispatch
-    :param time: time horizon to dispatch the components over
-    :param external_obj_func: callable, An external objective function
-    :param meta: stuff, an arbitrary object passed to the transfer functions
-    :param verbose: Whether to print verbose dispatch
-    :param scale_objective: Whether to scale the objective function by its initial value
-    :param slack_storage: Whether to use artificial storage components as "slack" variables
-    :returns: optDispatch, A dispatch-state object representing the optimal system dispatch
-    :returns: storage_levels, the storage levels of the system components
+    @ In, components, List of components to dispatch
+    @ In, time, list, time horizon to dispatch the components over
+    @ In, external_obj_func, callable, An external objective function
+    @ In, meta, stuff, an arbitrary object passed to the transfer functions
+    @ In, verbose, bool, Whether to print verbose dispatch
+    @ In, scale_objective, bool, Whether to scale the objective function by its initial value
+    @ In, slack_storage, bool, Whether to use artificial storage components as "slack" variables
+    @ Out, optDispatch, A dispatch-state object representing the optimal system dispatch
+    @ Out storage_levels, the storage levels of the system components
     Note that use of `external_obj_func` will replace the use of all component cost functions
     """
     self.components = components
@@ -712,12 +839,13 @@ except (ModuleNotFoundError, ImportError):
 
 def convert_dispatch(ch_dispatch: BlackboxDispatchState, resource_map: dict,
                       component_map: dict) -> NumpyState:
-  '''Convert a Chickadee dispatch object to a NumpyState object
+  """
+  Convert a Chickadee dispatch object to a NumpyState object
   @ In, ch_dispatch, chickadee Dispatch, The dispatch to convert
   @ In, resource_map, dict, HERON resource map
   @ In, component_map, dict, a map of Chickadee components to HERON ones
   @ Out, np_dispatch, NumpyState, The converted dispatch
-  '''
+  """
 
   # This just needs to be a reliable unique identifier for each component.
   # In HERON it is a HERON Component. Here we just use the component names.
@@ -737,6 +865,12 @@ def convert_dispatch(ch_dispatch: BlackboxDispatchState, resource_map: dict,
   return np_dispatch
 
 def generate_transfer(comp, sources, dt):
+  """
+  @ In, comp
+  @ In, sources
+  @ In, dt
+  @ Out, transfer
+  """
   interaction = comp.get_interaction()
   if comp._stores:
     # For storage components there is no transfer, so the transfer method is attached to the
@@ -756,16 +890,24 @@ def generate_transfer(comp, sources, dt):
   return transfer
 
 class BlackBoxDispatcher(Dispatcher):
-  '''
+  """
   Dispatch using pyOptSparse optimization package through Chickadee
-  '''
+  """
 
   @classmethod
   def get_input_specs(cls):
+    """
+    @ In, cls
+    @ Out, specs
+    """
     specs = InputData.parameterInputFactory('blackbox', ordered=False, baseNode=None)
     return specs
 
   def __init__(self):
+    """
+    @ In, none
+    @ Out, none
+    """
     try:
       from cyipopt import minimize_ipopt
     except:
@@ -776,7 +918,7 @@ class BlackBoxDispatcher(Dispatcher):
   def dispatch(self, case, components, sources, meta):
     """
       Dispatch the system using IPOPT, pyOptSparse and Chickadee.
-      @ In, case, Case,
+      @ In, case, Case
       @ In, components, List[Component], the system components
       @ In, sources
       @ In, meta

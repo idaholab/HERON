@@ -202,7 +202,10 @@ class ChickadeeDispatcher(object):
     @ In, window_length, the length of window that you want to evaluate
     @ Out, None
     """
-    self.name = 'CyIpopt'
+    try:
+      from cyipopt import minimize_ipopt
+    except:
+      raise ModuleNotFoundError('Optional cyipopt dependency required. Please install the optional dependencies')
     self._window_length = window_length
 
     # Defined on call to self.dispatch
@@ -849,6 +852,7 @@ def convert_dispatch(ch_dispatch: BlackboxDispatchState, resource_map: dict,
 
   # This just needs to be a reliable unique identifier for each component.
   # In HERON it is a HERON Component. Here we just use the component names.
+  print('---------------- Covnerting Dispatch ! -------------------')
   np_dispatch = NumpyState()
 
   np_dispatch.initialize(component_map.values(), resource_map, ch_dispatch.time)
@@ -859,8 +863,11 @@ def convert_dispatch(ch_dispatch: BlackboxDispatchState, resource_map: dict,
   # Copy over all the activities
   for c, data in ch_dispatch.state.items():
     for res, values in data.items():
+      print(f'---------------- {c} {component_map[c]} {res} {start_i} {end_i} {values} -------------------')
+      print(np_dispatch._resources[component_map[c]])
+      print(np_dispatch._data[component_map[c].name+'_production'])
       np_dispatch.set_activity_vector(component_map[c], res,
-              start_i, end_i, values)
+              values, start_idx=start_i, end_idx=end_i)
 
   return np_dispatch
 
@@ -886,8 +893,24 @@ def generate_transfer(comp, sources, dt):
       return lambda x: {}
   # We really need to dig for this one, but it lets us determine our own
   # function signatures for the transfer functions by bypassing the HERON interfaces
-  transfer = interaction._transfer._obj._module_methods[thing._sub_name]
-  return transfer
+
+  transfer = interaction.get_transfer()
+  # print('------------ Debug Me! -----------', dir(tf))
+  # print('------------ interaction -----------', dir(interaction))
+  # print('------------ _vp -----------', dir(tf._vp))
+  # print('------------ _function_method_map -----------', interaction._function_method_map)
+  # print('------------ get_source -----------', tf._vp.get_source())
+  # print('------------ get_source[0:1] -----------', type(tf._vp.get_source()[0]), type(interaction._transfer._vp.get_source()[1]))
+  # print('------------ _method_name -----------' , tf._vp._method_name)
+  # print('------------ _source_kind -----------' , tf._vp._source_kind)
+  # print('------------ _source_name -----------' , tf._vp._source_name)
+  # print('------------ _value -----------', type(tf._vp._value))
+  # print('------------ _target_obj -----------', tf._vp._target_obj)
+  # print('------------ _target_obj dir -----------', dir(tf._vp._target_obj))
+  # print('------------ _target_obj type -----------', type(tf._vp._target_obj))
+  # print('------------ _target_obj type -----------', type(tf._vp._target_obj._module_methods[tf._vp._method_name]))
+  transfer_fcn = transfer._vp._target_obj._module_methods[transfer._vp._method_name]
+  return transfer_fcn
 
 class BlackBoxDispatcher(Dispatcher):
   """
@@ -904,15 +927,6 @@ class BlackBoxDispatcher(Dispatcher):
     return specs
 
   def __init__(self):
-    """
-    @ In, none
-    @ Out, none
-    """
-    try:
-      from cyipopt import minimize_ipopt
-    except:
-      raise ModuleNotFoundError('Optional cyipopt dependency required. Please install the optional dependencies')
-
     self.name = 'BlackboxDispatcher'
 
   def dispatch(self, case, components, sources, meta):
@@ -963,8 +977,12 @@ class BlackBoxDispatcher(Dispatcher):
     def objective(dispatchState: BlackboxDispatchState):
     #print(len(dispatchState.time), {key: { res: len(d) for res, d in dispatchState.state[key].items()}for key in dispatchState.state.keys()})
       np_dispatch = convert_dispatch(dispatchState, resource_map, comp_map)
-      return self._compute_cashflows(components, np_dispatch,
+      print('---------------- Converting dispatch Complete ! -------------------')
+      print(np_dispatch._data['electr_flex_production'])
+      cost = self._compute_cashflows(components, np_dispatch,
                                       dispatchState.time, meta)
+      print('---------------- Obj Fcn Complete ! -------------------')
+      return cost
 
     # Dispatch using Chickadee
     dispatcher = ChickadeeDispatcher()

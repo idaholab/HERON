@@ -562,12 +562,12 @@ class DispatchRunner:
       print(f' ... comp {comp_name} ...')
       for cf in comp.getCashflows():
         print(f' ... ... cf {cf.name} ...')
-        print(f' ... ... ... D', cf._driver)
-        print(f' ... ... ... a', cf._alpha)
-        print(f' ... ... ... Dp', cf._reference)
-        print(f' ... ... ... x', cf._scale)
+        print(f' ... ... ... D: {cf._driver}')
+        print(f' ... ... ... a: {cf._alpha}')
+        print(f' ... ... ... Dp: {cf._reference}')
+        print(f' ... ... ... x: {cf._scale}')
         if hasattr(cf, '_yearlyCashflow'):
-          print(f' ... ... ... hourly', cf._yearlyCashflow)
+          print(f' ... ... ... hourly: {cf._yearlyCashflow}')
     # END DEBUGG
     cf_metrics = TEAL.src.main.run(final_settings, list(final_components.values()), raven_vars)
     # DEBUGG

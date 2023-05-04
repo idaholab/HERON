@@ -662,7 +662,7 @@ class Template(TemplateBase, Base):
       except KeyError:
         # type was not provided, so use the default value
         metric_raven_name = case._optimization_settings['metric']['name']
-        type_node.text = case.metrics_mapping[metric_raven_name]['optimization_default']
+        type_node.text = case.stats_metrics_mapping[metric_raven_name]['optimization_default']
 
       # swap out convergence values (only persistence implemented now)
       convergence = opt_node.find('convergence')
@@ -1101,7 +1101,7 @@ class Template(TemplateBase, Base):
       pp_node = template.find('Models').find(".//PostProcessor[@name='statistics']")
       if new_objective != 'missing':
         raven_metric_name = case._optimization_settings['metric']['name']
-        prefix = case.metrics_mapping[raven_metric_name]['prefix']
+        prefix = case.stats_metrics_mapping[raven_metric_name]['prefix']
         if pp_node.find(raven_metric_name) is None:
           # add subnode to PostProcessor
           if 'threshold' in case._optimization_settings['metric']:
@@ -1207,7 +1207,7 @@ class Template(TemplateBase, Base):
     if any(stat not in ['expectedValue', 'sigma', 'median'] for stat in case._result_statistics):
       for raven_metric_name in case._result_statistics:
         if raven_metric_name not in stats:
-          prefix = case.metrics_mapping[raven_metric_name]['prefix']
+          prefix = case.stats_metrics_mapping[raven_metric_name]['prefix']
           # add subnode to PostProcessor
           if raven_metric_name == 'percentile':
             # add percent attribute
@@ -1467,7 +1467,7 @@ class Template(TemplateBase, Base):
       # metric name in RAVEN
       metric_raven_name = case._optimization_settings['metric']['name']
       # potential metric name to add
-      opt_out_metric_name = case.metrics_mapping[metric_raven_name]['prefix']
+      opt_out_metric_name = case.stats_metrics_mapping[metric_raven_name]['prefix']
       # do I need to add a percent or threshold to this name?
       if metric_raven_name == 'percentile':
         opt_out_metric_name += '_' + str(case._optimization_settings['metric']['percent'])
@@ -1490,7 +1490,7 @@ class Template(TemplateBase, Base):
     """
     names = []
     for name in case._result_statistics:
-      out_name = case.metrics_mapping[name]['prefix']
+      out_name = case.stats_metrics_mapping[name]['prefix']
       # do I need to add percent or threshold?
       if name in ['percentile', 'valueAtRisk', 'expectedShortfall', 'sortinoRatio', 'gainLossRatio']:
         # multiple percents or thresholds may be specified

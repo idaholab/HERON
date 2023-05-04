@@ -42,7 +42,7 @@ class Case(Base):
   # 'optimization_default' - 'min' or 'max' for optimization
   # 'percent' (only for percentile) - list of percentiles to return
   # 'threshold' (only for sortinoRatio, gainLossRatio, expectedShortfall, valueAtRisk) - threshold value for calculation
-  metrics_mapping = {'expectedValue': {'prefix': 'mean', 'optimization_default': 'max'},
+  stats_metrics_mapping = {'expectedValue': {'prefix': 'mean', 'optimization_default': 'max'},
                      'minimum': {'prefix': 'min', 'optimization_default': 'max'},
                      'maximum': {'prefix': 'max', 'optimization_default': 'max'},
                      'median': {'prefix': 'med', 'optimization_default': 'max'},
@@ -116,8 +116,8 @@ class Case(Base):
                                                        strictMode=True, descr=desc_workflow_options))
 
     # not yet implemented TODO
-    #econ_metrics = InputTypes.makeEnumType('EconMetrics', 'EconMetricsTypes', ['NPV', 'lcoe'])
-    #desc_econ_metrics = r"""indicates the economic metric that should be used for the HERON analysis. For most cases, this
+    # econ_metrics = InputTypes.makeEnumType('EconMetrics', 'EconMetricsTypes', ['NPV', 'LCOx'])
+    # desc_econ_metrics = r"""indicates the economic metric that should be used for the HERON analysis. For most cases, this
     #                    should be NPV."""
     # input_specs.addSub(InputData.parameterInputFactory('metric', contentType=econ_metrics, descr=desc_econ_metrics))
     # input_specs.addSub(InputData.parameterInputFactory('differential', contentType=InputTypes.BoolType, strictMode=True,
@@ -259,8 +259,8 @@ class Case(Base):
     optimizer = InputData.parameterInputFactory('optimization_settings',
                                                 descr=r"""This node defines the settings to be used for the optimizer in
                                                 the ``outer'' run.""")
-    metric_options = InputTypes.makeEnumType('MetricOptions', 'MetricOptionsType', list(cls.metrics_mapping.keys()))
-    desc_metric_options = r"""determines the statistical metric (calculated by RAVEN BasicStatistics
+    stats_metric_options = InputTypes.makeEnumType('StatsMetricOptions', 'StatsMetricOptionsType', list(cls.stats_metrics_mapping.keys()))
+    desc_stats_metric_options = r"""determines the statistical metric (calculated by RAVEN BasicStatistics
                           or EconomicRatio PostProcessors) from the ``inner'' run to be used as the
                           objective in the ``outer'' optimization.
                           \begin{itemize}
@@ -275,14 +275,14 @@ class Case(Base):
                             requested $\alpha$ value (a floating point value between 0.0 and 1.0).
                           \end{itemize}
                           """
-    metric = InputData.parameterInputFactory('metric', contentType=metric_options, strictMode=True,
-                                             descr=desc_metric_options)
-    metric.addParam(name='percent',
+    stats_metric = InputData.parameterInputFactory('stats_metric', contentType=stats_metric_options, strictMode=True,
+                                             descr=desc_stats_metric_options)
+    stats_metric.addParam(name='percent',
                     param_type=InputTypes.FloatType,
                     descr=r"""requested percentile (a floating point value between 0.0 and 100.0).
                               Required when \xmlNode{metric} is ``percentile.''
                               \default{5}""")
-    metric.addParam(name='threshold',
+    stats_metric.addParam(name='threshold',
                     param_type=InputTypes.StringType,
                     descr=r"""\begin{itemize}
                                 \item requested threshold (`median' or `zero'). Required when
@@ -292,7 +292,7 @@ class Case(Base):
                                 and 1.0). Required when \xmlNode{metric} is ``expectedShortfall'' or
                                 ``valueAtRisk.'' \default{0.05}
                               \end{itemize}""")
-    optimizer.addSub(metric)
+    optimizer.addSub(stats_metric)
     type_options = InputTypes.makeEnumType('TypeOptions', 'TypeOptionsType',
                                            ['min', 'max'])
     desc_type_options = r"""determines whether the objective should be minimized or maximized.
@@ -356,7 +356,7 @@ class Case(Base):
                                                    (prefix ``med'') are always returned with the results.
                                                    Each subnode is the RAVEN-style name of the desired
                                                    return statistic.""")
-    for stat, stat_info in cls.metrics_mapping.items():
+    for stat, stat_info in cls.stats_metrics_mapping.items():
       if stat not in ['expectedValue', 'sigma', 'median']:
         statistic = InputData.parameterInputFactory(stat, strictMode=True,
                                                     descr=rf"""{stat} uses the prefix ``{stat_info['prefix']}'' in the result output.""")
@@ -661,12 +661,12 @@ class Case(Base):
           else:
             result_statistics[sub_name] = percent
         except KeyError:
-          result_statistics[sub_name] = self.metrics_mapping[sub_name]['percent']
+          result_statistics[sub_name] = self.stats_metrics_mapping[sub_name]['percent']
       elif sub_name in ['sortinoRatio', 'gainLossRatio']:
         try:
           result_statistics[sub_name] = sub.parameterValues['threshold']
         except KeyError:
-          result_statistics[sub_name] = self.metrics_mapping[sub_name]['threshold']
+          result_statistics[sub_name] = self.stats_metrics_mapping[sub_name]['threshold']
       elif sub_name in ['expectedShortfall', 'valueAtRisk']:
         try:
           threshold = sub.parameterValues['threshold']
@@ -680,7 +680,7 @@ class Case(Base):
           else:
             result_statistics[sub_name] = sub.parameterValues['threshold']
         except KeyError:
-          result_statistics[sub_name] = self.metrics_mapping[sub_name]['threshold']
+          result_statistics[sub_name] = self.stats_metrics_mapping[sub_name]['threshold']
       else:
         result_statistics[sub_name] = None
 
@@ -718,7 +718,7 @@ class Case(Base):
     self.raiseADebug(pre+'Case:')
     self.raiseADebug(pre+'  name:', self.name)
     self.raiseADebug(pre+'  mode:', self._mode)
-    self.raiseADebug(pre+'  meric:', self._metric)
+    self.raiseADebug(pre+'  metric:', self._metric)
     self.raiseADebug(pre+'  diff_study:', self._diff_study)
 
   #### ACCESSORS ####

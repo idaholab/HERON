@@ -311,7 +311,7 @@ class Template(TemplateBase, Base):
         if sweep_name not in default_stats:
           self._updateCommaSeperatedList(group_outer_results, sweep_name)
     # opt mode adds optimization variable if not already there
-    if (case.get_mode() == 'opt') and (case._optimization_settings is not None):
+    if (case.get_mode() == 'opt') and (case.get_optimization_settings() is not None):
       new_metric_outer_results = self._build_opt_metric_out_name(case)
       if (new_metric_outer_results != 'missing') and (new_metric_outer_results not in group_outer_results.text):
         # additional results statistics have been requested, add this metric if not already present
@@ -514,7 +514,7 @@ class Template(TemplateBase, Base):
       new_opt_objective = self._build_opt_metric_out_name(case)
       opt_path_plot_vars = OSs.find(".//Plot[@name='opt_path']").find('vars')
       if (new_opt_objective != 'missing') and (new_opt_objective not in opt_path_plot_vars.text):
-        opt_path_plot_vars.text = opt_path_plot_vars.text.replace(f'mean_{case._metric}', new_opt_objective)
+        opt_path_plot_vars.text = opt_path_plot_vars.text.replace(f'mean_{case.get_opt_metric()}', new_opt_objective)
     # debug mode
     if case.debug['enabled']:
       # modify normal metric output
@@ -646,7 +646,8 @@ class Template(TemplateBase, Base):
     """
 
     # only modify if optimization_settings is in Case
-    if (case.get_mode() == 'opt') and (case._optimization_settings is not None) and (not case.debug['enabled']):  # TODO there should be a better way to handle the debug case
+    if (case.get_mode() == 'opt') and (case.get_optimization_settings() is not None) and (not case.debug['enabled']):  # TODO there should be a better way to handle the debug case
+      optimization_settings = case.get_optimization_settings()
       # TODO will the optimizer always be GradientDescent?
       opt_node = template.find('Optimizers').find(".//GradientDescent[@name='cap_opt']")
       new_opt_objective = self._build_opt_metric_out_name(case)
@@ -658,23 +659,23 @@ class Template(TemplateBase, Base):
       sampler_init = opt_node.find('samplerInit')
       type_node = sampler_init.find('type')
       try:
-        type_node.text = case._optimization_settings['type']
+        type_node.text = optimization_settings['type']
       except KeyError:
         # type was not provided, so use the default value
-        metric_raven_name = case._optimization_settings['metric']['name']
+        metric_raven_name = optimization_settings['stats_metric']['name']
         type_node.text = case.stats_metrics_mapping[metric_raven_name]['optimization_default']
 
       # swap out convergence values (only persistence implemented now)
       convergence = opt_node.find('convergence')
       persistence_node = convergence.find('persistence')
       try:
-        persistence_node.text = str(case._optimization_settings['persistence'])
+        persistence_node.text = str(optimization_settings['persistence'])
       except KeyError:
         # persistence was not provided, so use the default value
         pass
 
       # update convergence criteria, adding nodes as necessary
-      convergence_settings = case._optimization_settings.get('convergence', {})
+      convergence_settings = optimization_settings.get('convergence', {})
       for k, v in convergence_settings.items():
         node = convergence.find(k)  # will return None if subnode is not found
         if node is None:
@@ -1088,7 +1089,8 @@ class Template(TemplateBase, Base):
     """
     # TODO currently only modifies if optimization settings has metric and/or type, add additional settings?
     # only modify if the mode is 'opt' and <optimization_settings> has anything to modify
-    if (case.get_mode() == 'opt') and (case._optimization_settings is not None):
+    if (case.get_mode() == 'opt') and (case.get_optimization_settings() is not None):
+      optimization_settings = case.get_optimization_settings()
       # optimization objective name provided (or 'missing')
       new_objective = self._build_opt_metric_out_name(case)
       # add optimization objective name to VariableGroups 'GRO_final_return' if not already there
@@ -1100,25 +1102,25 @@ class Template(TemplateBase, Base):
       # add optimization objective to PostProcessor list if not already there
       pp_node = template.find('Models').find(".//PostProcessor[@name='statistics']")
       if new_objective != 'missing':
-        raven_metric_name = case._optimization_settings['metric']['name']
+        raven_metric_name = optimization_settings['stats_metric']['name']
         prefix = case.stats_metrics_mapping[raven_metric_name]['prefix']
         if pp_node.find(raven_metric_name) is None:
           # add subnode to PostProcessor
-          if 'threshold' in case._optimization_settings['metric']:
+          if 'threshold' in optimization_settings['stats_metric']:
             if raven_metric_name in ['valueAtRisk', 'expectedShortfall']:
-              threshold = str(case._optimization_settings['metric']['threshold'])
+              threshold = str(optimization_settings['stats_metric']['threshold'])
             else:
-              threshold = case._optimization_settings['metric']['threshold']
-            new_node = xmlUtils.newNode(raven_metric_name, text=case._metric,
+              threshold = optimization_settings['stats_metric']['threshold']
+            new_node = xmlUtils.newNode(raven_metric_name, text=case.get_opt_metric(),
                                         attrib={'prefix': prefix,
                                                 'threshold': threshold})
-          elif 'percent' in case._optimization_settings['metric']:
-            percent = str(case._optimization_settings['metric']['percent'])
-            new_node = xmlUtils.newNode(raven_metric_name, text=case._metric,
+          elif 'percent' in optimization_settings['stats_metric']:
+            percent = str(optimization_settings['stats_metric']['percent'])
+            new_node = xmlUtils.newNode(raven_metric_name, text=case.get_opt_metric(),
                                         attrib={'prefix': prefix,
                                                 'percent': percent})
           else:
-            new_node = xmlUtils.newNode(raven_metric_name, text=case._metric,
+            new_node = xmlUtils.newNode(raven_metric_name, text=case.get_opt_metric(),
                                         attrib={'prefix': prefix})
           pp_node.append(new_node)
         else:
@@ -1128,20 +1130,20 @@ class Template(TemplateBase, Base):
           if prefix != subnode.attrib['prefix']:
             subnode.attrib['prefix'] = prefix
           # percentile has additional parameter to check
-          if 'percent' in case._optimization_settings['metric']:
+          if 'percent' in optimization_settings['stats_metric']:
             # see if percentile already has what we need
-            if str(int(case._optimization_settings['metric']['percent'])) not in subnode.attrib['percent']:
+            if str(int(optimization_settings['stats_metric']['percent'])) not in subnode.attrib['percent']:
               # nope, need to add the percent to the existing attribute
-              subnode.attrib['percent'] += ','+str(case._optimization_settings['metric']['percent'])
-          if 'threshold' in case._optimization_settings['metric']:
+              subnode.attrib['percent'] += ','+str(optimization_settings['stats_metric']['percent'])
+          if 'threshold' in optimization_settings['stats_metric']:
             # see if the threshold is already there
-            if str(case._optimization_settings['metric']['threshold']) not in subnode.attrib['threshold']:
+            if str(optimization_settings['stats_metric']['threshold']) not in subnode.attrib['threshold']:
               # nope, need to add the threshold to existing attribute
-              subnode.attrib['threshold'] += ','+str(case._optimization_settings['metric']['threshold'])
+              subnode.attrib['threshold'] += ','+str(optimization_settings['stats_metric']['threshold'])
       else:
         # new_objective is missing, use mean_metric
         if pp_node.find('expectedValue') is None:
-          pp_node.append(xmlUtils.newNode('expectedValue', text=case._metric,
+          pp_node.append(xmlUtils.newNode('expectedValue', text=case.get_opt_metric(),
                                           attrib={'prefix': 'mean'}))
         else:
           # check that the subnode has the correct values
@@ -1152,7 +1154,7 @@ class Template(TemplateBase, Base):
     elif case.get_mode() == 'opt':
       pp_node = template.find('Models').find(".//PostProcessor[@name='statistics']")
       if pp_node.find('expectedValue') is None:
-        pp_node.append(xmlUtils.newNode('expectedValue', text=case._metric,
+        pp_node.append(xmlUtils.newNode('expectedValue', text=case.get_opt_metric(),
                                         attrib={'prefix': 'mean'}))
       else:
         # check that the subnode has the correct values
@@ -1190,7 +1192,7 @@ class Template(TemplateBase, Base):
         if sweep_name not in default_stats:
           self._updateCommaSeperatedList(group_final_return, sweep_name)
     # opt mode uses optimization variable if no other stats are given, this is handled below
-    if (case.get_mode == 'opt') and (case._optimization_settings is not None):
+    if (case.get_mode == 'opt') and (case.get_optimization_settings() is not None):
       new_metric_opt_results = self._build_opt_metric_out_name(case)
       if (new_metric_opt_results != 'missing') and (new_metric_opt_results not in group_final_return.text):
         # additional results statistics have been requested, add this metric if not already present
@@ -1465,14 +1467,15 @@ class Template(TemplateBase, Base):
     """
     try:
       # metric name in RAVEN
-      metric_raven_name = case._optimization_settings['metric']['name']
+      optimization_settings = case.get_optimization_settings()
+      metric_raven_name = optimization_settings['stats_metric']['name']
       # potential metric name to add
       opt_out_metric_name = case.stats_metrics_mapping[metric_raven_name]['prefix']
       # do I need to add a percent or threshold to this name?
       if metric_raven_name == 'percentile':
-        opt_out_metric_name += '_' + str(case._optimization_settings['metric']['percent'])
+        opt_out_metric_name += '_' + str(optimization_settings['stats_metric']['percent'])
       elif metric_raven_name in ['valueAtRisk', 'expectedShortfall', 'sortinoRatio', 'gainLossRatio']:
-        opt_out_metric_name += '_' + str(case._optimization_settings['metric']['threshold'])
+        opt_out_metric_name += '_' + str(optimization_settings['stats_metric']['threshold'])
       opt_out_metric_name += '_'+case._metric
     except (TypeError, KeyError):
       # <optimization_settings> node not in input file OR

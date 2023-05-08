@@ -385,6 +385,7 @@ class Case(Base):
     Base.__init__(self, **kwargs)
     self.name = None                   # case name
     self._mode = None                  # extrema to find: opt, sweep
+    self._opt_metric = 'NPV'
     self._metric = 'NPV'               # TODO: future work - economic metric to focus on: lcoe, profit, cost
     self.run_dir = run_dir             # location of HERON input file
     self._verbosity = 'all'            # default verbosity for RAVEN inner/outer
@@ -778,6 +779,22 @@ class Case(Base):
       @ Out, _labels, dict, labels for this case
     """
     return self._labels
+
+  def get_optimization_settings(self):
+    """
+      Accessor
+      @ In, None
+      @ Out, optimization_settings, dict, optimization settings for outer
+    """
+    return self._optimization_settings
+
+  def get_opt_metric(self):
+    """
+      Accessor
+      @ In, None
+      @ Out, metric, str, target metric for this case
+    """
+    return self._opt_metric
 
   def get_metric(self):
     """

@@ -36,7 +36,7 @@
         <gradient>1e-4</gradient>
         <objective>1e-6</objective>
       </convergence>
-      <metric>expectedValue</metric>
+      <stats_metric>expectedValue</stats_metric>
       <type>max</type>
     </optimization_settings>
   </Case>

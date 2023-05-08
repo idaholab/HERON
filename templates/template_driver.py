@@ -336,7 +336,7 @@ class Template(TemplateBase, Base):
       # -> synthetic histories?
       group = var_groups.find(".//Group[@name='GRO_outer_debug_synthetics']")
       for source in sources:
-        if source.is_type('ARMA'):
+        if source.is_type('ARMA') or source.is_type('CSV'):
           synths = source.get_variable()
           for synth in synths:
             if not group.text or synth not in group.text.split(','):
@@ -799,7 +799,7 @@ class Template(TemplateBase, Base):
     self._modify_inner_optimization_settings(template, case)
     self._modify_inner_data_handling(template, case)
     if case.debug['enabled']:
-      self._modify_inner_debug(template, case, components)
+      self._modify_inner_debug(template, case, components, sources)
     self._modify_inner_static_history(template, case, sources)
     # TODO modify based on resources ... should only need if units produce multiple things, right?
     # TODO modify CashFlow input ... this will be a big undertaking with changes to the inner.
@@ -846,24 +846,43 @@ class Template(TemplateBase, Base):
       gro_final_return.text = ', '.join(new_return_vars)
 
       # Create a new <DataObject> that will store the csv data
+      ## TODO I think this will break input if multiple CSV sources
       data_objs = template.find("DataObjects")
       new_data_set = xmlUtils.newNode("DataSet", attrib={"name": "input"})
       new_data_set.append(xmlUtils.newNode("Input", text=', '.join([case.get_time_name(), case.get_year_name()])))
       new_data_set.append(xmlUtils.newNode("Output", text=', '.join(source.get_variable())))
       for var in [case.get_year_name(), case.get_time_name()]:
         new_data_set.append(xmlUtils.newNode("Index", attrib={"var": var}, text=', '.join(source.get_variable())))
+      if case.debug['enabled']:
+        self._updateCommaSeperatedList(
+            new_data_set.find('Input'),
+            self.namingTemplates['cluster_index']
+        )
+        new_data_set.append(
+            xmlUtils.newNode(
+                "Index",
+                attrib={"var": self.namingTemplates['cluster_index']},
+                text=', '.join(source.get_variable())
+            )
+        )
       data_objs.append(new_data_set)
 
       # Modify <Models> by removing EnsembleModel and changing ExternalModel
       models = template.find("Models")
+      dispatcher = models.find('.//ExternalModel[@name="dispatch"]')
       for var in source.get_variable():
-        self._updateCommaSeperatedList(models.find('.//ExternalModel[@name="dispatch"]/variables'), var)
+        self._updateCommaSeperatedList(dispatcher.find('variables'), var)
+      if case.debug['enabled'] and self.namingTemplates['cluster_index'] not in dispatcher.find('variables').text:
+        self._updateCommaSeperatedList(
+            dispatcher.find('variables'),
+            self.namingTemplates['cluster_index']
+        )
 
       self.raiseAMessage("Using Static History - replacing EnsembleModel with CustomSampler strategy")
       models.remove(models.find('.//EnsembleModel[@name="sample_and_dispatch"]'))
 
       # Remove PP Statistics that are no longer needed
-      self.raiseAMessage(f'Using Static History - removing unneeded post-processor statistics "sigma" & "variance"')
+      self.raiseAMessage('Using Static History - removing unneeded post-processor statistics "sigma" & "variance"')
       post_proc = models.find(".//PostProcessor")
       for sigma_node in it.chain(post_proc.findall(".//sigma"), post_proc.findall(".//variance")):
         post_proc.remove(sigma_node)
@@ -878,6 +897,14 @@ class Template(TemplateBase, Base):
         monte_carlo.append(var_node)
       monte_carlo.remove(monte_carlo.find(".//samplerInit"))
       monte_carlo.tag = "CustomSampler"
+      if case.debug['enabled']:
+        monte_carlo.append(
+            xmlUtils.newNode(
+                'variable',
+                attrib={'name': self.namingTemplates['cluster_index']}
+            )
+        )
+
 
   def _modify_inner_caselabels(self, template, case):
     """
@@ -987,6 +1014,14 @@ class Template(TemplateBase, Base):
                                                   attrib={'var': self.namingTemplates['cluster_index']},
                                                   text='GRO_dispatch_in_Time'))
 
+      elif source.is_type('CSV'):
+        if case.debug['enabled']:
+          # add signals to dispatch_in_Time variable group
+          dit = template.find('VariableGroups').find('.//Group[@name="GRO_dispatch_in_Time"]')
+          for var in source.get_variable():
+            if dit.text is None or var not in dit.text:
+              self._updateCommaSeperatedList(dit, var)
+
       elif source.is_type('Function'):
         # nothing to do ... ?
         pass
@@ -1043,12 +1078,13 @@ class Template(TemplateBase, Base):
           self._updateCommaSeperatedList(groups['init_disp'], var_name)
           self._updateCommaSeperatedList(groups['full_dispatch'], var_name)
 
-  def _modify_inner_debug(self, template, case, components):
+  def _modify_inner_debug(self, template, case, components, sources):
     """
       Modify template to work in a debug mode.
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
       @ In, case, HERON Case, defining Case instance
       @ In, components, list, list of HERON Component instances for this run
+      @ In, sources, list, list of HERON Placeholder instances for this run
       @ Out, None
     """
     # RunInfo
@@ -1069,14 +1105,9 @@ class Template(TemplateBase, Base):
     self._updateCommaSeperatedList(extmod_vars, 'GRO_cashflows')
     self._updateCommaSeperatedList(extmod_vars, 'cfYears')
     # DataObject
-    datasets = template.find('DataObjects').findall('DataSet')
-    for ds in datasets:
-      if ds.attrib['name'] == 'dispatch_eval':
-        break
-    else:
-      raise RuntimeError
-    ds.append(xmlUtils.newNode('Output', text='GRO_full_dispatch'))
-    for idx in ds.findall('Index'):
+    dispatch_eval = template.find('DataObjects').find(".//DataSet[@name='dispatch_eval']")
+    dispatch_eval.append(xmlUtils.newNode('Output', text='GRO_full_dispatch'))
+    for idx in dispatch_eval.findall('Index'):
       self._updateCommaSeperatedList(idx, 'GRO_full_dispatch')
 
   def _modify_inner_optimization_settings(self, template, case):

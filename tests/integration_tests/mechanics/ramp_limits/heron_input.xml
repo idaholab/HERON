@@ -1,0 +1,113 @@
+<HERON>
+  <TestInfo>
+    <name>ramp_limits</name>
+    <author>talbpaul</author>
+    <created>2023-04-12</created>
+    <description>
+      Tests limiting dispatch by ramping limits in generators.
+    </description>
+    <classesTested>HERON</classesTested>
+  </TestInfo>
+
+  <Case name="Sweep_Runs">
+    <mode>sweep</mode>
+    <verbosity>debug</verbosity>
+    <debug>
+      <cashflow_plot>False</cashflow_plot>
+    </debug>
+    <num_arma_samples>1</num_arma_samples>
+    <time_discretization>
+      <time_variable>Time</time_variable>
+      <end_time>10</end_time>
+      <num_steps>11</num_steps>
+    </time_discretization>
+    <economics>
+      <ProjectTime>1</ProjectTime>
+      <DiscountRate>0.08</DiscountRate>
+      <tax>0.2</tax>
+      <inflation>0.06</inflation>
+      <verbosity>50</verbosity>
+    </economics>
+    <dispatcher>
+      <pyomo/>
+    </dispatcher>
+  </Case>
+
+  <Components>
+    <Component name="npp">
+      <produces resource="steam" dispatch="independent">
+        <capacity resource="steam">
+          <sweep_values debug_value="700">500, 800</sweep_values>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>60</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="npp_bop">
+      <produces resource="electricity" dispatch="independent">
+        <consumes>steam</consumes>
+        <capacity resource="electricity">
+          <fixed_value>200</fixed_value>
+        </capacity>
+        <ramp_limit>100</ramp_limit> <!-- limit change in production per time step -->
+        <transfer>
+          <linear>
+            <rate resource="steam">-1</rate>
+            <rate resource="electricity">0.333</rate>
+          </linear>
+        </transfer>
+      </produces>
+      <economics>
+        <lifetime>60</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="ngcc">
+      <produces resource="electricity" dispatch="independent">
+        <capacity resource="electricity">
+          <fixed_value>200</fixed_value>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>5</lifetime>
+        <CashFlow name="VOM" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <fixed_value>0.3</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="grid">
+      <demands resource="electricity" dispatch="fixed">
+        <capacity>
+          <CSV variable='demand'>static</CSV>
+          <multiplier>-1</multiplier>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>1</lifetime>
+      </economics>
+    </Component>
+
+</Components>
+
+  <DataGenerators>
+    <CSV name='static' variable="demand">%BASE_WORKING_DIR%/../demand.csv</CSV>
+    <!--
+    400                 *
+    300       *        / \
+    200   *-*/ \      *   *
+    100  /      *-*\ /     \
+      0 *           *       *
+        0 1 2 3 4 5 6 7 8 9 10
+    -->
+  </DataGenerators>
+
+</HERON>

@@ -1,0 +1,21 @@
+[Tests]
+  [./RampLimits]
+    type = 'HeronIntegration'
+    input = heron_input.xml
+    [./dispatch_csv]
+      type = UnorderedCSV
+      output = 'Sweep_Runs_o/dispatch_print.csv'
+      zero_threshold = 1e-4 # GLPK on Windows
+    [../]
+    [./debug_plot]
+      type = Exists
+      output = 'Sweep_Runs_o/dispatch_id0_y0_c0.png Sweep_Runs_o/dispatch_id0_y0_c0_SIGNAL.png'
+    [../]
+    [./debug_plot]
+      type = Exists
+      output = 'network.png'
+    [../]
+  [../]
+[]
+
+

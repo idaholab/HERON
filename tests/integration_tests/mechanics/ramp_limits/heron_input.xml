@@ -51,7 +51,8 @@
         <capacity resource="electricity">
           <fixed_value>200</fixed_value>
         </capacity>
-        <ramp_limit>100</ramp_limit> <!-- limit change in production per time step -->
+        <!-- limit change in production per time step -->
+        <ramp_limit>0.5</ramp_limit>
         <transfer>
           <linear>
             <rate resource="steam">-1</rate>
@@ -67,7 +68,7 @@
     <Component name="ngcc">
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <fixed_value>200</fixed_value>
+          <fixed_value>400</fixed_value>
         </capacity>
       </produces>
       <economics>
@@ -96,7 +97,7 @@
       </economics>
     </Component>
 
-</Components>
+  </Components>
 
   <DataGenerators>
     <CSV name='static' variable="demand">%BASE_WORKING_DIR%/../demand.csv</CSV>

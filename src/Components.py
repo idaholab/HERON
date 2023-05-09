@@ -754,10 +754,10 @@ class Producer(Interaction):
             'ramp_limit',
             contentType=InputTypes.FloatType,
             descr=r"""Limits the rate at which production can change between consecutive time steps,
-                  in either a positive or negative direction, defined using the same resource used to
-                  define this component's capacity. For example, a generator with a
-                  ramp limit of 10 cannot increase or decrease their generation rate by more than 10
-                  in a single time interval. \default{unlimited}"""
+                  in either a positive or negative direction, as a percentage of this component's capacity.
+                  For example, a generator with a ramp limit of 0.10 cannot increase or decrease their
+                  generation rate by more than 10 percent of capacity in a single time interval.
+                  \default{1.0}"""
         )
     )
     specs.addSub(
@@ -810,6 +810,10 @@ class Producer(Interaction):
     if self._transfer is None:
       if self._consumes:
         self.raiseAnError(IOError, 'Any component that consumes a resource must have a transfer function describing the production process!')
+    ## ramp limit is (0, 1]
+    if self.ramp_limit is not None and not 0 < self.ramp_limit <= 1:
+      self.raiseAnError(IOError, f'Ramp limit must be (0, 1] but got "{self.ramp_limit}"')
+
 
   def get_inputs(self):
     """

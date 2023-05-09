@@ -528,9 +528,11 @@ class Pyomo(Dispatcher):
     """
     # ramping is defined in terms of the capacity variable
     cap_res = comp.get_capacity_var()       # name of resource that defines capacity
+    cap = comp.get_capacity(meta)[0][cap_res]
     r = m.resource_index_map[comp][cap_res] # production index of the governing resource
-    limit = comp.ramp_limit
-    ramp_rule = lambda mod, t: self._ramp_rule(prod_name, r, limit, t, mod)
+    limit_delta = comp.ramp_limit * cap
+    print('DEBUGG limit, cap:', cap, limit_delta)
+    ramp_rule = lambda mod, t: self._ramp_rule(prod_name, r, limit_delta, t, mod)
     constr = pyo.Constraint(m.T, rule=ramp_rule)
     setattr(m, f'{comp.name}_ramp_constr', constr)
 

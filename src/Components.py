@@ -438,6 +438,7 @@ class Interaction(Base):
     self._minimum = None                # lowest interaction level, if dispatchable
     self._minimum_var = None            # limiting variable for minimum
     self.ramp_limit = None              # limiting change of production in a time step
+    self.ramp_freq = None               # time steps required between production ramping events
     self._function_method_map = {}      # maps things that call functions to the method within the function that needs calling
     self._transfer = None               # the production rate (if any), in produces per consumes
                                         #   for example, {(Producer, 'capacity'): 'method'}
@@ -759,6 +760,17 @@ class Producer(Interaction):
                   in a single time interval. \default{unlimited}"""
         )
     )
+    specs.addSub(
+        InputData.parameterInputFactory(
+            'ramp_freq',
+            contentType=InputTypes.IntegerType,
+            descr=r"""Places a limit on the number of time steps between successive production level
+                      ramping events. For example, if time steps are an hour long and the ramp frequency
+                      is set to 4, then once this component has changed production levels, 4 hours must
+                      pass before another production change can occur. Note this limit introduces binary
+                      variables and may require selection of appropriate solvers. \default{0}"""
+        )
+    )
     return specs
 
   def __init__(self, **kwargs):
@@ -790,6 +802,8 @@ class Producer(Interaction):
         self._set_valued_param('_transfer', comp_name, item, mode)
       elif item.getName() == 'ramp_limit':
         self.ramp_limit = item.value
+      elif item.getName() == 'ramp_freq':
+        self.ramp_freq = item.value
 
     # input checking
     ## if a transfer function not given, can't be consuming a resource

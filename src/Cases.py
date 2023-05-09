@@ -35,8 +35,11 @@ class Case(Base):
     Produces something, often as the cost of something else
     TODO this case is for "sweep-opt", need to make a superclass for generic
   """
+  # economic metrics that can be returned by sweep results OR alongside optimization results
+  economic_metrics = ['NPV', 'PI', 'IRR']
 
-  # metrics that can be used for objective in optimization or returned with results
+  # statistical metrics that can be applied to economic metrics within the optimization objective
+  #    or returned with results
   # each metric contains a dictionary with the following keys:
   # 'prefix' - printed result name
   # 'optimization_default' - 'min' or 'max' for optimization
@@ -234,8 +237,19 @@ class Case(Base):
     econ.addSub(InputData.parameterInputFactory('verbosity', contentType=InputTypes.IntegerType,
                                                 descr=r"""the level of output to print from the CashFlow calculations.
                                                 Passed to the CashFlow module."""))
-    # is this actually CashFlow verbosity or is it really HERON verbosity?
-    input_specs.addSub(econ)
+    # additing economic metrics (or indicators in TEAL terms) to the global settings
+    desc_econ_metrics = r"""additional economic metric(s) which will be calculated for each
+                                                RAVEN Inner run, regardless of whether opt or sweep mode was specified.
+                                                Not to be confused with the ``opt_metric`` which is used only in opt mode.
+                                                \default{NPV}"""
+    econ_metrics = InputData.parameterInputFactory('EconMetrics', descr=desc_econ_metrics)
+    for metric_name in cls.economic_metrics:
+      metric = InputData.parameterInputFactory(metric_name, strictMode=True,
+                                               descr=rf"""{metric_name} metric which will be calculated by TEAL
+                                               and presented in the results output.""")
+      econ_metrics.addSub(metric)
+    econ.addSub(econ_metrics)
+    input_specs.addSub(econ)     # is this actually CashFlow verbosity or is it really HERON verbosity?
 
     # dispatcher
     dispatch = InputData.parameterInputFactory('dispatcher', ordered=False,
@@ -386,6 +400,7 @@ class Case(Base):
     self.name = None                   # case name
     self._mode = None                  # extrema to find: opt, sweep
     self._opt_metric = 'NPV'
+    self._econ_metrics = []
     self._metric = 'NPV'               # TODO: future work - economic metric to focus on: lcoe, profit, cost
     self.run_dir = run_dir             # location of HERON input file
     self._verbosity = 'all'            # default verbosity for RAVEN inner/outer
@@ -609,7 +624,7 @@ class Case(Base):
     for sub in node.subparts:
       sub_name = sub.getName()
       # add metric information to opt_settings dictionary
-      if sub_name == 'metric':
+      if sub_name == 'stats_metric':
         opt_settings[sub_name] = {}
         metric_name = sub.value
         opt_settings[sub_name]['name'] = metric_name

@@ -273,6 +273,14 @@ class Case(Base):
     optimizer = InputData.parameterInputFactory('optimization_settings',
                                                 descr=r"""This node defines the settings to be used for the optimizer in
                                                 the ``outer'' run.""")
+    opt_metric_options = InputTypes.makeEnumType('OptMetricOptions', 'OptMetricOptionsType',
+                                           ['NPV',])
+    desc_opt_metric_options = r"""Economic metric (currently from TEAL) which will be used as the optimization metric.
+                        This will be calculated at every instance of the ``inner'' run to generate a distribution
+                        of economic metrics for all realizations. Currently only features ``NPV''. """
+    opt_metric_sub = InputData.parameterInputFactory('opt_metric', contentType=opt_metric_options, strictMode=True,
+                                               descr=desc_opt_metric_options)
+    optimizer.addSub(opt_metric_sub)
     stats_metric_options = InputTypes.makeEnumType('StatsMetricOptions', 'StatsMetricOptionsType', list(cls.stats_metrics_mapping.keys()))
     desc_stats_metric_options = r"""determines the statistical metric (calculated by RAVEN BasicStatistics
                           or EconomicRatio PostProcessors) from the ``inner'' run to be used as the
@@ -399,7 +407,6 @@ class Case(Base):
     Base.__init__(self, **kwargs)
     self.name = None                   # case name
     self._mode = None                  # extrema to find: opt, sweep
-    self._opt_metric = 'NPV'
     self._econ_metrics = []
     self._metric = 'NPV'               # TODO: future work - economic metric to focus on: lcoe, profit, cost
     self.run_dir = run_dir             # location of HERON input file
@@ -412,6 +419,7 @@ class Case(Base):
     self.dispatch_vars = {}            # non-component optimization ValuedParams
 
     self.useParallel = False           # parallel tag specified?
+    self.parallelRunInfo = {}          # parallel run info dictionary
     self.outerParallel = 0             # number of outer parallel runs to use
     self.innerParallel = 0             # number of inner parallel runs to use
 
@@ -473,7 +481,6 @@ class Case(Base):
         self._mode = item.value
       elif item.getName() == 'parallel':
         self.useParallel = True
-        self.parallelRunInfo = {}
         for sub in item.subparts:
           if sub.getName() == 'outer':
             self.outerParallel = sub.value
@@ -491,10 +498,7 @@ class Case(Base):
       elif item.getName() == 'time_discretization':
         self._time_discretization = self._read_time_discr(item)
       elif item.getName() == 'economics':
-        for sub in item.subparts:
-          self._global_econ[sub.getName()] = sub.value
-          if self.debug['enabled'] and sub.getName() == "ProjectTime":
-            self._global_econ[sub.getName()] = self.debug['macro_steps']
+        self._global_econ, self._econ_metrics = self._read_global_econ_settings(item)
       elif item.getName() == 'dispatcher':
         # instantiate a dispatcher object.
         inp = item.subparts[0]
@@ -614,6 +618,37 @@ class Case(Base):
     # TODO can we take it automatically from an ARMA later, either by default or if told to?
     return (start, end, num)
 
+  def _read_global_econ_settings(self, node):
+    """
+      Reads globalEcon settings node
+      @ In, node, InputParams.ParameterInput, economics head node
+      @ Out, global_econ_settings, dict, economics settings as dictionary
+      @ Out, econ_metrics, str, string list of indicators, such as NPV, IRR.
+    """
+    econ_subnodes = node.subparts
+
+    # economic metrics node
+    econ_metrics = []
+    metrics_node = node.findFirst('EconMetrics') # if not None, will have attr 'subparts' even if empty
+    # check if either the metrics node is NOT included --OR-- it is included but is empty
+    if metrics_node is None or not metrics_node.subparts:
+      econ_metrics.append('NPV') # this is our default
+    else:
+      for sub in metrics_node.subparts:
+        econ_metrics.append(sub.getName())
+    # remove metrics node before the for loop below
+    if metrics_node is not None:
+      econ_subnodes.remove(metrics_node)
+
+    # remaining nodes from economics
+    global_econ_settings = {}
+    for sub in econ_subnodes:
+      global_econ_settings[sub.getName()] = sub.value
+      # override project time if we are in debug mode
+      if self.debug['enabled'] and sub.getName() == "ProjectTime":
+        global_econ_settings[sub.getName()] = self.debug['macro_steps']
+    return global_econ_settings, econ_metrics
+
   def _read_optimization_settings(self, node):
     """
       Reads optimization settings node
@@ -621,25 +656,30 @@ class Case(Base):
       @ Out, opt_settings, dict, optimization settings as dictionary
     """
     opt_settings = {}
+
+    # check first for an opt metric, if not there, default to NPV
+    if node.findFirst('opt_metric') is None:
+      opt_settings['opt_metric'] = 'NPV'
+
     for sub in node.subparts:
       sub_name = sub.getName()
       # add metric information to opt_settings dictionary
       if sub_name == 'stats_metric':
         opt_settings[sub_name] = {}
-        metric_name = sub.value
-        opt_settings[sub_name]['name'] = metric_name
+        stats_metric_name = sub.value
+        opt_settings[sub_name]['name'] = stats_metric_name
         # some metrics have an associated parameter
-        if metric_name == 'percentile':
+        if stats_metric_name == 'percentile':
           try:
             opt_settings[sub_name]['percent'] = sub.parameterValues['percent']
           except KeyError:
             opt_settings[sub_name]['percent'] = 5
-        elif metric_name in ['sortinoRatio', 'gainLossRatio']:
+        elif stats_metric_name in ['sortinoRatio', 'gainLossRatio']:
           try:
             opt_settings[sub_name]['threshold'] = sub.parameterValues['threshold']
           except KeyError:
             opt_settings[sub_name]['threshold'] = 'zero'
-        elif metric_name in ['expectedShortfall', 'valueAtRisk']:
+        elif stats_metric_name in ['expectedShortfall', 'valueAtRisk']:
           try:
             opt_settings[sub_name]['threshold'] = sub.parameterValues['threshold']
           except KeyError:
@@ -769,7 +809,7 @@ class Case(Base):
     if 'active' not in self._global_econ:
       # NOTE self._metric can only be NPV right now!
       ## so no need for the "target" in the indicator
-      indic = {'name': [self._metric]}
+      indic = {'name': self.get_econ_metrics() }
       indic['active'] = []
       for comp in components:
         comp_name = comp.name
@@ -807,17 +847,17 @@ class Case(Base):
     """
       Accessor
       @ In, None
-      @ Out, metric, str, target metric for this case
+      @ Out, opt_metric, str, target economic metric for outer optimizaton in this case
     """
-    return self._opt_metric
+    return self.get_optimization_settings().get('opt_metric', None)
 
-  def get_metric(self):
+  def get_econ_metrics(self):
     """
       Accessor
       @ In, None
-      @ Out, metric, str, target metric for this case
+      @ Out, econ_metrics, str, string list of indicators, such as NPV, IRR.
     """
-    return self._metric
+    return self._econ_metrics
 
   def get_mode(self):
     """

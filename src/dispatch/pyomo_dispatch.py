@@ -463,9 +463,11 @@ class Pyomo(Dispatcher):
     # self._create_capacity(m, comp, prod_name, meta)    # capacity constraints
     # transfer function governs input -> output relationship
     self._create_transfer(m, comp, prod_name)
-    # ramp rates
+    # ramping limitations
     if comp.ramp_limit is not None:
       self._create_ramp_limit(m, comp, prod_name, meta)
+    if comp.ramp_freq is not None:
+      self._create_ramp_freq_limit(m, comp, prod_name, meta)
     return prod_name
 
   def _create_production_variable(self, m, comp, meta, tag=None, add_bounds=True, **kwargs):
@@ -533,6 +535,29 @@ class Pyomo(Dispatcher):
     ramp_rule = lambda mod, t: self._ramp_rule(prod_name, r, limit, t, mod)
     constr = pyo.Constraint(m.T, rule=ramp_rule)
     setattr(m, f'{comp.name}_ramp_constr', constr)
+
+  def _create_ramp_freq_limit(m, comp, prod_name, meta):
+    """
+      Creates limitations for frequency of ramping a producing component
+      e.g. once per 4 hours
+      @ In, m, pyo.ConcreteModel, associated model
+      @ In, comp, HERON Component, component to make ramping limits for
+      @ In, prod_name, str, name of production variable
+      @ In, meta, dict, dictionary of state variables
+      @ Out, None
+    """
+    # Binary time-dep variables to track ramping:
+    # -> ramp up (bu), ramp down (bd), ramp none (bn)
+    # 4 equations to couple ramping:
+    # (1) Q_t - Q_{t-1} <= Ru * dt * bu_t - eps * bd_t
+    # (2) Q_{t-1} - Q_t <= Rd * dt * bd_t - eps * bu_t
+    # (3) bu_t + bd_t + bn_t = 1
+    # (4) bu <= 1/p \sum_{t-t'}^{t-1} bn_t' + bu_t'
+    # where:
+    # - Q: production level
+    # - Ru, Rd: up and down ramp rate limitations
+    # - eps: nominal value to assure exclusivity
+    # - p: time steps between upramps
 
   def _create_capacity_constraints(self, m, comp, prod_name, meta):
     """
@@ -889,19 +914,29 @@ class Pyomo(Dispatcher):
     else:
       raise TypeError('Unrecognized production limit "kind":', kind)
 
-  def _ramp_rule(self, prod_name, r, limit, t, m):
+  def _ramp_rule(self, prod_name, r, limit, t, m, timeout=None):
     """
       Constructs pyomo production constraints.
       @ In, prod_name, str, name of production variable
       @ In, r, int, index of resource for capacity constraining
-      @ In, limit, float, limiting change in production level across time steps
+      @ In, limit, int, number of time steps between ramps allowable
       @ In, t, int, time index for ramp limit rule (NOTE not pyomo index, rather fixed index)
       @ In, m, pyo.ConcreteModel, associated model
+      @ In, timeout, int, number of time steps before another ramp can occur
     """
     prod = getattr(m, prod_name)
     if t > 0:
       delta = prod[r, t] - prod[r, t-1]
-      return pyo.inequality(-limit, delta, limit)
+      if timeout is None:
+        lower = -limit
+        upper = limit
+      else:
+        # how far back are we looking? Not before t=0
+        tao = min(t, limit)
+        limit = 0
+        for tm in range(t - tao, t):
+          limit += 1 - m.ramp_down[tm] # TODO ramp_down
+      return pyo.inequality(lower, delta, upper)
     else:
       return pyo.Constraint.Skip
 

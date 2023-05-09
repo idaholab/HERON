@@ -36,7 +36,7 @@ class Case(Base):
     TODO this case is for "sweep-opt", need to make a superclass for generic
   """
   # economic metrics that can be returned by sweep results OR alongside optimization results
-  economic_metrics = ['NPV', 'PI', 'IRR']
+  economic_metrics = ['NPV', 'PI', 'IRR'] #TODO: expand with NPVsearch and LCOx (specific case of NPVsearch)
 
   # statistical metrics that can be applied to economic metrics within the optimization objective
   #    or returned with results
@@ -773,8 +773,11 @@ class Case(Base):
     pre = tab*tabs
     self.raiseADebug(pre+'Case:')
     self.raiseADebug(pre+'  name:', self.name)
-    self.raiseADebug(pre+'  mode:', self._mode)
-    self.raiseADebug(pre+'  metric:', self._metric)
+    self.raiseADebug(pre+'  mode:', self.get_mode())
+    if self.get_mode() == 'opt':
+      self.raiseADebug(pre+'  opt_metric:', self.get_opt_metric())
+    for metric in self.get_econ_metrics():
+      self.raiseADebug(pre+'  metric:', metric)
     self.raiseADebug(pre+'  diff_study:', self._diff_study)
 
   #### ACCESSORS ####
@@ -807,9 +810,8 @@ class Case(Base):
       @ Out, None
     """
     if 'active' not in self._global_econ:
-      # NOTE self._metric can only be NPV right now!
-      ## so no need for the "target" in the indicator
-      indic = {'name': self.get_econ_metrics() }
+      indic = {'name': self.get_econ_metrics() } # can be a list of strings
+      # indic = {'target': 0 } # TODO: update with 0 for LCOx, then generic for NPVsearch
       indic['active'] = []
       for comp in components:
         comp_name = comp.name
@@ -850,6 +852,14 @@ class Case(Base):
       @ Out, opt_metric, str, target economic metric for outer optimizaton in this case
     """
     return self.get_optimization_settings().get('opt_metric', None)
+
+  def get_result_statistics(self):
+    """
+      Accessor
+      @ In, None
+      @ Out, result_statistics, dict, results statistics for economic metrics in outer
+    """
+    return self._result_statistics
 
   def get_econ_metrics(self):
     """

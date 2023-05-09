@@ -297,7 +297,7 @@ class Template(TemplateBase, Base):
     for stat in default_stats:
       self._updateCommaSeperatedList(group_outer_results, stat)
     # make sure user provided statistics beyond defaults get there
-    if any(stat not in ['expectedValue', 'sigma', 'median'] for stat in case._result_statistics):
+    if any(stat not in ['expectedValue', 'sigma', 'median'] for stat in case.get_result_statistics()):
       stats_list = self._build_result_statistic_names(case)
       for stat_name in stats_list:
         if stat_name not in default_stats:
@@ -1178,7 +1178,7 @@ class Template(TemplateBase, Base):
     for stat in default_stats:
       self._updateCommaSeperatedList(group_final_return, stat)
     # make sure user provided statistics beyond defaults get there
-    if any(stat not in ['expectedValue', 'sigma', 'median'] for stat in case._result_statistics):
+    if any(stat not in ['expectedValue', 'sigma', 'median'] for stat in case.get_result_statistics()):
       stats_list = self._build_result_statistic_names(case)
       for stat_name in stats_list:
         if stat_name not in default_stats:
@@ -1206,14 +1206,15 @@ class Template(TemplateBase, Base):
     for stat, pref in zip(stats, prefixes):
       pp_node.append(xmlUtils.newNode(stat, text=case._metric, attrib={'prefix': pref}))
     # add any user supplied statistics beyond defaults
-    if any(stat not in ['expectedValue', 'sigma', 'median'] for stat in case._result_statistics):
-      for raven_metric_name in case._result_statistics:
+    result_statistics = case.get_result_statistics()
+    if any(stat not in ['expectedValue', 'sigma', 'median'] for stat in result_statistics):
+      for raven_metric_name in result_statistics:
         if raven_metric_name not in stats:
           prefix = case.stats_metrics_mapping[raven_metric_name]['prefix']
           # add subnode to PostProcessor
           if raven_metric_name == 'percentile':
             # add percent attribute
-            percent = case._result_statistics[raven_metric_name]
+            percent = result_statistics[raven_metric_name]
             if isinstance(percent, list):
               for p in percent:
                 pp_node.append(xmlUtils.newNode(raven_metric_name, text=case._metric,
@@ -1224,7 +1225,7 @@ class Template(TemplateBase, Base):
                                               attrib={'prefix': prefix,
                                                       'percent': percent}))
           elif raven_metric_name in ['valueAtRisk', 'expectedShortfall', 'sortinoRatio', 'gainLossRatio']:
-            threshold = case._result_statistics[raven_metric_name]
+            threshold = result_statistics[raven_metric_name]
             if isinstance(threshold, list):
               for t in threshold:
                 pp_node.append(xmlUtils.newNode(raven_metric_name, text=case._metric,
@@ -1492,16 +1493,17 @@ class Template(TemplateBase, Base):
       @ Out, names, list, list of names of statistics requested for output
     """
     names = []
-    for name in case._result_statistics:
+    result_statistics = case.get_result_statistics()
+    for name in result_statistics:
       out_name = case.stats_metrics_mapping[name]['prefix']
       # do I need to add percent or threshold?
       if name in ['percentile', 'valueAtRisk', 'expectedShortfall', 'sortinoRatio', 'gainLossRatio']:
         # multiple percents or thresholds may be specified
-        if isinstance(case._result_statistics[name], list):
-          for attrib in case._result_statistics[name]:
+        if isinstance(result_statistics[name], list):
+          for attrib in result_statistics[name]:
             names.append(out_name+'_'+attrib+'_'+case._metric)
         else:
-          names.append(out_name+'_'+case._result_statistics[name]+'_'+case._metric)
+          names.append(out_name+'_'+result_statistics[name]+'_'+case._metric)
       else:
         out_name += '_'+case._metric
         names.append(out_name)

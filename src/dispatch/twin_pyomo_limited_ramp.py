@@ -206,13 +206,10 @@ def _ramp_time_limit_NPP(m, t):
   if t == 0:
     return pyo.Constraint.Skip
   tao = min(t, time_between_ramp_up)
-  if t < time_between_ramp_up:
-    tao = t
-  else:
-    tao = time_between_ramp_up
   limit = 0
   for tm in range(t-tao, t):
-    limit += m.ramp_none[tm] + m.ramp_up[tm]
+    # equivalent and slightly easier to understand?
+    limit += 1 - m.ramp_down[tm]
   return m.ramp_up[t] <= 1/tao * limit
 
 def _economics(m):

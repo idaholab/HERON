@@ -851,7 +851,10 @@ class Case(Base):
       @ In, None
       @ Out, opt_metric, str, target economic metric for outer optimizaton in this case
     """
-    return self.get_optimization_settings().get('opt_metric', None)
+    opt_settings = self.get_optimization_settings()
+    if opt_settings:
+      return opt_settings.get('opt_metric', None)
+    return 'NPV'
 
   def get_result_statistics(self):
     """

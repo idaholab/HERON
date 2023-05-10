@@ -40,6 +40,13 @@ from ravenframework.utils import xmlUtils
 from ravenframework.InputTemplates.TemplateBaseClass import Template as TemplateBase
 sys.path.pop()
 
+# default stats abbreviations
+DEFAULT_STATS_NAMES = ['expectedValue', 'sigma', 'median']
+SWEEP_DEFAULT_STATS_NAMES = ['maximum', 'minimum', 'percentile', 'samples', 'variance']
+
+DEFAULT_STATS_ABBR = ['mean', 'std', 'med']
+SWEEP_DEFAULT_STATS_ABBR = ['mean', 'std', 'med', 'max', 'min', 'perc_5', 'perc_95', 'samp', 'var']
+
 class Template(TemplateBase, Base):
   """
     Template for lcoe sweep opt class
@@ -62,6 +69,7 @@ class Template(TemplateBase, Base):
                                    'cashfname'      : '_{component}{cashname}',
                                    're_cash'        : '_rec_{period}_{driverType}{driverName}',
                                    'cluster_index'  : '_ROM_Cluster',
+                                   'metric_name'    : '{stats}_{econ}',
                                   })
 
   # template nodes
@@ -293,20 +301,25 @@ class Template(TemplateBase, Base):
     # outer results
     group_outer_results = var_groups.find(".//Group[@name='GRO_outer_results']")
     # add required defaults
-    default_stats = [f'mean_{case._metric}', f'std_{case._metric}', f'med_{case._metric}']
+    econ_metrics = case.get_econ_metrics()
+    # loop through all economic metrics (e.g., NPV, IRR) and apply required defaults to each
+    default_stats_prefixes = self._get_stats_metrics_mapping(case, DEFAULT_STATS_NAMES)
+    default_stats = [self.namingTemplates['metric_name'].format(stats=sp, econ=em) \
+                     for em in econ_metrics for sp in default_stats_prefixes]
     for stat in default_stats:
       self._updateCommaSeperatedList(group_outer_results, stat)
     # make sure user provided statistics beyond defaults get there
-    if any(stat not in ['expectedValue', 'sigma', 'median'] for stat in case.get_result_statistics()):
-      stats_list = self._build_result_statistic_names(case)
+    if any(stat not in DEFAULT_STATS_NAMES for stat in case.get_result_statistics()):
+      stats_list = self._build_result_statistic_names(case) #NOTE: this loops through metrics
       for stat_name in stats_list:
         if stat_name not in default_stats:
           self._updateCommaSeperatedList(group_outer_results, stat_name)
     # sweep mode has default variable names
     elif case.get_mode() == 'sweep':
-      sweep_default = [f'mean_{case._metric}', f'std_{case._metric}', f'med_{case._metric}', f'max_{case._metric}',
-                       f'min_{case._metric}', f'perc_5_{case._metric}', f'perc_95_{case._metric}',
-                       f'samp_{case._metric}', f'var_{case._metric}']
+      # loop through all economic metrics (e.g., NPV, IRR) and apply required sweep defaults to each
+      sweep_stats_prefixes = self._get_stats_metrics_mapping(case, DEFAULT_STATS_NAMES+SWEEP_DEFAULT_STATS_NAMES)
+      sweep_default = [self.namingTemplates['metric_name'].format(stats=sp, econ=em) \
+                      for em in econ_metrics for sp in sweep_stats_prefixes]
       for sweep_name in sweep_default:
         if sweep_name not in default_stats:
           self._updateCommaSeperatedList(group_outer_results, sweep_name)
@@ -1174,20 +1187,25 @@ class Template(TemplateBase, Base):
     # final return variable group (sent to outer)
     group_final_return = var_groups.find(".//Group[@name='GRO_final_return']")
     # add required defaults
-    default_stats = [f'mean_{case._metric}', f'std_{case._metric}', f'med_{case._metric}']
+    econ_metrics = case.get_econ_metrics()
+    # loop through all economic metrics (e.g., NPV, IRR) and apply required defaults to each
+    default_stats_prefixes = self._get_stats_metrics_mapping(case, DEFAULT_STATS_NAMES)
+    default_stats = [self.namingTemplates['metric_name'].format(stats=sp, econ=em) \
+                     for em in econ_metrics for sp in default_stats_prefixes]
     for stat in default_stats:
       self._updateCommaSeperatedList(group_final_return, stat)
     # make sure user provided statistics beyond defaults get there
-    if any(stat not in ['expectedValue', 'sigma', 'median'] for stat in case.get_result_statistics()):
-      stats_list = self._build_result_statistic_names(case)
+    if any(stat not in DEFAULT_STATS_NAMES for stat in case.get_result_statistics()):
+      stats_list = self._build_result_statistic_names(case) #NOTE: this loops through metrics
       for stat_name in stats_list:
         if stat_name not in default_stats:
           self._updateCommaSeperatedList(group_final_return, stat_name)
     # sweep mode has default variable names
     elif case.get_mode() == 'sweep':
-      sweep_default = [f'mean_{case._metric}', f'std_{case._metric}', f'med_{case._metric}',
-                       f'max_{case._metric}', f'min_{case._metric}', f'perc_5_{case._metric}',
-                       f'perc_95_{case._metric}', f'samp_{case._metric}', f'var_{case._metric}']
+      # loop through all economic metrics (e.g., NPV, IRR) and apply required sweep defaults to each
+      sweep_stats_prefixes = self._get_stats_metrics_mapping(case, DEFAULT_STATS_NAMES+SWEEP_DEFAULT_STATS_NAMES)
+      sweep_default = [self.namingTemplates['metric_name'].format(stats=sp, econ=em) \
+                      for em in econ_metrics for sp in sweep_stats_prefixes]
       for sweep_name in sweep_default:
         if sweep_name not in default_stats:
           self._updateCommaSeperatedList(group_final_return, sweep_name)
@@ -1201,49 +1219,48 @@ class Template(TemplateBase, Base):
     # fill out PostProcessor nodes
     pp_node = template.find('Models').find(".//PostProcessor[@name='statistics']")
     # add default statistics
-    stats = ['expectedValue', 'sigma', 'median']
-    prefixes = ['mean', 'std', 'med']
-    for stat, pref in zip(stats, prefixes):
-      pp_node.append(xmlUtils.newNode(stat, text=case._metric, attrib={'prefix': pref}))
-    # add any user supplied statistics beyond defaults
-    result_statistics = case.get_result_statistics()
-    if any(stat not in ['expectedValue', 'sigma', 'median'] for stat in result_statistics):
-      for raven_metric_name in result_statistics:
-        if raven_metric_name not in stats:
-          prefix = case.stats_metrics_mapping[raven_metric_name]['prefix']
-          # add subnode to PostProcessor
-          if raven_metric_name == 'percentile':
-            # add percent attribute
-            percent = result_statistics[raven_metric_name]
-            if isinstance(percent, list):
-              for p in percent:
-                pp_node.append(xmlUtils.newNode(raven_metric_name, text=case._metric,
+    result_statistics = case.get_result_statistics() # list of stats beyond default
+    for em in econ_metrics:
+      for stat, pref in zip(DEFAULT_STATS_NAMES, default_stats_prefixes):
+        pp_node.append(xmlUtils.newNode(stat, text=em, attrib={'prefix': pref}))
+      # add any user supplied statistics beyond defaults
+      if any(stat not in DEFAULT_STATS_NAMES for stat in result_statistics):
+        for raven_metric_name in result_statistics:
+          if raven_metric_name not in DEFAULT_STATS_NAMES:
+            prefix = case.stats_metrics_mapping[raven_metric_name]['prefix']
+            # add subnode to PostProcessor
+            if raven_metric_name == 'percentile':
+              # add percent attribute
+              percent = result_statistics[raven_metric_name]
+              if isinstance(percent, list):
+                for p in percent:
+                  pp_node.append(xmlUtils.newNode(raven_metric_name, text=em,
+                                                  attrib={'prefix': prefix,
+                                                          'percent': p}))
+              else:
+                pp_node.append(xmlUtils.newNode(raven_metric_name, text=em,
                                                 attrib={'prefix': prefix,
-                                                        'percent': p}))
-            else:
-              pp_node.append(xmlUtils.newNode(raven_metric_name, text=case._metric,
-                                              attrib={'prefix': prefix,
-                                                      'percent': percent}))
-          elif raven_metric_name in ['valueAtRisk', 'expectedShortfall', 'sortinoRatio', 'gainLossRatio']:
-            threshold = result_statistics[raven_metric_name]
-            if isinstance(threshold, list):
-              for t in threshold:
-                pp_node.append(xmlUtils.newNode(raven_metric_name, text=case._metric,
+                                                        'percent': percent}))
+            elif raven_metric_name in ['valueAtRisk', 'expectedShortfall', 'sortinoRatio', 'gainLossRatio']:
+              threshold = result_statistics[raven_metric_name]
+              if isinstance(threshold, list):
+                for t in threshold:
+                  pp_node.append(xmlUtils.newNode(raven_metric_name, text=em,
+                                                  attrib={'prefix': prefix,
+                                                          'threshold': t}))
+              else:
+                pp_node.append(xmlUtils.newNode(raven_metric_name, text=em,
                                                 attrib={'prefix': prefix,
-                                                        'threshold': t}))
+                                                        'threshold': threshold}))
             else:
-              pp_node.append(xmlUtils.newNode(raven_metric_name, text=case._metric,
-                                              attrib={'prefix': prefix,
-                                                      'threshold': threshold}))
-          else:
-            pp_node.append(xmlUtils.newNode(raven_metric_name, text=case._metric,
-                                            attrib={'prefix': prefix}))
-    # if not specified, "sweep" mode has additional defaults
-    elif case.get_mode() == 'sweep':
-      stats = ['maximum', 'minimum', 'percentile', 'samples', 'variance']
-      prefixes = ['max', 'min', 'perc', 'samp', 'var']
-      for stat, pref in zip(stats, prefixes):
-        pp_node.append(xmlUtils.newNode(stat, text=case._metric, attrib={'prefix': pref}))
+              pp_node.append(xmlUtils.newNode(raven_metric_name, text=em,
+                                              attrib={'prefix': prefix}))
+      # if not specified, "sweep" mode has additional defaults
+      elif case.get_mode() == 'sweep':
+        sweep_stats_prefixes = self._get_stats_metrics_mapping(case, SWEEP_DEFAULT_STATS_NAMES, use_extra=False)
+        for em in econ_metrics:
+          for stat, pref in zip(SWEEP_DEFAULT_STATS_NAMES, sweep_stats_prefixes):
+            pp_node.append(xmlUtils.newNode(stat, text=em, attrib={'prefix': pref}))
     # if not specified, "opt" mode is handled in _modify_inner_optimization_settings
 
   def _modify_inner_data_handling(self, template, case):
@@ -1477,7 +1494,7 @@ class Template(TemplateBase, Base):
         opt_out_metric_name += '_' + str(optimization_settings['stats_metric']['percent'])
       elif metric_raven_name in ['valueAtRisk', 'expectedShortfall', 'sortinoRatio', 'gainLossRatio']:
         opt_out_metric_name += '_' + str(optimization_settings['stats_metric']['threshold'])
-      opt_out_metric_name += '_'+case._metric
+      opt_out_metric_name += '_'+case.get_opt_metric()
     except (TypeError, KeyError):
       # <optimization_settings> node not in input file OR
       # 'metric' is missing from _optimization_settings
@@ -1493,19 +1510,41 @@ class Template(TemplateBase, Base):
       @ Out, names, list, list of names of statistics requested for output
     """
     names = []
+    econ_metrics = case.get_econ_metrics()
     result_statistics = case.get_result_statistics()
-    for name in result_statistics:
-      out_name = case.stats_metrics_mapping[name]['prefix']
-      # do I need to add percent or threshold?
-      if name in ['percentile', 'valueAtRisk', 'expectedShortfall', 'sortinoRatio', 'gainLossRatio']:
-        # multiple percents or thresholds may be specified
-        if isinstance(result_statistics[name], list):
-          for attrib in result_statistics[name]:
-            names.append(out_name+'_'+attrib+'_'+case._metric)
+
+    for e_metric in econ_metrics:
+      for name in result_statistics:
+        out_name = case.stats_metrics_mapping[name]['prefix']
+        # do I need to add percent or threshold?
+        if name in ['percentile', 'valueAtRisk', 'expectedShortfall', 'sortinoRatio', 'gainLossRatio']:
+          # multiple percents or thresholds may be specified
+          if isinstance(result_statistics[name], list):
+            for attrib in result_statistics[name]:
+              names.append(out_name+'_'+attrib+'_'+e_metric)
+          else:
+            names.append(out_name+'_'+result_statistics[name]+'_'+e_metric)
         else:
-          names.append(out_name+'_'+result_statistics[name]+'_'+case._metric)
-      else:
-        out_name += '_'+case._metric
-        names.append(out_name)
+          out_name += '_'+e_metric
+          names.append(out_name)
 
     return names
+
+  @staticmethod
+  def _get_stats_metrics_mapping(case, stats_names, use_extra=True):
+    """
+      Constructs the prefixes of the statistics requested for output
+      @ In, case, HERON Case, defining Case instance
+      @ In, stats_names, list, list of names of statistics requested for output
+      @ Out, prefix_names, list, list of prefixes of statistics requested for output
+    """
+    prefix_names = []
+    for name in stats_names:
+      prefix = case.stats_metrics_mapping[name]['prefix']
+      if name == "percentile" and use_extra:
+        for perc in case.stats_metrics_mapping[name]['percent']:
+          n_prefix = f"{prefix}_{perc}"
+          prefix_names.append(n_prefix)
+      else:
+        prefix_names.append(prefix)
+    return prefix_names

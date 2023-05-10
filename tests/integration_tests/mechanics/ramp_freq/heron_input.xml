@@ -51,7 +51,7 @@
         <capacity resource="electricity">
           <fixed_value>200</fixed_value>
         </capacity>
-        <!-- <ramp_limit>100</ramp_limit> -->
+        <!-- <ramp_limit>0.5</ramp_limit> -->
         <ramp_freq>4</ramp_freq>
         <transfer>
           <linear>

@@ -463,11 +463,9 @@ class Pyomo(Dispatcher):
     # self._create_capacity(m, comp, prod_name, meta)    # capacity constraints
     # transfer function governs input -> output relationship
     self._create_transfer(m, comp, prod_name)
-    # ramping limitations
+    # ramp rates
     if comp.ramp_limit is not None:
       self._create_ramp_limit(m, comp, prod_name, meta)
-    if comp.ramp_freq is not None:
-      self._create_ramp_freq_limit(m, comp, prod_name, meta)
     return prod_name
 
   def _create_production_variable(self, m, comp, meta, tag=None, add_bounds=True, **kwargs):
@@ -533,33 +531,35 @@ class Pyomo(Dispatcher):
     cap = comp.get_capacity(meta)[0][cap_res]
     r = m.resource_index_map[comp][cap_res] # production index of the governing resource
     limit_delta = comp.ramp_limit * cap
-    print('DEBUGG limit, cap:', cap, limit_delta)
-    ramp_rule = lambda mod, t: self._ramp_rule(prod_name, r, limit_delta, t, mod)
+    # if we're limiting ramp frequency, make vars and rules for that
+    if comp.ramp_freq:
+      # create binaries for tracking ramping
+      up = pyo.Var(m.T, initialize=0)
+      down = pyo.Var(m.T, initialize=0)
+      steady = pyo.Var(m.T, initialize=1)
+      setattr(m, f'{comp.name}_up_ramp_tracker', up)
+      setattr(m, f'{comp.name}_down_ramp_tracker', down)
+      setattr(m, f'{comp.name}_steady_ramp_tracker', steady)
+      ramp_trackers = (down, up, steady)
+    # limit production changes to ramp rates
+    ramp_rule = lambda mod, t: \
+        self._ramp_rule(prod_name, r, limit_delta, t, mod,
+                        limit_freq=comp.ramp_freq)
     constr = pyo.Constraint(m.T, rule=ramp_rule)
     setattr(m, f'{comp.name}_ramp_constr', constr)
-
-  def _create_ramp_freq_limit(m, comp, prod_name, meta):
-    """
-      Creates limitations for frequency of ramping a producing component
-      e.g. once per 4 hours
-      @ In, m, pyo.ConcreteModel, associated model
-      @ In, comp, HERON Component, component to make ramping limits for
-      @ In, prod_name, str, name of production variable
-      @ In, meta, dict, dictionary of state variables
-      @ Out, None
-    """
-    # Binary time-dep variables to track ramping:
-    # -> ramp up (bu), ramp down (bd), ramp none (bn)
-    # 4 equations to couple ramping:
-    # (1) Q_t - Q_{t-1} <= Ru * dt * bu_t - eps * bd_t
-    # (2) Q_{t-1} - Q_t <= Rd * dt * bd_t - eps * bu_t
-    # (3) bu_t + bd_t + bn_t = 1
-    # (4) bu <= 1/p \sum_{t-t'}^{t-1} bn_t' + bu_t'
-    # where:
-    # - Q: production level
-    # - Ru, Rd: up and down ramp rate limitations
-    # - eps: nominal value to assure exclusivity
-    # - p: time steps between upramps
+    # if ramping frequency limit, impose binary constraints
+    if comp.ramp_freq:
+      # binaries rule, for exclusive choice up/down/steady
+      binaries_rule = lambda mod, t: \
+          self._ramp_freq_bins_rule(down, up, steady, t, mod)
+      constr = pyo.Constraint(m.T, rule=binaries_rule)
+      setattr(m, f'{comp.name}_ramp_freq_binaries', constr)
+      # limit frequency of ramping
+      # TODO calculate "tao" window using ramp freq and dt
+      # -> for now, just use the integer for number of windows
+      freq_rule = lambda mod, t: self._ramp_freq_rule(down, up, comp.ramp_freq, t, m)
+      constr = pyo.Constraint(m.T, rule=freq_rule)
+      setattr(m, f'{comp.name}_ramp_freq_constr', constr)
 
   def _create_capacity_constraints(self, m, comp, prod_name, meta):
     """
@@ -916,31 +916,60 @@ class Pyomo(Dispatcher):
     else:
       raise TypeError('Unrecognized production limit "kind":', kind)
 
-  def _ramp_rule(self, prod_name, r, limit, t, m, timeout=None):
+  def _ramp_rule(self, prod_name, r, limit, t, m, limit_freq=None):
     """
-      Constructs pyomo production constraints.
+      Constructs pyomo production ramping constraints.
       @ In, prod_name, str, name of production variable
       @ In, r, int, index of resource for capacity constraining
-      @ In, limit, int, number of time steps between ramps allowable
+      @ In, limit, float, limiting change in production level across time steps
       @ In, t, int, time index for ramp limit rule (NOTE not pyomo index, rather fixed index)
       @ In, m, pyo.ConcreteModel, associated model
-      @ In, timeout, int, number of time steps before another ramp can occur
+      @ In, limit_freq, tuple, optional, (lower, steady, upper) binaries if limiting ramp frequency
     """
+    eps = 1.0 # aux parameter to force binaries to behave, TODO needed?
     prod = getattr(m, prod_name)
     if t > 0:
       delta = prod[r, t] - prod[r, t-1]
-      if timeout is None:
+      if limit_freq:
+        lower = -limit * limit_freq[0] + eps * limit_freq[1]
+        upper =  limit * limit_freq[1] + eps * limit_freq[0]
+      else:
         lower = -limit
         upper = limit
-      else:
-        # how far back are we looking? Not before t=0
-        tao = min(t, limit)
-        limit = 0
-        for tm in range(t - tao, t):
-          limit += 1 - m.ramp_down[tm] # TODO ramp_down
       return pyo.inequality(lower, delta, upper)
     else:
       return pyo.Constraint.Skip
+
+  def _ramp_freq_rule(self, Bd, Bu, tao, t, m):
+    """
+      Constructs pyomo frequency-of-ramp constraints.
+      @ In, Bd, bool var, binary tracking down-ramp events
+      @ In, Bu, bool var, binary tracking up-ramp events
+      @ In, tao, int, number of time steps to look back
+      @ In, t, int, time step indexer
+      @ In, m, pyo.ConcreteModel, pyomo model
+    """
+    if t == 0:
+      return pyo.Constraint.Skip
+    # looking-back-window shouldn't be longer than existing time
+    tao = min(t, tao)
+    # how many ramp-down events in backward window?
+    tally = sum(1 - Bu[tm] for tm in range(t - tao, t))
+    # only allow ramping up if no rampdowns in back window
+    ## but we can't use if statements, so use binary math
+    return Bu[t] <= 1 / tao * tally
+
+  def _ramp_freq_bins_rule(self, Bd, Bu, Bn, t, m):
+    """
+      Constructs pyomo constraint for ramping event tracking variables.
+      This forces choosing between ramping up, ramping down, and steady state operation.
+      @ In, Bd, bool var, binary tracking down-ramp events
+      @ In, Bu, bool var, binary tracking up-ramp events
+      @ In, Bn, bool var, binary tracking no-ramp events
+      @ In, t, int, time step indexer
+      @ In, m, pyo.ConcreteModel, pyomo model
+    """
+    return Bd[t] + Bu[t] + Bn[t] == 1
 
   def _cashflow_rule(self, meta, m):
     """

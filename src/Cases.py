@@ -36,6 +36,7 @@ class Case(Base):
     TODO this case is for "sweep-opt", need to make a superclass for generic
   """
   # economic metrics that can be returned by sweep results OR alongside optimization results
+  #    NOTE: might be important to index the stats_metrics_mapping... does VaR of IRR make sense?
   economic_metrics = ['NPV', 'PI', 'IRR'] #TODO: expand with NPVsearch and LCOx (specific case of NPVsearch)
 
   # statistical metrics that can be applied to economic metrics within the optimization objective

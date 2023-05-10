@@ -809,6 +809,7 @@ class Template(TemplateBase, Base):
     self._modify_inner_components(template, case, components)
     self._modify_inner_caselabels(template, case)
     self._modify_inner_time_vars(template, case)
+    self._modify_inner_econ_metrics(template, case)
     self._modify_inner_result_statistics(template, case)
     self._modify_inner_optimization_settings(template, case)
     self._modify_inner_data_handling(template, case)
@@ -1174,6 +1175,35 @@ class Template(TemplateBase, Base):
         subnode = pp_node.find('expectedValue')
         if 'mean' != subnode.attrib['prefix']:
           subnode.attrib['prefix'] = 'mean'
+
+  def _modify_inner_econ_metrics(self, template, case):
+    """
+      Modifies template to include economic metrics
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ Out, None
+    """
+    # get all economic metrics intended for use in TEAL and reported back
+    econ_metrics = case.get_econ_metrics()
+    # handle VariableGroups and data objects
+    var_groups = template.find('VariableGroups')
+    data_objs = template.find('DataObjects')
+
+    # find variable groups to update with economic metrics
+    dispatch_out = var_groups.find(".//Group[@name='GRO_dispatch_out']")
+    arma_samp_out = var_groups.find(".//Group[@name='GRO_armasamples_out_scalar']")
+    # find point set output node to update with economic metrics
+    arma_metrics = data_objs.find(".//PointSet[@name='arma_metrics']")
+    arma_metrics_out = arma_metrics.find("Output")
+    # update fields with econ metric names
+    for em in econ_metrics:
+      self._updateCommaSeperatedList(dispatch_out, em)
+      self._updateCommaSeperatedList(arma_samp_out, em)
+      self._updateCommaSeperatedList(arma_metrics_out, em)
+
+
+    self._create_dataobject(data_objs, 'PointSet', 'arma_metrics',
+                        outputs=econ_metrics)
 
   def _modify_inner_result_statistics(self, template, case):
     """

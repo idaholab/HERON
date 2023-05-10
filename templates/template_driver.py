@@ -1201,10 +1201,6 @@ class Template(TemplateBase, Base):
       self._updateCommaSeperatedList(arma_samp_out, em)
       self._updateCommaSeperatedList(arma_metrics_out, em)
 
-
-    self._create_dataobject(data_objs, 'PointSet', 'arma_metrics',
-                        outputs=econ_metrics)
-
   def _modify_inner_result_statistics(self, template, case):
     """
       Modifies template to include result statistics

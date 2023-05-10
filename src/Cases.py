@@ -274,8 +274,7 @@ class Case(Base):
     optimizer = InputData.parameterInputFactory('optimization_settings',
                                                 descr=r"""This node defines the settings to be used for the optimizer in
                                                 the ``outer'' run.""")
-    opt_metric_options = InputTypes.makeEnumType('OptMetricOptions', 'OptMetricOptionsType',
-                                           ['NPV',])
+    opt_metric_options = InputTypes.makeEnumType('OptMetricOptions', 'OptMetricOptionsType', cls.economic_metrics)
     desc_opt_metric_options = r"""Economic metric (currently from TEAL) which will be used as the optimization metric.
                         This will be calculated at every instance of the ``inner'' run to generate a distribution
                         of economic metrics for all realizations. Currently only features ``NPV''. """
@@ -409,7 +408,7 @@ class Case(Base):
     self.name = None                   # case name
     self._mode = None                  # extrema to find: opt, sweep
     self._econ_metrics = []
-    self._metric = 'NPV'               # TODO: future work - economic metric to focus on: lcoe, profit, cost
+    self._default_econ_metric = 'NPV'  # TODO: future work - economic metric to focus on: lcoe, profit, cost
     self.run_dir = run_dir             # location of HERON input file
     self._verbosity = 'all'            # default verbosity for RAVEN inner/outer
 
@@ -490,8 +489,6 @@ class Case(Base):
           elif sub.getName() == 'runinfo':
             for subsub in sub.subparts:
               self.parallelRunInfo[subsub.getName()] = str(subsub.value)
-      elif item.getName() == 'metric':
-        self._metric = item.value
       elif item.getName() == 'differential':
         self._diff_study = item.value
       elif item.getName() == 'num_arma_samples':
@@ -536,6 +533,9 @@ class Case(Base):
       self.raiseAnError('No <dispatch> node was provided in the <Case> node!')
     if self._time_discretization is None:
       self.raiseAnError('<time_discretization> node was not provided in the <Case> node!')
+    # check that opt metric is part of econ metrics for output
+    if self.get_mode() == 'opt':
+      self._append_econ_metrics(self.get_opt_metric(), first=True)
     if self.innerParallel == 0 and self.useParallel:
       #set default inner parallel to number of samples (denoises)
       self.innerParallel = self._num_samples
@@ -633,7 +633,7 @@ class Case(Base):
     metrics_node = node.findFirst('EconMetrics') # if not None, will have attr 'subparts' even if empty
     # check if either the metrics node is NOT included --OR-- it is included but is empty
     if metrics_node is None or not metrics_node.subparts:
-      econ_metrics.append('NPV') # this is our default
+      econ_metrics.append(self._default_econ_metric) # NPV is our default
     else:
       for sub in metrics_node.subparts:
         econ_metrics.append(sub.getName())
@@ -660,7 +660,7 @@ class Case(Base):
 
     # check first for an opt metric, if not there, default to NPV
     if node.findFirst('opt_metric') is None:
-      opt_settings['opt_metric'] = 'NPV'
+      opt_settings['opt_metric'] = self._default_econ_metric
 
     for sub in node.subparts:
       sub_name = sub.getName()
@@ -780,6 +780,17 @@ class Case(Base):
     for metric in self.get_econ_metrics():
       self.raiseADebug(pre+'  metric:', metric)
     self.raiseADebug(pre+'  diff_study:', self._diff_study)
+
+  def _append_econ_metrics(self, new_metric, first=False):
+    """
+      Prints info about self
+      @ In, None
+      @ Out, None
+    """
+    pos = 0 if first else -1
+    econ_metrics = self.get_econ_metrics()
+    if new_metric not in econ_metrics:
+      econ_metrics.insert(pos, new_metric)
 
   #### ACCESSORS ####
   def get_increments(self):

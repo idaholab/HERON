@@ -44,9 +44,6 @@ sys.path.pop()
 DEFAULT_STATS_NAMES = ['expectedValue', 'sigma', 'median']
 SWEEP_DEFAULT_STATS_NAMES = ['maximum', 'minimum', 'percentile', 'samples', 'variance']
 
-DEFAULT_STATS_ABBR = ['mean', 'std', 'med']
-SWEEP_DEFAULT_STATS_ABBR = ['mean', 'std', 'med', 'max', 'min', 'perc_5', 'perc_95', 'samp', 'var']
-
 class Template(TemplateBase, Base):
   """
     Template for lcoe sweep opt class
@@ -302,6 +299,7 @@ class Template(TemplateBase, Base):
     group_outer_results = var_groups.find(".//Group[@name='GRO_outer_results']")
     # add required defaults
     econ_metrics = case.get_econ_metrics()
+    has_mult_metrics = len(econ_metrics) > 1
     # loop through all economic metrics (e.g., NPV, IRR) and apply required defaults to each
     default_stats_prefixes = self._get_stats_metrics_mapping(case, DEFAULT_STATS_NAMES)
     default_stats = [self.namingTemplates['metric_name'].format(stats=sp, econ=em) \
@@ -313,7 +311,7 @@ class Template(TemplateBase, Base):
       stats_list = self._build_result_statistic_names(case) #NOTE: this loops through metrics
       for stat_name in stats_list:
         if stat_name not in default_stats:
-          self._updateCommaSeperatedList(group_outer_results, stat_name)
+          self._updateCommaSeperatedList(group_outer_results, stat_name, organize_economics=has_mult_metrics)
     # sweep mode has default variable names
     elif case.get_mode() == 'sweep':
       # loop through all economic metrics (e.g., NPV, IRR) and apply required sweep defaults to each
@@ -322,7 +320,7 @@ class Template(TemplateBase, Base):
                       for em in econ_metrics for sp in sweep_stats_prefixes]
       for sweep_name in sweep_default:
         if sweep_name not in default_stats:
-          self._updateCommaSeperatedList(group_outer_results, sweep_name)
+          self._updateCommaSeperatedList(group_outer_results, sweep_name, organize_economics=has_mult_metrics)
     # opt mode adds optimization variable if not already there
     if (case.get_mode() == 'opt') and (case.get_optimization_settings() is not None):
       new_metric_outer_results = self._build_opt_metric_out_name(case)
@@ -1214,6 +1212,7 @@ class Template(TemplateBase, Base):
     group_final_return = var_groups.find(".//Group[@name='GRO_final_return']")
     # add required defaults
     econ_metrics = case.get_econ_metrics()
+    has_mult_metrics = len(econ_metrics) > 1
     # loop through all economic metrics (e.g., NPV, IRR) and apply required defaults to each
     default_stats_prefixes = self._get_stats_metrics_mapping(case, DEFAULT_STATS_NAMES)
     default_stats = [self.namingTemplates['metric_name'].format(stats=sp, econ=em) \
@@ -1225,16 +1224,16 @@ class Template(TemplateBase, Base):
       stats_list = self._build_result_statistic_names(case) #NOTE: this loops through metrics
       for stat_name in stats_list:
         if stat_name not in default_stats:
-          self._updateCommaSeperatedList(group_final_return, stat_name)
+          self._updateCommaSeperatedList(group_final_return, stat_name, organize_economics=has_mult_metrics)
     # sweep mode has default variable names
     elif case.get_mode() == 'sweep':
       # loop through all economic metrics (e.g., NPV, IRR) and apply required sweep defaults to each
       sweep_stats_prefixes = self._get_stats_metrics_mapping(case, DEFAULT_STATS_NAMES+SWEEP_DEFAULT_STATS_NAMES)
       sweep_default = [self.namingTemplates['metric_name'].format(stats=sp, econ=em) \
-                      for em in econ_metrics for sp in sweep_stats_prefixes]
+                       for em in econ_metrics for sp in sweep_stats_prefixes]
       for sweep_name in sweep_default:
         if sweep_name not in default_stats:
-          self._updateCommaSeperatedList(group_final_return, sweep_name)
+          self._updateCommaSeperatedList(group_final_return, sweep_name, organize_economics=has_mult_metrics)
     # opt mode uses optimization variable if no other stats are given, this is handled below
     if (case.get_mode == 'opt') and (case.get_optimization_settings() is not None):
       new_metric_opt_results = self._build_opt_metric_out_name(case)
@@ -1486,6 +1485,37 @@ class Template(TemplateBase, Base):
     new_step.append(self._assemblerNode('Output', 'OutStreams', 'Print', os_name))
     template.find('Steps').append(new_step)
     self._updateCommaSeperatedList(template.find('RunInfo').find('Sequence'), step_name, position=1)
+
+  def _updateCommaSeperatedList(self, node, new, position=None, before=None, after=None, organize_economics=False):
+    """
+      Overloaded method from parent with new flag for multiple metrics.
+      Parent: Statefully adds an entry to the given node's comma-seperated text
+      If the node's text is empty, will insert "new" as the sole text (no commas).
+      @ In, node, xml.etree.ElementTree.Element, node whose text is a comma-seperated string list
+      @ In, new, str, name of entry to add
+      @ In, position, int, optional, index where new should be inserted in sequence
+      @ In, before, str, optional, entry name before which new should be added
+      @ In, after, str, optional, entry name after which new should be added
+      @ In, organize_economics, bool, optional, are we expecting multiple metrics?
+      @ Out, None
+    """
+    # if we are expecting multiple metrics, they may be out of order - this block helps order them
+    if organize_economics:
+      # all entries with full name and with JUST the economic metric (e.g., NPV, IRR) respectively
+      entries = list(x.strip() for x in node.text.split(',')) if node.text is not None else []
+      metric_entries = list(x.split('_')[-1] for x in entries)
+      # getting the economic metric name, the index where it is first found and counts
+      metric, ind_start, ind_len = np.unique(metric_entries, return_index=True, return_counts=True)
+      # index map (e.g., {'NPV':(0,3), }) to get first instance of metric in list + # of times found
+      metric_ind_map = {a:(b,c) for a,(b,c) in zip(metric, zip(ind_start, ind_len))}
+      first, length = metric_ind_map[new.split('_')[-1]]
+      # finding appropriate relative location within entries list to add new entry
+      if first == 0:
+        before = entries[length]
+      else:
+        after = entries[int(first+length-1)]
+    # calling parent method
+    super()._updateCommaSeperatedList(node, new, position, before, after)
 
   @staticmethod
   def _remove_by_name(root, removable):

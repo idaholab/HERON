@@ -47,21 +47,21 @@ class Case(Base):
   # 'percent' (only for percentile) - list of percentiles to return
   # 'threshold' (only for sortinoRatio, gainLossRatio, expectedShortfall, valueAtRisk) - threshold value for calculation
   stats_metrics_mapping = {'expectedValue': {'prefix': 'mean', 'optimization_default': 'max'},
-                     'minimum': {'prefix': 'min', 'optimization_default': 'max'},
-                     'maximum': {'prefix': 'max', 'optimization_default': 'max'},
-                     'median': {'prefix': 'med', 'optimization_default': 'max'},
-                     'variance': {'prefix': 'var', 'optimization_default': 'min'},
-                     'sigma': {'prefix': 'std', 'optimization_default': 'min'},
-                     'percentile': {'prefix': 'perc', 'optimization_default': 'max', 'percent': ['5', '95']},
-                     'variationCoefficient': {'prefix': 'varCoeff', 'optimization_default': 'min'},
-                     'skewness': {'prefix': 'skew', 'optimization_default': 'min'},
-                     'kurtosis': {'prefix': 'kurt', 'optimization_default': 'min'},
-                     'samples': {'prefix': 'samp'},
-                     'sharpeRatio': {'prefix': 'sharpe', 'optimization_default': 'max'},
-                     'sortinoRatio': {'prefix': 'sortino', 'optimization_default': 'max', 'threshold': 'median'},
-                     'gainLossRatio': {'prefix': 'glr', 'optimization_default': 'max', 'threshold': 'median'},
-                     'expectedShortfall': {'prefix': 'es', 'optimization_default': 'min', 'threshold': ['0.05']},
-                     'valueAtRisk': {'prefix': 'VaR', 'optimization_default': 'min', 'threshold': ['0.05']}}
+                           'minimum': {'prefix': 'min', 'optimization_default': 'max'},
+                           'maximum': {'prefix': 'max', 'optimization_default': 'max'},
+                           'median': {'prefix': 'med', 'optimization_default': 'max'},
+                           'variance': {'prefix': 'var', 'optimization_default': 'min'},
+                           'sigma': {'prefix': 'std', 'optimization_default': 'min'},
+                           'percentile': {'prefix': 'perc', 'optimization_default': 'max', 'percent': ['5', '95']},
+                           'variationCoefficient': {'prefix': 'varCoeff', 'optimization_default': 'min'},
+                           'skewness': {'prefix': 'skew', 'optimization_default': 'min'},
+                           'kurtosis': {'prefix': 'kurt', 'optimization_default': 'min'},
+                           'samples': {'prefix': 'samp'},
+                           'sharpeRatio': {'prefix': 'sharpe', 'optimization_default': 'max'},
+                           'sortinoRatio': {'prefix': 'sortino', 'optimization_default': 'max', 'threshold': 'median'},
+                           'gainLossRatio': {'prefix': 'glr', 'optimization_default': 'max', 'threshold': 'median'},
+                           'expectedShortfall': {'prefix': 'es', 'optimization_default': 'min', 'threshold': ['0.05']},
+                           'valueAtRisk': {'prefix': 'VaR', 'optimization_default': 'min', 'threshold': ['0.05']}}
 
   #### INITIALIZATION ####
   @classmethod
@@ -119,11 +119,7 @@ class Case(Base):
     input_specs.addSub(InputData.parameterInputFactory('workflow', contentType=workflow_options,
                                                        strictMode=True, descr=desc_workflow_options))
 
-    # not yet implemented TODO
-    # econ_metrics = InputTypes.makeEnumType('EconMetrics', 'EconMetricsTypes', ['NPV', 'LCOx'])
-    # desc_econ_metrics = r"""indicates the economic metric that should be used for the HERON analysis. For most cases, this
-    #                    should be NPV."""
-    # input_specs.addSub(InputData.parameterInputFactory('metric', contentType=econ_metrics, descr=desc_econ_metrics))
+    # TODO: implement differential? multiple economic metrics now implemented
     # input_specs.addSub(InputData.parameterInputFactory('differential', contentType=InputTypes.BoolType, strictMode=True,
     # descr=r"""(not implemented) allows differentiation between two HERON runs as a desired
     # economic metric."""
@@ -866,7 +862,7 @@ class Case(Base):
     opt_settings = self.get_optimization_settings()
     if opt_settings:
       return opt_settings.get('opt_metric', None)
-    return 'NPV'
+    return self._default_econ_metric
 
   def get_result_statistics(self):
     """

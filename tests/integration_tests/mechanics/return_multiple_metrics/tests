@@ -1,0 +1,14 @@
+[Tests]
+  [./ReturnMultipleMetrics]
+    type = HeronIntegration
+    input = heron_input.xml
+    # prereq = SineArma
+    max_time = 600
+    [./csv]
+      type = UnorderedCSV
+      output = 'opt_runs_o/opt_soln.csv opt_runs_o/opt_soln_0.csv'
+      zero_threshold = 1e-6
+      rel_err = 1e-6
+    [../]
+  [../]
+[]

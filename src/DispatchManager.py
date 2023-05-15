@@ -330,7 +330,7 @@ class DispatchRunner:
     global_params = heron_case.get_econ(heron_econs)
     global_settings = TEAL.src.CashFlows.GlobalSettings()
     global_settings.setParams(global_params)
-    global_settings.setVerbosity(0) # FIXME direct access, also make user option?
+    global_settings.setVerbosity(global_params.get('verbosity',0)) # NOTE: this is verbosity in economics
     # build TEAL CashFlow component instances
     teal_components = {}
     for c, cfg in enumerate(heron_econs):
@@ -562,12 +562,12 @@ class DispatchRunner:
       print(f' ... comp {comp_name} ...')
       for cf in comp.getCashflows():
         print(f' ... ... cf {cf.name} ...')
-        print(f' ... ... ... D: {cf._driver}')
-        print(f' ... ... ... a: {cf._alpha}')
-        print(f' ... ... ... Dp: {cf._reference}')
-        print(f' ... ... ... x: {cf._scale}')
+        print(f' ... ... ... D: {cf.getDriver()}')
+        print(f' ... ... ... a: {cf.getAlpha()}')
+        print(f' ... ... ... Dp: {cf.getReference()}')
+        print(f' ... ... ... x: {cf.getScale()}')
         if hasattr(cf, '_yearlyCashflow'):
-          print(f' ... ... ... hourly: {cf._yearlyCashflow}')
+          print(f' ... ... ... hourly: {cf.getYearlyCashflow()}')
     # END DEBUGG
     cf_metrics = TEAL.src.main.run(final_settings, list(final_components.values()), raven_vars)
     # DEBUGG

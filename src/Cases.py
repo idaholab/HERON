@@ -403,8 +403,8 @@ class Case(Base):
     Base.__init__(self, **kwargs)
     self.name = None                   # case name
     self._mode = None                  # extrema to find: opt, sweep
-    self._econ_metrics = []
-    self._default_econ_metric = 'NPV'  # TODO: future work - economic metric to focus on: lcoe, profit, cost
+    self._econ_metrics = []            # list of economic metrics to return to user, return_statistics applied to each
+    self._default_econ_metric = 'NPV'  # default metric for both opt and sweep
     self.run_dir = run_dir             # location of HERON input file
     self._verbosity = 'all'            # default verbosity for RAVEN inner/outer
 

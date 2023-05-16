@@ -6,16 +6,15 @@
     <description>
       Demonstrates how to report multiple economic metrics in the final CSV file from
       the Outer run. The Case and Components are borrowed from the optimization_settings
-      test. Here, we are maximizing the expected value of the profitability index (PI).
-      In the output, we will have the basic statistics for the requested PI metric (mean,
-      std and median). We will also return the same statistics for the additionally requested
-      economic metrics in the Economics node: NPV and IRR.
+      test. In the economics node, we are requested several economic metrics: NPV, IRR, and PI.
+      In the output, we will have the basic statistics (mean, std and median) for all requested
+      metrics.
     </description>
     <classesTested>HERON</classesTested>
   </TestInfo>
 
-  <Case name="opt_runs">
-    <mode>opt</mode>
+  <Case name="sweep_runs">
+    <mode>sweep</mode>
     <num_arma_samples>3</num_arma_samples>
     <time_discretization>
       <year_variable>Year</year_variable>
@@ -32,21 +31,12 @@
       <EconMetrics>
         <NPV/>
         <IRR/>
+        <PI/>
       </EconMetrics>
     </economics>
     <dispatcher>
       <pyomo/>
     </dispatcher>
-    <optimization_settings>
-      <opt_metric>PI</opt_metric>
-      <stats_metric>expectedValue</stats_metric>
-      <type>max</type>
-      <persistence>5</persistence>
-      <convergence>
-        <gradient>1e-3</gradient>
-        <objective>1e-6</objective>
-      </convergence>
-    </optimization_settings>
     <data_handling>
       <inner_to_outer>csv</inner_to_outer>
     </data_handling>
@@ -56,7 +46,7 @@
     <Component name="steamer">
       <produces resource="steam" dispatch="fixed">
         <capacity resource="steam">
-          <opt_bounds>1, 10</opt_bounds>
+          <sweep_values>1, 10</sweep_values>
         </capacity>
       </produces>
       <economics>
@@ -113,7 +103,7 @@
     <Component name="electr_flex">
       <demands resource="electricity" dispatch="dependent">
         <capacity>
-          <opt_bounds>-2e3, -2.05e3</opt_bounds>
+          <fixed_value>-2e3</fixed_value>
         </capacity>
       </demands>
       <economics>

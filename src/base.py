@@ -32,7 +32,7 @@ class Base(MessageUser):
       @ In, None
       @ Out, repr, str rep
     """
-    return '<HERON {}>'.format(self.__class__.__name__)
+    return f'<HERON {self.__class__.__name__}>'
 
   def set_message_handler(self, mh):
     """
@@ -48,4 +48,4 @@ class Base(MessageUser):
       @ In, kwargs, dict, passthrough args
       @ Out, None
     """
-    print('For {} no printing has been implemented!'.format(self))
+    print(f'For {self} no printing has been implemented!')

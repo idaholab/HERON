@@ -35,29 +35,33 @@ class Case(Base):
     Produces something, often as the cost of something else
     TODO this case is for "sweep-opt", need to make a superclass for generic
   """
+  # economic metrics that can be returned by sweep results OR alongside optimization results
+  #    NOTE: might be important to index the stats_metrics_mapping... does VaR of IRR make sense?
+  economic_metrics = ['NPV', 'PI', 'IRR'] #TODO: expand with NPVsearch and LCOx (specific case of NPVsearch)
 
-  # metrics that can be used for objective in optimization or returned with results
+  # statistical metrics that can be applied to economic metrics within the optimization objective
+  #    or returned with results
   # each metric contains a dictionary with the following keys:
   # 'prefix' - printed result name
   # 'optimization_default' - 'min' or 'max' for optimization
   # 'percent' (only for percentile) - list of percentiles to return
   # 'threshold' (only for sortinoRatio, gainLossRatio, expectedShortfall, valueAtRisk) - threshold value for calculation
-  metrics_mapping = {'expectedValue': {'prefix': 'mean', 'optimization_default': 'max'},
-                     'minimum': {'prefix': 'min', 'optimization_default': 'max'},
-                     'maximum': {'prefix': 'max', 'optimization_default': 'max'},
-                     'median': {'prefix': 'med', 'optimization_default': 'max'},
-                     'variance': {'prefix': 'var', 'optimization_default': 'min'},
-                     'sigma': {'prefix': 'std', 'optimization_default': 'min'},
-                     'percentile': {'prefix': 'perc', 'optimization_default': 'max', 'percent': ['5', '95']},
-                     'variationCoefficient': {'prefix': 'varCoeff', 'optimization_default': 'min'},
-                     'skewness': {'prefix': 'skew', 'optimization_default': 'min'},
-                     'kurtosis': {'prefix': 'kurt', 'optimization_default': 'min'},
-                     'samples': {'prefix': 'samp'},
-                     'sharpeRatio': {'prefix': 'sharpe', 'optimization_default': 'max'},
-                     'sortinoRatio': {'prefix': 'sortino', 'optimization_default': 'max', 'threshold': 'median'},
-                     'gainLossRatio': {'prefix': 'glr', 'optimization_default': 'max', 'threshold': 'median'},
-                     'expectedShortfall': {'prefix': 'es', 'optimization_default': 'min', 'threshold': ['0.05']},
-                     'valueAtRisk': {'prefix': 'VaR', 'optimization_default': 'min', 'threshold': ['0.05']}}
+  stats_metrics_mapping = {'expectedValue': {'prefix': 'mean', 'optimization_default': 'max'},
+                           'minimum': {'prefix': 'min', 'optimization_default': 'max'},
+                           'maximum': {'prefix': 'max', 'optimization_default': 'max'},
+                           'median': {'prefix': 'med', 'optimization_default': 'max'},
+                           'variance': {'prefix': 'var', 'optimization_default': 'min'},
+                           'sigma': {'prefix': 'std', 'optimization_default': 'min'},
+                           'percentile': {'prefix': 'perc', 'optimization_default': 'max', 'percent': ['5', '95']},
+                           'variationCoefficient': {'prefix': 'varCoeff', 'optimization_default': 'min'},
+                           'skewness': {'prefix': 'skew', 'optimization_default': 'min'},
+                           'kurtosis': {'prefix': 'kurt', 'optimization_default': 'min'},
+                           'samples': {'prefix': 'samp'},
+                           'sharpeRatio': {'prefix': 'sharpe', 'optimization_default': 'max'},
+                           'sortinoRatio': {'prefix': 'sortino', 'optimization_default': 'max', 'threshold': 'median'},
+                           'gainLossRatio': {'prefix': 'glr', 'optimization_default': 'max', 'threshold': 'median'},
+                           'expectedShortfall': {'prefix': 'es', 'optimization_default': 'min', 'threshold': ['0.05']},
+                           'valueAtRisk': {'prefix': 'VaR', 'optimization_default': 'min', 'threshold': ['0.05']}}
 
   #### INITIALIZATION ####
   @classmethod
@@ -115,11 +119,7 @@ class Case(Base):
     input_specs.addSub(InputData.parameterInputFactory('workflow', contentType=workflow_options,
                                                        strictMode=True, descr=desc_workflow_options))
 
-    # not yet implemented TODO
-    #econ_metrics = InputTypes.makeEnumType('EconMetrics', 'EconMetricsTypes', ['NPV', 'lcoe'])
-    #desc_econ_metrics = r"""indicates the economic metric that should be used for the HERON analysis. For most cases, this
-    #                    should be NPV."""
-    # input_specs.addSub(InputData.parameterInputFactory('metric', contentType=econ_metrics, descr=desc_econ_metrics))
+    # TODO: implement differential? multiple economic metrics now implemented
     # input_specs.addSub(InputData.parameterInputFactory('differential', contentType=InputTypes.BoolType, strictMode=True,
     # descr=r"""(not implemented) allows differentiation between two HERON runs as a desired
     # economic metric."""
@@ -234,7 +234,18 @@ class Case(Base):
     econ.addSub(InputData.parameterInputFactory('verbosity', contentType=InputTypes.IntegerType,
                                                 descr=r"""the level of output to print from the CashFlow calculations.
                                                 Passed to the CashFlow module."""))
-    # is this actually CashFlow verbosity or is it really HERON verbosity?
+    # additing economic metrics (or indicators in TEAL terms) to the global settings
+    desc_econ_metrics = r"""additional economic metric(s) which will be calculated for each
+                                                RAVEN Inner run, regardless of whether opt or sweep mode was specified.
+                                                Not to be confused with the ``opt_metric`` which is used only in opt mode.
+                                                \default{NPV}"""
+    econ_metrics = InputData.parameterInputFactory('EconMetrics', descr=desc_econ_metrics)
+    for metric_name in cls.economic_metrics:
+      metric = InputData.parameterInputFactory(metric_name, strictMode=True,
+                                               descr=rf"""{metric_name} metric which will be calculated by TEAL
+                                               and presented in the results output.""")
+      econ_metrics.addSub(metric)
+    econ.addSub(econ_metrics)
     input_specs.addSub(econ)
 
     # dispatcher
@@ -259,8 +270,15 @@ class Case(Base):
     optimizer = InputData.parameterInputFactory('optimization_settings',
                                                 descr=r"""This node defines the settings to be used for the optimizer in
                                                 the ``outer'' run.""")
-    metric_options = InputTypes.makeEnumType('MetricOptions', 'MetricOptionsType', list(cls.metrics_mapping.keys()))
-    desc_metric_options = r"""determines the statistical metric (calculated by RAVEN BasicStatistics
+    opt_metric_options = InputTypes.makeEnumType('OptMetricOptions', 'OptMetricOptionsType', cls.economic_metrics)
+    desc_opt_metric_options = r"""Economic metric (currently from TEAL) which will be used as the optimization metric.
+                        This will be calculated at every instance of the ``inner'' run to generate a distribution
+                        of economic metrics for all realizations. Currently only features ``NPV''. """
+    opt_metric_sub = InputData.parameterInputFactory('opt_metric', contentType=opt_metric_options, strictMode=True,
+                                               descr=desc_opt_metric_options)
+    optimizer.addSub(opt_metric_sub)
+    stats_metric_options = InputTypes.makeEnumType('StatsMetricOptions', 'StatsMetricOptionsType', list(cls.stats_metrics_mapping.keys()))
+    desc_stats_metric_options = r"""determines the statistical metric (calculated by RAVEN BasicStatistics
                           or EconomicRatio PostProcessors) from the ``inner'' run to be used as the
                           objective in the ``outer'' optimization.
                           \begin{itemize}
@@ -275,14 +293,14 @@ class Case(Base):
                             requested $\alpha$ value (a floating point value between 0.0 and 1.0).
                           \end{itemize}
                           """
-    metric = InputData.parameterInputFactory('metric', contentType=metric_options, strictMode=True,
-                                             descr=desc_metric_options)
-    metric.addParam(name='percent',
+    stats_metric = InputData.parameterInputFactory('stats_metric', contentType=stats_metric_options, strictMode=True,
+                                             descr=desc_stats_metric_options)
+    stats_metric.addParam(name='percent',
                     param_type=InputTypes.FloatType,
                     descr=r"""requested percentile (a floating point value between 0.0 and 100.0).
                               Required when \xmlNode{metric} is ``percentile.''
                               \default{5}""")
-    metric.addParam(name='threshold',
+    stats_metric.addParam(name='threshold',
                     param_type=InputTypes.StringType,
                     descr=r"""\begin{itemize}
                                 \item requested threshold (`median' or `zero'). Required when
@@ -292,7 +310,7 @@ class Case(Base):
                                 and 1.0). Required when \xmlNode{metric} is ``expectedShortfall'' or
                                 ``valueAtRisk.'' \default{0.05}
                               \end{itemize}""")
-    optimizer.addSub(metric)
+    optimizer.addSub(stats_metric)
     type_options = InputTypes.makeEnumType('TypeOptions', 'TypeOptionsType',
                                            ['min', 'max'])
     desc_type_options = r"""determines whether the objective should be minimized or maximized.
@@ -356,10 +374,10 @@ class Case(Base):
                                                    (prefix ``med'') are always returned with the results.
                                                    Each subnode is the RAVEN-style name of the desired
                                                    return statistic.""")
-    for stat in cls.metrics_mapping:
+    for stat, stat_info in cls.stats_metrics_mapping.items():
       if stat not in ['expectedValue', 'sigma', 'median']:
         statistic = InputData.parameterInputFactory(stat, strictMode=True,
-                                                    descr=r"""{} uses the prefix ``{}'' in the result output.""".format(stat, cls.metrics_mapping[stat]['prefix']))
+                                                    descr=rf"""{stat} uses the prefix ``{stat_info['prefix']}'' in the result output.""")
         if stat == 'percentile':
           statistic.addParam('percent', param_type=InputTypes.StringType,
                             descr=r"""requested percentile (a floating point value between 0.0 and 100.0).
@@ -385,7 +403,8 @@ class Case(Base):
     Base.__init__(self, **kwargs)
     self.name = None                   # case name
     self._mode = None                  # extrema to find: opt, sweep
-    self._metric = 'NPV'               # TODO: future work - economic metric to focus on: lcoe, profit, cost
+    self._econ_metrics = []            # list of economic metrics to return to user, return_statistics applied to each
+    self._default_econ_metric = 'NPV'  # default metric for both opt and sweep
     self.run_dir = run_dir             # location of HERON input file
     self._verbosity = 'all'            # default verbosity for RAVEN inner/outer
 
@@ -396,6 +415,7 @@ class Case(Base):
     self.dispatch_vars = {}            # non-component optimization ValuedParams
 
     self.useParallel = False           # parallel tag specified?
+    self.parallelRunInfo = {}          # parallel run info dictionary
     self.outerParallel = 0             # number of outer parallel runs to use
     self.innerParallel = 0             # number of inner parallel runs to use
 
@@ -424,7 +444,7 @@ class Case(Base):
     self._time_discretization = None   # (start, end, number) for constructing time discretization, same as argument to np.linspace
     self._Resample_T = None            # user-set increments for resources
     self._optimization_settings = None # optimization settings dictionary for outer optimization loop
-    self._workflow = 'standard' # setting for how to run HERON, default is through raven workflow
+    self._workflow = 'standard'        # setting for how to run HERON, default is through raven workflow
     self._result_statistics = {        # desired result statistics (keys) dictionary with attributes (values)
         'sigma': None,                 # user can specify additional result statistics
         'expectedValue': None,
@@ -457,7 +477,6 @@ class Case(Base):
         self._mode = item.value
       elif item.getName() == 'parallel':
         self.useParallel = True
-        self.parallelRunInfo = {}
         for sub in item.subparts:
           if sub.getName() == 'outer':
             self.outerParallel = sub.value
@@ -466,8 +485,6 @@ class Case(Base):
           elif sub.getName() == 'runinfo':
             for subsub in sub.subparts:
               self.parallelRunInfo[subsub.getName()] = str(subsub.value)
-      elif item.getName() == 'metric':
-        self._metric = item.value
       elif item.getName() == 'differential':
         self._diff_study = item.value
       elif item.getName() == 'num_arma_samples':
@@ -475,10 +492,7 @@ class Case(Base):
       elif item.getName() == 'time_discretization':
         self._time_discretization = self._read_time_discr(item)
       elif item.getName() == 'economics':
-        for sub in item.subparts:
-          self._global_econ[sub.getName()] = sub.value
-          if self.debug['enabled'] and sub.getName() == "ProjectTime":
-            self._global_econ[sub.getName()] = self.debug['macro_steps']
+        self._global_econ, self._econ_metrics = self._read_global_econ_settings(item)
       elif item.getName() == 'dispatcher':
         # instantiate a dispatcher object.
         inp = item.subparts[0]
@@ -515,6 +529,9 @@ class Case(Base):
       self.raiseAnError('No <dispatch> node was provided in the <Case> node!')
     if self._time_discretization is None:
       self.raiseAnError('<time_discretization> node was not provided in the <Case> node!')
+    # check that opt metric is part of econ metrics for output
+    if self.get_mode() == 'opt':
+      self._append_econ_metrics(self.get_opt_metric(), first=True)
     if self.innerParallel == 0 and self.useParallel:
       #set default inner parallel to number of samples (denoises)
       self.innerParallel = self._num_samples
@@ -598,6 +615,37 @@ class Case(Base):
     # TODO can we take it automatically from an ARMA later, either by default or if told to?
     return (start, end, num)
 
+  def _read_global_econ_settings(self, node):
+    """
+      Reads globalEcon settings node
+      @ In, node, InputParams.ParameterInput, economics head node
+      @ Out, global_econ_settings, dict, economics settings as dictionary
+      @ Out, econ_metrics, str, string list of indicators, such as NPV, IRR.
+    """
+    econ_subnodes = node.subparts
+
+    # economic metrics node
+    econ_metrics = []
+    metrics_node = node.findFirst('EconMetrics') # if not None, will have attr 'subparts' even if empty
+    # check if either the metrics node is NOT included --OR-- it is included but is empty
+    if metrics_node is None or not metrics_node.subparts:
+      econ_metrics.append(self._default_econ_metric) # NPV is our default
+    else:
+      for sub in metrics_node.subparts:
+        econ_metrics.append(sub.getName())
+    # remove metrics node before the for loop below
+    if metrics_node is not None:
+      econ_subnodes.remove(metrics_node)
+
+    # remaining nodes from economics
+    global_econ_settings = {}
+    for sub in econ_subnodes:
+      global_econ_settings[sub.getName()] = sub.value
+      # override project time if we are in debug mode
+      if self.debug['enabled'] and sub.getName() == "ProjectTime":
+        global_econ_settings[sub.getName()] = self.debug['macro_steps']
+    return global_econ_settings, econ_metrics
+
   def _read_optimization_settings(self, node):
     """
       Reads optimization settings node
@@ -605,25 +653,30 @@ class Case(Base):
       @ Out, opt_settings, dict, optimization settings as dictionary
     """
     opt_settings = {}
+
+    # check first for an opt metric, if not there, default to NPV
+    if node.findFirst('opt_metric') is None:
+      opt_settings['opt_metric'] = self._default_econ_metric
+
     for sub in node.subparts:
       sub_name = sub.getName()
       # add metric information to opt_settings dictionary
-      if sub_name == 'metric':
+      if sub_name == 'stats_metric':
         opt_settings[sub_name] = {}
-        metric_name = sub.value
-        opt_settings[sub_name]['name'] = metric_name
+        stats_metric_name = sub.value
+        opt_settings[sub_name]['name'] = stats_metric_name
         # some metrics have an associated parameter
-        if metric_name == 'percentile':
+        if stats_metric_name == 'percentile':
           try:
             opt_settings[sub_name]['percent'] = sub.parameterValues['percent']
           except KeyError:
             opt_settings[sub_name]['percent'] = 5
-        elif metric_name in ['sortinoRatio', 'gainLossRatio']:
+        elif stats_metric_name in ['sortinoRatio', 'gainLossRatio']:
           try:
             opt_settings[sub_name]['threshold'] = sub.parameterValues['threshold']
           except KeyError:
             opt_settings[sub_name]['threshold'] = 'zero'
-        elif metric_name in ['expectedShortfall', 'valueAtRisk']:
+        elif stats_metric_name in ['expectedShortfall', 'valueAtRisk']:
           try:
             opt_settings[sub_name]['threshold'] = sub.parameterValues['threshold']
           except KeyError:
@@ -661,12 +714,12 @@ class Case(Base):
           else:
             result_statistics[sub_name] = percent
         except KeyError:
-          result_statistics[sub_name] = self.metrics_mapping[sub_name]['percent']
+          result_statistics[sub_name] = self.stats_metrics_mapping[sub_name]['percent']
       elif sub_name in ['sortinoRatio', 'gainLossRatio']:
         try:
           result_statistics[sub_name] = sub.parameterValues['threshold']
         except KeyError:
-          result_statistics[sub_name] = self.metrics_mapping[sub_name]['threshold']
+          result_statistics[sub_name] = self.stats_metrics_mapping[sub_name]['threshold']
       elif sub_name in ['expectedShortfall', 'valueAtRisk']:
         try:
           threshold = sub.parameterValues['threshold']
@@ -680,7 +733,7 @@ class Case(Base):
           else:
             result_statistics[sub_name] = sub.parameterValues['threshold']
         except KeyError:
-          result_statistics[sub_name] = self.metrics_mapping[sub_name]['threshold']
+          result_statistics[sub_name] = self.stats_metrics_mapping[sub_name]['threshold']
       else:
         result_statistics[sub_name] = None
 
@@ -717,9 +770,23 @@ class Case(Base):
     pre = tab*tabs
     self.raiseADebug(pre+'Case:')
     self.raiseADebug(pre+'  name:', self.name)
-    self.raiseADebug(pre+'  mode:', self._mode)
-    self.raiseADebug(pre+'  meric:', self._metric)
+    self.raiseADebug(pre+'  mode:', self.get_mode())
+    if self.get_mode() == 'opt':
+      self.raiseADebug(pre+'  opt_metric:', self.get_opt_metric())
+    for metric in self.get_econ_metrics():
+      self.raiseADebug(pre+'  metric:', metric)
     self.raiseADebug(pre+'  diff_study:', self._diff_study)
+
+  def _append_econ_metrics(self, new_metric, first=False):
+    """
+      Prints info about self
+      @ In, None
+      @ Out, None
+    """
+    pos = 0 if first else -1
+    econ_metrics = self.get_econ_metrics()
+    if new_metric not in econ_metrics:
+      econ_metrics.insert(pos, new_metric)
 
   #### ACCESSORS ####
   def get_increments(self):
@@ -751,9 +818,8 @@ class Case(Base):
       @ Out, None
     """
     if 'active' not in self._global_econ:
-      # NOTE self._metric can only be NPV right now!
-      ## so no need for the "target" in the indicator
-      indic = {'name': [self._metric]}
+      indic = {'name': self.get_econ_metrics() } # can be a list of strings
+      # indic = {'target': 0 } # TODO: update with 0 for LCOx, then generic for NPVsearch
       indic['active'] = []
       for comp in components:
         comp_name = comp.name
@@ -779,13 +845,40 @@ class Case(Base):
     """
     return self._labels
 
-  def get_metric(self):
+  def get_optimization_settings(self):
     """
       Accessor
       @ In, None
-      @ Out, metric, str, target metric for this case
+      @ Out, optimization_settings, dict, optimization settings for outer
     """
-    return self._metric
+    return self._optimization_settings
+
+  def get_opt_metric(self):
+    """
+      Accessor
+      @ In, None
+      @ Out, opt_metric, str, target economic metric for outer optimizaton in this case
+    """
+    opt_settings = self.get_optimization_settings()
+    if opt_settings:
+      return opt_settings.get('opt_metric', None)
+    return self._default_econ_metric
+
+  def get_result_statistics(self):
+    """
+      Accessor
+      @ In, None
+      @ Out, result_statistics, dict, results statistics for economic metrics in outer
+    """
+    return self._result_statistics
+
+  def get_econ_metrics(self):
+    """
+      Accessor
+      @ In, None
+      @ Out, econ_metrics, str, string list of indicators, such as NPV, IRR.
+    """
+    return self._econ_metrics
 
   def get_mode(self):
     """

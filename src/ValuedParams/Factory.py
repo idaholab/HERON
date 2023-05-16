@@ -39,7 +39,7 @@ class ValuedParamFactory(EntityFactory):
     add_descr = ''
     if allowed is None:
       allowed = allowable[kind]
-      allowed_str = ', '.join(['\\xmlNode{{{}}}'.format(a) for a in allowed])
+      allowed_str = ', '.join([f'\\xmlNode{{{a}}}' for a in allowed])
       add_descr = rf"""This value can be taken from any \emph{{one}} of the sources as subnodes (described below): {allowed_str}."""
 
     if descr is None:

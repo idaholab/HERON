@@ -517,29 +517,6 @@ class CashFlow:
     params = {'alpha': a, 'driver': D, 'ref_driver': Dp, 'scaling': x, 'cost': cost} # TODO float(cost) except in pyomo it's not a float
     return params
 
-  def get_cashflow_params(self, values_dict, aliases, dispatches, years):
-    """
-      creates a param dict for initializing a CashFlows.CashFlow
-      FIXME deprecated
-      @ In, values_dict, dict, parameters dictionary
-      @ In, aliases, dict, aliased names (unused)
-      @ In, dispatches, dict, component activity
-      @ In, years, int, years to obtain values for
-      @ Out, params, dict, params needed for CashFlow
-    """
-    # OLD
-    params = {'name': self.name,
-              'reference': values_dict['ref_driver'],
-              'driver': values_dict['driver'],
-              'alpha': values_dict['alpha'],
-              'X': values_dict['scaling'],
-              'mult_target': self._mult_target,
-              'inflation': self._inflation,
-              'multiply': None,
-              'tax': self._taxable,
-              }
-    return params
-
   #######
   # API #
   #######

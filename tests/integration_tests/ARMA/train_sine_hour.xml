@@ -96,7 +96,7 @@
   <Metrics>
     <Metric name="metric" subType="SKL">
       <metricType>regression|mean_squared_error</metricType>
-    </stats_metric>
+    </Metric>
   </Metrics>
 
   <OutStreams>

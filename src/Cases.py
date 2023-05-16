@@ -246,7 +246,7 @@ class Case(Base):
                                                and presented in the results output.""")
       econ_metrics.addSub(metric)
     econ.addSub(econ_metrics)
-    input_specs.addSub(econ)     # is this actually CashFlow verbosity or is it really HERON verbosity?
+    input_specs.addSub(econ)
 
     # dispatcher
     dispatch = InputData.parameterInputFactory('dispatcher', ordered=False,

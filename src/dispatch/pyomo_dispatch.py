@@ -530,23 +530,36 @@ class Pyomo(Dispatcher):
     cap_res = comp.get_capacity_var()       # name of resource that defines capacity
     cap = comp.get_capacity(meta)[0][cap_res]
     r = m.resource_index_map[comp][cap_res] # production index of the governing resource
-    limit_delta = comp.ramp_limit * cap
+    limit_delta = comp.ramp_limit * cap # NOTE: if cap is negative, then this is negative.
+    if limit_delta < 0:
+      neg_cap = True
+    else:
+      neg_cap = False
     # if we're limiting ramp frequency, make vars and rules for that
+    print('DEBUGG ramp freq?', comp.name, comp.ramp_freq)
     if comp.ramp_freq:
       # create binaries for tracking ramping
-      up = pyo.Var(m.T, initialize=0)
-      down = pyo.Var(m.T, initialize=0)
-      steady = pyo.Var(m.T, initialize=1)
+      up = pyo.Var(m.T, initialize=0, domain=pyo.Binary)
+      down = pyo.Var(m.T, initialize=0, domain=pyo.Binary)
+      steady = pyo.Var(m.T, initialize=1, domain=pyo.Binary)
       setattr(m, f'{comp.name}_up_ramp_tracker', up)
       setattr(m, f'{comp.name}_down_ramp_tracker', down)
       setattr(m, f'{comp.name}_steady_ramp_tracker', steady)
       ramp_trackers = (down, up, steady)
-    # limit production changes to ramp rates
-    ramp_rule = lambda mod, t: \
-        self._ramp_rule(prod_name, r, limit_delta, t, mod,
-                        limit_freq=comp.ramp_freq)
-    constr = pyo.Constraint(m.T, rule=ramp_rule)
-    setattr(m, f'{comp.name}_ramp_constr', constr)
+    else:
+      ramp_trackers = None
+    # limit production changes when ramping down
+    ramp_rule_down = lambda mod, t: \
+        self._ramp_rule_down(prod_name, r, limit_delta, neg_cap, t, mod,
+                        bins=ramp_trackers)
+    constr = pyo.Constraint(m.T, rule=ramp_rule_down)
+    setattr(m, f'{comp.name}_ramp_down_constr', constr)
+    # limit production changes when ramping up
+    ramp_rule_up = lambda mod, t: \
+        self._ramp_rule_up(prod_name, r, limit_delta, neg_cap, t, mod,
+                        bins=ramp_trackers)
+    constr = pyo.Constraint(m.T, rule=ramp_rule_up)
+    setattr(m, f'{comp.name}_ramp_up_constr', constr)
     # if ramping frequency limit, impose binary constraints
     if comp.ramp_freq:
       # binaries rule, for exclusive choice up/down/steady
@@ -916,29 +929,86 @@ class Pyomo(Dispatcher):
     else:
       raise TypeError('Unrecognized production limit "kind":', kind)
 
-  def _ramp_rule(self, prod_name, r, limit, t, m, limit_freq=None):
+  def _ramp_rule_down(self, prod_name, r, limit, neg_cap, t, m, bins=None):
+    """
+      Constructs pyomo production ramping constraints for reducing production level.
+      Note that this is number-getting-less-positive for positive-defined capacity, while
+        it is number-getting-less-negative for negative-defined capacity.
+      This means that dQ is negative for positive-defined capacity, but positive for vice versa
+      @ In, prod_name, str, name of production variable
+      @ In, r, int, index of resource for capacity constraining
+      @ In, limit, float, limiting change in production level across time steps. NOTE: negative for negative-defined capacity.
+      @ In, neg_cap, bool, True if capacity is expressed as negative (consumer)
+      @ In, t, int, time index for ramp limit rule (NOTE not pyomo index, rather fixed index)
+      @ In, m, pyo.ConcreteModel, associated model
+      @ In, bins, tuple, optional, (lower, steady, upper) binaries if limiting ramp frequency
+    """
+    prod = getattr(m, prod_name)
+    if t == 0:
+      return pyo.Constraint.Skip
+    delta = prod[r, t] - prod[r, t-1]
+    # special treatment if we have frequency-limiting binaries available
+    if bins is None:
+      if neg_cap:
+        # NOTE change in production should be "less positive" than the max
+        #   "negative decrease" in production (decrease is positive when defined by consuming)
+        return delta <= - limit
+      else:
+        # dq is negative, - limit is negative
+        return delta >= - limit
+    else:
+      eps = 1.0 # aux parameter to force binaries to behave, TODO needed?
+      down = bins[0][t]
+      up = bins[1][t]
+      # NOTE we're following the convention that "less negative" is ramping "down"
+      #   for capacity defined by consumption
+      #   e.g. consuming 100 ramps down to consuming 70 is (-100 -> -70), dq = 30
+      if neg_cap:
+        # dq <= limit * dt * Bu + eps * Bd, if limit <= 0
+        # dq is positive, - limit is positive
+        return delta <= - limit * down - eps * up
+      else:
+        # dq <= limit * dt * Bu - eps * Bd, if limit >= 0
+        # dq is negative, - limit is negative
+        return delta >= - limit * down + eps * up
+
+  def _ramp_rule_up(self, prod_name, r, limit, neg_cap, t, m, bins=None):
     """
       Constructs pyomo production ramping constraints.
       @ In, prod_name, str, name of production variable
       @ In, r, int, index of resource for capacity constraining
       @ In, limit, float, limiting change in production level across time steps
+      @ In, neg_cap, bool, True if capacity is expressed as negative (consumer)
       @ In, t, int, time index for ramp limit rule (NOTE not pyomo index, rather fixed index)
       @ In, m, pyo.ConcreteModel, associated model
-      @ In, limit_freq, tuple, optional, (lower, steady, upper) binaries if limiting ramp frequency
+      @ In, bins, tuple, optional, (lower, steady, upper) binaries if limiting ramp frequency
     """
-    eps = 1.0 # aux parameter to force binaries to behave, TODO needed?
     prod = getattr(m, prod_name)
-    if t > 0:
-      delta = prod[r, t] - prod[r, t-1]
-      if limit_freq:
-        lower = -limit * limit_freq[0] + eps * limit_freq[1]
-        upper =  limit * limit_freq[1] + eps * limit_freq[0]
-      else:
-        lower = -limit
-        upper = limit
-      return pyo.inequality(lower, delta, upper)
-    else:
+    if t == 0:
       return pyo.Constraint.Skip
+    delta = prod[r, t] - prod[r, t-1]
+    if bins is None:
+      if neg_cap:
+        # NOTE change in production should be "more positive" than the max
+        #   "negative increase" in production (increase is negative when defined by consuming)
+        return delta >= limit
+      else:
+        # change in production should be less than the max production increase
+        return delta <= limit
+    else:
+      # special treatment if we have frequency-limiting binaries available
+      eps = 1.0 # aux parameter to force binaries to behave, TODO needed?
+      down = bins[0][t]
+      up = bins[1][t]
+      # NOTE we're following the convention that "more negative" is ramping "up"
+      #   for capacity defined by consumption
+      #   e.g. consuming 100 ramps up to consuming 130 is (-100 -> -130), dq = -30
+      if neg_cap:
+        # dq >= limit * dt * Bu + eps * Bd, if limit <= 0
+        return delta >= limit * up + eps * down
+      else:
+        # dq <= limit * dt * Bu - eps * Bd, if limit >= 0
+        return delta <= limit * up - eps * down
 
   def _ramp_freq_rule(self, Bd, Bu, tao, t, m):
     """
@@ -954,7 +1024,7 @@ class Pyomo(Dispatcher):
     # looking-back-window shouldn't be longer than existing time
     tao = min(t, tao)
     # how many ramp-down events in backward window?
-    tally = sum(1 - Bu[tm] for tm in range(t - tao, t))
+    tally = sum(1 - Bd[tm] for tm in range(t - tao, t))
     # only allow ramping up if no rampdowns in back window
     ## but we can't use if statements, so use binary math
     return Bu[t] <= 1 / tao * tally

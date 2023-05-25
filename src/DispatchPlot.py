@@ -161,11 +161,14 @@ class DispatchPlot(PlotPlugin):
                 negative_color.append(cdict.get(cindex))
       # Plot the micro-step variable on the x-axis (i.e Time)
       # Stackplot
-      ax.stackplot(df[self._microName],*[df[key] for key in positive_dat],labels= positive_label, baseline='zero', colors= [color+alpha for color in positive_color[:len(negative_dat)]]+[Gray])
-      ax.stackplot(df[self._microName],*[df[key] for key in negative_dat], labels= negative_label, baseline='zero', colors= [color+alpha for color in negative_color[:len(negative_dat)]] +[Gray])
+      if(len(positive_dat) > 0):
+        ax.stackplot(df[self._microName],*[df[key] for key in positive_dat],labels= positive_label, baseline='zero', colors= [color+alpha for color in positive_color[:len(negative_dat)]]+[Gray])
+      if(len(negative_dat) > 0):
+        ax.stackplot(df[self._microName],*[df[key] for key in negative_dat], labels= negative_label, baseline='zero', colors= [color+alpha for color in negative_color[:len(negative_dat)]] +[Gray])
       # Lineplot
-      for key, c, llabel in zip(level_dat, level_color[:len(level_dat)] + [Dark], level_label[:len(level_dat)]):
-        ax2.plot(df[self._microName], df[key], linestyle=ls, label=llabel, color=c )
+      if(len(level_dat) > 0):
+        for key, c, llabel in zip(level_dat, level_color[:len(level_dat)] + [Dark], level_label[:len(level_dat)]):
+          ax2.plot(df[self._microName], df[key], linestyle=ls, label=llabel, color=c )
       # Set figure title, legend, and grid
       ax.set_title(key.title().split('_')[-1])
       ax.set_xlabel(self._microName)

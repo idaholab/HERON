@@ -35,10 +35,6 @@ class Case(Base):
     Produces something, often as the cost of something else
     TODO this case is for "sweep-opt", need to make a superclass for generic
   """
-  # economic metrics that can be returned by sweep results OR alongside optimization results
-  #    NOTE: might be important to index the stats_metrics_mapping... does VaR of IRR make sense?
-  economic_metrics = ['NPV', 'PI', 'IRR'] #TODO: expand with NPVsearch and LCOx (specific case of NPVsearch)
-
   # statistical metrics that can be applied to economic metrics within the optimization objective
   #    or returned with results
   # each metric contains a dictionary with the following keys:
@@ -62,6 +58,14 @@ class Case(Base):
                            'gainLossRatio': {'prefix': 'glr', 'optimization_default': 'max', 'threshold': 'median'},
                            'expectedShortfall': {'prefix': 'es', 'optimization_default': 'min', 'threshold': ['0.05']},
                            'valueAtRisk': {'prefix': 'VaR', 'optimization_default': 'min', 'threshold': ['0.05']}}
+
+  # economic metrics that can be returned by sweep results OR alongside optimization results
+  #    NOTE: might be important to index the stats_metrics_mapping... does VaR of IRR make sense?
+  economic_metrics_mapping = {'NPV': {'output_name': 'NPV', 'stats_map': stats_metrics_mapping},
+                              'PI': {'output_name': 'PI', 'stats_map': stats_metrics_mapping},
+                              'IRR': {'output_name': 'IRR', 'stats_map': stats_metrics_mapping},
+                              'LC': {'output_name': 'LC_Mult', 'stats_map': stats_metrics_mapping}}
+  economic_metrics = list(em['output_name'] for __,em in economic_metrics_mapping.items())
 
   #### INITIALIZATION ####
   @classmethod
@@ -240,10 +244,13 @@ class Case(Base):
                                                 Not to be confused with the ``opt_metric`` which is used only in opt mode.
                                                 \default{NPV}"""
     econ_metrics = InputData.parameterInputFactory('EconMetrics', descr=desc_econ_metrics)
-    for metric_name in cls.economic_metrics:
-      metric = InputData.parameterInputFactory(metric_name, strictMode=True,
-                                               descr=rf"""{metric_name} metric which will be calculated by TEAL
-                                               and presented in the results output.""")
+    for econ_metric in cls.economic_metrics_mapping:
+      descr = rf"""{econ_metric} metric which will be calculated by TEAL and presented in the results output."""
+      metric = InputData.parameterInputFactory(econ_metric, strictMode=True, descr=descr)
+      if econ_metric == 'LC':
+        metric.addParam('target', param_type=InputTypes.FloatType,
+                            descr=r"""requested target for NPV search. In the case of levelized cost,
+                            the NPV target is 0 which results in the break-even cost. \default{0}""")
       econ_metrics.addSub(metric)
     econ.addSub(econ_metrics)
     input_specs.addSub(econ)
@@ -270,12 +277,15 @@ class Case(Base):
     optimizer = InputData.parameterInputFactory('optimization_settings',
                                                 descr=r"""This node defines the settings to be used for the optimizer in
                                                 the ``outer'' run.""")
-    opt_metric_options = InputTypes.makeEnumType('OptMetricOptions', 'OptMetricOptionsType', cls.economic_metrics)
+    opt_metric_options = InputTypes.makeEnumType('OptMetricOptions', 'OptMetricOptionsType', list(cls.economic_metrics_mapping.keys()))
     desc_opt_metric_options = r"""Economic metric (currently from TEAL) which will be used as the optimization metric.
                         This will be calculated at every instance of the ``inner'' run to generate a distribution
                         of economic metrics for all realizations. Currently only features ``NPV''. """
     opt_metric_sub = InputData.parameterInputFactory('opt_metric', contentType=opt_metric_options, strictMode=True,
                                                descr=desc_opt_metric_options)
+    opt_metric_sub.addParam('target', param_type=InputTypes.FloatType,
+                            descr=r"""requested target for NPV search. In the case of levelized cost,
+                            the NPV target is 0 which results in the break-even cost. \default{0}""")
     optimizer.addSub(opt_metric_sub)
     stats_metric_options = InputTypes.makeEnumType('StatsMetricOptions', 'StatsMetricOptionsType', list(cls.stats_metrics_mapping.keys()))
     desc_stats_metric_options = r"""determines the statistical metric (calculated by RAVEN BasicStatistics

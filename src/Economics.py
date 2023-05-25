@@ -304,8 +304,8 @@ class CashFlow:
     cf.addParam('inflation', param_type=InputTypes.StringType, required=True,
         descr=r"""determines how inflation affects this CashFlow every cycle. See the CashFlow submodule
               of RAVEN.""")
-    cf.addParam('mult_target', param_type=InputTypes.BoolType, required=True,
-        descr=r"""indicates whether this parameter should be a target of the multiplication factor
+    cf.addParam('mult_target', param_type=InputTypes.BoolType, required=False,
+        descr=r"""<DEPRECATED> indicates whether this parameter should be a target of the multiplication factor
               for NPV matching analyses.""")
     period_enum = InputTypes.makeEnumType('period_opts', 'period_opts', ['hour', 'year'])
     cf.addParam('period', param_type=period_enum, required=False,
@@ -323,6 +323,10 @@ class CashFlow:
             corresponds to $\alpha$ in the CashFlow equation. If \xmlNode{reference_driver}
             is 1, then this is the price-per-unit for the CashFlow."""
     reference_price = ValuedParams.factory.make_input_specs('reference_price', descr=descr, kind='post-dispatch')
+    levelized_cost = InputData.parameterInputFactory('levelized_cost', strictMode=True,
+                                            descr=r"""indicates whether HERON and TEAL are meant to solve for the
+                                            levelized price related to this cashflow.""")
+    reference_price.addSub(levelized_cost)
     cf.addSub(reference_price)
 
     descr = r"""determines the number of units sold to which the \xmlNode{reference_price}
@@ -379,7 +383,6 @@ class CashFlow:
     # handle type directly here momentarily
     self._taxable = item.parameterValues['taxable']
     self._inflation = item.parameterValues['inflation']
-    self._mult_target = item.parameterValues['mult_target']
     self._type = item.parameterValues['type']
     self._period = item.parameterValues.get('period', 'hour')
     # the remainder of the entries are ValuedParams, so they'll be evaluated as-needed
@@ -387,7 +390,7 @@ class CashFlow:
       if sub.getName() == 'driver':
         self._set_valued_param('_driver', sub)
       elif sub.getName() == 'reference_price':
-        self._set_valued_param('_alpha', sub)
+        price_is_levelized = self.set_reference_price(sub) # setting "_alpha" here
       elif sub.getName() == 'reference_driver':
         self._set_valued_param('_reference', sub)
       elif sub.getName() == 'scaling_factor_x':
@@ -398,11 +401,15 @@ class CashFlow:
       else:
         raise IOError(f'Unrecognized "CashFlow" node: {sub.getName()}')
 
+    # resolve levelized cost
+    self._mult_target = price_is_levelized
+    # user asked to find Time Invariant levelized cost
+    if self._alpha is None and price_is_levelized:
+      self._set_fixed_param('_alpha', 1)
+
     # driver is required!
     if self._driver is None:
       raise IOError(f'No <driver> node provided for CashFlow {self.name}!')
-    if self._alpha is None:
-      raise IOError(f'No <reference_price> node provided for CashFlow {self.name}!')
 
     # defaults
     var_names = ['_reference', '_scale']
@@ -410,6 +417,24 @@ class CashFlow:
       if getattr(self, name) is None:
         # TODO raise a warning?
         self._set_fixed_param(name, 1)
+
+  def set_reference_price(self, node):
+    """
+      Sets the reference_price attribute based on given ValuedParam or if Levelized Cost
+      @ In, node, InputParams.ParameterInput, reference_price head node
+      @ Out, price_is_levelized, bool, are we computing levelized cost for this cashflow?
+    """
+    levelized_cost = node.popSub('levelized_cost')
+    try:
+      self._set_valued_param('_alpha', node)
+    except AttributeError as e:
+      if levelized_cost:
+        self._set_fixed_param('_alpha', 1)
+      else:
+        raise IOError(f'No <reference_price> node provided for CashFlow {self.name}!') from e
+    price_is_levelized = bool(levelized_cost)
+    return price_is_levelized
+
 
   # Not none set it to default 1
   def get_period(self):

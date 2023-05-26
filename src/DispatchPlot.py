@@ -168,7 +168,8 @@ class DispatchPlot(PlotPlugin):
       # Lineplot
       if(len(level_dat) > 0):
         for key, c, llabel in zip(level_dat, level_color[:len(level_dat)] + [Dark], level_label[:len(level_dat)]):
-          ax2.plot(df[self._microName], df[key], linestyle=ls, label=llabel, color=c )
+          ax2.plot(df[self._microName], df[key], linestyle=ls, label=llabel, color=c)
+      # Sometimes users cases don't produce negative valued data so we need to check
       # Set figure title, legend, and grid
       ax.set_title(key.title().split('_')[-1])
       ax.set_xlabel(self._microName)

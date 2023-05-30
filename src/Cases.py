@@ -22,6 +22,8 @@ from HERON.src.ValuedParamHandler import ValuedParamHandler
 from HERON.src.validators.Factory import known as known_validators
 from HERON.src.validators.Factory import get_class as get_validator
 
+from collections import OrderedDict
+
 import HERON.src._utils as hutils
 try:
   import ravenframework
@@ -58,13 +60,14 @@ class Case(Base):
                            'gainLossRatio': {'prefix': 'glr', 'optimization_default': 'max', 'threshold': 'median'},
                            'expectedShortfall': {'prefix': 'es', 'optimization_default': 'min', 'threshold': ['0.05']},
                            'valueAtRisk': {'prefix': 'VaR', 'optimization_default': 'min', 'threshold': ['0.05']}}
-
   # economic metrics that can be returned by sweep results OR alongside optimization results
   #    NOTE: might be important to index the stats_metrics_mapping... does VaR of IRR make sense?
-  economic_metrics_mapping = {'NPV': {'output_name': 'NPV', 'stats_map': stats_metrics_mapping},
-                              'PI': {'output_name': 'PI', 'stats_map': stats_metrics_mapping},
-                              'IRR': {'output_name': 'IRR', 'stats_map': stats_metrics_mapping},
-                              'LC': {'output_name': 'LC_Mult', 'stats_map': stats_metrics_mapping}}
+  economic_metrics_mapping = {'NPV': {'output_name': 'NPV', 'TEAL_name': 'NPV', 'stats_map': stats_metrics_mapping},
+                              'PI': {'output_name': 'PI', 'TEAL_name': 'PI', 'stats_map': stats_metrics_mapping},
+                              'IRR': {'output_name': 'IRR', 'TEAL_name': 'IRR', 'stats_map': stats_metrics_mapping},
+                              'LC': {'output_name': 'LC_Mult',
+                                     'TEAL_name': 'NPV_search',
+                                     'stats_map': stats_metrics_mapping}}
   economic_metrics = list(em['output_name'] for __,em in economic_metrics_mapping.items())
 
   #### INITIALIZATION ####
@@ -413,7 +416,9 @@ class Case(Base):
     Base.__init__(self, **kwargs)
     self.name = None                   # case name
     self._mode = None                  # extrema to find: opt, sweep
-    self._econ_metrics = []            # list of economic metrics to return to user, return_statistics applied to each
+    self._econ_metrics = OrderedDict() # dict of economic metrics to return to user, return_statistics applied to each
+    self._npv_target = None
+    self.use_levelized_inner = False
     self._default_econ_metric = 'NPV'  # default metric for both opt and sweep
     self.run_dir = run_dir             # location of HERON input file
     self._verbosity = 'all'            # default verbosity for RAVEN inner/outer
@@ -560,6 +565,11 @@ class Case(Base):
     self.dispatcher.set_time_discr(self._time_discretization)
     self.dispatcher.set_validator(self.validator)
 
+    # should we replace the inner objective function?
+    #   from sum of marginal cashflows -> levelized cost of marginal
+    # FIXME: this might need to change if CAPEX is the mult target...
+    self.use_levelized_inner = bool(self._npv_target is not None)
+
     self.raiseADebug(f'Successfully initialized Case {self.name}.')
 
   def _read_data_handling(self, node):
@@ -635,14 +645,19 @@ class Case(Base):
     econ_subnodes = node.subparts
 
     # economic metrics node
-    econ_metrics = []
+    econ_metrics = OrderedDict()
     metrics_node = node.findFirst('EconMetrics') # if not None, will have attr 'subparts' even if empty
     # check if either the metrics node is NOT included --OR-- it is included but is empty
     if metrics_node is None or not metrics_node.subparts:
-      econ_metrics.append(self._default_econ_metric) # NPV is our default
+      # NPV is our default
+      econ_metrics[self._default_econ_metric] = self.economic_metrics_mapping[self._default_econ_metric]
     else:
+      # Loop through all requested economic metrics
       for sub in metrics_node.subparts:
-        econ_metrics.append(sub.getName())
+        econ_metrics[sub.getName()] = self.economic_metrics_mapping[sub.getName()]
+        # if requesting levelized cost (or NPV search), look for a target (default = 0 -> break-even cost)
+        if sub.getName()  == 'LC':
+          self._npv_target = sub.parameterValues.get('target', 0)
     # remove metrics node before the for loop below
     if metrics_node is not None:
       econ_subnodes.remove(metrics_node)
@@ -783,7 +798,7 @@ class Case(Base):
     self.raiseADebug(pre+'  mode:', self.get_mode())
     if self.get_mode() == 'opt':
       self.raiseADebug(pre+'  opt_metric:', self.get_opt_metric())
-    for metric in self.get_econ_metrics():
+    for metric in self.get_econ_metrics(nametype='TEAL'):
       self.raiseADebug(pre+'  metric:', metric)
     self.raiseADebug(pre+'  diff_study:', self._diff_study)
 
@@ -793,10 +808,15 @@ class Case(Base):
       @ In, None
       @ Out, None
     """
-    pos = 0 if first else -1
-    econ_metrics = self.get_econ_metrics()
-    if new_metric not in econ_metrics:
-      econ_metrics.insert(pos, new_metric)
+    # we are updating the stored economic metric dictionary with new entries via an ordered dict
+    if first:
+      # there has to be a better way, but OrderedDict has no "prepend" method
+      new_dict = OrderedDict()
+      new_dict[new_metric] = self.economic_metrics_mapping[new_metric]
+      new_dict.update(self._econ_metrics)
+      self._econ_metrics = new_dict
+    else:
+      self._econ_metrics[new_metric] = self.economic_metrics_mapping[new_metric]
 
   #### ACCESSORS ####
   def get_increments(self):
@@ -828,7 +848,8 @@ class Case(Base):
       @ Out, None
     """
     if 'active' not in self._global_econ:
-      indic = {'name': self.get_econ_metrics() } # can be a list of strings
+      indic = {'name': self.get_econ_metrics(nametype='TEAL'), # can be a list of strings
+               'target': self._npv_target}
       # indic = {'target': 0 } # TODO: update with 0 for LCOx, then generic for NPVsearch
       indic['active'] = []
       for comp in components:
@@ -882,13 +903,17 @@ class Case(Base):
     """
     return self._result_statistics
 
-  def get_econ_metrics(self):
+  def get_econ_metrics(self, nametype='output'):
     """
       Accessor
       @ In, None
+      @ Out, nametype, str, economic metric name to use (options: 'output' or 'TEAL')
       @ Out, econ_metrics, str, string list of indicators, such as NPV, IRR.
     """
-    return self._econ_metrics
+    assert nametype in ['output', 'TEAL']
+    name = f'{nametype}_name'
+    econ_metrics = list(e[name] for _,e in self._econ_metrics.items())
+    return econ_metrics
 
   def get_mode(self):
     """

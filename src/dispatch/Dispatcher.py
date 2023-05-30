@@ -130,6 +130,11 @@ class Dispatcher(MessageUser, InputDataUser):
     total = 0
     specific_meta = dict(meta) # TODO what level of copying do we need here?
     resource_indexer = meta['HERON']['resource_indexer']
+    use_levelized_inner = meta['HERON']['Case'].use_levelized_inner
+
+    multiplied = 0
+    non_multiplied = 0
+
     #print('DEBUGG computing cashflows!')
     for comp in components:
       #print(f'DEBUGG ... comp {comp.name}')
@@ -146,8 +151,11 @@ class Dispatcher(MessageUser, InputDataUser):
         specific_meta['HERON']['time_index'] = t + time_offset
         specific_meta['HERON']['time_value'] = time
         cfs = comp.get_state_cost(specific_activity, specific_meta, marginal=True)
+        print(cfs)
         time_subtotal = sum(cfs.values())
         comp_subtotal += time_subtotal
+      # if comp.contains_mult_target:
+
       total += comp_subtotal
     return total
 

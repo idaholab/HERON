@@ -298,7 +298,7 @@ class Template(TemplateBase, Base):
     # outer results
     group_outer_results = var_groups.find(".//Group[@name='GRO_outer_results']")
     # add required defaults
-    econ_metrics = case.get_econ_metrics()
+    econ_metrics = case.get_econ_metrics(nametype='output')
     has_mult_metrics = len(econ_metrics) > 1
     # loop through all economic metrics (e.g., NPV, IRR) and apply required defaults to each
     default_stats_prefixes = self._get_stats_metrics_mapping(case, DEFAULT_STATS_NAMES)
@@ -1182,7 +1182,7 @@ class Template(TemplateBase, Base):
       @ Out, None
     """
     # get all economic metrics intended for use in TEAL and reported back
-    econ_metrics = case.get_econ_metrics()
+    econ_metrics = case.get_econ_metrics(nametype='output')
     # handle VariableGroups and data objects
     var_groups = template.find('VariableGroups')
     data_objs = template.find('DataObjects')
@@ -1211,7 +1211,7 @@ class Template(TemplateBase, Base):
     # final return variable group (sent to outer)
     group_final_return = var_groups.find(".//Group[@name='GRO_final_return']")
     # add required defaults
-    econ_metrics = case.get_econ_metrics()
+    econ_metrics = case.get_econ_metrics(nametype='output')
     has_mult_metrics = len(econ_metrics) > 1
     # loop through all economic metrics (e.g., NPV, IRR) and apply required defaults to each
     default_stats_prefixes = self._get_stats_metrics_mapping(case, DEFAULT_STATS_NAMES)
@@ -1566,7 +1566,7 @@ class Template(TemplateBase, Base):
       @ Out, names, list, list of names of statistics requested for output
     """
     names = []
-    econ_metrics = case.get_econ_metrics()
+    econ_metrics = case.get_econ_metrics(nametype='output')
     result_statistics = case.get_result_statistics()
 
     for e_metric in econ_metrics:

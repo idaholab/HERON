@@ -78,6 +78,7 @@ class Component(Base, CashFlowUser):
     self._produces = []
     self._stores = []
     self._demands = []
+    self.contains_mult_target = False
 
   def __repr__(self):
     """
@@ -128,6 +129,9 @@ class Component(Base, CashFlowUser):
     if econ_node is None:
       self.raiseAnError(IOError, f'<economics> node missing from component "{self.name}"!')
     CashFlowUser.read_input(self, econ_node)
+
+    # determine if this component holds a mult target
+    self.contains_mult_target = any(cf.is_mult_target() for cf in self.get_economics().get_cashflows())
 
   def get_crossrefs(self):
     """

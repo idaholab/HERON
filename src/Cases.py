@@ -877,7 +877,7 @@ class Case(Base):
     # FIXME: if the levelized cashflow has a capacity driver (once we allow it), then this should return False
     use_levelized_inner = True
 
-    #
+    # for all remaining levelized cash flows, get tracker and resource for related Activity (saving it to component)
     for comp, cfs in levelized_cfs.items():
       comp.set_levelized_cost_meta(cfs)
     return use_levelized_inner

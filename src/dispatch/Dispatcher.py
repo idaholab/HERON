@@ -127,13 +127,14 @@ class Dispatcher(MessageUser, InputDataUser):
     """
     if state_args is None:
       state_args = {}
+
+    if meta['HERON']['Case'].use_levelized_inner:
+      total = self._compute_levelized_cashflows(components, activity, times, meta, state_args, time_offset)
+      return total
+
     total = 0
     specific_meta = dict(meta) # TODO what level of copying do we need here?
     resource_indexer = meta['HERON']['resource_indexer']
-    use_levelized_inner = meta['HERON']['Case'].use_levelized_inner
-
-    multiplied = 0
-    non_multiplied = 0
 
     #print('DEBUGG computing cashflows!')
     for comp in components:
@@ -151,12 +152,59 @@ class Dispatcher(MessageUser, InputDataUser):
         specific_meta['HERON']['time_index'] = t + time_offset
         specific_meta['HERON']['time_value'] = time
         cfs = comp.get_state_cost(specific_activity, specific_meta, marginal=True)
-        print(cfs)
         time_subtotal = sum(cfs.values())
         comp_subtotal += time_subtotal
-      # if comp.contains_mult_target:
-
       total += comp_subtotal
     return total
 
+
+  def _compute_levelized_cashflows(self, components, activity, times, meta, state_args=None, time_offset=0):
+    """
+      Method to compute CashFlow evaluations given components and their activity.
+      @ In, components, list, HERON components whose cashflows should be evaluated
+      @ In, activity, DispatchState instance, activity by component/resources/time
+      @ In, times, np.array(float), time values to evaluate; may be length 1 or longer
+      @ In, meta, dict, additional info to be passed through to functional evaluations
+      @ In, state_args, dict, optional, additional arguments to pass while getting activity state
+      @ In, time_offset, int, optional, increase time index tracker by this value if provided
+      @ Out, total, float, total cashflows for given components
+    """
+    total = 0
+    specific_meta = dict(meta) # TODO what level of copying do we need here?
+    resource_indexer = meta['HERON']['resource_indexer']
+
+    multiplied = 0
+    non_multiplied = 0
+
+    #print('DEBUGG computing cashflows!')
+    for comp in components:
+      #print(f'DEBUGG ... comp {comp.name}')
+      specific_meta['HERON']['component'] = comp
+      multiplied_comp = 0
+      non_multiplied_comp = 0
+      for t, time in enumerate(times):
+        #print(f'DEBUGG ... ... time {t}')
+        # NOTE care here to assure that pyomo-indexed variables work here too
+        specific_activity = {}
+        for tracker in comp.get_tracking_vars():
+          specific_activity[tracker] = {}
+          for resource in resource_indexer[comp]:
+            specific_activity[tracker][resource] = activity.get_activity(comp, tracker, resource, time, **state_args)
+        specific_meta['HERON']['time_index'] = t + time_offset
+        specific_meta['HERON']['time_value'] = time
+        cfs = comp.get_state_cost(specific_activity, specific_meta, marginal=True)
+
+        if comp.levelized_meta:
+          for cf in comp.levelized_meta.keys():
+            lcf = cfs.pop(cf) # this should be ok as long as HERON init checks are successful
+            multiplied_comp += lcf
+        else:
+          time_subtotal = sum(cfs.values())
+          non_multiplied_comp += time_subtotal
+
+      multiplied     += multiplied_comp
+      non_multiplied += non_multiplied_comp
+    # at this point, there should be a not None NPV Target
+    total = (meta['HERON']['Case']._npv_target - non_multiplied) / multiplied
+    return total
 

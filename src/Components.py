@@ -78,7 +78,7 @@ class Component(Base, CashFlowUser):
     self._produces = []
     self._stores = []
     self._demands = []
-    self._levelized_meta = {}
+    self.levelized_meta = {}
 
   def __repr__(self):
     """
@@ -350,13 +350,13 @@ class Component(Base, CashFlowUser):
     """
       Return the interactions this component uses.
       TODO could this just return the only non-empty one, since there can only be one?
-      @ In, cashflows
-      @ Out, interactions, list, list of Interaction instances
+      @ In, cashflows, list, list of Interaction instances
+      @ Out, None
     """
     for cf in cashflows:
       tracker = cf.get_driver()._vp.get_tracking_var()
       resource = cf.get_driver()._vp.get_resource()
-      self._levelized_meta[cf] = {tracker:resource}
+      self.levelized_meta[cf.name] = {tracker:resource}
 
 
 

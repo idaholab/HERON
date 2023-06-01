@@ -565,11 +565,6 @@ class Case(Base):
     self.dispatcher.set_time_discr(self._time_discretization)
     self.dispatcher.set_validator(self.validator)
 
-    # should we replace the inner objective function?
-    #   from sum of marginal cashflows -> levelized cost of marginal
-    # FIXME: this might need to change if CAPEX is the mult target...
-    self.use_levelized_inner = bool(self._npv_target is not None)
-
     self.raiseADebug(f'Successfully initialized Case {self.name}.')
 
   def _read_data_handling(self, node):
@@ -776,6 +771,9 @@ class Case(Base):
       src.checkValid(self, components, sources)
     # dispatcher
     self.dispatcher.initialize(self, components, sources)
+    # should we replace the inner objective function?
+    #   from sum of marginal cashflows -> levelized cost of marginal cashflows
+    self.use_levelized_inner = self.determine_inner_objective(components)
 
   def __repr__(self):
     """
@@ -817,6 +815,72 @@ class Case(Base):
       self._econ_metrics = new_dict
     else:
       self._econ_metrics[new_metric] = self.economic_metrics_mapping[new_metric]
+
+  def determine_inner_objective(self, components):
+    """
+      Determines whether we should be using the standard inner objective function definition
+      (sum of all marginal cashflows, i.e. Recurring Hourly) or if we should instead be using
+      a levelized version (sum of all cashflows except the levelized one, divided by levelized
+      one). This is determined if user wants a LC or NPV Target TEAL metric returned in the
+      final CSV.
+      @ In, components, list, HERON components
+      @ Out, use_levelized_inner, bool, should we switch to levelized inner cost?
+    """
+    # if NPV target is None, means we don't care about levelized cost - proceed as normal
+    # also if user isn't using PyomoDispatch, none of this matters
+    if self._npv_target is None and self.dispatcher.name != 'PyomoDispatcher':
+      return False
+
+    # we have determined we require an NPV target - proceed with levelized cost calculation
+    use_levelized_inner = False
+
+    # collecting all cashflows marked with levelized cost
+    levelized_cfs = {comp: [cf for cf in comp.get_economics().get_cashflows() if cf.is_mult_target()]
+                        for comp in components}
+    levelized_cfs = {comp:cf for comp,cf in levelized_cfs.items() if cf} # trimming components w/o LC
+
+    # 1. check first that there is a levelized cost CashFlow in any of available components
+    if not levelized_cfs:
+      self.raiseAnError('Levelized Cost metric was selected, but no <levelized_cost> node was found in component Cash Flows! \n' +
+                        'The levelized cost subnode should be under the <reference_price> node')
+
+    # 2. check that the component(s) are Demanding components
+    # TODO: allow Producers and Storage later; will need to check "dispatchable"
+    if any(comp.get_interaction().tag!='demands' for comp in levelized_cfs.keys()):
+      self.raiseAnError('Levelized Cost metric implemented for Demanding Components only')
+
+    # 3. check that the remaining cashflow(s) are Recurring Hourly
+    # TODO: allow Recurring Yearly, then One-Time (this one is tricky, have to check/include Depreciation...)
+    if any(cf.get_period()!='hour' for cfs_list in levelized_cfs.values() for cf in cfs_list):
+      self.raiseAnError('Levelized Cost metric implemented for Recurring Hourly cashflows only')
+
+    # 4. check that the remaining cashflow(s) drivers are of the Activity Type (that is, we are determining dispatch)
+    # TODO: these might be capacity variable instead for other Period types (Yearly, One-Time)
+    # TODO: what happens if they are NOT a variable? a time series or fixed value?...
+    if any(cf.get_driver().type!='Activity'
+            for cfs_list in levelized_cfs.values() for cf in cfs_list):
+      self.raiseAnError('Levelized Cost metric implemented for Cashflows with Activity Drivers only')
+
+    # 5. check that the remaining cashflow(s) *prices* are fixed (for now)
+    # TODO: allow time series WITH A WARNING! they should be normalized
+    if any(cf.get_price().type!='FixedValue'
+            for cfs_list in levelized_cfs.values() for cf in cfs_list):
+      self.raiseAnError('Levelized Cost metric implemented for Cashflows with Fixed Prices only')
+
+    # 6. check that the remaining cashflow(s) reference and scale are fixed
+    # TODO: Should we allow them to be valued params?...
+    if any(cf.get_reference().type!='FixedValue' and cf.get_scale().type!='FixedValue'
+            for cfs_list in levelized_cfs.values() for cf in cfs_list):
+      self.raiseAnError('Levelized Cost metric implemented for Cashflows with Fixed reference drivers and scale only')
+
+    # by this point in the filter process, this is the only option.
+    # FIXME: if the levelized cashflow has a capacity driver (once we allow it), then this should return False
+    use_levelized_inner = True
+
+    #
+    for comp, cfs in levelized_cfs.items():
+      comp.set_levelized_cost_meta(cfs)
+    return use_levelized_inner
 
   #### ACCESSORS ####
   def get_increments(self):

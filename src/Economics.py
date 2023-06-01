@@ -424,7 +424,12 @@ class CashFlow:
       @ In, node, InputParams.ParameterInput, reference_price head node
       @ Out, price_is_levelized, bool, are we computing levelized cost for this cashflow?
     """
-    levelized_cost = node.popSub('levelized_cost')
+    levelized_cost = False
+    for sub in node.subparts:
+      if sub.name == 'levelized_cost':
+        levelized_cost = True
+        __ = node.popSub('levelized_cost')
+
     try:
       self._set_valued_param('_alpha', node)
     except AttributeError as e:
@@ -545,6 +550,38 @@ class CashFlow:
   #######
   # API #
   #######
+  def get_price(self):
+    """
+      Getter for Cashflow Price
+      @ In, None
+      @ Out, alpha, ValuedParam, valued param
+    """
+    return self._alpha
+
+  def get_driver(self):
+    """
+      Getter for Cashflow Driver
+      @ In, None
+      @ Out, driver, ValuedParam, valued param for
+    """
+    return self._driver
+
+  def get_reference(self):
+    """
+      Getter for Cashflow Reference Driver
+      @ In, None
+      @ Out, reference, ValuedParam, valued param for
+    """
+    return self._reference
+
+  def get_scale(self):
+    """
+      Getter for Cashflow Scale
+      @ In, None
+      @ Out, scale, ValuedParam, valued param for
+    """
+    return self._scale
+
   def get_type(self):
     """
       Getter for Cashflow Type

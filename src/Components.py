@@ -78,7 +78,7 @@ class Component(Base, CashFlowUser):
     self._produces = []
     self._stores = []
     self._demands = []
-    self.contains_mult_target = False
+    self._levelized_meta = {}
 
   def __repr__(self):
     """
@@ -129,9 +129,6 @@ class Component(Base, CashFlowUser):
     if econ_node is None:
       self.raiseAnError(IOError, f'<economics> node missing from component "{self.name}"!')
     CashFlowUser.read_input(self, econ_node)
-
-    # determine if this component holds a mult target
-    self.contains_mult_target = any(cf.is_mult_target() for cf in self.get_economics().get_cashflows())
 
   def get_crossrefs(self):
     """
@@ -349,9 +346,17 @@ class Component(Base, CashFlowUser):
     intr = self.get_interaction()
     return intr.get_capacity(None, None, None, None, raw=True)
 
-
-
-
+  def set_levelized_cost_meta(self, cashflows):
+    """
+      Return the interactions this component uses.
+      TODO could this just return the only non-empty one, since there can only be one?
+      @ In, cashflows
+      @ Out, interactions, list, list of Interaction instances
+    """
+    for cf in cashflows:
+      tracker = cf.get_driver()._vp.get_tracking_var()
+      resource = cf.get_driver()._vp.get_resource()
+      self._levelized_meta[cf] = {tracker:resource}
 
 
 

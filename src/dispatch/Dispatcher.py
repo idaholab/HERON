@@ -206,5 +206,5 @@ class Dispatcher(MessageUser, InputDataUser):
       non_multiplied += non_multiplied_comp
     # at this point, there should be a not None NPV Target
     total = (meta['HERON']['Case']._npv_target - non_multiplied) / multiplied
-    return total
+    return -1*total
 

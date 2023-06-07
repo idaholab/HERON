@@ -62,11 +62,21 @@ class Case(Base):
                            'valueAtRisk': {'prefix': 'VaR', 'optimization_default': 'min', 'threshold': ['0.05']}}
   # economic metrics that can be returned by sweep results OR alongside optimization results
   #    NOTE: might be important to index the stats_metrics_mapping... does VaR of IRR make sense?
-  economic_metrics_mapping = {'NPV': {'output_name': 'NPV', 'TEAL_name': 'NPV', 'stats_map': stats_metrics_mapping},
-                              'PI': {'output_name': 'PI', 'TEAL_name': 'PI', 'stats_map': stats_metrics_mapping},
-                              'IRR': {'output_name': 'IRR', 'TEAL_name': 'IRR', 'stats_map': stats_metrics_mapping},
+  economic_metrics_mapping = {'NPV': {'output_name': 'NPV',
+                                      'TEAL_in_name': 'NPV',
+                                      'TEAL_out_name': 'NPV',
+                                      'stats_map': stats_metrics_mapping},
+                              'PI': {'output_name': 'PI',
+                                     'TEAL_in_name': 'PI',
+                                     'TEAL_out_name': 'PI',
+                                     'stats_map': stats_metrics_mapping},
+                              'IRR': {'output_name': 'IRR',
+                                      'TEAL_in_name': 'IRR',
+                                      'TEAL_out_name': 'IRR',
+                                      'stats_map': stats_metrics_mapping},
                               'LC': {'output_name': 'LC_Mult',
-                                     'TEAL_name': 'NPV_search',
+                                     'TEAL_in_name': 'NPV_search',
+                                     'TEAL_out_name': 'NPV_mult',
                                      'stats_map': stats_metrics_mapping}}
   economic_metrics = list(em['output_name'] for __,em in economic_metrics_mapping.items())
 
@@ -796,7 +806,7 @@ class Case(Base):
     self.raiseADebug(pre+'  mode:', self.get_mode())
     if self.get_mode() == 'opt':
       self.raiseADebug(pre+'  opt_metric:', self.get_opt_metric())
-    for metric in self.get_econ_metrics(nametype='TEAL'):
+    for metric in self.get_econ_metrics(nametype='TEAL_in'):
       self.raiseADebug(pre+'  metric:', metric)
     self.raiseADebug(pre+'  diff_study:', self._diff_study)
 
@@ -912,9 +922,8 @@ class Case(Base):
       @ Out, None
     """
     if 'active' not in self._global_econ:
-      indic = {'name': self.get_econ_metrics(nametype='TEAL'), # can be a list of strings
+      indic = {'name': self.get_econ_metrics(nametype='TEAL_in'), # can be a list of strings
                'target': self._npv_target}
-      # indic = {'target': 0 } # TODO: update with 0 for LCOx, then generic for NPVsearch
       indic['active'] = []
       for comp in components:
         comp_name = comp.name
@@ -974,7 +983,7 @@ class Case(Base):
       @ Out, nametype, str, economic metric name to use (options: 'output' or 'TEAL')
       @ Out, econ_metrics, str, string list of indicators, such as NPV, IRR.
     """
-    assert nametype in ['output', 'TEAL']
+    assert nametype in ['output', 'TEAL_in']
     name = f'{nametype}_name'
     econ_metrics = list(e[name] for _,e in self._econ_metrics.items())
     return econ_metrics

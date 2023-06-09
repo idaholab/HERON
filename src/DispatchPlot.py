@@ -44,6 +44,7 @@ class DispatchPlot(PlotPlugin):
     specs.addSub(InputData.parameterInputFactory('macro_variable', contentType=InputTypes.StringType))
     specs.addSub(InputData.parameterInputFactory('micro_variable', contentType=InputTypes.StringType))
     specs.addSub(InputData.parameterInputFactory('signals', contentType=InputTypes.StringListType))
+    # Add component color from user input
     component_color_param = InputData.parameterInputFactory('component_color', contentType=InputTypes.StringType)
     component_color_param.addParam('name', param_type=InputTypes.StringType, required=True)
     specs.addSub(component_color_param)

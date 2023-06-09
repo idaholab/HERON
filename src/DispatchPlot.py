@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from typing import List, Dict
 import random
 import numpy as np
+import colorsys
 
 try:
   from ravenframework.PluginBaseClasses.OutStreamPlotPlugin import PlotPlugin, InputTypes, InputData
@@ -43,6 +44,9 @@ class DispatchPlot(PlotPlugin):
     specs.addSub(InputData.parameterInputFactory('macro_variable', contentType=InputTypes.StringType))
     specs.addSub(InputData.parameterInputFactory('micro_variable', contentType=InputTypes.StringType))
     specs.addSub(InputData.parameterInputFactory('signals', contentType=InputTypes.StringListType))
+    component_color_param = InputData.parameterInputFactory('component_color', contentType=InputTypes.StringType)
+    component_color_param.addParam('name', param_type=InputTypes.StringType, required=True)
+    specs.addSub(component_color_param)
     return specs
 
   def __init__(self):
@@ -58,6 +62,7 @@ class DispatchPlot(PlotPlugin):
     self._macroName = None
     self._microName = None
     self._addSignals = []
+    self._mainColors = {}
 
   def handleInput(self, spec):
     """
@@ -75,6 +80,8 @@ class DispatchPlot(PlotPlugin):
         self._microName = node.value
       elif node.getName() == 'signals':
         self._addSignals = node.value
+      elif node.getName() == 'component_color':
+        self._mainColors[node.parameterValues['name']] = node.value
 
   def initialize(self, stepEntities):
     """
@@ -120,9 +127,6 @@ class DispatchPlot(PlotPlugin):
       @ In, cdict, Dict[str, str], a dictionary contains color code to variables
       @ Out, None
     """
-    # Pre-define color codes and transparency
-    Gray, Dark = ('#dcddde','#1a2b3c')
-    alpha = '70'
     for (key, group), ax in zip(grp_vars.items(), axes.flat):
       # Define list for data, label, and color. Seperate 'level'(line plot) with other variables (stack plot)
       positive_dat = []
@@ -161,11 +165,15 @@ class DispatchPlot(PlotPlugin):
                 negative_color.append(cdict.get(cindex))
       # Plot the micro-step variable on the x-axis (i.e Time)
       # Stackplot
-      ax.stackplot(df[self._microName],*[df[key] for key in positive_dat],labels= positive_label, baseline='zero', colors= [color+alpha for color in positive_color[:len(negative_dat)]]+[Gray])
-      ax.stackplot(df[self._microName],*[df[key] for key in negative_dat], labels= negative_label, baseline='zero', colors= [color+alpha for color in negative_color[:len(negative_dat)]] +[Gray])
+      if(len(positive_dat) > 0):
+        ax.stackplot(df[self._microName],*[df[key] for key in positive_dat],labels= positive_label, baseline='zero', colors= [color for color in positive_color[:len(negative_dat)]], alpha= .6)
+      if(len(negative_dat) > 0):
+        ax.stackplot(df[self._microName],*[df[key] for key in negative_dat], labels= negative_label, baseline='zero', colors= [color for color in negative_color[:len(negative_dat)]], alpha= .6)
       # Lineplot
-      for key, c, llabel in zip(level_dat, level_color[:len(level_dat)] + [Dark], level_label[:len(level_dat)]):
-        ax2.plot(df[self._microName], df[key], linestyle=ls, label=llabel, color=c )
+      if(len(level_dat) > 0):
+        for key, c, llabel in zip(level_dat, level_color[:len(level_dat)], level_label[:len(level_dat)]):
+          ax2.plot(df[self._microName], df[key], linestyle=ls, label=llabel, color=c, alpha= .8)
+      # Sometimes users cases don't produce negative valued data so we need to check
       # Set figure title, legend, and grid
       ax.set_title(key.title().split('_')[-1])
       ax.set_xlabel(self._microName)
@@ -212,11 +220,17 @@ class DispatchPlot(PlotPlugin):
     self.raiseAMessage(f'Saved figure to "{signal_file_name}"')
     plt.clf()
 
-  def color_style(self, grp_vars):
+
+
+  def color_style(self, grp_vars, main_colors):
     """
       @ In, grp_vars, Dict[str, List[str]], a dictionary mapping components to variables.
       @ Out, colors, Dict[str, str], contains color code for variables
     """
+    # Color scales from dark (scaleMin) to light (scaleMax)
+    scaleMax = 0.98
+    scaleMin = 0.36
+
     resources = [] # Determine the number of colormaps
     technologis = [] # Determine the number of colors obtained from a colormap
     for key, group in grp_vars.items():
@@ -227,15 +241,7 @@ class DispatchPlot(PlotPlugin):
     # remve duplicates
     resources = list(dict.fromkeys(resources))
     technologis = list(dict.fromkeys(technologis))
-    # colormap codes - can be changed to preferred colormaps - 17 in total 'Sequential' series
-    cm_codes = ['Purples', 'Blues', 'Greens', 'Oranges', 'Reds','YlOrBr', 'YlOrRd', 'OrRd', 'PuRd', 'RdPu', 'BuPu','GnBu', 'PuBu', 'YlGnBu', 'PuBuGn', 'BuGn', 'YlGn']
-    sample_cm = random.sample(cm_codes, len(resources))
-    resource_cm = {} # E.g. {'heat': 'OrRd', 'electricity': 'GnBu'} all string
-    i = 0
-    for s in resources:
-      resource_cm[s] = sample_cm[i] + '_r' #reverse colormap so it won't pick the lightest color that is almost invisible
-      i = i + 1
-    # Get the number of colors needed
+    # Get the number of colors needed for each resource
     resource_count = {} # E.g. {'heat': 5, 'electricity': 5}
     for s in resources:
       count = 0
@@ -246,15 +252,20 @@ class DispatchPlot(PlotPlugin):
     # Assign colors
     colors = {}
     for s in resources:
-      cm = mpl.cm.get_cmap(name= resource_cm[s])
-      # Get a subset of color map from 0 - 0.8 to avoid invisble light colors
-      cm = mpl.colors.LinearSegmentedColormap.from_list('trunc({n},{a:.2f},{b:.2f})'.format(n=cm.name, a=0, b=0.8),cm(np.linspace(0, 0.8)))
+      # Main color from user input
+      main_color = main_colors[s]
+      # Color scales
+      scales = []
+      n = int(resource_count[s])
+      for i in range(n):
+        scales.append(scaleMin + ((scaleMax - scaleMin) /n) * i)
+      scales.reverse()
       j = 0
       for t in technologis:
-        clist = [cm(1.*i/resource_count[s]) for i in range(resource_count[s])] #color list
-        clist.reverse()
         if s in t:
-          colors[t] = mpl.colors.rgb2hex(clist[j])
+          rgb = mpl.colors.ColorConverter.to_rgb(main_color)
+          h, l, s2 = colorsys.rgb_to_hls(*rgb)
+          colors[t] = mpl.colors.rgb2hex(colorsys.hls_to_rgb(h, scales[j], s = s2 * 0.6))
           j = j + 1
     return colors
 
@@ -279,7 +290,8 @@ class DispatchPlot(PlotPlugin):
     cluster_ids = df['_ROM_Cluster'].unique()  # TODO: find way to not hardcode name
     macro_steps = df[self._macroName].unique()
     # Assign colors
-    cdict = self.color_style(grouped_vars)
+
+    cdict = self.color_style(grouped_vars, self._mainColors)
     for sample_id, macro_step, cluster_id in it.product(sample_ids, macro_steps, cluster_ids):
       # Filter data to plot correct values for current dimension
       dat = df[

@@ -525,7 +525,8 @@ class Template(TemplateBase, Base):
       new_opt_objective = self._build_opt_metric_out_name(case)
       opt_path_plot_vars = OSs.find(".//Plot[@name='opt_path']").find('vars')
       if (new_opt_objective != 'missing') and (new_opt_objective not in opt_path_plot_vars.text):
-        opt_path_plot_vars.text = opt_path_plot_vars.text.replace(f'mean_{case.get_opt_metric()}', new_opt_objective)
+        opt_metric, _ = case.get_opt_metric()
+        opt_path_plot_vars.text = opt_path_plot_vars.text.replace(f'mean_{opt_metric}', new_opt_objective)
     # debug mode
     if case.debug['enabled']:
       # modify normal metric output
@@ -673,7 +674,7 @@ class Template(TemplateBase, Base):
         type_node.text = optimization_settings['type']
       except KeyError:
         # type was not provided, so use the default value
-        opt_metric = case.get_opt_metric()
+        opt_metric, _ = case.get_opt_metric()
         opt_metric_mapping = case.economic_metrics_mapping[opt_metric]
         type_node.text = opt_metric_mapping['optimization_default']
 
@@ -1118,22 +1119,23 @@ class Template(TemplateBase, Base):
         raven_metric_name = optimization_settings['stats_metric']['name']
         prefix = self._get_stats_metrics_prefixes(case, [raven_metric_name])[0]
         if pp_node.find(raven_metric_name) is None:
+          opt_metric, _ = case.get_opt_metric()
           # add subnode to PostProcessor
           if 'threshold' in optimization_settings['stats_metric']:
             if raven_metric_name in ['valueAtRisk', 'expectedShortfall']:
               threshold = str(optimization_settings['stats_metric']['threshold'])
             else:
               threshold = optimization_settings['stats_metric']['threshold']
-            new_node = xmlUtils.newNode(raven_metric_name, text=case.get_opt_metric(),
+            new_node = xmlUtils.newNode(raven_metric_name, text=opt_metric,
                                         attrib={'prefix': prefix,
                                                 'threshold': threshold})
           elif 'percent' in optimization_settings['stats_metric']:
             percent = str(optimization_settings['stats_metric']['percent'])
-            new_node = xmlUtils.newNode(raven_metric_name, text=case.get_opt_metric(),
+            new_node = xmlUtils.newNode(raven_metric_name, text=opt_metric,
                                         attrib={'prefix': prefix,
                                                 'percent': percent})
           else:
-            new_node = xmlUtils.newNode(raven_metric_name, text=case.get_opt_metric(),
+            new_node = xmlUtils.newNode(raven_metric_name, text=opt_metric,
                                         attrib={'prefix': prefix})
           pp_node.append(new_node)
         else:
@@ -1156,7 +1158,8 @@ class Template(TemplateBase, Base):
       else:
         # new_objective is missing, use mean_metric
         if pp_node.find('expectedValue') is None:
-          pp_node.append(xmlUtils.newNode('expectedValue', text=case.get_opt_metric(),
+          opt_metric, _ = case.get_opt_metric()
+          pp_node.append(xmlUtils.newNode('expectedValue', text=opt_metric,
                                           attrib={'prefix': 'mean'}))
         else:
           # check that the subnode has the correct values
@@ -1167,7 +1170,8 @@ class Template(TemplateBase, Base):
     elif case.get_mode() == 'opt':
       pp_node = template.find('Models').find(".//PostProcessor[@name='statistics']")
       if pp_node.find('expectedValue') is None:
-        pp_node.append(xmlUtils.newNode('expectedValue', text=case.get_opt_metric(),
+        opt_metric, _ = case.get_opt_metric()
+        pp_node.append(xmlUtils.newNode('expectedValue', text=opt_metric,
                                         attrib={'prefix': 'mean'}))
       else:
         # check that the subnode has the correct values

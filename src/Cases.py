@@ -566,7 +566,8 @@ class Case(Base):
       self.raiseAnError('<time_discretization> node was not provided in the <Case> node!')
     # check that opt metric is part of econ metrics for output
     if self.get_mode() == 'opt':
-      self._append_econ_metrics(self.get_opt_metric(), first=True)
+      opt_metric, _ = self.get_opt_metric()
+      self._append_econ_metrics(opt_metric, first=True)
     if self.innerParallel == 0 and self.useParallel:
       #set default inner parallel to number of samples (denoises)
       self.innerParallel = self._num_samples
@@ -697,6 +698,11 @@ class Case(Base):
     # check first for an opt metric, if not there, default to NPV
     if node.findFirst('opt_metric') is None:
       opt_settings['opt_metric'] = self._default_econ_metric
+    elif node.findFirst('opt_metric').value == 'LC':
+      try:
+        opt_settings['npv_target'] = node.parameterValues['target']
+      except KeyError:
+        opt_settings['npv_target'] = 0
 
     for sub in node.subparts:
       sub_name = sub.getName()
@@ -815,7 +821,8 @@ class Case(Base):
     self.raiseADebug(pre+'  name:', self.name)
     self.raiseADebug(pre+'  mode:', self.get_mode())
     if self.get_mode() == 'opt':
-      self.raiseADebug(pre+'  opt_metric:', self.get_opt_metric())
+      opt_metric,_ = self.get_opt_metric()
+      self.raiseADebug(pre+'  opt_metric:', opt_metric)
     for metric in self.get_econ_metrics(nametype='TEAL_in'):
       self.raiseADebug(pre+'  metric:', metric)
     self.raiseADebug(pre+'  diff_study:', self._diff_study)
@@ -941,8 +948,9 @@ class Case(Base):
       @ Out, None
     """
     if 'active' not in self._global_econ:
+      _, target = self.get_opt_metric()
       indic = {'name': self.get_econ_metrics(nametype='TEAL_in'), # can be a list of strings
-               'target': self._npv_target}
+               'target': target}
       indic['active'] = []
       for comp in components:
         comp_name = comp.name
@@ -981,11 +989,12 @@ class Case(Base):
       Accessor
       @ In, None
       @ Out, opt_metric, str, target economic metric for outer optimizaton in this case
+             npv_target, float, target for NPV search if required
     """
     opt_settings = self.get_optimization_settings()
     if opt_settings:
-      return opt_settings.get('opt_metric', None)
-    return self._default_econ_metric
+      return opt_settings.get('opt_metric', None), opt_settings.get('npv_target', None)
+    return self._default_econ_metric, self._npv_target
 
   def get_result_statistics(self):
     """

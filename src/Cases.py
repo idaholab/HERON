@@ -60,6 +60,14 @@ class Case(Base):
                            'gainLossRatio': {'prefix': 'glr', 'optimization_default': 'max', 'threshold': 'median'},
                            'expectedShortfall': {'prefix': 'es', 'optimization_default': 'min', 'threshold': ['0.05']},
                            'valueAtRisk': {'prefix': 'VaR', 'optimization_default': 'min', 'threshold': ['0.05']}}
+  # creating a similar dictionary, this time with the optimization defaults flipped
+  #    Levelized Cost does the opposite optimization for all of these stats
+  flipped_stats_metrics_mapping = {}
+  for stat, stat_info in stats_metrics_mapping.items():
+    flipped_stats_metrics_mapping[stat] = stat_info
+    if 'optimization_default' in stat_info.keys():
+      opt_default = flipped_stats_metrics_mapping[stat]['optimization_default']
+      flipped_stats_metrics_mapping[stat]['optimization_default'] = 'max' if opt_default == 'min' else 'min'
   # economic metrics that can be returned by sweep results OR alongside optimization results
   #    NOTE: might be important to index the stats_metrics_mapping... does VaR of IRR make sense?
   economic_metrics_mapping = {'NPV': {'output_name': 'NPV',
@@ -74,10 +82,10 @@ class Case(Base):
                                       'TEAL_in_name': 'IRR',
                                       'TEAL_out_name': 'IRR',
                                       'stats_map': stats_metrics_mapping},
-                              'LC': {'output_name': 'LC_Mult',
-                                     'TEAL_in_name': 'NPV_search',
-                                     'TEAL_out_name': 'NPV_mult',
-                                     'stats_map': stats_metrics_mapping}}
+                              'LC': {'output_name': 'LC_Mult',      #this is how it appears in CSV
+                                     'TEAL_in_name': 'NPV_search',  #this is how TEAL recognizes it
+                                     'TEAL_out_name': 'NPV_mult',   #this is how TEAL outputs it (don't know why)
+                                     'stats_map': flipped_stats_metrics_mapping}}
   economic_metrics = list(em['output_name'] for __,em in economic_metrics_mapping.items())
 
   #### INITIALIZATION ####
@@ -88,6 +96,8 @@ class Case(Base):
       @ In, None
       @ Out, input_specs, InputData, specs
     """
+    default_stats_metric_mapping = cls.economic_metrics_mapping['NPV']['stats_map']
+
     input_specs = InputData.parameterInputFactory('Case', ordered=False, baseNode=None,
                                                   descr=r"""The \xmlNode{Case} node contains the general physics and
                                                   economics information required for a HERON workflow to be created
@@ -300,7 +310,7 @@ class Case(Base):
                             descr=r"""requested target for NPV search. In the case of levelized cost,
                             the NPV target is 0 which results in the break-even cost. \default{0}""")
     optimizer.addSub(opt_metric_sub)
-    stats_metric_options = InputTypes.makeEnumType('StatsMetricOptions', 'StatsMetricOptionsType', list(cls.stats_metrics_mapping.keys()))
+    stats_metric_options = InputTypes.makeEnumType('StatsMetricOptions', 'StatsMetricOptionsType', list(default_stats_metric_mapping.keys()))
     desc_stats_metric_options = r"""determines the statistical metric (calculated by RAVEN BasicStatistics
                           or EconomicRatio PostProcessors) from the ``inner'' run to be used as the
                           objective in the ``outer'' optimization.
@@ -397,7 +407,7 @@ class Case(Base):
                                                    (prefix ``med'') are always returned with the results.
                                                    Each subnode is the RAVEN-style name of the desired
                                                    return statistic.""")
-    for stat, stat_info in cls.stats_metrics_mapping.items():
+    for stat, stat_info in default_stats_metric_mapping.items():
       if stat not in ['expectedValue', 'sigma', 'median']:
         statistic = InputData.parameterInputFactory(stat, strictMode=True,
                                                     descr=rf"""{stat} uses the prefix ``{stat_info['prefix']}'' in the result output.""")
@@ -837,8 +847,10 @@ class Case(Base):
       @ Out, use_levelized_inner, bool, should we switch to levelized inner cost?
     """
     # if NPV target is None, means we don't care about levelized cost - proceed as normal
-    # also if user isn't using PyomoDispatch, none of this matters
-    if self._npv_target is None and self.dispatcher.name != 'PyomoDispatcher':
+    # also only current supporting checks if user is using PyomoDispatch
+    has_no_npv_target = self._npv_target is None
+    not_using_pyomo_dispatch = self.dispatcher.name != 'PyomoDispatcher'
+    if any([has_no_npv_target, not_using_pyomo_dispatch]):
       return False
 
     # we have determined we require an NPV target - proceed with levelized cost calculation
@@ -848,6 +860,13 @@ class Case(Base):
     levelized_cfs = {comp: [cf for cf in comp.get_economics().get_cashflows() if cf.is_mult_target()]
                         for comp in components}
     levelized_cfs = {comp:cf for comp,cf in levelized_cfs.items() if cf} # trimming components w/o LC
+
+    # 0. zero-order check: are we using an appropriate nonlinear solver? assuming PyomoDispatcher
+    # TODO: should compile a list of linear vs nonlinear solvers...
+    if self.dispatcher._solver in ['glpk', 'cbc']: #TODO:ugh... should we have a getter for solver?
+      appropriate_solvers = ['ipopt']
+      self.raiseAnError('Levelized Cost metric requires a nonlinear optimization in the inner step, ' +
+                        f' please use any of the following solvers: {appropriate_solvers}')
 
     # 1. check first that there is a levelized cost CashFlow in any of available components
     if not levelized_cfs:
@@ -981,7 +1000,7 @@ class Case(Base):
       Accessor
       @ In, None
       @ Out, nametype, str, economic metric name to use (options: 'output' or 'TEAL')
-      @ Out, econ_metrics, str, string list of indicators, such as NPV, IRR.
+      @ Out, econ_metrics, list, string list of indicators, such as NPV, IRR.
     """
     assert nametype in ['output', 'TEAL_in']
     name = f'{nametype}_name'

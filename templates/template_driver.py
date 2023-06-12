@@ -301,7 +301,7 @@ class Template(TemplateBase, Base):
     econ_metrics = case.get_econ_metrics(nametype='output')
     has_mult_metrics = len(econ_metrics) > 1
     # loop through all economic metrics (e.g., NPV, IRR) and apply required defaults to each
-    default_stats_prefixes = self._get_stats_metrics_mapping(case, DEFAULT_STATS_NAMES)
+    default_stats_prefixes = self._get_stats_metrics_prefixes(case, DEFAULT_STATS_NAMES)
     default_stats = [self.namingTemplates['metric_name'].format(stats=sp, econ=em) \
                      for em in econ_metrics for sp in default_stats_prefixes]
     for stat in default_stats:
@@ -315,7 +315,7 @@ class Template(TemplateBase, Base):
     # sweep mode has default variable names
     elif case.get_mode() == 'sweep':
       # loop through all economic metrics (e.g., NPV, IRR) and apply required sweep defaults to each
-      sweep_stats_prefixes = self._get_stats_metrics_mapping(case, DEFAULT_STATS_NAMES+SWEEP_DEFAULT_STATS_NAMES)
+      sweep_stats_prefixes = self._get_stats_metrics_prefixes(case, DEFAULT_STATS_NAMES+SWEEP_DEFAULT_STATS_NAMES)
       sweep_default = [self.namingTemplates['metric_name'].format(stats=sp, econ=em) \
                       for em in econ_metrics for sp in sweep_stats_prefixes]
       for sweep_name in sweep_default:
@@ -673,8 +673,9 @@ class Template(TemplateBase, Base):
         type_node.text = optimization_settings['type']
       except KeyError:
         # type was not provided, so use the default value
-        metric_raven_name = optimization_settings['stats_metric']['name']
-        type_node.text = case.stats_metrics_mapping[metric_raven_name]['optimization_default']
+        opt_metric = case.get_opt_metric()
+        opt_metric_mapping = case.economic_metrics_mapping[opt_metric]
+        type_node.text = opt_metric_mapping['optimization_default']
 
       # swap out convergence values (only persistence implemented now)
       convergence = opt_node.find('convergence')
@@ -1115,7 +1116,7 @@ class Template(TemplateBase, Base):
       pp_node = template.find('Models').find(".//PostProcessor[@name='statistics']")
       if new_objective != 'missing':
         raven_metric_name = optimization_settings['stats_metric']['name']
-        prefix = case.stats_metrics_mapping[raven_metric_name]['prefix']
+        prefix = self._get_stats_metrics_prefixes(case, [raven_metric_name])
         if pp_node.find(raven_metric_name) is None:
           # add subnode to PostProcessor
           if 'threshold' in optimization_settings['stats_metric']:
@@ -1214,7 +1215,7 @@ class Template(TemplateBase, Base):
     econ_metrics = case.get_econ_metrics(nametype='output')
     has_mult_metrics = len(econ_metrics) > 1
     # loop through all economic metrics (e.g., NPV, IRR) and apply required defaults to each
-    default_stats_prefixes = self._get_stats_metrics_mapping(case, DEFAULT_STATS_NAMES)
+    default_stats_prefixes = self._get_stats_metrics_prefixes(case, DEFAULT_STATS_NAMES)
     default_stats = [self.namingTemplates['metric_name'].format(stats=sp, econ=em) \
                      for em in econ_metrics for sp in default_stats_prefixes]
     for stat in default_stats:
@@ -1228,7 +1229,7 @@ class Template(TemplateBase, Base):
     # sweep mode has default variable names
     elif case.get_mode() == 'sweep':
       # loop through all economic metrics (e.g., NPV, IRR) and apply required sweep defaults to each
-      sweep_stats_prefixes = self._get_stats_metrics_mapping(case, DEFAULT_STATS_NAMES+SWEEP_DEFAULT_STATS_NAMES)
+      sweep_stats_prefixes = self._get_stats_metrics_prefixes(case, DEFAULT_STATS_NAMES+SWEEP_DEFAULT_STATS_NAMES)
       sweep_default = [self.namingTemplates['metric_name'].format(stats=sp, econ=em) \
                        for em in econ_metrics for sp in sweep_stats_prefixes]
       for sweep_name in sweep_default:
@@ -1252,7 +1253,7 @@ class Template(TemplateBase, Base):
       if any(stat not in DEFAULT_STATS_NAMES for stat in result_statistics):
         for raven_metric_name in result_statistics:
           if raven_metric_name not in DEFAULT_STATS_NAMES:
-            prefix = case.stats_metrics_mapping[raven_metric_name]['prefix']
+            prefix = self._get_stats_metrics_prefixes(case, [raven_metric_name], use_extra=False)[0]
             # add subnode to PostProcessor
             if raven_metric_name == 'percentile':
               # add percent attribute
@@ -1282,7 +1283,7 @@ class Template(TemplateBase, Base):
                                               attrib={'prefix': prefix}))
       # if not specified, "sweep" mode has additional defaults
       elif case.get_mode() == 'sweep':
-        sweep_stats_prefixes = self._get_stats_metrics_mapping(case, SWEEP_DEFAULT_STATS_NAMES, use_extra=False)
+        sweep_stats_prefixes = self._get_stats_metrics_prefixes(case, SWEEP_DEFAULT_STATS_NAMES, use_extra=False)
         for em in econ_metrics:
           for stat, pref in zip(SWEEP_DEFAULT_STATS_NAMES, sweep_stats_prefixes):
             pp_node.append(xmlUtils.newNode(stat, text=em, attrib={'prefix': pref}))
@@ -1587,20 +1588,22 @@ class Template(TemplateBase, Base):
     return names
 
   @staticmethod
-  def _get_stats_metrics_mapping(case, stats_names, use_extra=True):
+  def _get_stats_metrics_prefixes(case, stats_names, use_extra=True):
     """
       Constructs the prefixes of the statistics requested for output
       @ In, case, HERON Case, defining Case instance
-      @ In, stats_names, list, list of names of statistics requested for output
-      @ Out, prefix_names, list, list of prefixes of statistics requested for output
+      @ In, stats_names, list, list of names of statistics requested for application to econ metrics
+      @ Out, output, list, list of prefixes of statistics requested for output
     """
-    prefix_names = []
+    output_names = []
     for name in stats_names:
-      prefix = case.stats_metrics_mapping[name]['prefix']
+      # we are assuming here that all stats metrics are applicable to all econ metrics.
+      # revisit if this changes (e.g., we disallow "VaR" for IRR)
+      output = case.stats_metrics_mapping[name]['prefix']
       if name == "percentile" and use_extra:
         for perc in case.stats_metrics_mapping[name]['percent']:
-          n_prefix = f"{prefix}_{perc}"
-          prefix_names.append(n_prefix)
+          n_output = f"{output}_{perc}"
+          output_names.append(n_output)
       else:
-        prefix_names.append(prefix)
-    return prefix_names
+        output_names.append(output)
+    return output_names

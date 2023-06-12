@@ -1116,7 +1116,7 @@ class Template(TemplateBase, Base):
       pp_node = template.find('Models').find(".//PostProcessor[@name='statistics']")
       if new_objective != 'missing':
         raven_metric_name = optimization_settings['stats_metric']['name']
-        prefix = self._get_stats_metrics_prefixes(case, [raven_metric_name])
+        prefix = self._get_stats_metrics_prefixes(case, [raven_metric_name])[0]
         if pp_node.find(raven_metric_name) is None:
           # add subnode to PostProcessor
           if 'threshold' in optimization_settings['stats_metric']:

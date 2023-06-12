@@ -29,7 +29,9 @@
       <verbosity>50</verbosity>
     </economics>
     <dispatcher>
-      <pyomo/>
+      <pyomo>
+        <debug_mode>True</debug_mode>
+      </pyomo>
     </dispatcher>
   </Case>
 
@@ -51,8 +53,8 @@
         <capacity resource="electricity">
           <fixed_value>200</fixed_value>
         </capacity>
-        <!-- <ramp_limit>0.5</ramp_limit> -->
-        <ramp_freq>4</ramp_freq>
+        <ramp_limit>0.5</ramp_limit>
+        <ramp_freq>2</ramp_freq>
         <transfer>
           <linear>
             <rate resource="steam">-1</rate>
@@ -68,7 +70,7 @@
     <Component name="ngcc">
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <fixed_value>200</fixed_value>
+          <fixed_value>400</fixed_value>
         </capacity>
       </produces>
       <economics>

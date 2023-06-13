@@ -829,19 +829,26 @@ class Case(Base):
 
   def _append_econ_metrics(self, new_metric, first=False):
     """
-      Prints info about self
+      Appends new econ metric to running list
       @ In, None
       @ Out, None
     """
-    # we are updating the stored economic metric dictionary with new entries via an ordered dict
-    if first:
-      # there has to be a better way, but OrderedDict has no "prepend" method
-      new_dict = OrderedDict()
-      new_dict[new_metric] = self.economic_metrics_mapping[new_metric]
-      new_dict.update(self._econ_metrics)
-      self._econ_metrics = new_dict
-    else:
+    if new_metric == 'LC':
+      # Levelized cost inner calculations don't play nicely with others (NPV, IRR, PI)...
+      # Here, we choose LC over the existing defaults
+      self.raiseADebug('Overriding existing economic metrics with Levelized Cost')
+      self._econ_metrics = OrderedDict()
       self._econ_metrics[new_metric] = self.economic_metrics_mapping[new_metric]
+    else:
+      # we are updating the stored economic metric dictionary with new entries via an ordered dict
+      if first:
+        # there has to be a better way, but OrderedDict has no "prepend" method
+        new_dict = OrderedDict()
+        new_dict[new_metric] = self.economic_metrics_mapping[new_metric]
+        new_dict.update(self._econ_metrics)
+        self._econ_metrics = new_dict
+      else:
+        self._econ_metrics[new_metric] = self.economic_metrics_mapping[new_metric]
 
   def determine_inner_objective(self, components):
     """

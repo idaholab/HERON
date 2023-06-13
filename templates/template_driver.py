@@ -525,8 +525,7 @@ class Template(TemplateBase, Base):
       new_opt_objective = self._build_opt_metric_out_name(case)
       opt_path_plot_vars = OSs.find(".//Plot[@name='opt_path']").find('vars')
       if (new_opt_objective != 'missing') and (new_opt_objective not in opt_path_plot_vars.text):
-        opt_metric, _ = case.get_opt_metric()
-        opt_path_plot_vars.text = opt_path_plot_vars.text.replace(f'mean_{opt_metric}', new_opt_objective)
+        opt_path_plot_vars.text = opt_path_plot_vars.text.replace('mean_NPV', new_opt_objective)
     # debug mode
     if case.debug['enabled']:
       # modify normal metric output
@@ -1555,7 +1554,9 @@ class Template(TemplateBase, Base):
         opt_out_metric_name += '_' + str(optimization_settings['stats_metric']['percent'])
       elif metric_raven_name in ['valueAtRisk', 'expectedShortfall', 'sortinoRatio', 'gainLossRatio']:
         opt_out_metric_name += '_' + str(optimization_settings['stats_metric']['threshold'])
-      opt_out_metric_name += '_'+case.get_opt_metric()
+      opt_econ_metric, _ = case.get_opt_metric()
+      output_econ_metric_name = case.economic_metrics_mapping[opt_econ_metric]['output_name']
+      opt_out_metric_name += f'_{output_econ_metric_name}'
     except (TypeError, KeyError):
       # <optimization_settings> node not in input file OR
       # 'metric' is missing from _optimization_settings

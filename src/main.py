@@ -148,7 +148,7 @@ class HERON(Base):
     assert case is not None and components is not None and sources is not None and input_dir is not None
     abce = ABCE(input_dir)
     self.raiseAMessage("***** You are running ABCE workflow *****")
-    abce.write_workflows( components, sources, input_dir)
+    abce.write_workflows(case, components, sources)
 
   def run_dispatches_workflow(self):
     """

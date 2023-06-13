@@ -93,7 +93,7 @@ class ABCE(Base):
     self.run_dir = os.path.abspath(os.path.expanduser(self.run_dir))
 
   #### API ####
-  def write_workflows(self, components, sources, loc):
+  def write_workflows(self, case, components, sources):
     """
       Writes workflows for this case to XMLs on disk.
       @ In, components, HERON components, components for the simulation
@@ -103,7 +103,7 @@ class ABCE(Base):
     """
     # load templates
     template_class = self._load_template()
-    inner, outer = template_class.createWorkflow(self, components, sources)
+    inner, outer = template_class.createWorkflow(case, components, sources)
 
     template_class.writeWorkflow((inner, outer), loc)
 

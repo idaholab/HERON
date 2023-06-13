@@ -479,9 +479,14 @@ class CSV(Placeholder):
       @ Out, None
     """
     self.raiseAMessage(f'Checking CSV at "{self._target_file}"')
-    structure = hutils.get_csv_structure(self._target_file, case.get_year_name(), case.get_time_name())
-    interpolated = 'macro' in structure
-    clustered = bool(structure['clusters'])
+    if case._workflow!="ABCE":
+      structure = hutils.get_csv_structure(self._target_file, case.get_year_name(), case.get_time_name())
+      interpolated = 'macro' in structure
+      clustered = bool(structure['clusters'])
+    else:
+      interpolated = False
+      clustered = False
+
     # segmented = bool(structure['segments']) # TODO
     self.raiseAMessage(
         f'For DataGenerator <{self._type}> "{self.name}", detected: {"" if interpolated else "NOT"} interpolated, ' +

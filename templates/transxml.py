@@ -86,7 +86,7 @@ for xml_file in xml_files:
             # if stream has multiple lines, add indentation for all the lines, if it contains quotes, remove them
             if len(stream.getvalue().splitlines()) > 1:
                 for line in stream.getvalue().splitlines():
-                    line = '    ' + line
+                    line = '  ' + line
                     # if line.strip()[-1] is a quote, remove it
                     if line.strip()[-1] == "'":
                         yaml_lines.append(line.replace("'", ""))

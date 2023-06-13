@@ -159,7 +159,7 @@ class Pyomo(Dispatcher):
     """
     t_start, t_end, t_num = self.get_time_discr()
     time = np.linspace(t_start, t_end, t_num) # Note we don't care about segment/cluster here
-    resources = sorted(list(hutils.get_all_resources(components))) # list of all active resources
+    resources = sorted(list(hsget_all_resources(components))) # list of all active resources
     # pre-build results structure
     ## we can use NumpyState here so we don't need to worry about a Pyomo model object
     dispatch = NumpyState()# dict((comp.name, dict((res, np.zeros(len(time))) for res in comp.get_resources())) for comp in components)

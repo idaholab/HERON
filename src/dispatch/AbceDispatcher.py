@@ -27,10 +27,11 @@ class Abce(Dispatcher):
     """
     specs = InputData.parameterInputFactory('abce', ordered=False, baseNode=None)
     specs.addSub(InputData.parameterInputFactory('location', contentType=InputTypes.StringType,
-        descr=r"""The hard drive location of the abce dispatcher. Relative paths are taken with
-              respect to the HERON run location. abce dispatchers must implement
-              a \texttt{dispatch} method that accepts the HERON case, components, and sources; this
-              method must return the activity for each resource of each component."""))
+        descr=r"""The hard drive location of the abce dispatcher. Paths are taken as absolue location. abce dispatchers must implement a \texttt{dispatch} method that accepts the HERON case, components, and sources; this method must return the activity for each resource of each component."""))
+    specs.addSub(InputData.parameterInputFactory('settings_file', contentType=InputTypes.StringType,
+        descr=r"""The hard drive location of the abce settings file. Paths are taken as absolue location."""))
+    specs.addSub(InputData.parameterInputFactory('inputs_path', contentType=InputTypes.StringType,
+        descr=r"""The hard drive location of the abce inputs. """))
     specs.addSub(InputData.parameterInputFactory('num_dispatch_years', contentType=InputTypes.IntegerType,
         descr=r"""The number of years to dispatch."""))
     specs.addSub(InputData.parameterInputFactory('num_repdays', contentType=InputTypes.IntegerType,
@@ -93,11 +94,13 @@ class Abce(Dispatcher):
     """
     usr_loc = inputs.findFirst('location')
     if usr_loc is None:
-      raise RuntimeError('No <location> provided for <abce> dispatch strategy in <Case>!')
-    # assure python extension, omitting it is a user convenience
-    if not usr_loc.value.endswith('.py'):
-      usr_loc.value += '.py'
-    self._usr_loc = os.path.abspath(os.path.expanduser(usr_loc.value))
+      if 'ABCE_DIR' not in os.environ:
+        raise RuntimeError('ABCE environment variable not found. Please install ABCE and set the environment variable.')
+      else:
+        self._usr_loc = os.environ['ABCE_DIR']
+        print(f'ABCE environment variable found at : {self._usr_loc}')
+    else:
+      self._usr_loc = usr_loc.value
     for sub in inputs.subparts:
       if sub.getName() == 'agent_opt':
         for opt in sub.subparts:
@@ -120,6 +123,7 @@ class Abce(Dispatcher):
     """
     start_loc = case.run_dir
     file_loc = os.path.abspath(os.path.join(start_loc, self._usr_loc))
+    print('file_loc',file_loc)
     # check that it exists
     if not os.path.isfile(file_loc):
       raise IOError(f'abce dispatcher not found at "{file_loc}"! (input dir "{start_loc}", provided path "{self._usr_loc}"')
@@ -128,10 +132,7 @@ class Abce(Dispatcher):
     # load user module
     load_string, _ = utils.identifyIfExternalModelExists(self, self._file, '')
     module = utils.importFromPath(load_string, True)
-    # check it works as intended
-    if not 'dispatch' in dir(module):
-      raise IOError(f'abce Dispatch at "{self._file}" does not have a "dispatch" method!')
-    # TODO other checks?
+
 
   def dispatch(self, case, components, sources, meta):
     """

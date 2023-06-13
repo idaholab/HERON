@@ -537,14 +537,14 @@ class Case(Base):
       elif item.getName() == 'result_statistics':
         new_result_statistics = self._read_result_statistics(item)
         self._result_statistics.update(new_result_statistics)
-
     # checks
     if self._mode is None:
       self.raiseAnError('No <mode> node was provided in the <Case> node!')
     if self.dispatcher is None:
       self.raiseAnError('No <dispatch> node was provided in the <Case> node!')
-    if self._time_discretization is None:
-      self.raiseAnError('<time_discretization> node was not provided in the <Case> node!')
+    if self._workflow !='ABCE':
+      if self._time_discretization is None:
+        self.raiseAnError('<time_discretization> node was not provided in the <Case> node!')
     if self.innerParallel == 0 and self.useParallel:
       #set default inner parallel to number of samples (denoises)
       self.innerParallel = self._num_samples
@@ -560,9 +560,9 @@ class Case(Base):
                            f'Number requested: {cores_requested} (inner: {self.innerParallel} * outer: {self.outerParallel}) ')
 
     # TODO what if time discretization not provided yet?
-    self.dispatcher.set_time_discr(self._time_discretization)
-    self.dispatcher.set_validator(self.validator)
-
+    if self._workflow !='ABCE':
+      self.dispatcher.set_time_discr(self._time_discretization)
+      self.dispatcher.set_validator(self.validator)
     self.raiseADebug(f'Successfully initialized Case {self.name}.')
 
   def _read_data_handling(self, node):

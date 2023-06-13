@@ -136,11 +136,8 @@ class TemplateAbce(TemplateBase, Base):
     print('case', case)
     print('components', components)
     print('sources', sources)
-    print('dispacher',case.dispatch_vars)
-
-    ccccc
-
-
+    print(self.__case.name)
+    print(dir(case.dispatcher))   
     # initialize case economics
     case.load_econ(components)
     # load a copy of the template

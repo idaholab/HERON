@@ -217,6 +217,14 @@ class Pyomo(Dispatcher):
       start_index = end_index
     return dispatch
 
+  def get_solver(self):
+    """
+      Retrieves the solver information (if applicable)
+      @ In, None
+      @ Out, solver, str, name of solver used
+    """
+    return self._solver
+
   ### INTERNAL
   def dispatch_window(self, time, time_offset,
                       case, components, sources, resources,

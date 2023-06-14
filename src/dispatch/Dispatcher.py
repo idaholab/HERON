@@ -34,6 +34,7 @@ class Dispatcher(MessageUser, InputDataUser):
     self.name = 'BaseDispatcher'
     self._time_discretization = None # (start, end, num_steps) to build time discretization
     self._validator = None           # can be used to validate activity
+    self._solver = None
 
   def read_input(self, inputs):
     """
@@ -82,6 +83,14 @@ class Dispatcher(MessageUser, InputDataUser):
       @ Out, None
     """
     self._validator = validator
+
+  def get_solver(self):
+    """
+      Retrieves the solver information (if applicable)
+      @ In, None
+      @ Out, solver, str, name of solver used
+    """
+    return self._solver
 
   # ---------------------------------------------
   # API

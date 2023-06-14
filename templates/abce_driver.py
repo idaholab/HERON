@@ -750,41 +750,41 @@ class TemplateAbce(TemplateBase, Base):
 
 
 
-  # ##### INNER #####
-  # # Right now we modify inner by HERON features, rather than RAVEN structure
-  # def _modify_inner(self, template, case, components, sources):
-  #   """
-  #     Defines modifications to the inner.xml RAVEN input file.
-  #     @ In, template, xml.etree.ElementTree.Element, root of XML to modify
-  #     @ In, case, HERON Case, defining Case instance
-  #     @ In, components, list, list of HERON Component instances for this run
-  #     @ In, sources, list, list of HERON Placeholder instances for this run
-  #     @ Out, template, xml.etree.ElementTree.Element, modified template
-  #   """
-  #   input_filepath = os.path.abspath((os.path.dirname(__file__)))
-  #   input_filepath = input_filepath+'/../src/DispatchManager'
-  #   ext_model = template.find('Models').find('ExternalModel')
-  #   #ModuleToLoad not needed for HERON.DispatchManager plugin
-  #   if 'ModuleToLoad' in ext_model.attrib:
-  #     ext_model.attrib.pop('ModuleToLoad')
-  #   ext_model.set('subType','HERON.DispatchManager')
-  #   self._modify_inner_runinfo(template, case)
-  #   self._modify_inner_sources(template, case, components, sources)
-  #   # NOTE: this HAS to come before modify_inner_denoisings,
-  #   #       because we'll be copy-pasting these for each denoising --> or wait, maybe that's for the Outer to do!
-  #   self._modify_inner_components(template, case, components)
-  #   self._modify_inner_caselabels(template, case)
-  #   self._modify_inner_time_vars(template, case)
-  #   self._modify_inner_result_statistics(template, case)
-  #   self._modify_inner_optimization_settings(template, case)
-  #   self._modify_inner_data_handling(template, case)
-  #   if case.debug['enabled']:
-  #     self._modify_inner_debug(template, case, components)
-  #   self._modify_inner_static_history(template, case, sources)
-  #   # TODO modify based on resources ... should only need if units produce multiple things, right?
-  #   # TODO modify CashFlow input ... this will be a big undertaking with changes to the inner.
-  #   ## Maybe let the user change them? but then we don't control the variable names. We probably have to do it.
-  #   return template
+  ##### INNER #####
+  # Right now we modify inner by HERON features, rather than RAVEN structure
+  def _modify_inner(self, template, case, components, sources):
+    """
+      Defines modifications to the inner.xml RAVEN input file.
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ In, components, list, list of HERON Component instances for this run
+      @ In, sources, list, list of HERON Placeholder instances for this run
+      @ Out, template, xml.etree.ElementTree.Element, modified template
+    """
+    input_filepath = os.path.abspath((os.path.dirname(__file__)))
+    input_filepath = input_filepath+'/../src/DispatchManager'
+    ext_model = template.find('Models').find('ExternalModel')
+    #ModuleToLoad not needed for HERON.DispatchManager plugin
+    if 'ModuleToLoad' in ext_model.attrib:
+      ext_model.attrib.pop('ModuleToLoad')
+    ext_model.set('subType','HERON.DispatchManager')
+    self._modify_inner_runinfo(template, case)
+    self._modify_inner_sources(template, case, components, sources)
+    # NOTE: this HAS to come before modify_inner_denoisings,
+    #       because we'll be copy-pasting these for each denoising --> or wait, maybe that's for the Outer to do!
+    self._modify_inner_components(template, case, components)
+    self._modify_inner_caselabels(template, case)
+    self._modify_inner_time_vars(template, case)
+    self._modify_inner_result_statistics(template, case)
+    self._modify_inner_optimization_settings(template, case)
+    self._modify_inner_data_handling(template, case)
+    if case.debug['enabled']:
+      self._modify_inner_debug(template, case, components)
+    self._modify_inner_static_history(template, case, sources)
+    # TODO modify based on resources ... should only need if units produce multiple things, right?
+    # TODO modify CashFlow input ... this will be a big undertaking with changes to the inner.
+    ## Maybe let the user change them? but then we don't control the variable names. We probably have to do it.
+    return template
 
   # def _modify_inner_static_history(self, template, case, sources):
   #   """

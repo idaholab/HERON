@@ -1,11 +1,35 @@
 [Tests]
-  [./LevelizedCost]
+  [./LevelizedPrice]
     type = HeronIntegration
-    input = heron_input.xml
+    input = heron_input__LC_Price.xml
 	# prereq = SineArma
     [./csv]
       type = OrderedCSV
-      output = 'Runs_o/sweep.csv'
+      output = 'LC_Price_o/sweep.csv'
+      zero_threshold = 1e-6
+      rel_err = 1e-6
+    [../]
+  [../]
+
+  [./LevelizedVariablePrice]
+    type = HeronIntegration
+    input = heron_input__LC_VariablePrice.xml
+	# prereq = SineArma
+    [./csv]
+      type = OrderedCSV
+      output = 'LC_VariablePrice_o/sweep.csv'
+      zero_threshold = 1e-6
+      rel_err = 1e-6
+    [../]
+  [../]
+
+  [./LevelizedVOM]
+    type = HeronIntegration
+    input = heron_input__LC_VOM.xml
+	# prereq = SineArma
+    [./csv]
+      type = OrderedCSV
+      output = 'LC_VOM_o/sweep.csv'
       zero_threshold = 1e-6
       rel_err = 1e-6
     [../]

@@ -11,7 +11,7 @@
     <classesTested>HERON</classesTested>
   </TestInfo>
 
-  <Case name="Runs">
+  <Case name="LC_VOM">
     <mode>sweep</mode>
     <num_arma_samples>3</num_arma_samples>
     <time_discretization>
@@ -69,7 +69,7 @@
             <activity>a</activity>
           </driver>
           <reference_price>
-            <fixed_value>-1</fixed_value>
+            <levelized_cost/> <!-- FINDING LEVELIZED COST HERE! -->
           </reference_price>
         </CashFlow>
       </economics>
@@ -78,7 +78,7 @@
     <Component name="sink">
       <demands resource="a" dispatch="independent">
         <capacity>
-          <fixed_value>-2</fixed_value>
+          <fixed_value>-3</fixed_value>
         </capacity>
       </demands>
       <economics>
@@ -89,7 +89,7 @@
             <multiplier>-1</multiplier>
           </driver>
           <reference_price>
-            <levelized_cost/>  <!-- FINDING LEVELIZED COST HERE! -->
+            <fixed_value>30</fixed_value>
           </reference_price>
         </CashFlow>
       </economics>

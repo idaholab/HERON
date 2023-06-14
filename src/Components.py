@@ -348,8 +348,8 @@ class Component(Base, CashFlowUser):
 
   def set_levelized_cost_meta(self, cashflows):
     """
-      Return the interactions this component uses.
-      TODO could this just return the only non-empty one, since there can only be one?
+      Create a dictionary for determining correct resource to use per cashflow if using levelized
+      inner objective (only an option when selecting LC as an econ metric)
       @ In, cashflows, list, list of Interaction instances
       @ Out, None
     """

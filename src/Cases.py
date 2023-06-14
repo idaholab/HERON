@@ -862,62 +862,59 @@ class Case(Base):
     """
     # if NPV target is None, means we don't care about levelized cost - proceed as normal
     # also only current supporting checks if user is using PyomoDispatch
-    has_no_npv_target = self._npv_target is None
-    not_using_pyomo_dispatch = self.dispatcher.name != 'PyomoDispatcher'
-    if any([has_no_npv_target, not_using_pyomo_dispatch]):
+    if any([self._npv_target is None,
+            self.dispatcher.name != 'PyomoDispatcher']):
       return False
 
     # we have determined we require an NPV target - proceed with levelized cost calculation
+    # now we must determine whether to switch the inner objective function...
     use_levelized_inner = False
 
     # collecting all cashflows marked with levelized cost
+    # NOTE: we are allowing multiple cashflows at this time, unsure how common this will be?
     levelized_cfs = {comp: [cf for cf in comp.get_economics().get_cashflows() if cf.is_mult_target()]
                         for comp in components}
     levelized_cfs = {comp:cf for comp,cf in levelized_cfs.items() if cf} # trimming components w/o LC
 
     # 0. zero-order check: are we using an appropriate nonlinear solver? assuming PyomoDispatcher
     # TODO: should compile a list of linear vs nonlinear solvers...
-    if self.dispatcher._solver in ['glpk', 'cbc']: #TODO:ugh... should we have a getter for solver?
+    if self.dispatcher.get_solver() in ['glpk', 'cbc']:
       appropriate_solvers = ['ipopt']
-      self.raiseAnError('Levelized Cost metric requires a nonlinear optimization in the inner step, ' +
-                        f' please use any of the following solvers: {appropriate_solvers}')
+      self.raiseAnError('Levelized Cost metric requires a nonlinear optimization in the inner' +
+                        f' step, please use any of the following solvers: {appropriate_solvers}')
 
     # 1. check first that there is a levelized cost CashFlow in any of available components
     if not levelized_cfs:
-      self.raiseAnError('Levelized Cost metric was selected, but no <levelized_cost> node was found in component Cash Flows! \n' +
+      self.raiseAnError('Levelized Cost metric was selected, but no <levelized_cost> node was ' +
+                        'found in component Cash Flows! \n' +
                         'The levelized cost subnode should be under the <reference_price> node')
 
-    # 2. check that the component(s) are Demanding components
-    # TODO: allow Producers and Storage later; will need to check "dispatchable"
-    if any(comp.get_interaction().tag!='demands' for comp in levelized_cfs.keys()):
-      self.raiseAnError('Levelized Cost metric implemented for Demanding Components only')
+    # 2. check what type of driver we are using in the cashflows
+    if all(cf.get_driver().type !='Activity'
+            for cfs_list in levelized_cfs.values()
+              for cf in cfs_list):
+      # this means that there is no driver that is a variable in the inner optimization,
+      # so no need to use levelized objective in inner
+      return False
 
-    # 3. check that the remaining cashflow(s) are Recurring Hourly
-    # TODO: allow Recurring Yearly, then One-Time (this one is tricky, have to check/include Depreciation...)
-    if any(cf.get_period()!='hour' for cfs_list in levelized_cfs.values() for cf in cfs_list):
-      self.raiseAnError('Levelized Cost metric implemented for Recurring Hourly cashflows only')
+    # 2a. (temporary) check if driver is a variable in outer
+    # TODO: need to fix TEAL to carry over depreciation terms for CAPEX into NPV_search
+    # TODO: do we want to check the period of the cashflow? hourly, yearly, one-time...?
+    if any(cf.get_driver().type =='variable'
+            for cfs_list in levelized_cfs.values()
+              for cf in cfs_list):
+      self.raiseAnError('Levelized Cost metric not implemented for Variable ValuedParam yet. ' +
+                        'Driver is a variable in the outer optimization, at worst it is an upper ' +
+                        'bound in inner.')
 
-    # 4. check that the remaining cashflow(s) drivers are of the Activity Type (that is, we are determining dispatch)
-    # TODO: these might be capacity variable instead for other Period types (Yearly, One-Time)
-    # TODO: what happens if they are NOT a variable? a time series or fixed value?...
-    if any(cf.get_driver().type!='Activity'
-            for cfs_list in levelized_cfs.values() for cf in cfs_list):
-      self.raiseAnError('Levelized Cost metric implemented for Cashflows with Activity Drivers only')
-
-    # 5. check that the remaining cashflow(s) *prices* are fixed (for now)
-    # TODO: allow time series WITH A WARNING! they should be normalized
-    if any(cf.get_price().type!='FixedValue'
-            for cfs_list in levelized_cfs.values() for cf in cfs_list):
-      self.raiseAnError('Levelized Cost metric implemented for Cashflows with Fixed Prices only')
-
-    # 6. check that the remaining cashflow(s) reference and scale are fixed
-    # TODO: Should we allow them to be valued params?...
-    if any(cf.get_reference().type!='FixedValue' and cf.get_scale().type!='FixedValue'
-            for cfs_list in levelized_cfs.values() for cf in cfs_list):
-      self.raiseAnError('Levelized Cost metric implemented for Cashflows with Fixed reference drivers and scale only')
+    # 3. check the dispatchability of the components
+    if all(comp.get_interaction().is_dispatchable() != 'independent'
+            for comp in levelized_cfs.keys()):
+      # means that all dispatches are static, so no decisions need to be made in the inner.
+      # If this is the case, we can continue with default inner objective
+      return False
 
     # by this point in the filter process, this is the only option.
-    # FIXME: if the levelized cashflow has a capacity driver (once we allow it), then this should return False
     use_levelized_inner = True
 
     # for all remaining levelized cash flows, get tracker and resource for related Activity (saving it to component)
@@ -1014,8 +1011,7 @@ class Case(Base):
   def get_econ_metrics(self, nametype='output'):
     """
       Accessor
-      @ In, None
-      @ Out, nametype, str, economic metric name to use (options: 'output' or 'TEAL')
+      @ In, nametype, str, economic metric name to use (options: 'output' or 'TEAL')
       @ Out, econ_metrics, list, string list of indicators, such as NPV, IRR.
     """
     assert nametype in ['output', 'TEAL_in']
@@ -1105,6 +1101,15 @@ class Case(Base):
       @ Out, dispatch_var, ValuedParamHandler, a ValuedParam object.
     """
     return self.dispatch_vars[name]
+
+  @property
+  def npv_target(self):
+    """
+      Accessor
+      @ In, None
+      @ Out, npv_target, float, target for NPV search (defaults to None)
+    """
+    return self._npv_target
 
   #### API ####
   def write_workflows(self, components, sources, loc):

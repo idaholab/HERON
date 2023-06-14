@@ -35,6 +35,7 @@ class Dispatcher(MessageUser, InputDataUser):
     self._time_discretization = None # (start, end, num_steps) to build time discretization
     self._validator = None           # can be used to validate activity
     self._solver = None
+    self._eps = 1e-9                 # small constant to add to denominator
 
   def read_input(self, inputs):
     """
@@ -214,6 +215,8 @@ class Dispatcher(MessageUser, InputDataUser):
       multiplied     += multiplied_comp
       non_multiplied += non_multiplied_comp
     # at this point, there should be a not None NPV Target
-    total = (meta['HERON']['Case']._npv_target - non_multiplied) / multiplied
-    return -1*total
+    multiplied += self._eps
+    total = (meta['HERON']['Case'].npv_target - non_multiplied) / multiplied
+    total *= -1
+    return total
 

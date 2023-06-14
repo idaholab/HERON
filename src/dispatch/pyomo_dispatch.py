@@ -83,6 +83,7 @@ class Pyomo(Dispatcher):
       @ In, None
       @ Out, None
     """
+    super().__init__()
     self.name = 'PyomoDispatcher' # identifying name
     self.debug_mode = False       # whether to print additional information
     self._window_len = 24         # time window length to dispatch at a time # FIXME user input

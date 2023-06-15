@@ -37,6 +37,14 @@ if platform.system() == 'Windows':
 else:
   SOLVERS = ['cbc', 'glpk', 'ipopt']
 
+# different solvers express "tolerance" for converging solution in different
+# ways. Further, they mean different things for different solvers. This map
+# just tracks the "nominal" argument that we should pass through pyomo.
+solver_tol_map = {
+  'ipopt': 'tol',
+  'cbc': 'primalTolerance',
+  'glpk': 'mipgap',
+}
 
 class Pyomo(Dispatcher):
   """
@@ -74,6 +82,11 @@ class Pyomo(Dispatcher):
     specs.addSub(InputData.parameterInputFactory('solver', contentType=InputTypes.StringType,
         descr=r"""Indicates which solver should be used by pyomo. Options depend on individual installation.
         \default{'glpk' for Windows, 'cbc' otherwise}."""))
+    specs.addSub(InputData.parameterInputFactory('tol', contentType=InputTypes.FloatType,
+        descr=r"""Relative tolerance for converging final optimal dispatch solutions. Specific implementation
+        depends on the solver selected. Changing this value could have significant impacts on the
+        dispatch optimization time and quality.
+        \default{solver dependent, often 1e-6}."""))
     # TODO specific for pyomo dispatcher
     return specs
 
@@ -85,6 +98,7 @@ class Pyomo(Dispatcher):
     """
     self.name = 'PyomoDispatcher' # identifying name
     self.debug_mode = False       # whether to print additional information
+    self.solve_options = {}       # options passed from Pyomo to the solver
     self._window_len = 24         # time window length to dispatch at a time # FIXME user input
     self._solver = None           # overwrite option for solver
     self._picard_limit = 10       # iterative solve limit
@@ -108,6 +122,14 @@ class Pyomo(Dispatcher):
     solver_node = specs.findFirst('solver')
     if solver_node is not None:
       self._solver = solver_node.value
+
+    # the tolerance value needs to be saved for after the solver is set
+    # since we don't know what key to assign it to otherwise
+    tol_node = specs.findFirst('tol')
+    if tol_node is not None:
+      solver_tol = tol_node.value
+    else:
+      solver_tol = None
 
     if self._solver is None:
       solvers_to_check = SOLVERS
@@ -146,6 +168,9 @@ class Pyomo(Dispatcher):
       msg += f' Options MAY include: {available}'
       raise RuntimeError(msg)
 
+    if solver_tol is not None:
+      key = solver_tol_map[self._solver]
+      self.solve_options[key] = solver_tol
 
   ### API
   def dispatch(self, case, components, sources, meta):
@@ -308,9 +333,7 @@ class Pyomo(Dispatcher):
       attempts += 1
       print(f'DEBUGG solve attempt {attempts} ...:')
       # solve
-      # TODO someday if we want to give user access to options, we can add them to this dict. For now, no options.
-      solve_options = {}
-      soln = pyo.SolverFactory(self._solver).solve(m, options=solve_options)
+      soln = pyo.SolverFactory(self._solver).solve(m, options=self.solve_options)
       # check solve status
       if soln.solver.status == SolverStatus.ok and soln.solver.termination_condition == TerminationCondition.optimal:
         print('DEBUGG ... solve was successful!')

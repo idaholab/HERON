@@ -9,16 +9,8 @@ import platform # only for choosing solver based on HERON installation
 
 import numpy as np
 import matplotlib.pyplot as plt
+
 import pyomo.environ as pyo
-
-from .Dispatcher import Dispatcher
-from .DispatchState import DispatchState, NumpyState
-try:
-  import _utils as hutils
-except (ModuleNotFoundError, ImportError):
-  sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-  import _utils as hutils
-
 
 # This isn't strictly required, just how HERON installs default options
 if platform.system() == 'Windows':
@@ -33,11 +25,10 @@ components = ['NPP', 'BOP', 'Grid']
 resources = ['steam', 'electricity']
 time = np.linspace(0, 24, 24) # from @1 to @2 in @3 steps
 dt = time[1] - time[0]
-resource_map = {
-  'NPP': {'steam': 0},
-  'BOP': {'steam': 0, 'electricity': 1},
-  'Grid': {'electricity': 0},
-}
+resource_map = {'NPP': {'steam': 0},
+                'BOP': {'steam': 0, 'electricity': 1},
+                'Grid': {'electricity': 0},
+                }
 
 # sizing specifications
 steam_produced = 100 # MWt/h of steam at NPP
@@ -72,102 +63,86 @@ activity = {}
 for comp in components:
   activity[comp] = np.zeros((len(resources), len(time)), dtype=float)
 
-class PyomoLimitedRamp(Dispatcher)
-
-  @classmethod
-  def get_input_specs(cls):
-    """ """
-    pass
-
-  def __init__(self):
-    """ """
-    pass
-
-  def read_input(self, specs):
-    """ """
-    pass
-
-  def dispatch(self, case, compontents, sources, meta):
-    """  """
-    pass
-
-  def make_concrete_model():
-    """
-      Test writing a simple concrete model with terms typical to the pyomo dispatcher.
-      @ In, None
-      @ Out, m, pyo.ConcreteModel, instance of the model to solve
-    """
-    m = pyo.ConcreteModel()
-    # indices
-    C = np.arange(0, len(components), dtype=int) # indexes component
-    R = np.arange(0, len(resources), dtype=int)  # indexes resources
-    T = np.arange(0, len(time), dtype=int)       # indexes time
-    # move onto model
-    m.C = pyo.Set(initialize=C)
-    m.R = pyo.Set(initialize=R)
-    m.T = pyo.Set(initialize=T)
-    #*******************
-    # FOCUS: create equations for limiting ramp frequency
-    m.ramp_up = pyo.Var(m.T, initialize=0, within=pyo.Binary)
-    m.ramp_down = pyo.Var(m.T, initialize=0, within=pyo.Binary)
-    m.ramp_none = pyo.Var(m.T, initialize=0, within=pyo.Binary)
-    # store some stuff for reference -> NOT NOTICED by Pyomo, we hope
-    #*******************
-    m.Times = time
-    m.Components = components
-    m.resource_index_map = resource_map
-    m.Activity = activity
-    #*******************
-    #  set up optimization variables
-    # -> for now we just do this manually
-    # NPP
-    m.NPP_index_map = pyo.Set(initialize=range(len(m.resource_index_map['NPP'])))
-    m.NPP_production = pyo.Var(m.NPP_index_map, m.T, initialize=0)
-    # BOP
-    m.BOP_index_map = pyo.Set(initialize=range(len(m.resource_index_map['BOP'])))
-    m.BOP_production = pyo.Var(m.BOP_index_map, m.T, initialize=0)
-    # Grid
-    m.Grid_index_map = pyo.Set(initialize=range(len(m.resource_index_map['Grid'])))
-    m.Grid_production = pyo.Var(m.Grid_index_map, m.T, initialize=0)
-    #*******************
-    #  set up lower, upper bounds
-    # -> for testing we just do this manually
-    # -> consuming is negative sign by convention!
-    # -> producing is positive sign by convention!
-    # steam source produces between 0 and # steam
-    m.NPP_lower_limit = pyo.Constraint(m.T, rule=lambda m, t: m.NPP_production[0, t] >= 0)
-    m.NPP_upper_limit = pyo.Constraint(m.T, rule=lambda m, t: m.NPP_production[0, t] <= steam_produced)
-    # elec generator can consume steam to produce electricity; 0 < consumed steam < 1000
-    # -> this effectively limits electricity production, but we're defining capacity in steam terms for fun
-    # -> therefore signs are negative, -1000 < consumed steam < 0!
-    m.BOP_lower_limit = pyo.Constraint(m.T, rule=lambda m, t: m.BOP_production[0, t] >= -gen_consume_limit)
-    m.BOP_upper_limit = pyo.Constraint(m.T, rule=lambda m, t: m.BOP_production[0, t] <= 0)
-    # elec sink can take any amount of electricity
-    # -> consuming, so -10000 < consumed elec < 0
-    m.Grid_lower_limit = pyo.Constraint(m.T, rule=lambda m, t: m.Grid_production[0, t] >= -sink_limit)
-    m.Grid_upper_limit = pyo.Constraint(m.T, rule=lambda m, t: m.Grid_production[0, t] <= 0)
-    #*******************
-    # create transfer function
-    # 2 steam make 1 electricity (sure, why not)
-    m.BOP_transfer = pyo.Constraint(m.T, rule=_generator_transfer)
-    #*******************
-    # create conservation rules
-    # steam
-    m.steam_conservation = pyo.Constraint(m.T, rule=_conserve_steam)
-    # electricity
-    m.elec_conservation = pyo.Constraint(m.T, rule=_conserve_electricity)
-    #*******************
-    # FOCUS: ramping rules
-    m.npp_ramp_up_limit = pyo.Constraint(m.T, rule=_ramp_up_NPP)
-    m.npp_ramp_down_limit = pyo.Constraint(m.T, rule=_ramp_down_NPP)
-    m.npp_ramp_binaries = pyo.Constraint(m.T, rule=_ramp_binaries_NPP)
-    m.npp_ramp_freq_limit = pyo.Constraint(m.T, rule=_ramp_time_limit_NPP)
-    #*******************
-    # create objective function
-    m.OBJ = pyo.Objective(sense=pyo.maximize, rule=_economics)
-    #######
-    # return
-    return m
+# --------------------------------------------------------------------------------
+# Set up method to construct the Pyomo concrete model.
+#
+def make_concrete_model():
+  """
+    Test writing a simple concrete model with terms typical to the pyomo dispatcher.
+    @ In, None
+    @ Out, m, pyo.ConcreteModel, instance of the model to solve
+  """
+  m = pyo.ConcreteModel()
+  # indices
+  C = np.arange(0, len(components), dtype=int) # indexes component
+  R = np.arange(0, len(resources), dtype=int)  # indexes resources
+  T = np.arange(0, len(time), dtype=int)       # indexes time
+  # move onto model
+  m.C = pyo.Set(initialize=C)
+  m.R = pyo.Set(initialize=R)
+  m.T = pyo.Set(initialize=T)
+  #*******************
+  # FOCUS: create equations for limiting ramp frequency
+  m.ramp_up = pyo.Var(m.T, initialize=0, within=pyo.Binary)
+  m.ramp_down = pyo.Var(m.T, initialize=0, within=pyo.Binary)
+  m.ramp_none = pyo.Var(m.T, initialize=0, within=pyo.Binary)
+  # store some stuff for reference -> NOT NOTICED by Pyomo, we hope
+  #*******************
+  m.Times = time
+  m.Components = components
+  m.resource_index_map = resource_map
+  m.Activity = activity
+  #*******************
+  #  set up optimization variables
+  # -> for now we just do this manually
+  # NPP
+  m.NPP_index_map = pyo.Set(initialize=range(len(m.resource_index_map['NPP'])))
+  m.NPP_production = pyo.Var(m.NPP_index_map, m.T, initialize=0)
+  # BOP
+  m.BOP_index_map = pyo.Set(initialize=range(len(m.resource_index_map['BOP'])))
+  m.BOP_production = pyo.Var(m.BOP_index_map, m.T, initialize=0)
+  # Grid
+  m.Grid_index_map = pyo.Set(initialize=range(len(m.resource_index_map['Grid'])))
+  m.Grid_production = pyo.Var(m.Grid_index_map, m.T, initialize=0)
+  #*******************
+  #  set up lower, upper bounds
+  # -> for testing we just do this manually
+  # -> consuming is negative sign by convention!
+  # -> producing is positive sign by convention!
+  # steam source produces between 0 and # steam
+  m.NPP_lower_limit = pyo.Constraint(m.T, rule=lambda m, t: m.NPP_production[0, t] >= 0)
+  m.NPP_upper_limit = pyo.Constraint(m.T, rule=lambda m, t: m.NPP_production[0, t] <= steam_produced)
+  # elec generator can consume steam to produce electricity; 0 < consumed steam < 1000
+  # -> this effectively limits electricity production, but we're defining capacity in steam terms for fun
+  # -> therefore signs are negative, -1000 < consumed steam < 0!
+  m.BOP_lower_limit = pyo.Constraint(m.T, rule=lambda m, t: m.BOP_production[0, t] >= -gen_consume_limit)
+  m.BOP_upper_limit = pyo.Constraint(m.T, rule=lambda m, t: m.BOP_production[0, t] <= 0)
+  # elec sink can take any amount of electricity
+  # -> consuming, so -10000 < consumed elec < 0
+  m.Grid_lower_limit = pyo.Constraint(m.T, rule=lambda m, t: m.Grid_production[0, t] >= -sink_limit)
+  m.Grid_upper_limit = pyo.Constraint(m.T, rule=lambda m, t: m.Grid_production[0, t] <= 0)
+  #*******************
+  # create transfer function
+  # 2 steam make 1 electricity (sure, why not)
+  m.BOP_transfer = pyo.Constraint(m.T, rule=_generator_transfer)
+  #*******************
+  # create conservation rules
+  # steam
+  m.steam_conservation = pyo.Constraint(m.T, rule=_conserve_steam)
+  # electricity
+  m.elec_conservation = pyo.Constraint(m.T, rule=_conserve_electricity)
+  #*******************
+  # FOCUS: ramping rules
+  m.npp_ramp_up_limit = pyo.Constraint(m.T, rule=_ramp_up_NPP)
+  m.npp_ramp_down_limit = pyo.Constraint(m.T, rule=_ramp_down_NPP)
+  m.npp_ramp_binaries = pyo.Constraint(m.T, rule=_ramp_binaries_NPP)
+  m.npp_ramp_freq_limit = pyo.Constraint(m.T, rule=_ramp_time_limit_NPP)
+  #*******************
+  # create objective function
+  m.OBJ = pyo.Objective(sense=pyo.maximize, rule=_economics)
+  #######
+  # return
+  return m
 
 #######
 #

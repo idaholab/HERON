@@ -123,7 +123,6 @@ class Abce(Dispatcher):
     """
     start_loc = case.run_dir
     file_loc = os.path.abspath(os.path.join(start_loc, self._usr_loc))
-    print('file_loc',file_loc)
     # check that it exists
     if not os.path.isfile(file_loc):
       raise IOError(f'abce dispatcher not found at "{file_loc}"! (input dir "{start_loc}", provided path "{self._usr_loc}"')

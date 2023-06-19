@@ -11,11 +11,12 @@ import shutil
 import time
 import xml.etree.ElementTree as ET
 import itertools as it
-
+from prettyprinter import pprint
+import io
 import numpy as np
 import dill as pk
 import yaml
-
+from ravenframework.MessageHandler import MessageHandler
 # load utils
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from HERON.src.base import Base
@@ -99,10 +100,12 @@ class TemplateAbce(TemplateBase, Base):
     self._template_abce_path = None
     self._template_outer = None
     self._template_abce_settings = None
+    self._abce_files_to_copy = None
     self.__case = None
     self.__components = None
     self.__sources = None
     self.__sweep_vars = []
+    self.messageHandler = MessageHandler()
 
   def loadTemplate(self, path):
     """
@@ -114,14 +117,14 @@ class TemplateAbce(TemplateBase, Base):
     self._template_outer_path = os.path.join(rel_path, 'outer.xml')
     self._template_outer, _ = xmlUtils.loadToTree(self._template_outer_path, preserveComments=True)
 
-
-  def createWorkflow(self, case, components, sources):
+  def createWorkflow(self, case, components, sources, loc):
     """
       Create workflow XMLs
       @ In, case, HERON case, case instance for this sim
       @ In, components, list, HERON component instances for this sim
       @ In, sources, list, HERON source instances for this sim
       @ Out, outer, XML Element, root node for outer
+      @ Out, abce_files, list, abce_inputs files 
 
     """
     # store pieces
@@ -134,25 +137,26 @@ class TemplateAbce(TemplateBase, Base):
     self._template_abce_settings = dispatcher_settings['settings_file']
     # initialize case economics
     case.load_econ(components)
+    self._abce_files_to_copy = self._get_abce_files_to_copy()
+    abce_temp = self._abce_files_to_copy
+    case_name = self.namingTemplates['jobname'].format(case=case.name, io='o')
+    # create the location if not already there in the current working directory
+    # the subfolder is called case_name
+    if not os.path.exists(case_name):
+      os.makedirs(case_name)
+    # copy the files to the location
+    # location is the subfolder in the current working directory called case_name
+    new_loc = os.path.join(loc, case_name)
+    abce_inputs = self._copied_abce_inputs(new_loc, abce_temp)
+    # modyify the abce_inputs
+    self._modify_abce_inputs(abce_inputs, case, components, sources)
     # load a copy of the template
     outer = copy.deepcopy(self._template_outer)
     # modify the templates
     outer = self._modify_outer(outer, case, components, sources)
-    # create a list of abce input files to copy 
-    # files should be in the self._template_abce_inputs_path
-    # and not be a folder
-    abce_files_to_copy = []
-    for file in os.listdir(self._template_abce_inputs_path):
-      if os.path.isfile(os.path.join(self._template_abce_inputs_path, file)):
-        abce_files_to_copy.append(os.path.join(self._template_abce_inputs_path, file))
-    ts_files = [os.path.join(self._template_abce_inputs_path, 'ts_data', file) for file in os.listdir(os.path.join(self._template_abce_inputs_path, 'ts_data'))]
 
-    abce_files_to_copy.append(self._template_abce_settings)
-
-    print('abce_files_to_copy',abce_files_to_copy)
-    print('ts_files',ts_files)
-    return abce_files_to_copy,outer
-
+    return outer
+ 
   def writeWorkflow(self, templates, destination, run=False):
     """
       Write outer and inner RAVEN workflows.
@@ -165,7 +169,7 @@ class TemplateAbce(TemplateBase, Base):
     # write templates
     outer = templates
     outer_file = os.path.abspath(os.path.join(destination, 'outer.xml'))
-    abce_settings_file = self._template_abce_settings
+    # abce_settings_file = self._template_abce_settings
 
     self.raiseAMessage('========================')
     self.raiseAMessage('HERON: writing files ...')
@@ -175,22 +179,6 @@ class TemplateAbce(TemplateBase, Base):
     with open(outer_file, 'w') as f:
       f.write(xmlUtils.prettify(outer))
     self.raiseAMessage(msg_format.format(*os.path.split(outer_file)))
-
-    with open(inner_file, 'w') as f:
-      f.write(xmlUtils.prettify(inner))
-    self.raiseAMessage(msg_format.format(*os.path.split(inner_file)))
-
-    # write library of info so it can be read in dispatch during inner run
-    data = (self.__case, self.__components, self.__sources)
-    lib_file = os.path.abspath(os.path.join(destination, self.namingTemplates['lib file']))
-    with open(lib_file, 'wb') as lib:
-      pk.dump(data, lib)
-    self.raiseAMessage(msg_format.format(*os.path.split(lib_file)))
-    # copy "write_inner.py", which has the denoising and capacity fixing algorithms
-    conv_src = os.path.abspath(os.path.join(self._template_path, 'write_inner.py'))
-    conv_file = os.path.abspath(os.path.join(destination, 'write_inner.py'))
-    shutil.copyfile(conv_src, conv_file)
-    self.raiseAMessage(msg_format.format(*os.path.split(conv_file)))
     # run, if requested
     if run:
       self.runWorkflow(destination)
@@ -717,6 +705,206 @@ class TemplateAbce(TemplateBase, Base):
       xml.append(xmlUtils.newNode('initial', text=initial))
     return dist, xml
 
+  ##### ABCE #####
+
+  def _get_abce_files_to_copy(self):
+    """
+      Defines files to copy from ABCE to HERON working directory.
+      @ In, case, HERON Case, defining Case instance
+      @ Out, files, list, list of files to copy
+    """
+    # create a list of abce input files to copy 
+    # files should be in the self._template_abce_inputs_path
+    # and not be a folder
+    abce_files_to_copy = {}
+    # add input files as a list
+    abce_input_files = []
+    for file in os.listdir(self._template_abce_inputs_path):
+      if os.path.isfile(os.path.join(self._template_abce_inputs_path, file)):
+        abce_input_files.append(os.path.join(self._template_abce_inputs_path, file))
+    ts_files = [os.path.join(self._template_abce_inputs_path, 'ts_data', file) for file in os.listdir(os.path.join(self._template_abce_inputs_path, 'ts_data'))]
+    # remove the file start with 'repDays' in ts_files
+    ts_files = [file for file in ts_files if not file.startswith(os.path.join(self._template_abce_inputs_path, 'ts_data', 'repDays'))]
+    abce_files_to_copy['abce_input_files'] = abce_input_files
+    abce_files_to_copy['ts_files'] = ts_files
+    # add abce_settings file
+    abce_files_to_copy['abce_settings_file'] = self._template_abce_settings
+    # # print the lists in a readable format
+    # print('abce_files_to_copy:')
+    # for key, value in abce_files_to_copy.items():
+    #   # print key and value with a sep \n for each element if value is a list, otherwise print value
+    #   print(key, '\n', '\n'.join(value) if isinstance(value, list) else value)
+    return abce_files_to_copy
+
+  def _copied_abce_inputs(self, loc, abce_temp):
+    """
+      Copies ABCE input files to working directory.
+      @ In, loc, str, location to copy files to
+      @ In, abce_temp, dict, dictionary of ABCE files to copy
+      @ Out, abce_input_files_copied, dict, dictionary of ABCE files copied
+    """
+    # copy abce_settings file to working directory
+    shutil.copy(abce_temp['abce_settings_file'], loc)
+    # create inputs folder in working directory if not exist
+    if not os.path.exists(os.path.join(loc, 'inputs')):
+      os.makedirs(os.path.join(loc, 'inputs'))
+    # copy abce input files to working directory
+    for file in abce_temp['abce_input_files']:
+      shutil.copy(file, os.path.join(loc, 'inputs'))
+    # create ts_data folder under inputs folder in working directory if not exist
+    if not os.path.exists(os.path.join(loc, 'inputs', 'ts_data')):
+      os.makedirs(os.path.join(loc, 'inputs', 'ts_data'))
+    # copy ts files to working directory 
+    for file in abce_temp['ts_files']:
+      shutil.copy(file, os.path.join(loc, 'inputs', 'ts_data'))
+    # create a dict of abce input files copied with relative path
+    abce_input_files_copied = {}
+    abce_input_files_copied['abce_settings_file'] = os.path.join(loc, os.path.basename(abce_temp['abce_settings_file']))
+    abce_input_files_copied['abce_input_files'] = [os.path.join(loc, 'inputs', os.path.basename(file)) for file in abce_temp['abce_input_files']]
+    abce_input_files_copied['ts_files'] = [os.path.join(loc, 'inputs', 'ts_data', os.path.basename(file)) for file in abce_temp['ts_files']]
+
+    return  abce_input_files_copied
+
+  def _modify_abce_inputs(self, abce_inputs, case, components, sources):
+    """
+      Modifies ABCE input files to match HERON case.
+      @ In, abce_inputs, dict, dictionary of ABCE files copied
+      @ In, case, HERON Case, defining Case instance
+      @ In, components, dict, dictionary of components
+      @ In, sources, dict, dictionary of sources
+      @ Out, None
+    """
+    # modify abce_settings file
+    self._modify_abce_settings(abce_inputs['abce_settings_file'], case, components, sources)
+    # modify abce input files
+    for file in abce_inputs['abce_input_files']:
+      self._modify_abce_other_input(file, case, components, sources)
+    # modify ts files
+    for file in abce_inputs['ts_files']:
+      self._modify_ts_data(file, case, components, sources)
+
+  def _modify_abce_settings(self, abce_settings_file, case, components, sources):
+    """
+      Modifies ABCE settings file to match HERON case.
+      @ In, abce_settings_file, str, ABCE settings file settings.yml
+      @ In, case, HERON Case, defining Case instance
+      @ In, components, dict, dictionary of components
+      @ In, sources, dict, dictionary of sources
+      @ Out, None
+    """
+    # parse the yml file
+    with open(abce_settings_file, 'r') as f:
+      settings = yaml.load(f, Loader=yaml.FullLoader)
+    # modify the yml file
+    yaml_lines = self._modify_abce_settings_yml(settings, case, components, sources)
+    # write the yml file
+    with open(abce_settings_file, 'w') as f:
+      f.write('\n'.join(yaml_lines))
+
+  def _modify_abce_settings_yml(self, settings, case, components, sources):
+    """
+      Modifies ABCE settings yml file to match HERON case.
+      @ In, settings, dict, ABCE settings dictionary
+      @ In, case, HERON Case, defining Case instance
+      @ In, components, dict, dictionary of components
+      @ In, sources, dict, dictionary of sources
+      @ Out, None
+    """
+    
+    dispatch_settings = case.dispatcher._disp_settings
+    # update the settings dictionary
+    for key, value in settings['dispatch'].items():
+      if key in dispatch_settings:
+        settings['dispatch'][key] = dispatch_settings[key]
+    econ_settings = case._global_econ
+    self._update_dict(settings['scenario'], econ_settings)
+    yaml_lines = self._modify_abce_settings_global(settings)
+
+    return yaml_lines
+
+  def _update_dict(self, target, source):
+    """
+      Updates target dictionary with source dictionary.
+      @ In, target, dict, target dictionary
+      @ In, source, dict, source dictionary
+      @ Out, None
+    """
+    for key, value in source.items():
+      if isinstance(value, dict) and key in target and isinstance(target[key], dict):
+        self._update_dict(target[key], value)
+      elif isinstance(value, list) and key in target and isinstance(target[key], list):
+        target[key] = value
+
+  def _modify_abce_settings_global(self,yaml_data):
+    """
+      Modifies ABCE settings yml file to match HERON case.
+      @ In, yaml_data, dict, dictionary of data in yml file
+      @ Out, yaml_lines, list, list of lines in yml file
+    """
+    yaml_lines = []
+    # modify the global settings
+    for key, value in yaml_data.items():
+      # if key starts with '_', remove it
+      if key[0] == '_':
+        key = key[1:]
+      yaml_lines.append(f'{key}: ')
+      for k, v in value.items(): 
+        # add indentation for all the subkeys 
+        stream = io.StringIO()
+        # if v is a dict, add indentation for all the subkeys in v
+        yaml.dump({k: v}, stream, indent=2) 
+        # if stream has multiple lines, add indentation for all the lines, if it contains quotes, remove them
+        if len(stream.getvalue().splitlines()) > 1:
+          for line in stream.getvalue().splitlines():
+              line = '  ' + line
+              # if line.strip()[-1] is a quote, remove it
+              if line.strip()[-1] == "'":
+                yaml_lines.append(line.replace("'", ""))
+              elif line.strip()[-1] == '"':
+                yaml_lines.append(line.replace('"', ""))
+              else:
+                yaml_lines.append(line)
+        else:
+          # if stream.getvalue().strip() have quotes for the last word, remove them
+          if stream.getvalue().strip()[-1] == '"':
+            yaml_lines.append('  ' + stream.getvalue().strip().replace('"', ""))
+          elif stream.getvalue().strip()[-1] == "'":
+            yaml_lines.append('  ' + stream.getvalue().strip().replace("'", ""))
+          else:
+            yaml_lines.append('  ' + stream.getvalue().strip())
+      yaml_lines.append('\n')
+    
+
+    for i, line in enumerate(yaml_lines):
+      if line.strip().startswith('-'):
+        line = '  ' + line
+        yaml_lines[i] = line
+    return yaml_lines
+
+  def _modify_abce_other_input(self, abce_input_file, case, components, sources):
+    """
+      Modifies ABCE input file to match HERON case.
+      @ In, abce_input_file, str, ABCE input file
+      @ In, case, HERON Case, defining Case instance
+      @ In, components, dict, dictionary of components
+      @ In, sources, dict, dictionary of sources
+      @ Out, None
+    """
+    pass
+  
+  def _modify_ts_data(self, ts_file, case, components, sources):
+    """
+      Modifies time series data file to match HERON case.
+      @ In, ts_file, str, time series data file
+      @ In, case, HERON Case, defining Case instance
+      @ In, components, dict, dictionary of components
+      @ In, sources, dict, dictionary of sources
+      @ Out, None
+    """
+    # currently, no modification is needed
+    # TODO in the future, we may need to modify the ts data file to match HERON case for ARMA
+    pass
+
   ##### OTHER UTILS #####
 
   def _remove_by_name(self, root, removable):
@@ -732,50 +920,3 @@ class TemplateAbce(TemplateBase, Base):
         to_remove.append(node)
     for node in to_remove:
       root.remove(node)
-
-  # def _build_opt_metric_out_name(self, case):
-  #   """
-  #     Constructs the output name of the metric specified as the optimization objective
-  #     @ In, case, HERON Case, defining Case instance
-  #     @ Out, opt_out_metric_name, str, output metric name for use in inner/outer files
-  #   """
-  #   try:
-  #     # metric name in RAVEN
-  #     metric_raven_name = case._optimization_settings['metric']['name']
-  #     # potential metric name to add
-  #     opt_out_metric_name = case.metrics_mapping[metric_raven_name]['prefix']
-  #     # do I need to add a percent or threshold to this name?
-  #     if metric_raven_name == 'percentile':
-  #       opt_out_metric_name += '_' + str(case._optimization_settings['metric']['percent'])
-  #     elif metric_raven_name in ['valueAtRisk', 'expectedShortfall', 'sortinoRatio', 'gainLossRatio']:
-  #       opt_out_metric_name += '_' + str(case._optimization_settings['metric']['threshold'])
-  #     opt_out_metric_name += '_'+case._metric
-  #   except (TypeError, KeyError):
-  #     # <optimization_settings> node not in input file OR
-  #     # 'metric' is missing from _optimization_settings
-  #     opt_out_metric_name = 'missing'
-
-  #   return opt_out_metric_name
-
-  # def _build_result_statistic_names(self, case):
-  #   """
-  #     Constructs the names of the statistics requested for output
-  #     @ In, case, HERON Case, defining Case instance
-  #     @ Out, names, list, list of names of statistics requested for output
-  #   """
-  #   names = []
-  #   for name in case._result_statistics:
-  #     out_name = case.metrics_mapping[name]['prefix']
-  #     # do I need to add percent or threshold?
-  #     if name in ['percentile', 'valueAtRisk', 'expectedShortfall', 'sortinoRatio', 'gainLossRatio']:
-  #       # multiple percents or thresholds may be specified
-  #       if isinstance(case._result_statistics[name], list):
-  #         for attrib in case._result_statistics[name]:
-  #           names.append(out_name+'_'+attrib+'_'+case._metric)
-  #       else:
-  #         names.append(out_name+'_'+case._result_statistics[name]+'_'+case._metric)
-  #     else:
-  #       out_name += '_'+case._metric
-  #       names.append(out_name)
-
-  #   return names

@@ -248,6 +248,13 @@ class Case(Base):
 
     ptc.addSub(InputData.parameterInputFactory('qty', contentType=InputTypes.FloatType, descr=r"""production tax credit rate"""))
     
+    unit_type = InputData.parameterInputFactory('unit_type', contentType=InputTypes.StringListType, descr=r"""unit type for production tax credit rate""")
+
+    eligibility = InputData.parameterInputFactory('eligibility', ordered=False, descr=r"""node containing eligibility setting in which to perform ABCE analysis.""")
+    eligibility.addSub(unit_type)
+
+    ptc.addSub(eligibility)
+    
     ptc.addSub(InputData.parameterInputFactory('eligible', contentType=InputTypes.StringListType, descr=r"""eligible technologies"""))
 
     policies.addSub(ptc)
@@ -502,7 +509,12 @@ class Case(Base):
               if subsub.subparts:
                 self._global_econ[sub.getName()][subsub.getName()] = {}
                 for subsubsub in subsub.subparts:
-                  self._global_econ[sub.getName()][subsub.getName()][subsubsub.getName()] = subsubsub.value
+                  if subsubsub.subparts:
+                    self._global_econ[sub.getName()][subsub.getName()][subsubsub.getName()] = {}
+                    for subsubsubsub in subsubsub.subparts:
+                      self._global_econ[sub.getName()][subsub.getName()][subsubsub.getName()][subsubsubsub.getName()] = subsubsubsub.value
+                  else:
+                    self._global_econ[sub.getName()][subsub.getName()][subsubsub.getName()] = subsubsub.value
               else:
                 self._global_econ[sub.getName()][subsub.getName()] = subsub.value
           else:

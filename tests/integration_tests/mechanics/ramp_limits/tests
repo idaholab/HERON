@@ -3,7 +3,7 @@
     type = 'HeronIntegration'
     input = heron_input.xml
     [./dispatch_csv]
-      type = UnorderedCSV
+      type = OrderedCSV
       output = 'Sweep_Runs_o/dispatch_print.csv'
       zero_threshold = 1e-4 # GLPK on Windows
     [../]

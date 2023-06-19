@@ -103,9 +103,7 @@ class ABCE(Base):
     """
     # load templates
     template_class = self._load_template()
-    outer = template_class.createWorkflow(case, components, sources)
-    print('Writing workflow to', loc)
-    ccccc
+    outer = template_class.createWorkflow(case, components, sources, loc)
     template_class.writeWorkflow(outer, loc)
 
   #### UTILITIES ####

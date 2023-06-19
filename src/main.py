@@ -54,6 +54,8 @@ class HERON(Base):
       @ Out, None
     """
     location, fname = os.path.split(name)
+    if location == '':
+      location = os.getcwd()
     self._input_dir = location
     self._input_name = fname
     inp = input_loader.load(name)
@@ -148,7 +150,7 @@ class HERON(Base):
     assert case is not None and components is not None and sources is not None and input_dir is not None
     abce = ABCE(input_dir)
     self.raiseAMessage("***** You are running ABCE workflow *****")
-    abce.write_workflows(case, components, sources)
+    abce.write_workflows(case, components, sources, input_dir)
 
   def run_dispatches_workflow(self):
     """

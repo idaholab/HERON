@@ -204,7 +204,7 @@ class DispatchPlot(PlotPlugin):
     for name, ax in zip(self._addSignals, axes.flat):
       var = df.get(name, None)
       if var is None:
-        self.raiseAnError(f'Requested signal variable "{name}" but variable not in data!')
+        self.raiseAnError(RuntimeError, f'Requested signal variable "{name}" but variable not in data!')
       ax.plot(df[self._microName], var, marker='.', linestyle='-', label=name)
       ax.set_title(name.title())
       ax.set_xlabel(self._microName)

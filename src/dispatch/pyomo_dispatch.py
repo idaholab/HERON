@@ -242,6 +242,7 @@ class Pyomo(Dispatcher):
       start_index = end_index
     return dispatch
 
+
   ### INTERNAL
   def dispatch_window(self, time, time_offset,
                       case, components, sources, resources,
@@ -479,7 +480,10 @@ class Pyomo(Dispatcher):
     # self._create_capacity(m, comp, prod_name, meta)    # capacity constraints
     # transfer function governs input -> output relationship
     self._create_transfer(m, comp, prod_name)
-    # ramp rates TODO ## INCLUDING previous-time boundary condition TODO
+    # ramp rates
+    if comp.ramp_limit is not None:
+      self._create_ramp_limit(m, comp, prod_name, meta)
+    return prod_name
 
   def _create_production_variable(self, m, comp, meta, tag=None, add_bounds=True, **kwargs):
     """
@@ -506,7 +510,7 @@ class Pyomo(Dispatcher):
     caps, mins = self._find_production_limits(m, comp, meta)
     if min(caps) < 0:
       # quick check that capacities signs are consistent #FIXME: revisit, this is an assumption
-      assert max(caps) < 0, \
+      assert max(caps) <= 0, \
         'Capacities are inconsistent: mix of positive and negative values not currently  supported.'
       # we have a unit that's consuming, so we need to flip the variables to be sensible
       mins, caps = caps, mins
@@ -529,6 +533,25 @@ class Pyomo(Dispatcher):
     #     prod[limit_r, t].fix(caps[t])
     setattr(m, prod_name, prod)
     return prod_name
+
+  def _create_ramp_limit(self, m, comp, prod_name, meta):
+    """
+      Creates ramping limitations for a producing component
+      @ In, m, pyo.ConcreteModel, associated model
+      @ In, comp, HERON Component, component to make ramping limits for
+      @ In, prod_name, str, name of production variable
+      @ In, meta, dict, dictionary of state variables
+      @ Out, None
+    """
+    # ramping is defined in terms of the capacity variable
+    cap_res = comp.get_capacity_var()       # name of resource that defines capacity
+    cap = comp.get_capacity(meta)[0][cap_res]
+    r = m.resource_index_map[comp][cap_res] # production index of the governing resource
+    limit_delta = comp.ramp_limit * cap
+    print('DEBUGG limit, cap:', cap, limit_delta)
+    ramp_rule = lambda mod, t: self._ramp_rule(prod_name, r, limit_delta, t, mod)
+    constr = pyo.Constraint(m.T, rule=ramp_rule)
+    setattr(m, f'{comp.name}_ramp_constr', constr)
 
   def _create_capacity_constraints(self, m, comp, prod_name, meta):
     """
@@ -884,6 +907,22 @@ class Pyomo(Dispatcher):
       return prod[r, t] <= limits[t]
     else:
       raise TypeError('Unrecognized production limit "kind":', kind)
+
+  def _ramp_rule(self, prod_name, r, limit, t, m):
+    """
+      Constructs pyomo production constraints.
+      @ In, prod_name, str, name of production variable
+      @ In, r, int, index of resource for capacity constraining
+      @ In, limit, float, limiting change in production level across time steps
+      @ In, t, int, time index for ramp limit rule (NOTE not pyomo index, rather fixed index)
+      @ In, m, pyo.ConcreteModel, associated model
+    """
+    prod = getattr(m, prod_name)
+    if t > 0:
+      delta = prod[r, t] - prod[r, t-1]
+      return pyo.inequality(-limit, delta, limit)
+    else:
+      return pyo.Constraint.Skip
 
   def _cashflow_rule(self, meta, m):
     """

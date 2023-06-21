@@ -182,6 +182,15 @@ class Dispatcher(MessageUser, InputDataUser):
     specific_meta = dict(meta) # TODO what level of copying do we need here?
     resource_indexer = meta['HERON']['resource_indexer']
 
+    # How does this work?
+    #   The general equation looks like:
+    #
+    #     SUM(Non-Multiplied Terms) + x * SUM(Multiplied Terms) = Target
+    #
+    #   and we are solving for `x`. Target is 0 by default. Terms here are marginal cashflows.
+    #   Summations here occur over: components, time steps, tracking variables, and resources.
+    #   Typically, there is only 1 multiplied term/cash flow.
+
     multiplied = 0
     non_multiplied = 0
 
@@ -203,6 +212,8 @@ class Dispatcher(MessageUser, InputDataUser):
         specific_meta['HERON']['time_value'] = time
         cfs = comp.get_state_cost(specific_activity, specific_meta, marginal=True)
 
+        # there is an assumption here that if a component has a levelized cost, marginal cashflow
+        # then it is the only marginal cashflow
         if comp.levelized_meta:
           for cf in comp.levelized_meta.keys():
             lcf = cfs.pop(cf) # this should be ok as long as HERON init checks are successful

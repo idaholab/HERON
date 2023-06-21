@@ -553,7 +553,6 @@ class Pyomo(Dispatcher):
     else:
       neg_cap = False
     # if we're limiting ramp frequency, make vars and rules for that
-    print('DEBUGG ramp freq?', comp.name, comp.ramp_freq)
     if comp.ramp_freq:
       # create binaries for tracking ramping
       up = pyo.Var(m.T, initialize=0, domain=pyo.Binary)

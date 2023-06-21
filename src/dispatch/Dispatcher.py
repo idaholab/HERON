@@ -167,7 +167,6 @@ class Dispatcher(MessageUser, InputDataUser):
       total += comp_subtotal
     return total
 
-
   def _compute_levelized_cashflows(self, components, activity, times, meta, state_args=None, time_offset=0):
     """
       Method to compute CashFlow evaluations given components and their activity.
@@ -219,4 +218,3 @@ class Dispatcher(MessageUser, InputDataUser):
     total = (meta['HERON']['Case'].npv_target - non_multiplied) / multiplied
     total *= -1
     return total
-

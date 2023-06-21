@@ -700,7 +700,7 @@ class Case(Base):
       opt_settings['opt_metric'] = self._default_econ_metric
     elif node.findFirst('opt_metric').value == 'LC':
       try:
-        opt_settings['npv_target'] = node.parameterValues['target']
+        opt_settings['npv_target'] = node.findFirst('opt_metric').parameterValues['target']
       except KeyError:
         opt_settings['npv_target'] = 0
 

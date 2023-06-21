@@ -78,7 +78,7 @@ def parse(xml, loc, messageHandler):
     elif typ == 'ROM':
       new = Placeholders.ROM(loc=loc, messageHandler=messageHandler)
     else:
-      raise IOError('Unrecognized DataGenerator: "{}"'.format(sub_xml.tag))
+      raise IOError(f'Unrecognized DataGenerator: {sub_xml.tag}')
     new.read_input(sub_xml)
     sources.append(new)
 
@@ -112,6 +112,6 @@ def parse(xml, loc, messageHandler):
 
 if __name__ == "__main__":
   inp = load(sys.argv[1])
-  obj = parse(inp, None)
-  for k, v in obj.items():
+  objects = parse(inp, None, None)
+  for k, v in objects.items():
     print('  ', k, v)

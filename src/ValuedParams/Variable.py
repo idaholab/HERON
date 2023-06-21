@@ -67,3 +67,15 @@ class Variable(ValuedParam):
         msg += f'       {vn}'
       self.raiseAnError(RuntimeError, msg)
     return {key: float(val)}, inputs
+
+  #######
+  # API #
+  #######
+
+  def get_raven_var(self):
+    """
+      Getter for raven variable
+      @ In, None
+      @ Out, raven_var, str
+    """
+    return self._raven_var

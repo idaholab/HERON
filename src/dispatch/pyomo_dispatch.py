@@ -37,6 +37,14 @@ if platform.system() == 'Windows':
 else:
   SOLVERS = ['cbc', 'glpk', 'ipopt']
 
+# different solvers express "tolerance" for converging solution in different
+# ways. Further, they mean different things for different solvers. This map
+# just tracks the "nominal" argument that we should pass through pyomo.
+solver_tol_map = {
+  'ipopt': 'tol',
+  'cbc': 'primalTolerance',
+  'glpk': 'mipgap',
+}
 
 class Pyomo(Dispatcher):
   """
@@ -74,6 +82,11 @@ class Pyomo(Dispatcher):
     specs.addSub(InputData.parameterInputFactory('solver', contentType=InputTypes.StringType,
         descr=r"""Indicates which solver should be used by pyomo. Options depend on individual installation.
         \default{'glpk' for Windows, 'cbc' otherwise}."""))
+    specs.addSub(InputData.parameterInputFactory('tol', contentType=InputTypes.FloatType,
+        descr=r"""Relative tolerance for converging final optimal dispatch solutions. Specific implementation
+        depends on the solver selected. Changing this value could have significant impacts on the
+        dispatch optimization time and quality.
+        \default{solver dependent, often 1e-6}."""))
     # TODO specific for pyomo dispatcher
     return specs
 
@@ -85,6 +98,7 @@ class Pyomo(Dispatcher):
     """
     self.name = 'PyomoDispatcher' # identifying name
     self.debug_mode = False       # whether to print additional information
+    self.solve_options = {}       # options passed from Pyomo to the solver
     self._window_len = 24         # time window length to dispatch at a time # FIXME user input
     self._solver = None           # overwrite option for solver
     self._picard_limit = 10       # iterative solve limit
@@ -108,6 +122,14 @@ class Pyomo(Dispatcher):
     solver_node = specs.findFirst('solver')
     if solver_node is not None:
       self._solver = solver_node.value
+
+    # the tolerance value needs to be saved for after the solver is set
+    # since we don't know what key to assign it to otherwise
+    tol_node = specs.findFirst('tol')
+    if tol_node is not None:
+      solver_tol = tol_node.value
+    else:
+      solver_tol = None
 
     if self._solver is None:
       solvers_to_check = SOLVERS
@@ -146,6 +168,9 @@ class Pyomo(Dispatcher):
       msg += f' Options MAY include: {available}'
       raise RuntimeError(msg)
 
+    if solver_tol is not None:
+      key = solver_tol_map[self._solver]
+      self.solve_options[key] = solver_tol
 
   ### API
   def dispatch(self, case, components, sources, meta):
@@ -177,7 +202,7 @@ class Pyomo(Dispatcher):
         raise IOError("A rolling window of length 1 was requested, but this causes crashes in pyomo. " +
                       "Change the length of the rolling window to avoid length 1 histories.")
       specific_time = time[start_index:end_index]
-      print('DEBUGG starting window {} to {}'.format(start_index, end_index))
+      print(f'DEBUGG starting window {start_index} to {end_index}')
       start = time_mod.time()
       # set initial storage levels
       initial_levels = {}
@@ -208,7 +233,7 @@ class Pyomo(Dispatcher):
           converged = True
 
       end = time_mod.time()
-      print('DEBUGG solve time: {} s'.format(end-start))
+      print(f'DEBUGG solve time: {end-start} s')
       # store result in corresponding part of dispatch
       for comp in components:
         for tag in comp.get_tracking_vars():
@@ -309,9 +334,7 @@ class Pyomo(Dispatcher):
       attempts += 1
       print(f'DEBUGG solve attempt {attempts} ...:')
       # solve
-      # TODO someday if we want to give user access to options, we can add them to this dict. For now, no options.
-      solve_options = {}
-      soln = pyo.SolverFactory(self._solver).solve(m, options=solve_options)
+      soln = pyo.SolverFactory(self._solver).solve(m, options=self.solve_options)
       # check solve status
       if soln.solver.status == SolverStatus.ok and soln.solver.termination_condition == TerminationCondition.optimal:
         print('DEBUGG ... solve was successful!')
@@ -330,12 +353,8 @@ class Pyomo(Dispatcher):
         done_and_checked = False
         print('DEBUGG ... validation concerns raised:')
         for e in validation_errs:
-          print('DEBUGG ... ... Time {t} ({time}) Component "{c}" Resource "{r}": {m}'
-                .format(t=e['time_index'],
-                        time=e['time'],
-                        c=e['component'].name,
-                        r=e['resource'],
-                        m=e['msg']))
+          print(f"DEBUGG ... ... Time {e['time_index']} ({e['time']}) \n" +
+                f"Component \"{e['component'].name}\" Resource \"{e['resource']}\": {e['msg']}")
           self._create_production_limit(m, e)
         # go back and solve again
         # raise NotImplementedError('Validation failed, but idk how to handle that yet')
@@ -413,9 +432,7 @@ class Pyomo(Dispatcher):
     rule = lambda mod: self._prod_limit_rule(prod_name, r, limits, limit_type, t, mod)
     constr = pyo.Constraint(rule=rule)
     counter = 1
-    name_template = '{c}_{r}_{t}_vld_limit_constr_{{i}}'.format(c=comp.name,
-                                                                r=resource,
-                                                                t=t)
+    name_template = f'{comp.name}_{resource}_{t}_vld_limit_constr_{{i}}'
     # make sure we get a unique name for this constraint
     name = name_template.format(i=counter)
     while getattr(m, name, None) is not None:
@@ -589,7 +606,7 @@ class Pyomo(Dispatcher):
     # capacity
     max_rule = lambda mod, t: self._capacity_rule(prod_name, r, caps, mod, t)
     constr = pyo.Constraint(m.T, rule=max_rule)
-    setattr(m, '{c}_{r}_capacity_constr'.format(c=comp.name, r=cap_res), constr)
+    setattr(m, f'{comp.name}_{cap_res}_capacity_constr', constr)
     # minimum
     min_rule = lambda mod, t: self._min_prod_rule(prod_name, r, caps, mins, mod, t)
     constr = pyo.Constraint(m.T, rule=min_rule)
@@ -603,7 +620,7 @@ class Pyomo(Dispatcher):
         for k in values:
           values[k] = cap
         var.set_values(values)
-    setattr(m, '{c}_{r}_minprod_constr'.format(c=comp.name, r=cap_res), constr)
+    setattr(m, f'{comp.name}_{cap_res}_minprod_constr', constr)
 
   def _find_production_limits(self, m, comp, meta):
     """
@@ -652,7 +669,7 @@ class Pyomo(Dispatcher):
     ref_r, ref_name, _ = ratios.pop('__reference', (None, None, None))
     for resource, ratio in ratios.items():
       r = m.resource_index_map[comp][resource]
-      rule_name = '{c}_{r}_{fr}_transfer'.format(c=name, r=resource, fr=ref_name)
+      rule_name = f'{name}_{resource}_{ref_name}_transfer'
       rule = lambda mod, t: self._transfer_rule(ratio, r, ref_r, prod_name, mod, t)
       constr = pyo.Constraint(m.T, rule=rule)
       setattr(m, rule_name, constr)
@@ -713,10 +730,10 @@ class Pyomo(Dispatcher):
       @ In, meta, dict, dictionary of state variables
       @ Out, None
     """
-    for res, resource in enumerate(resources):
+    for resource in resources:
       rule = lambda mod, t: self._conservation_rule(initial_storage, meta, resource, mod, t)
       constr = pyo.Constraint(m.T, rule=rule)
-      setattr(m, '{r}_conservation'.format(r=resource), constr)
+      setattr(m, f'{resource}_conservation', constr)
 
   def _create_objective(self, meta, m):
     """

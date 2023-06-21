@@ -24,8 +24,7 @@ def load_heron_lib(path, retry=0):
         case, components, sources = pk.load(lib)
         found = True
     except FileNotFoundError:
-      print('WARNING: "{n}" not yet found; waiting and retrying {r} times ...'
-            .format(n=path, r=retry-counter))
+      print(f'WARNING: "{path}" not yet found; waiting and retrying {retry-counter} times ...')
       counter += 1
       if counter > retry:
         case, components, source = None, None, None

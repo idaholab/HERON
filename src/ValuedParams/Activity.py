@@ -81,9 +81,9 @@ class Activity(ValuedParam):
     # check that the requested resource is actually used by this interaction
     available = interaction.get_resources()
     if self._resource not in available:
-      str_avail = ['"{}"'.format(a) for a in available]
+      str_avail = [f'"{a}"' for a in available]
       self.raiseAnError(IOError, f'Requested <activity> value from resource "{self._resource}" but "{self._resource}" ' +
-      f'was not found among this Component\'s input/output resources; options are:' +
+      'was not found among this Component\'s input/output resources; options are:' +
       f'{", ".join(str_avail)}')
 
   def evaluate(self, inputs, target_var=None, aliases=None):

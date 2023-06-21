@@ -85,7 +85,7 @@ class Component(Base, CashFlowUser):
       @ In, None
       @ Out, __repr__, string representation
     """
-    return '<HERON Component "{}">'.format(self.name)
+    return f'<HERON Component "{self.name}">'
 
   def read_input(self, xml, mode):
     """
@@ -98,17 +98,17 @@ class Component(Base, CashFlowUser):
     specs = self.get_input_specs()()
     specs.parseNode(xml)
     self.name = specs.parameterValues['name']
-    self.raiseADebug('Loading component "{}"'.format(self.name))
+    self.raiseADebug(f'Loading component "{self.name}"')
     for item in specs.subparts:
       if self.get_interaction() and item.getName() in ['produces', 'stores', 'demands']:
-        self.raiseAnError(NotImplementedError, 'Currently each Component can only have one interaction (produces, stores, demands)! Check Component "{}"'.format(self.name))
+        self.raiseAnError(NotImplementedError, f'Currently each Component can only have one interaction (produces, stores, demands)! Check Component "{self.name}"')
       # read in producers
       if item.getName() == 'produces':
         prod = Producer(messageHandler=self.messageHandler)
         try:
           prod.read_input(item, mode, self.name)
         except IOError as e:
-          self.raiseAWarning('Errors while reading component "{}"!'.format(self.name))
+          self.raiseAWarning(f'Errors while reading component "{self.name}"!')
           raise e
         self._produces.append(prod)
       # read in storages
@@ -126,7 +126,7 @@ class Component(Base, CashFlowUser):
         econ_node = item # need to read AFTER the interactions!
     # after looping over nodes, finish up
     if econ_node is None:
-      self.raiseAnError(IOError, '<economics> node missing from component "{}"!'.format(self.name))
+      self.raiseAnError(IOError, f'<economics> node missing from component "{self.name}"!')
     CashFlowUser.read_input(self, econ_node)
 
   def get_crossrefs(self):
@@ -462,7 +462,7 @@ class Interaction(Base):
       @ In, comp_name, string, name of component this Interaction belongs to
       @ Out, None
     """
-    self.raiseADebug(' ... loading interaction "{}"'.format(self.tag))
+    self.raiseADebug(f' ... loading interaction "{self.tag}"')
     self._dispatchable = specs.parameterValues['dispatch']
     for item in specs.subparts:
       name = '_' + item.getName()
@@ -712,9 +712,9 @@ class Interaction(Base):
         #ttttt
         # do the inverse problem: how much can we make?
         balance, meta = self.produce_max(meta, raven_vars, dispatch, t)
-        print('The full requested amount ({res}: {req}) was not possible, so accessing maximum available instead ({res}: {blc}).'.format(res=res, req=amt, blc=balance[res]))
+        print(f'The full requested amount ({res}: {amt}) was not possible, so accessing maximum available instead ({res}: {balance[res]}).')
     except KeyError:
-      raise SyntaxError('Resource "{}" is listed as capacity limiter, but not an output of the component! Got: {}'.format(self._capacity_var, balance))
+      raise SyntaxError(f'Resource "{self._capacity_var}" is listed as capacity limiter, but not an output of the component! Got: {balance}')
     return balance, meta
 
   def get_transfer(self):
@@ -936,7 +936,7 @@ class Producer(Interaction):
     inputs['t'] = t
     inputs['dispatch'] = dispatch
     balance, meta = self._transfer.evaluate(inputs)
-    self.check_expected_present(balance, self.get_resources(), 'TRANSFER FUNCTION {}'.format(self._transfer))
+    self.check_expected_present(balance, self.get_resources(), f'TRANSFER FUNCTION {self._transfer}')
     # OLD if transfer evaluation is a float (float, arma), then it signifies a conversion rate
     ## note that we've checked in the input reading for this singular relationship
 
@@ -951,8 +951,8 @@ class Producer(Interaction):
     missing = set(resources_in + resources_out) - set(balance.keys())
     if missing:
       self.raiseAnError(RuntimeError, 'While evaluating transfer function, not all variables requested were provided!' +\
-                        '  Missing: {}'.format(missing) +\
-                        '  Transfer function: {}'.format(self._transfer))
+                        f'  Missing: {missing}' +\
+                        f'  Transfer function: {self._transfer}')
     return balance, meta
 
 

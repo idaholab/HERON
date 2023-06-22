@@ -37,6 +37,14 @@ if platform.system() == 'Windows':
 else:
   SOLVERS = ['cbc', 'glpk', 'ipopt']
 
+# different solvers express "tolerance" for converging solution in different
+# ways. Further, they mean different things for different solvers. This map
+# just tracks the "nominal" argument that we should pass through pyomo.
+solver_tol_map = {
+  'ipopt': 'tol',
+  'cbc': 'primalTolerance',
+  'glpk': 'mipgap',
+}
 
 class Pyomo(Dispatcher):
   """
@@ -74,6 +82,11 @@ class Pyomo(Dispatcher):
     specs.addSub(InputData.parameterInputFactory('solver', contentType=InputTypes.StringType,
         descr=r"""Indicates which solver should be used by pyomo. Options depend on individual installation.
         \default{'glpk' for Windows, 'cbc' otherwise}."""))
+    specs.addSub(InputData.parameterInputFactory('tol', contentType=InputTypes.FloatType,
+        descr=r"""Relative tolerance for converging final optimal dispatch solutions. Specific implementation
+        depends on the solver selected. Changing this value could have significant impacts on the
+        dispatch optimization time and quality.
+        \default{solver dependent, often 1e-6}."""))
     # TODO specific for pyomo dispatcher
     return specs
 
@@ -86,6 +99,7 @@ class Pyomo(Dispatcher):
     super().__init__()
     self.name = 'PyomoDispatcher' # identifying name
     self.debug_mode = False       # whether to print additional information
+    self.solve_options = {}       # options passed from Pyomo to the solver
     self._window_len = 24         # time window length to dispatch at a time # FIXME user input
     self._solver = None           # overwrite option for solver
     self._picard_limit = 10       # iterative solve limit
@@ -109,6 +123,14 @@ class Pyomo(Dispatcher):
     solver_node = specs.findFirst('solver')
     if solver_node is not None:
       self._solver = solver_node.value
+
+    # the tolerance value needs to be saved for after the solver is set
+    # since we don't know what key to assign it to otherwise
+    tol_node = specs.findFirst('tol')
+    if tol_node is not None:
+      solver_tol = tol_node.value
+    else:
+      solver_tol = None
 
     if self._solver is None:
       solvers_to_check = SOLVERS
@@ -147,6 +169,9 @@ class Pyomo(Dispatcher):
       msg += f' Options MAY include: {available}'
       raise RuntimeError(msg)
 
+    if solver_tol is not None:
+      key = solver_tol_map[self._solver]
+      self.solve_options[key] = solver_tol
 
   ### API
   def dispatch(self, case, components, sources, meta):
@@ -317,9 +342,7 @@ class Pyomo(Dispatcher):
       attempts += 1
       print(f'DEBUGG solve attempt {attempts} ...:')
       # solve
-      # TODO someday if we want to give user access to options, we can add them to this dict. For now, no options.
-      solve_options = {}
-      soln = pyo.SolverFactory(self._solver).solve(m, options=solve_options)
+      soln = pyo.SolverFactory(self._solver).solve(m, options=self.solve_options)
       # check solve status
       if soln.solver.status == SolverStatus.ok and soln.solver.termination_condition == TerminationCondition.optimal:
         print('DEBUGG ... solve was successful!')
@@ -465,7 +488,10 @@ class Pyomo(Dispatcher):
     # self._create_capacity(m, comp, prod_name, meta)    # capacity constraints
     # transfer function governs input -> output relationship
     self._create_transfer(m, comp, prod_name)
-    # ramp rates TODO ## INCLUDING previous-time boundary condition TODO
+    # ramp rates
+    if comp.ramp_limit is not None:
+      self._create_ramp_limit(m, comp, prod_name, meta)
+    return prod_name
 
   def _create_production_variable(self, m, comp, meta, tag=None, add_bounds=True, **kwargs):
     """
@@ -492,7 +518,7 @@ class Pyomo(Dispatcher):
     caps, mins = self._find_production_limits(m, comp, meta)
     if min(caps) < 0:
       # quick check that capacities signs are consistent #FIXME: revisit, this is an assumption
-      assert max(caps) < 0, \
+      assert max(caps) <= 0, \
         'Capacities are inconsistent: mix of positive and negative values not currently  supported.'
       # we have a unit that's consuming, so we need to flip the variables to be sensible
       mins, caps = caps, mins
@@ -515,6 +541,25 @@ class Pyomo(Dispatcher):
     #     prod[limit_r, t].fix(caps[t])
     setattr(m, prod_name, prod)
     return prod_name
+
+  def _create_ramp_limit(self, m, comp, prod_name, meta):
+    """
+      Creates ramping limitations for a producing component
+      @ In, m, pyo.ConcreteModel, associated model
+      @ In, comp, HERON Component, component to make ramping limits for
+      @ In, prod_name, str, name of production variable
+      @ In, meta, dict, dictionary of state variables
+      @ Out, None
+    """
+    # ramping is defined in terms of the capacity variable
+    cap_res = comp.get_capacity_var()       # name of resource that defines capacity
+    cap = comp.get_capacity(meta)[0][cap_res]
+    r = m.resource_index_map[comp][cap_res] # production index of the governing resource
+    limit_delta = comp.ramp_limit * cap
+    print('DEBUGG limit, cap:', cap, limit_delta)
+    ramp_rule = lambda mod, t: self._ramp_rule(prod_name, r, limit_delta, t, mod)
+    constr = pyo.Constraint(m.T, rule=ramp_rule)
+    setattr(m, f'{comp.name}_ramp_constr', constr)
 
   def _create_capacity_constraints(self, m, comp, prod_name, meta):
     """
@@ -870,6 +915,22 @@ class Pyomo(Dispatcher):
       return prod[r, t] <= limits[t]
     else:
       raise TypeError('Unrecognized production limit "kind":', kind)
+
+  def _ramp_rule(self, prod_name, r, limit, t, m):
+    """
+      Constructs pyomo production constraints.
+      @ In, prod_name, str, name of production variable
+      @ In, r, int, index of resource for capacity constraining
+      @ In, limit, float, limiting change in production level across time steps
+      @ In, t, int, time index for ramp limit rule (NOTE not pyomo index, rather fixed index)
+      @ In, m, pyo.ConcreteModel, associated model
+    """
+    prod = getattr(m, prod_name)
+    if t > 0:
+      delta = prod[r, t] - prod[r, t-1]
+      return pyo.inequality(-limit, delta, limit)
+    else:
+      return pyo.Constraint.Skip
 
   def _cashflow_rule(self, meta, m):
     """

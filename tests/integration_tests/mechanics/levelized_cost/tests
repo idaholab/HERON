@@ -1,11 +1,12 @@
 [Tests]
   [./LevelizedPrice]
     type = HeronIntegration
-    input = heron_input__LC_Price.xml
+    input = LC_Price/heron_input__LC_Price.xml
 	# prereq = SineArma
     [./csv]
       type = OrderedCSV
-      output = 'LC_Price_o/sweep.csv'
+	  output = 'LC_Price/LC_Price_o/sweep.csv'
+      gold_files = 'LC_Price_o/sweep.csv'
       zero_threshold = 1e-6
       rel_err = 1e-6
     [../]
@@ -13,11 +14,12 @@
 
   [./LevelizedVariablePrice]
     type = HeronIntegration
-    input = heron_input__LC_VariablePrice.xml
+    input = LC_VariablePrice/heron_input__LC_VariablePrice.xml
 	# prereq = SineArma
     [./csv]
       type = OrderedCSV
-      output = 'LC_VariablePrice_o/sweep.csv'
+	  output = 'LC_VariablePrice/LC_VariablePrice_o/sweep.csv'
+      gold_files = 'LC_VariablePrice_o/sweep.csv'
       zero_threshold = 1e-6
       rel_err = 1e-6
     [../]
@@ -25,11 +27,25 @@
 
   [./LevelizedVOM]
     type = HeronIntegration
-    input = heron_input__LC_VOM.xml
+    input = LC_VOM/heron_input__LC_VOM.xml
 	# prereq = SineArma
     [./csv]
       type = OrderedCSV
-      output = 'LC_VOM_o/sweep.csv'
+	  output = 'LC_VOM/LC_VOM_o/sweep.csv'
+      gold_files = 'LC_VOM_o/sweep.csv'
+      zero_threshold = 1e-6
+      rel_err = 1e-6
+    [../]
+  [../]
+
+  [./LevelizedStorage]
+    type = HeronIntegration
+    input = LC_Storage/heron_input__LC_Storage.xml
+	# prereq = SineArma
+    [./csv]
+      type = OrderedCSV
+	  output = 'LC_Storage/LC_Storage_o/sweep.csv'
+      gold_files = 'LC_Storage_o/sweep.csv'
       zero_threshold = 1e-6
       rel_err = 1e-6
     [../]

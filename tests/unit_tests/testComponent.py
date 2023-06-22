@@ -24,10 +24,9 @@ import ravenframework.MessageHandler as MessageHandler
 
 results = {"pass":0,"fail":0}
 
-# Test 1 - Check to ensure that the 'meta' object does not get nested
-# Added as a regression test. This was previously happening when the
-# produce method was called on a component where the production made
-# use of a transfer function.
+#----------------------------------------
+# Test Producer
+#
 
 # Set up the dummy transfer function
 def transfer_function(inputs): #method, requests, inputs):
@@ -39,6 +38,7 @@ def transfer_function(inputs): #method, requests, inputs):
 producer = Components.Producer()
 producer.messageHandler = MessageHandler.MessageHandler()
 producer.messageHandler.verbosity = 'debug'
+# these are usually set in reading the input
 producer._capacity_var = 'electricity'
 producer._capacity = ValuedParamHandler('generator_capacity')
 producer._capacity.set_const_VP(0)
@@ -46,21 +46,14 @@ producer.set_capacity(500)
 producer._transfer = ValuedParamHandler('transfer_function')
 producer._transfer.set_transfer_VP(transfer_function)
 
-# Make the production request
-request = {'electricity': 0}
-meta = {'stuff': 'things'}
-raven_vars = {}
-dispatch = {}
-t = 0
-print('Meta before production:', meta)
-stuff, meta = producer.produce(request, meta, raven_vars, dispatch, t)
-print('Meta after production:', meta)
-
-if 'meta' in meta:
-    print('Error: meta came back nested.')
-    results['fail'] += 1
+# test getters
+# TODO this needs significant expanding, it was originally
+# written to test things that are now deprecated.
+if producer.get_tracking_vars() != ['production']:
+  print('Error: tracking vars are incorrect')
+  results['fail'] += 1
 else:
-    results['pass'] += 1
+  results['pass'] += 1
 
 print(results)
 sys.exit(results['fail'])

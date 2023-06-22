@@ -646,34 +646,6 @@ class Interaction(Base):
     # Default option is False; specifics by interaction type
     return False
 
-  # DEPRECATED check TODO remove
-  # def produce(self, *args, **kwargs):
-  #   """
-  #     Determines the results of this interaction producing resources.
-  #     @ In, args, list, positional arguments
-  #     @ In, kwargs, dict, keyword arguments
-  #     @ Out, None
-  #   """
-  #   raise NotImplementedError('This interaction has no "produce" method.')
-
-  # def produce_max(self, *args, **kwargs):
-  #   """
-  #     Determines the results of this interaction producing maximum resources.
-  #     @ In, args, list, positional arguments
-  #     @ In, kwargs, dict, keyword arguments
-  #     @ Out, None
-  #   """
-  #   raise NotImplementedError('This interaction has no produce_max method yet!')
-
-  # def produce_min(self, *args, **kwargs):
-  #   """
-  #     Determines the results of this interaction producing minimum resources.
-  #     @ In, args, list, positional arguments
-  #     @ In, kwargs, dict, keyword arguments
-  #     @ Out, None
-  #   """
-  #   raise NotImplementedError('This interaction has no produce_min method yet!')
-
   def check_expected_present(self, data, expected, premessage):
     """
       checks dict to make sure members are present and not None
@@ -780,7 +752,7 @@ class Producer(Interaction):
                       variables and may require selection of appropriate solvers. \default{0}"""
         )
     )
-    
+
     return specs
 
   def __init__(self, **kwargs):

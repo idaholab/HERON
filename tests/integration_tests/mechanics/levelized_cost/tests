@@ -51,4 +51,18 @@
     [../]
   [../]
 
+  [./LevelizedPriceOptimization]
+    type = HeronIntegration
+    input = Opt_LC_Price/heron_input__opt_LC_Price.xml
+    heavy = true
+	# prereq = SineArma
+    [./csv]
+      type = OrderedCSV
+	  output = 'Opt_LC_Price/Opt_LC_Price_o/sweep.csv'
+      gold_files = 'Opt_LC_Price_o/sweep.csv'
+      zero_threshold = 1e-6
+      rel_err = 1e-6
+    [../]
+  [../]
+
 []

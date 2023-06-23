@@ -2,6 +2,7 @@
   [./LevelizedPrice]
     type = HeronIntegration
     input = LC_Price/heron_input__LC_Price.xml
+	needed_executable = 'ipopt'
 	# prereq = SineArma
     [./csv]
       type = OrderedCSV
@@ -15,6 +16,7 @@
   [./LevelizedVariablePrice]
     type = HeronIntegration
     input = LC_VariablePrice/heron_input__LC_VariablePrice.xml
+	needed_executable = 'ipopt'
 	# prereq = SineArma
     [./csv]
       type = OrderedCSV
@@ -28,6 +30,7 @@
   [./LevelizedVOM]
     type = HeronIntegration
     input = LC_VOM/heron_input__LC_VOM.xml
+	needed_executable = 'ipopt'
 	# prereq = SineArma
     [./csv]
       type = OrderedCSV
@@ -41,6 +44,7 @@
   [./LevelizedStorage]
     type = HeronIntegration
     input = LC_Storage/heron_input__LC_Storage.xml
+	needed_executable = 'ipopt'
 	# prereq = SineArma
     [./csv]
       type = OrderedCSV
@@ -54,6 +58,7 @@
   [./LevelizedPriceOptimization]
     type = HeronIntegration
     input = Opt_LC_Price/heron_input__opt_LC_Price.xml
+	needed_executable = 'ipopt'
     heavy = true
 	# prereq = SineArma
     [./csv]

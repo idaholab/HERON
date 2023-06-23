@@ -20,7 +20,7 @@
       <num_steps>21</num_steps>
     </time_discretization>
     <economics>
-      <ProjectTime>20</ProjectTime>
+      <ProjectTime>2</ProjectTime>
       <DiscountRate>0.08</DiscountRate>
       <tax>0.25</tax>
       <inflation>0.00</inflation>
@@ -121,6 +121,6 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='flex' variable="Signal">%BASE_WORKING_DIR%/../../../ARMA/Sine30yr/arma_30yr.pk</ARMA>
+    <ARMA name='flex' variable="Signal">%BASE_WORKING_DIR%/../../../../ARMA/Sine/arma.pk</ARMA>
   </DataGenerators>
 </HERON>

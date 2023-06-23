@@ -54,6 +54,7 @@ class DispatchRunner:
     self._sources = None           # HERON sources (placeholders) list
     self._override_time = None     # override for micro parameter
     self._save_dispatch = False    # if True then maintain and return full dispatch record
+    self._metric_name_map = {}
 
   #####################
   # API
@@ -80,6 +81,9 @@ class DispatchRunner:
     self._dispatcher = self._case.dispatcher
     if self._case.debug['enabled']:
       self._save_dispatch = True
+
+    self._metric_name_map = {econ_info['TEAL_out_name']:econ_info['output_name']
+                                for econ_info in self._case.economic_metrics_meta.values()}
 
   def extract_variables(self, raven, raven_dict):
     """
@@ -247,7 +251,8 @@ class DispatchRunner:
     cfYears = None
     for metric, value in metrics.items():
       if metric not in ['outputType', 'all_data']:
-        setattr(raven, metric, np.atleast_1d(value))
+        mapped_metric = self._metric_name_map[metric]
+        setattr(raven, mapped_metric, np.atleast_1d(value))
       elif metric == 'all_data':
         # store the cashflow years index cfYears
         ## implicitly assume the first cashflow has representative years

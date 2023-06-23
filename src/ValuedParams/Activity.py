@@ -105,3 +105,21 @@ class Activity(ValuedParam):
       self.raiseAnError(RuntimeError, f'Resource "{self._resource}" was not found among those produced and ' +
                         'consumed by this component!')
     return {key: value}, inputs
+
+
+### ACCESSORS ###
+  def get_tracking_var(self):
+    """
+      Getter for tracking var (should only be one?)
+      @ In, None
+      @ Out, tracking_var, str, variable used for component activity
+    """
+    return self._tracking_var
+
+  def get_resource(self):
+    """
+      Getter for resource
+      @ In, None
+      @ Out, resource, str, name of the resource whose activity should be used
+    """
+    return self._resource

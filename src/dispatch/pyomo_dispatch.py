@@ -96,6 +96,7 @@ class Pyomo(Dispatcher):
       @ In, None
       @ Out, None
     """
+    super().__init__()
     self.name = 'PyomoDispatcher' # identifying name
     self.debug_mode = False       # whether to print additional information
     self.solve_options = {}       # options passed from Pyomo to the solver
@@ -242,6 +243,13 @@ class Pyomo(Dispatcher):
       start_index = end_index
     return dispatch
 
+  def get_solver(self):
+    """
+      Retrieves the solver information (if applicable)
+      @ In, None
+      @ Out, solver, str, name of solver used
+    """
+    return self._solver
 
   ### INTERNAL
   def dispatch_window(self, time, time_offset,

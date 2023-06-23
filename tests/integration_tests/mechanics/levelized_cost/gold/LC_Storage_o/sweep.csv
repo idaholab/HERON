@@ -1,0 +1,3 @@
+source_capacity,storage_capacity,sink_capacity,mean_LC_Mult,std_LC_Mult,med_LC_Mult,max_LC_Mult,min_LC_Mult,perc_5_LC_Mult,perc_95_LC_Mult,samp_LC_Mult,var_LC_Mult,PointProbability,prefix,ProbabilityWeight-source_capacity,ProbabilityWeight
+1.0,0.5,-3.0,-45.263503829,4.47393220961e-10,-45.2635038289,-45.2635038285,-45.2635038294,-45.2635038294,-45.2635038286,3.0,2.00160694162e-19,1.0,1,0.5,0.5
+2.0,0.5,-3.0,-150.702809309,1.67484285695e-09,-150.702809309,-150.702809307,-150.70280931,-150.70280931,-150.702809307,3.0,2.80509859549e-18,1.0,2,0.5,0.5

@@ -78,6 +78,7 @@ class Component(Base, CashFlowUser):
     self._produces = []
     self._stores = []
     self._demands = []
+    self.levelized_meta = {}
 
   def __repr__(self):
     """
@@ -354,9 +355,17 @@ class Component(Base, CashFlowUser):
     intr = self.get_interaction()
     return intr.get_capacity(None, None, None, None, raw=True)
 
-
-
-
+  def set_levelized_cost_meta(self, cashflows):
+    """
+      Create a dictionary for determining correct resource to use per cashflow if using levelized
+      inner objective (only an option when selecting LC as an econ metric)
+      @ In, cashflows, list, list of Interaction instances
+      @ Out, None
+    """
+    for cf in cashflows:
+      tracker = cf.get_driver()._vp.get_tracking_var()
+      resource = cf.get_driver()._vp.get_resource()
+      self.levelized_meta[cf.name] = {tracker:resource}
 
 
 

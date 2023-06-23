@@ -194,14 +194,11 @@ class Dispatcher(MessageUser, InputDataUser):
     multiplied = 0
     non_multiplied = 0
 
-    #print('DEBUGG computing cashflows!')
     for comp in components:
-      #print(f'DEBUGG ... comp {comp.name}')
       specific_meta['HERON']['component'] = comp
       multiplied_comp = 0
       non_multiplied_comp = 0
       for t, time in enumerate(times):
-        #print(f'DEBUGG ... ... time {t}')
         # NOTE care here to assure that pyomo-indexed variables work here too
         specific_activity = {}
         for tracker in comp.get_tracking_vars():
@@ -224,6 +221,7 @@ class Dispatcher(MessageUser, InputDataUser):
 
       multiplied     += multiplied_comp
       non_multiplied += non_multiplied_comp
+
     # at this point, there should be a not None NPV Target
     multiplied += self._eps
     total = (meta['HERON']['Case'].npv_target - non_multiplied) / multiplied

@@ -82,8 +82,8 @@ class DispatchRunner:
     if self._case.debug['enabled']:
       self._save_dispatch = True
 
-    self._metric_name_map = {econ_map['TEAL_out_name']:econ_map['output_name']
-                                for econ_map in self._case.economic_metrics_mapping.values()}
+    self._metric_name_map = {econ_info['TEAL_out_name']:econ_info['output_name']
+                                for econ_info in self._case.economic_metrics_meta.values()}
 
   def extract_variables(self, raven, raven_dict):
     """

@@ -306,7 +306,8 @@ class CashFlow:
               of RAVEN.""")
     cf.addParam('mult_target', param_type=InputTypes.BoolType, required=False,
         descr=r"""<DEPRECATED> indicates whether this parameter should be a target of the multiplication factor
-              for NPV matching analyses.""")
+              for NPV matching analyses. This should now be specified within the desired Cash Flow: under the
+              ``reference price'' node with a ``levelized cost'' subnode. """)
     period_enum = InputTypes.makeEnumType('period_opts', 'period_opts', ['hour', 'year'])
     cf.addParam('period', param_type=period_enum, required=False,
         descr=r"""for a \xmlNode{CashFlow} with \xmlAttr{type} \xmlString{repeating}, indicates whether
@@ -554,7 +555,7 @@ class CashFlow:
     """
       Getter for Cashflow Price
       @ In, None
-      @ Out, alpha, ValuedParam, valued param
+      @ Out, alpha, ValuedParam, valued param for the cash flow price
     """
     return self._alpha
 
@@ -562,7 +563,7 @@ class CashFlow:
     """
       Getter for Cashflow Driver
       @ In, None
-      @ Out, driver, ValuedParam, valued param for
+      @ Out, driver, ValuedParam, valued param for the cash flow driver
     """
     return self._driver
 
@@ -570,7 +571,7 @@ class CashFlow:
     """
       Getter for Cashflow Reference Driver
       @ In, None
-      @ Out, reference, ValuedParam, valued param for
+      @ Out, reference, ValuedParam, valued param for the cash flow reference driver
     """
     return self._reference
 
@@ -578,7 +579,7 @@ class CashFlow:
     """
       Getter for Cashflow Scale
       @ In, None
-      @ Out, scale, ValuedParam, valued param for
+      @ Out, scale, ValuedParam, valued param for the cash flow economy of scale
     """
     return self._scale
 

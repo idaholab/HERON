@@ -674,8 +674,7 @@ class Template(TemplateBase, Base):
       except KeyError:
         # type was not provided, so use the default value
         opt_metric, _ = case.get_opt_metric()
-        opt_metric_mapping = case.economic_metrics_mapping[opt_metric]
-        type_node.text = opt_metric_mapping['optimization_default']
+        type_node.text = case.economic_metrics_meta[opt_metric]['optimization_default']
 
       # swap out convergence values (only persistence implemented now)
       convergence = opt_node.find('convergence')
@@ -1579,14 +1578,14 @@ class Template(TemplateBase, Base):
       optimization_settings = case.get_optimization_settings()
       metric_raven_name = optimization_settings['stats_metric']['name']
       # potential metric name to add
-      opt_out_metric_name = case.stats_metrics_mapping[metric_raven_name]['prefix']
+      opt_out_metric_name = case.stats_metrics_meta[metric_raven_name]['prefix']
       # do I need to add a percent or threshold to this name?
       if metric_raven_name == 'percentile':
         opt_out_metric_name += '_' + str(optimization_settings['stats_metric']['percent'])
       elif metric_raven_name in ['valueAtRisk', 'expectedShortfall', 'sortinoRatio', 'gainLossRatio']:
         opt_out_metric_name += '_' + str(optimization_settings['stats_metric']['threshold'])
       opt_econ_metric, _ = case.get_opt_metric()
-      output_econ_metric_name = case.economic_metrics_mapping[opt_econ_metric]['output_name']
+      output_econ_metric_name = case.economic_metrics_meta[opt_econ_metric]['output_name']
       opt_out_metric_name += f'_{output_econ_metric_name}'
     except (TypeError, KeyError):
       # <optimization_settings> node not in input file OR
@@ -1608,7 +1607,7 @@ class Template(TemplateBase, Base):
 
     for e_metric in econ_metrics:
       for name in result_statistics:
-        out_name = case.stats_metrics_mapping[name]['prefix']
+        out_name = case.stats_metrics_meta[name]['prefix']
         # do I need to add percent or threshold?
         if name in ['percentile', 'valueAtRisk', 'expectedShortfall', 'sortinoRatio', 'gainLossRatio']:
           # multiple percents or thresholds may be specified
@@ -1635,9 +1634,9 @@ class Template(TemplateBase, Base):
     for name in stats_names:
       # we are assuming here that all stats metrics are applicable to all econ metrics.
       # revisit if this changes (e.g., we disallow "VaR" for IRR)
-      output = case.stats_metrics_mapping[name]['prefix']
+      output = case.stats_metrics_meta[name]['prefix']
       if name == "percentile" and use_extra:
-        for perc in case.stats_metrics_mapping[name]['percent']:
+        for perc in case.stats_metrics_meta[name]['percent']:
           n_output = f"{output}_{perc}"
           output_names.append(n_output)
       else:

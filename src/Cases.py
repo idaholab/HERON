@@ -924,16 +924,6 @@ class Case(Base):
       # so no need to use levelized objective in inner
       return False
 
-    # 2a. (temporary) check if driver is a variable in outer
-    # TODO: need to fix TEAL to carry over depreciation terms for CAPEX into NPV_search
-    # TODO: do we want to check the period of the cashflow? hourly, yearly, one-time...?
-    if any(cf.get_driver().type =='variable'
-            for cfs_list in levelized_cfs.values()
-              for cf in cfs_list):
-      self.raiseAnError('Levelized Cost metric not implemented for Variable ValuedParam yet. ' +
-                        'Driver is a variable in the outer optimization, at worst it is an upper ' +
-                        'bound in inner.')
-
     # 3. check the dispatchability of the components
     if all(comp.get_interaction().is_dispatchable() != 'independent'
             for comp in levelized_cfs.keys()):

@@ -55,6 +55,20 @@
     [../]
   [../]
 
+  [./LevelizedCapex]
+    type = HeronIntegration
+    input = LC_CAPEX/heron_input__LC_CAPEX.xml
+	needed_executable = 'ipopt'
+	# prereq = SineArma
+    [./csv]
+      type = OrderedCSV
+	  output = 'LC_CAPEX/LC_CAPEX_o/sweep.csv'
+      gold_files = 'LC_CAPEX_o/sweep.csv'
+      zero_threshold = 1e-6
+      rel_err = 1e-6
+    [../]
+  [../]
+
   [./LevelizedPriceOptimization]
     type = HeronIntegration
     input = Opt_LC_Price/heron_input__opt_LC_Price.xml

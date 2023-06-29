@@ -20,7 +20,7 @@
       <num_steps>21</num_steps>
     </time_discretization>
     <economics>
-      <ProjectTime>3</ProjectTime>
+      <ProjectTime>4</ProjectTime>
       <DiscountRate>0.08</DiscountRate>
       <tax>0.25</tax>
       <inflation>0.00</inflation>
@@ -30,15 +30,13 @@
       </EconMetrics>
     </economics>
     <dispatcher>
-      <pyomo>
-        <solver>ipopt</solver> <!-- LEVELIZED COST ONLY WORKS WITH IPOPT -->
-      </pyomo>
+      <pyomo/>
     </dispatcher>
   </Case>
 
   <Components>
     <Component name="source">
-      <produces resource="a" dispatch="independent">
+      <produces resource="a" dispatch="fixed">
         <capacity resource="a">
           <sweep_values>1, 2</sweep_values>
         </capacity>
@@ -97,6 +95,6 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='flex' variable="Signal">%BASE_WORKING_DIR%/../../../../ARMA/Sine/arma.pk</ARMA>
+    <ARMA name='flex' variable="Signal">%BASE_WORKING_DIR%/../../../../ARMA/Sine30yr/arma_30yr.pk</ARMA>
   </DataGenerators>
 </HERON>

@@ -1,3 +1,3 @@
-source_capacity,sink_capacity,mean_LC_Mult,std_LC_Mult,med_LC_Mult,max_LC_Mult,min_LC_Mult,perc_5_LC_Mult,perc_95_LC_Mult,samp_LC_Mult,var_LC_Mult,ProbabilityWeight,PointProbability,ProbabilityWeight-source_capacity,prefix
-1.0,-3.0,-2407.45107066,5.56949485777e-13,-2407.45107066,-2407.45107066,-2407.45107066,-2407.45107066,-2407.45107066,3.0,3.10192729707e-25,0.5,1.0,0.5,1
-2.0,-3.0,-2407.45107073,5.56949485777e-13,-2407.45107073,-2407.45107073,-2407.45107073,-2407.45107073,-2407.45107073,3.0,3.10192729707e-25,0.5,1.0,0.5,2
+source_capacity,sink_capacity,mean_LC_Mult,std_LC_Mult,med_LC_Mult,max_LC_Mult,min_LC_Mult,perc_5_LC_Mult,perc_95_LC_Mult,samp_LC_Mult,var_LC_Mult,prefix,ProbabilityWeight-source_capacity,ProbabilityWeight,PointProbability
+1.0,-3.0,-3944.02645695,5.56949485777e-13,-3944.02645695,-3944.02645695,-3944.02645695,-3944.02645695,-3944.02645695,3.0,3.10192729707e-25,1,0.5,0.5,1.0
+2.0,-3.0,-3944.02645695,5.56949485777e-13,-3944.02645695,-3944.02645695,-3944.02645695,-3944.02645695,-3944.02645695,3.0,3.10192729707e-25,2,0.5,0.5,1.0

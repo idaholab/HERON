@@ -58,7 +58,6 @@
   [./LevelizedCapex]
     type = HeronIntegration
     input = LC_CAPEX/heron_input__LC_CAPEX.xml
-	needed_executable = 'ipopt'
 	# prereq = SineArma
     [./csv]
       type = OrderedCSV

@@ -547,6 +547,8 @@ class Pyomo(Dispatcher):
     cap_res = comp.get_capacity_var()       # name of resource that defines capacity
     cap = comp.get_capacity(meta)[0][cap_res]
     r = m.resource_index_map[comp][cap_res] # production index of the governing resource
+    # NOTE: this includes the built capacity * capacity factor, if any, which assumes
+    # the ramp rate depends on the available capacity, not the built capacity.
     limit_delta = comp.ramp_limit * cap # NOTE: if cap is negative, then this is negative.
     if limit_delta < 0:
       neg_cap = True
@@ -957,7 +959,8 @@ class Pyomo(Dispatcher):
       @ In, neg_cap, bool, True if capacity is expressed as negative (consumer)
       @ In, t, int, time index for ramp limit rule (NOTE not pyomo index, rather fixed index)
       @ In, m, pyo.ConcreteModel, associated model
-      @ In, bins, tuple, optional, (lower, steady, upper) binaries if limiting ramp frequency
+      @ In, bins, tuple, optional, (lower, upper, steady) binaries if limiting ramp frequency
+      @ Out, rule, expression, evaluation for Pyomo constraint
     """
     prod = getattr(m, prod_name)
     if t == 0:

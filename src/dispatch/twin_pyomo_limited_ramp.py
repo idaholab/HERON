@@ -182,7 +182,12 @@ def _conserve_electricity(m, t):
   return sources + sinks == 0
 
 def _ramp_up_NPP(m, t):
-  """ TODO """
+  """
+    Constraining rule for ramping up the NPP.
+    @ In, m, pyomo.ConcreteModel, model
+    @ In, t, int, relevant time index
+    @ Out, rule, expression, evaluatable for Pyomo constraint
+  """
   if t > 0:
     ineq = m.NPP_production[0, t] - m.NPP_production[0, t-1] <= ramp_up_limit * m.ramp_up[t] - delta * m.ramp_down[t]
   else:
@@ -190,7 +195,12 @@ def _ramp_up_NPP(m, t):
   return ineq
 
 def _ramp_down_NPP(m, t):
-  """ TODO """
+  """
+    Constraining rule for ramping down the NPP.
+    @ In, m, pyomo.ConcreteModel, model
+    @ In, t, int, relevant time index
+    @ Out, rule, expression, evaluatable for Pyomo constraint
+  """
   if t > 0:
     ineq = m.NPP_production[0, t-1] - m.NPP_production[0, t] <= ramp_down_limit * m.ramp_down[t] - delta * m.ramp_up[t]
   else:
@@ -198,11 +208,21 @@ def _ramp_down_NPP(m, t):
   return ineq
 
 def _ramp_binaries_NPP(m, t):
-  """ TODO """
+  """
+    Binaries to assure only one of (down, steady, up) can occur per time step
+    @ In, m, pyomo.ConcreteModel, model
+    @ In, t, int, relevant time index
+    @ Out, rule, expression, evaluatable for Pyomo constraint
+  """
   return m.ramp_up[t] + m.ramp_down[t] + m.ramp_none[t] == 1
 
 def _ramp_time_limit_NPP(m, t):
-  """ TODO """
+  """
+    Limits time between sequential ramp events
+    @ In, m, pyomo.ConcreteModel, model
+    @ In, t, int, relevant time index
+    @ Out, rule, expression, evaluatable for Pyomo constraint
+  """
   if t == 0:
     return pyo.Constraint.Skip
   tao = min(t, time_between_ramp_up)
@@ -248,7 +268,11 @@ def print_setup(m):
   print('')
 
 def extract_soln(m):
-  """ TODO """
+  """
+    Extracts final solution from model evaluation
+    @ In, m, pyo.ConcreteModel, model
+    @ Out, res, dict, results dictionary for dispatch
+  """
   res = {}
   T = len(m.T)
   res['prices'] = np.zeros(T)
@@ -265,7 +289,11 @@ def extract_soln(m):
   return res
 
 def plot_solution(m):
-  """ TODO """
+  """
+    Plots solution from optimized model
+    @ In, m, pyo.ConcreteModel, model
+    @ Out, None
+  """
   res = extract_soln(m)
   fig, axs = plt.subplots(3, 1, sharex=True)
   axs[0].set_ylabel(r'Steam MW$_t$')

@@ -78,6 +78,7 @@ class Component(Base, CashFlowUser):
     self._produces = []
     self._stores = []
     self._demands = []
+    self.levelized_meta = {}
 
   def __repr__(self):
     """
@@ -336,6 +337,15 @@ class Component(Base, CashFlowUser):
     #  balance[resource] += quantity
     return balance, meta
 
+  @property
+  def ramp_limit(self):
+    """
+      Accessor for ramp limits on interactions.
+      @ In, None
+      @ Out, limit, float, limit
+    """
+    return self.get_interaction().ramp_limit
+
   def get_capacity_param(self):
     """
       Provides direct access to the ValuedParam for the capacity of this component.
@@ -345,9 +355,17 @@ class Component(Base, CashFlowUser):
     intr = self.get_interaction()
     return intr.get_capacity(None, None, None, None, raw=True)
 
-
-
-
+  def set_levelized_cost_meta(self, cashflows):
+    """
+      Create a dictionary for determining correct resource to use per cashflow if using levelized
+      inner objective (only an option when selecting LC as an econ metric)
+      @ In, cashflows, list, list of Interaction instances
+      @ Out, None
+    """
+    for cf in cashflows:
+      tracker = cf.get_driver()._vp.get_tracking_var()
+      resource = cf.get_driver()._vp.get_resource()
+      self.levelized_meta[cf.name] = {tracker:resource}
 
 
 
@@ -428,6 +446,7 @@ class Interaction(Base):
     self._dispatchable = None           # independent, dependent, or fixed?
     self._minimum = None                # lowest interaction level, if dispatchable
     self._minimum_var = None            # limiting variable for minimum
+    self.ramp_limit = None              # limiting change of production in a time step
     self._function_method_map = {}      # maps things that call functions to the method within the function that needs calling
     self._transfer = None               # the production rate (if any), in produces per consumes
                                         #   for example, {(Producer, 'capacity'): 'method'}
@@ -720,9 +739,34 @@ class Producer(Interaction):
       @ Out, input_specs, InputData, specs
     """
     specs = super().get_input_specs()
-    specs.addSub(InputData.parameterInputFactory('consumes', contentType=InputTypes.StringListType, descr=r"""The producer can either produce or consume a resource. If the producer is a consumer it must be accompnied with a transfer function to convert one source of energy to another. """))
-    descr = r"""describes how input resources yield output resources for this component's transfer function."""
-    specs.addSub(vp_factory.make_input_specs('transfer', descr=descr, kind='transfer'))
+    specs.addSub(
+        InputData.parameterInputFactory(
+            'consumes',
+            contentType=InputTypes.StringListType,
+            descr=r"""The producer can either produce or consume a resource.
+                  If the producer is a consumer it must be accompanied with a transfer function to
+                  convert one source of energy to another. """
+        )
+    )
+    specs.addSub(
+        vp_factory.make_input_specs(
+            'transfer',
+            kind='transfer',
+            descr=r"""describes how input resources yield output resources for this
+                  component's transfer function.""",
+            )
+        )
+    specs.addSub(
+        InputData.parameterInputFactory(
+            'ramp_limit',
+            contentType=InputTypes.FloatType,
+            descr=r"""Limits the rate at which production can change between consecutive time steps,
+                  in either a positive or negative direction, as a percentage of this component's capacity.
+                  For example, a generator with a ramp limit of 0.10 cannot increase or decrease their
+                  generation rate by more than 10 percent of capacity in a single time interval.
+                  \default{1.0}"""
+        )
+    )
     return specs
 
   def __init__(self, **kwargs):
@@ -732,8 +776,8 @@ class Producer(Interaction):
       @ Out, None
     """
     Interaction.__init__(self, **kwargs)
-    self._produces = []   # the resource(s) produced by this interaction
-    self._consumes = []   # the resource(s) consumed by this interaction
+    self._produces = []     # the resource(s) produced by this interaction
+    self._consumes = []     # the resource(s) consumed by this interaction
     self._tracking_vars = ['production']
 
   def read_input(self, specs, mode, comp_name):
@@ -752,12 +796,18 @@ class Producer(Interaction):
         self._consumes = item.value
       elif item.getName() == 'transfer':
         self._set_valued_param('_transfer', comp_name, item, mode)
+      elif item.getName() == 'ramp_limit':
+        self.ramp_limit = item.value
 
     # input checking
     ## if a transfer function not given, can't be consuming a resource
     if self._transfer is None:
       if self._consumes:
         self.raiseAnError(IOError, 'Any component that consumes a resource must have a transfer function describing the production process!')
+    ## ramp limit is (0, 1]
+    if self.ramp_limit is not None and not 0 < self.ramp_limit <= 1:
+      self.raiseAnError(IOError, f'Ramp limit must be (0, 1] but got "{self.ramp_limit}"')
+
 
   def get_inputs(self):
     """

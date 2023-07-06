@@ -1,0 +1,126 @@
+<HERON>
+  <TestInfo>
+    <name>LevelizedCost</name>
+    <author>sotogj</author>
+    <created>2023-05-24</created>
+    <description>
+      Testing levelized cost calculation in a sweep run. Currently only works with IPOPT
+      solver because inner objective works differently from the typical NPV, IRR, or PI
+      calculation.
+    </description>
+    <classesTested>HERON</classesTested>
+  </TestInfo>
+
+  <Case name="LC_Storage">
+    <mode>sweep</mode>
+    <num_arma_samples>3</num_arma_samples>
+    <time_discretization>
+      <time_variable>Time</time_variable>
+      <end_time>2</end_time>
+      <num_steps>21</num_steps>
+    </time_discretization>
+    <economics>
+      <ProjectTime>2</ProjectTime>
+      <DiscountRate>0.08</DiscountRate>
+      <tax>0.25</tax>
+      <inflation>0.00</inflation>
+      <verbosity>50</verbosity>
+      <EconMetrics>
+        <LC/> <!-- IF LEVELIZED COST IS REQUESTED, HERON WON'T CALCULATE OTHER METRICS-->
+      </EconMetrics>
+    </economics>
+    <dispatcher>
+      <pyomo>
+        <solver>ipopt</solver> <!-- LEVELIZED COST ONLY WORKS WITH IPOPT -->
+      </pyomo>
+    </dispatcher>
+  </Case>
+
+  <Components>
+    <Component name="source">
+      <produces resource="a" dispatch="fixed">
+        <capacity resource="a">
+          <sweep_values>1, 2</sweep_values>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>30</lifetime>
+        <!-- NOTE THAT "mult_target" PARAMETER IS DEPRECATED, WON'T DO ANYTHING -->
+        <CashFlow name="capex" type="one-time" taxable="False" inflation="none" mult_target="False">
+          <driver>
+            <variable>source_capacity</variable>
+          </driver>
+          <reference_price>
+            <fixed_value>5000.0</fixed_value>
+            <multiplier>-1</multiplier>
+          </reference_price>
+        </CashFlow>
+        <CashFlow name="FOM" type="repeating" period='year' taxable="False" inflation="none" mult_target="False">
+          <driver>
+            <variable>source_capacity</variable>
+          </driver>
+          <reference_price>
+            <fixed_value>100.0</fixed_value>
+            <multiplier>-1</multiplier>
+          </reference_price>
+        </CashFlow>
+        <CashFlow name="VOM" type="repeating" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <activity>a</activity>
+          </driver>
+          <reference_price>
+            <fixed_value>-1</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="storage">
+      <stores resource="a" dispatch="independent">
+        <capacity resource="a">
+          <fixed_value>0.5</fixed_value>
+        </capacity>
+        <initial_stored>
+          <fixed_value>0.2</fixed_value>
+        </initial_stored>
+      </stores>
+      <economics>
+        <lifetime>30</lifetime>
+        <!-- NOTE THAT "mult_target" PARAMETER IS DEPRECATED, WON'T DO ANYTHING -->
+        <CashFlow name="VOM" type="repeating" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <activity tracking="discharge">a</activity>
+            <multiplier>-1</multiplier> <!-- there's an extra negative associated with discharging-->
+          </driver>
+          <reference_price>
+            <levelized_cost/> <!-- FINDING LEVELIZED COST HERE! -->
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="sink">
+      <demands resource="a" dispatch="independent">
+        <capacity>
+          <fixed_value>-3</fixed_value>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>30</lifetime>
+        <CashFlow name="sales" type="repeating" taxable="False" inflation="none" mult_target="False">
+          <driver>
+            <activity>a</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <ARMA variable="Signal">flex</ARMA>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+  </Components>
+
+  <DataGenerators>
+    <ARMA name='flex' variable="Signal">%BASE_WORKING_DIR%/../../../../ARMA/Sine/arma.pk</ARMA>
+  </DataGenerators>
+</HERON>

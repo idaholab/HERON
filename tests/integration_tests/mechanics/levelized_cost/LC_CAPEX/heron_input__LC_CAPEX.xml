@@ -11,7 +11,7 @@
     <classesTested>HERON</classesTested>
   </TestInfo>
 
-  <Case name="LC_VariablePrice">
+  <Case name="LC_CAPEX">
     <mode>sweep</mode>
     <num_arma_samples>3</num_arma_samples>
     <time_discretization>
@@ -20,19 +20,17 @@
       <num_steps>21</num_steps>
     </time_discretization>
     <economics>
-      <ProjectTime>2</ProjectTime>
+      <ProjectTime>4</ProjectTime>
       <DiscountRate>0.08</DiscountRate>
       <tax>0.25</tax>
       <inflation>0.00</inflation>
-      <verbosity>50</verbosity>
+      <verbosity>0</verbosity>
       <EconMetrics>
         <LC/> <!-- IF LEVELIZED COST IS REQUESTED, HERON WON'T CALCULATE OTHER METRICS-->
       </EconMetrics>
     </economics>
     <dispatcher>
-      <pyomo>
-        <solver>ipopt</solver> <!-- LEVELIZED COST ONLY WORKS WITH IPOPT -->
-      </pyomo>
+      <pyomo/>
     </dispatcher>
   </Case>
 
@@ -51,9 +49,9 @@
             <variable>source_capacity</variable>
           </driver>
           <reference_price>
-            <fixed_value>1000.0</fixed_value>
-            <multiplier>-1</multiplier>
+            <levelized_cost/>  <!-- FINDING LEVELIZED COST HERE! -->
           </reference_price>
+          <depreciate>3</depreciate>
         </CashFlow>
         <CashFlow name="FOM" type="repeating" period='year' taxable="False" inflation="none" mult_target="False">
           <driver>
@@ -89,8 +87,7 @@
             <multiplier>-1</multiplier>
           </driver>
           <reference_price>
-            <ARMA variable="Signal">flex</ARMA>
-            <levelized_cost/>  <!-- FINDING LEVELIZED COST HERE! -->
+            <fixed_value>50</fixed_value>
           </reference_price>
         </CashFlow>
       </economics>
@@ -98,6 +95,6 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='flex' variable="Signal">%BASE_WORKING_DIR%/../../../../ARMA/Sine/arma.pk</ARMA>
+    <ARMA name='flex' variable="Signal">%BASE_WORKING_DIR%/../../../../ARMA/Sine30yr/arma_30yr.pk</ARMA>
   </DataGenerators>
 </HERON>

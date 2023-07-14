@@ -50,7 +50,7 @@ def parse(xml, loc, messageHandler):
     raise IOError('<Case> node is missing from HERON input file!')
   case = Cases.Case(loc, messageHandler=messageHandler)
   case.read_input(case_node)
-  
+
   # components
   components_node = xml.find('Components')
   if components_node is None:

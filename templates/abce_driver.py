@@ -508,7 +508,8 @@ class TemplateAbce(TemplateBase, Base):
     # NOTE: There is a chance we removed the denoises variable earlier.
     # If it was removed, that means we are using a StaticHistory.
     if samps_node.find('.//constant[@name="denoises"]') is not None:
-      samps_node.find('.//constant[@name="denoises"]').text = str(case.get_num_samples())
+      #remove denoises variable
+      samps_node.remove(samps_node.find('.//constant[@name="denoises"]'))      
     # add sweep variables to input
 
     ## TODO: Refactor this portion with the below portion to handle

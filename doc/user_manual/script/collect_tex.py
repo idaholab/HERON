@@ -39,14 +39,14 @@ def create(module, contents):
     @ In, contents, list(str), list of objects to inquire
     @ Out, None
   """
-  out_name = '{}.tex'.format(module)
-  intro_name = '{}_intro.tex'.format(module.lower())
+  out_name = f'{module}.tex'
+  intro_name = f'{module.lower()}_intro.tex'
   intro_file = os.path.join(src_path, intro_name)
   if os.path.isfile(intro_file):
     intro = read(intro_file)
   else:
     intro = ''
-  to_write = '\\section{{{name}}}'.format(name=module)
+  to_write = f'\\section{{{module}}}'
   to_write += intro
   to_write += '\n' * 2
   mod = getattr(sys.modules[__name__], module)

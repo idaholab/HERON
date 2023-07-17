@@ -32,6 +32,7 @@
         <rolling_window_length>8</rolling_window_length>
         <debug_mode>True</debug_mode>
         <solver>cbc</solver>
+        <tol>1e-3</tol>
       </pyomo>
     </dispatcher>
   </Case>

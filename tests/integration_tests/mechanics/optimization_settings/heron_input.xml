@@ -38,7 +38,7 @@
       <pyomo/>
     </dispatcher>
     <optimization_settings>
-      <metric>valueAtRisk</metric>
+      <stats_metric>valueAtRisk</stats_metric>
       <type>min</type>
       <persistence>5</persistence>
     </optimization_settings>

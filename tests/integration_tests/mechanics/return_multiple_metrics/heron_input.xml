@@ -1,0 +1,130 @@
+<HERON>
+  <TestInfo>
+    <name>more_econ_metrics</name>
+    <author>sotogj</author>
+    <created>2023-05-10</created>
+    <description>
+      Demonstrates how to report multiple economic metrics in the final CSV file from
+      the Outer run. The Case and Components are borrowed from the optimization_settings
+      test. In the economics node, we are requested several economic metrics: NPV, IRR, and PI.
+      In the output, we will have the basic statistics (mean, std and median) for all requested
+      metrics.
+    </description>
+    <classesTested>HERON</classesTested>
+  </TestInfo>
+
+  <Case name="sweep_runs">
+    <mode>sweep</mode>
+    <num_arma_samples>3</num_arma_samples>
+    <time_discretization>
+      <year_variable>Year</year_variable>
+      <time_variable>Time</time_variable>
+      <end_time>2</end_time>
+      <num_steps>21</num_steps>
+    </time_discretization>
+    <economics>
+      <ProjectTime>3</ProjectTime>
+      <DiscountRate>0.08</DiscountRate>
+      <tax>0.0</tax>
+      <inflation>0.0</inflation>
+      <verbosity>50</verbosity>
+      <EconMetrics>
+        <NPV/>
+        <IRR/>
+        <PI/>
+      </EconMetrics>
+    </economics>
+    <dispatcher>
+      <pyomo/>
+    </dispatcher>
+    <data_handling>
+      <inner_to_outer>csv</inner_to_outer>
+    </data_handling>
+  </Case>
+
+  <Components>
+    <Component name="steamer">
+      <produces resource="steam" dispatch="fixed">
+        <capacity resource="steam">
+          <sweep_values>1, 10</sweep_values>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>27</lifetime>
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <variable>steamer_capacity</variable>
+          </driver>
+          <reference_price>
+            <fixed_value>-20</fixed_value> <!-- Try a different value -->
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="generator">
+      <produces resource="electricity" dispatch="independent">
+        <consumes>steam</consumes>
+        <capacity resource="steam">
+          <fixed_value>-100</fixed_value>
+        </capacity>
+        <transfer>
+          <linear>
+            <rate resource="steam">-1</rate>
+            <rate resource="electricity">0.5</rate>
+          </linear>
+        </transfer>
+      </produces>
+      <economics>
+        <lifetime>27</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="electr_market">
+      <demands resource="electricity" dispatch="dependent">
+        <capacity>
+          <fixed_value>-2</fixed_value>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>30</lifetime>
+        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <fixed_value>5</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="electr_flex">
+      <demands resource="electricity" dispatch="dependent">
+        <capacity>
+          <fixed_value>-2e3</fixed_value>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>30</lifetime>
+        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <Function method="electric_consume">transfers</Function>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <Function method="flex_price">transfers</Function>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+  </Components>
+
+  <DataGenerators>
+    <ARMA name='Price' variable="Signal">%BASE_WORKING_DIR%/../../../ARMA/Sine/arma.pk</ARMA>
+    <Function name="transfers">transfers.py</Function>
+  </DataGenerators>
+
+</HERON>

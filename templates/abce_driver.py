@@ -390,6 +390,10 @@ class TemplateAbce(TemplateBase, Base):
                                                       'type' : "", 
                                                       'subDirectory': "inputs"}, text=path)
         files.append(file_node)
+    # TODO add C2N_project_definitions.yml here but it might not be needed for single agent runs
+    files.append(xmlUtils.newNode('Input', attrib={'name': "C2N_project_definitions.yml", 'type' : ""}, text='C2N_project_definitions.yml'))
+
+    # remove the files that are not needed
     files.remove(files.find('Input[@name="heron_lib"]'))
     files.remove(files.find('Input[@name="ABCE_sysimage_file"]'))
     files.remove(files.find('Input[@name="db_file"]'))
@@ -421,7 +425,7 @@ class TemplateAbce(TemplateBase, Base):
     models = template.find('Models')
     raven = template.find('Models').find('Code')
     models.remove(raven)
-    abce_gc = xmlUtils.newNode('code', attrib={'name': "abce", 'subType' : "GenericCode"})
+    abce_gc = xmlUtils.newNode('code', attrib={'name': "abce", 'subType' : "Abce"})
     models.append(abce_gc)
     abce_exec = xmlUtils.newNode('executable', text=self._template_abce_path)
     prepend = xmlUtils.newNode('clargs', attrib={'arg': "python",'type' : "prepend"})
@@ -754,9 +758,10 @@ class TemplateAbce(TemplateBase, Base):
     # create ts_data folder under inputs folder in working directory if not exist
     if not os.path.exists(os.path.join(loc, 'inputs', 'ts_data')):
       os.makedirs(os.path.join(loc, 'inputs', 'ts_data'))
-    # copy ts files to working directory 
+    # only copy csv files to working directory 
     for file in abce_temp['ts_files']:
-      shutil.copy(file, os.path.join(loc, 'inputs', 'ts_data'))
+      if file.endswith('.csv'):
+        shutil.copy(file, os.path.join(loc, 'inputs', 'ts_data'))
     # create a dict of abce input files copied with relative path
     abce_input_files_copied = {}
     abce_input_files_copied['abce_settings_file'] = os.path.join(loc, os.path.basename(abce_temp['abce_settings_file']))

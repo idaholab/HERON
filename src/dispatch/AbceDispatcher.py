@@ -70,6 +70,14 @@ class Abce(Dispatcher):
         descr=r"""The credit rating horizon."""))
     agent_opt.addSub(InputData.parameterInputFactory('int_bound', contentType=InputTypes.FloatType,
         descr=r"""The interest bound."""))
+    agent_opt.addSub(InputData.parameterInputFactory('icr_floor', contentType=InputTypes.FloatType,
+        descr=r"""The Interest Coverage Ratio floor."""))
+    agent_opt.addSub(InputData.parameterInputFactory('fcf_debt_floor', contentType=InputTypes.FloatType,
+        descr=r"""The Free Cash Flow to Debt floor."""))
+    agent_opt.addSub(InputData.parameterInputFactory('re_debt_floor', contentType=InputTypes.FloatType,
+        descr=r"""The Retained Earnings to Debt floor."""))
+    agent_opt.addSub(InputData.parameterInputFactory('use_expanded_fin_constraints', contentType=InputTypes.BoolType,
+        descr=r"""Whether to use expanded financial constraints."""))
     specs.addSub(agent_opt)
     return specs
 

@@ -310,6 +310,13 @@ class Case(Base):
       validator.addSub(vld_spec)
     input_specs.addSub(validator)
 
+    #==== Optimization Strategy ====#
+    strategy = InputData.parameterInputFactory('strategy', contentType=InputTypes.makeEnumType("strategy", "strategyType", ['BayesianOptimizer','GradientDescent']),
+                                               descr=r"""Determines what RAVEN optimizer solves the standard HERON TEA.
+                                               default is BayesianOptimizer.""", default='BayesianOptimizer')
+    input_specs.addSub(strategy)
+
+
     #==== Optimization Settings ====#
     optimizer = InputData.parameterInputFactory('optimization_settings',
                                                 descr=r"""This node defines the settings to be used for the optimizer in
@@ -389,6 +396,51 @@ class Case(Base):
                                                       is considered fully converged. This helps in preventing early false convergence.""" )
     optimizer.addSub(persistenceSub)
     input_specs.addSub(optimizer)
+
+    #== Optimizer Job Limit ==#
+    limitSub = InputData.parameterInputFactory('limit', contentType=InputTypes.IntegerType,
+                                                descr=r"""Determines the maximum number of jobs RAVEN can submit
+                                                for a HERON run. If the optimizer does not converge, this will prevent
+                                                timeouts.""")
+    optimizer.addSub(limitSub)
+
+    #== Kernel for BO ==#
+    kernelSub = InputData.parameterInputFactory('kernel', contentType=InputTypes.StringType,
+                                                descr=r"""Defines custom kernel expression for GPR used in
+                                                Bayesian Optimization. If Gradient Descent is used, then this
+                                                node is ignored. Default is Constant*Matern""")
+    optimizer.addSub(kernelSub)
+
+    #== Acquisition Function ==#
+    acquisitionSub = InputData.parameterInputFactory('acquisition', contentType=InputTypes.makeEnumType("acquisition", "acquisitionType",
+                                                      ['ExpectedImprovement', 'ProbabilityOfImprovement','LowerConfidenceBound']),
+                                                      descr=r"""Node for selecting which acquisition function to use for the
+                                                      Bayesian Optimizer. If Gradient Descent is used then this node is ignored.
+                                                      Default is ExpectedImprovement.""")
+    optimizer.addSub(acquisitionSub)
+
+    #== Initial Sample Size ==#
+    initialCountSub = InputData.parameterInputFactory('initialCount', contentType=InputTypes.IntegerType,
+                                                       descr=r"""Determines number of initial samples for Bayesian Optimization
+                                                       and number of trajectories for Gradient Descent.""")
+    optimizer.addSub(initialCountSub)
+
+    #== Model Selection ==#
+    modelSelection = InputData.parameterInputFactory('modelSelection',
+                                                     descr=r"""Parent node for selecting details about how to
+                                                     update the GPR during optimization for BO.""")
+    modelDuration = InputData.parameterInputFactory('duration', contentType=InputTypes.IntegerType,
+                                                     descr=r"""Number of iterations between hyperparameter
+                                                     selections. Default is 1""")
+    modelMethod = InputData.parameterInputFactory('method', contentType=InputTypes.makeEnumType("acquisition", "acquisitionType",
+                                                  ['Internal','External','Average']),
+                                                   descr=r"""Determines method for selecting hyperparameters.
+                                                   Internal uses the optimizer within RAVEN to maximize LML. External
+                                                   uses Scikit-Learn's selection. Averaging samples several models
+                                                   with MC and then takes a weighted sum. Default is Internal.""")
+    modelSelection.addSub(modelDuration)
+    modelSelection.addSub(modelMethod)
+    optimizer.addSub(modelSelection)
 
     #== Convergence Sub Node ==#
     convergence = InputData.parameterInputFactory('convergence',
@@ -507,6 +559,7 @@ class Case(Base):
     self._time_discretization = None   # (start, end, number) for constructing time discretization, same as argument to np.linspace
     self._Resample_T = None            # user-set increments for resources
     self._optimization_settings = None # optimization settings dictionary for outer optimization loop
+    self._strategy = None              # Raven optimizer to use for standard HERON workflow
     self._workflow = 'standard'        # setting for how to run HERON, default is through raven workflow
     self._result_statistics = {        # desired result statistics (keys) dictionary with attributes (values)
         'sigma': None,                 # user can specify additional result statistics
@@ -571,6 +624,10 @@ class Case(Base):
         self.validator.read_input(vld)
       elif item.getName() == 'optimization_settings':
         self._optimization_settings = self._read_optimization_settings(item)
+        print(self._optimization_settings)
+        exit()
+      elif item.getName() == 'strategy':
+        self._strategy = item.value
       elif item.getName() == 'dispatch_vars':
         for node in item.subparts:
           var_name = node.parameterValues['name']
@@ -755,7 +812,7 @@ class Case(Base):
             opt_settings[sub_name]['threshold'] = sub.parameterValues['threshold']
           except KeyError:
             opt_settings[sub_name]['threshold'] = 0.05
-      elif sub_name == 'convergence':
+      elif sub_name in ['convergence','modelSelection']:
         opt_settings[sub_name] = {}
         for ssub in sub.subparts:
           opt_settings[sub_name][ssub.getName()] = ssub.value

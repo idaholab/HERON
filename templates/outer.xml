@@ -16,13 +16,13 @@
       <Output         class='OutStreams'  type='Print'   >sweep</Output>
     </MultiRun>
     <MultiRun name="optimize">
-      <Input          class='Files'       type='raven'           >inner_workflow</Input>
-      <Input          class='Files'       type=''                >heron_lib</Input>
-      <Model          class='Models'      type='Code'            >raven</Model>
-      <Optimizer      class='Optimizers'  type='Bayesian Optimizer'>cap_opt</Optimizer>
-      <Output         class='DataObjects' type='PointSet'        >opt_eval</Output>
-      <SolutionExport class='DataObjects' type='PointSet'        >opt_soln</SolutionExport>
-      <Output         class='OutStreams'  type='Print'           >opt_soln</Output>
+      <Input          class='Files'       type='raven'            >inner_workflow</Input>
+      <Input          class='Files'       type=''                 >heron_lib</Input>
+      <Model          class='Models'      type='Code'             >raven</Model>
+      <Optimizer      class='Optimizers'  type='BayesianOptimizer'>cap_opt</Optimizer>
+      <Output         class='DataObjects' type='PointSet'         >opt_eval</Output>
+      <SolutionExport class='DataObjects' type='PointSet'         >opt_soln</SolutionExport>
+      <Output         class='OutStreams'  type='Print'            >opt_soln</Output>
     </MultiRun>
     <IOStep name="plot">
       <Input  class='DataObjects' type='PointSet'>opt_soln</Input>
@@ -92,7 +92,7 @@
   <Optimizers>
     <GradientDescent name="cap_opt">
       <objective>mean_NPV</objective>
-        <constant name='denoises'>1</constant>
+      <constant name='denoises'>1</constant>
       <TargetEvaluation class="DataObjects" type="PointSet">opt_eval</TargetEvaluation>
       <samplerInit>
         <limit>800</limit>
@@ -120,6 +120,8 @@
     </GradientDescent>
 
     <BayesianOptimizer name="cap_opt">
+      <objective>mean_NPV</objective>
+      <constant name='denoises'>1</constant>
       <TargetEvaluation class="DataObjects" type="PointSet">opt_eval</TargetEvaluation>
       <samplerInit>
         <limit>100</limit>
@@ -139,12 +141,12 @@
       <Acquisition>
         <ExpectedImprovement>
           <optimizationMethod>differentialEvolution</optimizationMethod>
-          <seedingCount>50</seedingCount>
+          <seedingCount>30</seedingCount>
         </ExpectedImprovement>
         <ProbabilityOfImprovement>
           <optimizationMethod>differentialEvolution</optimizationMethod>
-          <seedingCount>40</seedingCount>
-          <epsilon>0.2</epsilon>
+          <seedingCount>30</seedingCount>
+          <epsilon>1</epsilon>
           <rho>20</rho>
           <transient>Constant</transient>
         </ProbabilityOfImprovement>

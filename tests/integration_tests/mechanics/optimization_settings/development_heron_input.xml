@@ -21,14 +21,16 @@
         <objective>1e-8</objective>
       </convergence>
       <persistence>3</persistence>
-      <limit>100</limit>
-      <kernel>Constant*Matern</kernel>
+      <limit>25</limit>
+      <kernel>Constant*RBF</kernel>
       <acquisition>LowerConfidenceBound</acquisition>
       <initialCount>15</initialCount>
       <modelSelection>
         <duration>4</duration>
         <method>External</method>
       </modelSelection>
+      <stats_metric>valueAtRisk</stats_metric>
+      <type>min</type>
     </optimization_settings>
     <num_arma_samples>3</num_arma_samples>
     <time_discretization>
@@ -46,11 +48,6 @@
     <dispatcher>
       <pyomo/>
     </dispatcher>
-    <optimization_settings>
-      <stats_metric>valueAtRisk</stats_metric>
-      <type>min</type>
-      <persistence>5</persistence>
-    </optimization_settings>
     <data_handling>
       <inner_to_outer>csv</inner_to_outer>
     </data_handling>

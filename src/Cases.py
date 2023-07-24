@@ -620,12 +620,10 @@ class Case(Base):
         typ = get_validator(name)
         self.validator = typ()
         self.validator.read_input(vld)
-      elif item.getName() == 'optimization_settings':
-        self._optimization_settings = self._read_optimization_settings(item)
-        print(self._optimization_settings)
-        exit()
       elif item.getName() == 'strategy':
         self._strategy = item.value
+      elif item.getName() == 'optimization_settings':
+        self._optimization_settings = self._read_optimization_settings(item)
       elif item.getName() == 'dispatch_vars':
         for node in item.subparts:
           var_name = node.parameterValues['name']
@@ -813,6 +811,10 @@ class Case(Base):
       elif sub_name in ['convergence','modelSelection']:
         opt_settings[sub_name] = {}
         for ssub in sub.subparts:
+          # objective can refer to two different things, this handles that
+          if ssub.getName()=='objective' and self._strategy=='BayesianOptimizer':
+            opt_settings[sub_name]['acquisition'] = ssub.value
+            continue
           opt_settings[sub_name][ssub.getName()] = ssub.value
       else:
         # add other information to opt_settings dictionary (type is only information implemented)
@@ -1175,6 +1177,14 @@ class Case(Base):
       @ Out, dispatch_var, ValuedParamHandler, a ValuedParam object.
     """
     return self.dispatch_vars[name]
+
+  def get_strategy(self):
+    """
+      Returns the strategy key word for building outer.xml
+      @ In, None
+      @ Out, strategy, string, Which optimizer to use for HERON run
+    """
+    return self._strategy
 
   @property
   def npv_target(self):

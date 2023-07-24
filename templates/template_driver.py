@@ -231,7 +231,7 @@ class Template(TemplateBase, Base):
     if case.get_mode() == 'sweep' or case.debug['enabled']:
       template.remove(template.find('Optimizers'))
     elif case.get_mode() == 'opt':
-      template.remove(template.find('Samplers'))
+      template.find('Samplers').remove(template.find(".//Grid[@name='grid']"))
 
   def _modify_outer_runinfo(self, template, case):
     """
@@ -574,7 +574,10 @@ class Template(TemplateBase, Base):
     if case.get_mode() == 'sweep' or case.debug['enabled']:
       samps_node = template.find('Samplers/Grid')
     else:
-      samps_node = template.find('Optimizers/GradientDescent')
+      if case.get_strategy() == 'BayesianOptimizer':
+        samps_node = template.find('Optimizers/BayesianOptimizer')
+      else:
+        samps_node = template.find('Optimizers/GradientDescent')
     if case.debug['enabled']:
       samps_node.tag = 'MonteCarlo'
       samps_node.attrib['name'] = 'mc'
@@ -659,9 +662,36 @@ class Template(TemplateBase, Base):
     # only modify if optimization_settings is in Case
     if (case.get_mode() == 'opt') and (case.get_optimization_settings() is not None) and (not case.debug['enabled']):  # TODO there should be a better way to handle the debug case
       optimization_settings = case.get_optimization_settings()
-      # TODO will the optimizer always be GradientDescent?
-      opt_node = template.find('Optimizers').find(".//GradientDescent[@name='cap_opt']")
+      strategy = case.get_strategy()
+      # Strategy tells us which optimizer to use
+      if strategy == 'BayesianOptimizer':
+        opt_node = template.find('Optimizers').find(".//BayesianOptimizer[@name='cap_opt']")
+        template.find('Optimizers').remove(template.find(".//GradientDescent[@name='cap_opt']"))
+        # Setting kernel for GPR model
+        if 'kernel' in optimization_settings.keys():
+          gpr_node = template.find('Models').find(".//ROM[@name='gpROM']")
+          gpr_node.find('custom_kernel').text = optimization_settings['kernel']
+        # Selecting Acquisition function
+        acquisition_node = opt_node.find('Acquisition')
+        # if optimization_settings['acquisition'] is not None:
+        if 'acquisition' in optimization_settings.keys():
+          for function in ['ExpectedImprovement', 'ProbabilityOfImprovement', 'LowerConfidenceBound']:
+            # Remove acquisition functions not in use
+            if function != optimization_settings['acquisition']:
+              acquisition_node.remove(acquisition_node.find(function))
+        else:
+          acquisition_node.remove(acquisition_node.find('ProbabilityOfImprovement'))
+          acquisition_node.remove(acquisition_node.find('LowerConfidenceBound'))
+      # Its either BO or GD
+      else:
+        opt_node = template.find('Optimizers').find(".//GradientDescent[@name='cap_opt']")
+        template.remove(template.find('Samplers'))
+        template.find('Models').remove(template.find(".//ROM[@name='gpROM']"))
+        template.find('Optimizers').remove(template.find(".//BayesianOptimizer[@name='cap_opt']"))
       new_opt_objective = self._build_opt_metric_out_name(case)
+      # setting job limit to optimizer
+      if 'limit' in optimization_settings.keys():
+        opt_node.find('samplerInit').find('limit').text = str(optimization_settings['limit'])
       # swap out objective if necessary
       opt_node_objective = opt_node.find('objective')
       if (new_opt_objective != 'missing') and (new_opt_objective != opt_node_objective.text):

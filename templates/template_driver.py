@@ -709,6 +709,13 @@ class Template(TemplateBase, Base):
         else:
           acquisition_node.remove(acquisition_node.find('ProbabilityOfImprovement'))
           acquisition_node.remove(acquisition_node.find('LowerConfidenceBound'))
+        # Initial sample size for BO
+        if 'initialCount' in optimization_settings.keys():
+          latin_node = template.find('Samplers').find(".//Stratified[@name='LHS_samp']")
+          print(latin_node)
+          dummy_node = opt_node.findall('variable')
+          print(dummy_node)
+          exit()
       # Its either BO or GD
       else:
         opt_node = template.find('Optimizers').find(".//GradientDescent[@name='cap_opt']")

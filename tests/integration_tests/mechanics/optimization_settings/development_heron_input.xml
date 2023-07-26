@@ -15,19 +15,19 @@
 
   <Case name="Opt_Runs">
     <mode>opt</mode>
-    <strategy>BayesianOptimizer</strategy>
+    <!-- <strategy>BayesianOptimizer</strategy> -->
     <optimization_settings>
       <convergence>
         <objective>1e-8</objective>
       </convergence>
       <persistence>3</persistence>
-      <limit>25</limit>
+      <limit>5</limit>
       <kernel>Constant*RBF</kernel>
       <acquisition>LowerConfidenceBound</acquisition>
-      <initialCount>15</initialCount>
+      <initialCount>3</initialCount>
       <modelSelection>
-        <duration>4</duration>
-        <method>External</method>
+        <duration>1</duration>
+        <method>Internal</method>
       </modelSelection>
       <stats_metric>valueAtRisk</stats_metric>
       <type>min</type>

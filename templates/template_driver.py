@@ -470,6 +470,8 @@ class Template(TemplateBase, Base):
       @ Out, None
     """
     raven = template.find('Models').find('Code')
+    gpr = template.find('Models').find('ROM')
+
     # executable
     raven_exec = raven.find('executable')
     raven_exec_guess = os.path.abspath(os.path.join(RAVEN_LOC, '..', 'raven_framework'))
@@ -504,11 +506,19 @@ class Template(TemplateBase, Base):
     else:
       text = 'Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:{}'
 
+    feature_list = ''
     for component in components:
       name = component.name
       attribs = {'variable': f'{name}_capacity', 'type':'input'}
       new = xmlUtils.newNode('alias', text=text.format(name + '_capacity'), attrib=attribs)
       raven.append(new)
+      interaction = component.get_interaction()
+      cap = interaction.get_capacity(None, raw=True)
+      if cap.is_parametric() and isinstance(cap.get_value(debug=case.debug['enabled']) , list):
+        feature_list += name + '_capacity' + ','
+    feature_list = feature_list[0:-1]
+    gpr.find('Features').text = feature_list
+    gpr.find('Target').text = self._build_opt_metric_out_name(case)
 
     # Now we check for any non-component dispatch variables and assign aliases
     for name in case.dispatch_vars.keys():
@@ -603,6 +613,8 @@ class Template(TemplateBase, Base):
     else:
       if case.get_strategy() == 'BayesianOptimizer':
         samps_node = template.find('Optimizers/BayesianOptimizer')
+        # Need to add variables to sample for initialization
+        initializer_node = template.find('Samplers/Stratified')
       else:
         samps_node = template.find('Optimizers/GradientDescent')
     if case.debug['enabled']:
@@ -659,7 +671,17 @@ class Template(TemplateBase, Base):
           # make new Distribution, Sampler.Grid.variable
           dist, xml = self._create_new_sweep_capacity(name, var_name, vals, sampler)
           dists_node.append(dist)
-          samps_node.append(xml)
+          # Bayesian Optimizer requires additional modification
+          if case.get_strategy() == 'BayesianOptimizer':
+            xml.remove(xml.find('initial'))
+            samps_node.append(xml)
+            grid_node = xmlUtils.newNode('grid', text='0 1',
+                                          attrib={'construction':"equal", 'steps':"10", 'type':"CDF"})
+            lhs_var = copy.deepcopy(xml)
+            lhs_var.append(grid_node)
+            initializer_node.append(lhs_var)
+          else:
+            samps_node.append(xml)
           # NOTE assumption (input checked): only one interaction per component
         # if not being swept, then it's just a fixed value.
         else:
@@ -710,12 +732,20 @@ class Template(TemplateBase, Base):
           acquisition_node.remove(acquisition_node.find('ProbabilityOfImprovement'))
           acquisition_node.remove(acquisition_node.find('LowerConfidenceBound'))
         # Initial sample size for BO
+        latin_node = template.find('Samplers').find(".//Stratified[@name='LHS_samp']")
         if 'initialCount' in optimization_settings.keys():
-          latin_node = template.find('Samplers').find(".//Stratified[@name='LHS_samp']")
-          print(latin_node)
-          dummy_node = opt_node.findall('variable')
-          print(dummy_node)
-          exit()
+          for variable in latin_node.findall('variable'):
+            variable.find('grid').set('steps', str(optimization_settings['initialCount']))
+        else:
+          var_dim = len(latin_node.findall('variable'))
+          for variable in latin_node.findall('variable'):
+            variable.find('grid').set('steps', str(2*var_dim))
+        # Model selection
+        if 'modelSelection' in optimization_settings.keys():
+          model_node = opt_node.find('ModelSelection')
+          model_settings = optimization_settings['modelSelection']
+          model_node.find('Duration').text = str(model_settings['duration'])
+          model_node.find('Method').text = model_settings['method']
       # Its either BO or GD
       else:
         opt_node = template.find('Optimizers').find(".//GradientDescent[@name='cap_opt']")

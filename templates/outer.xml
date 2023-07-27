@@ -129,7 +129,7 @@
         <writeSteps>every</writeSteps>
       </samplerInit>
       <Sampler    class="Samplers"  type="Stratified" >LHS_samp</Sampler>
-      <Model  class="Models"  type="ROM" subType="GaussianProcessRegressor">gpROM</Model>
+      <ROM  class="Models" type="ROM">gpROM</ROM>
       <ModelSelection>
         <Duration>1</Duration>
         <Method>Internal</Method>

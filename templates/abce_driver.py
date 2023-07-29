@@ -101,6 +101,7 @@ class TemplateAbce(TemplateBase, Base):
     self._template_outer = None
     self._template_abce_settings = None
     self._abce_files_to_copy = None
+    self._abce_values_to_replace = {}
     self.__case = None
     self.__components = None
     self.__sources = None
@@ -277,56 +278,70 @@ class TemplateAbce(TemplateBase, Base):
 
     # Add component opt vars
     for comp in components:
-      comp_cap_type = comp.get_capacity(None, raw=True).type
+      comp_cap = comp.get_capacity(None, raw=True)
+      comp_cap_type = comp_cap.type
       if comp_cap_type  not in ['Function', 'ARMA', 'SyntheticHistory', 'StaticHistory']:
-        var_list.append(f'{comp.name}_capacity')
-
-    # Add dispatch opt vars
-    for var in case.dispatch_vars.keys():
-      var_list.append(f'{var}_dispatch')
+        if comp_cap_type == 'FixedValue':
+          vals = comp_cap.get_value(debug=case.debug['enabled'])
+          self._abce_values_to_replace[f'{comp.name}_capacity'] = vals
+        else:
+          var_list.append(f'{comp.name}_capacity')
+          self.__sweep_vars.append(f'{comp.name}_capacity')
     caps.text = ', '.join(var_list)
 
     # outer results
     group_outer_results = var_groups.find(".//Group[@name='GRO_outer_results']")
     # add required defaults
-    default_stats = [f'mean_{case._metric}', f'std_{case._metric}', f'med_{case._metric}']
-    for stat in default_stats:
-      self._updateCommaSeperatedList(group_outer_results, stat)
-    # make sure user provided statistics beyond defaults get there
-    if any(stat not in ['expectedValue', 'sigma', 'median'] for stat in case._result_statistics):
-      stats_list = self._build_result_statistic_names(case)
-      for stat_name in stats_list:
-        if stat_name not in default_stats:
-          self._updateCommaSeperatedList(group_outer_results, stat_name)
-    # sweep mode has default variable names
-    elif case.get_mode() == 'sweep':
-      sweep_default = [f'mean_{case._metric}', f'std_{case._metric}', f'med_{case._metric}', f'max_{case._metric}',
-                       f'min_{case._metric}', f'perc_5_{case._metric}', f'perc_95_{case._metric}',
-                       f'samp_{case._metric}', f'var_{case._metric}']
-      for sweep_name in sweep_default:
-        if sweep_name not in default_stats:
-          self._updateCommaSeperatedList(group_outer_results, sweep_name)
-    # opt mode adds optimization variable if not already there
-    if (case.get_mode() == 'opt') and (case._optimization_settings is not None):
-      new_metric_outer_results = self._build_opt_metric_out_name(case)
-      if (new_metric_outer_results != 'missing') and (new_metric_outer_results not in group_outer_results.text):
-        # additional results statistics have been requested, add this metric if not already present
-        self._updateCommaSeperatedList(group_outer_results, new_metric_outer_results, position=0)
+    default_metrics_point = ['OutputPlaceHolder']
+    group_outer_results.text = ', '.join(default_metrics_point)
 
-    # labels group
-    if case.get_labels():
-      case_labels = ET.SubElement(var_groups, 'Group', attrib={'name': 'GRO_case_labels'})
-      case_labels.text = ', '.join([f'{key}_label' for key in case.get_labels().keys()])
-    if case.debug['enabled']:
-      # expected dispatch, ARMA outputs
-      # -> dispatch results
-      group = var_groups.find(".//Group[@name='GRO_outer_debug_dispatch']")
-      for component in components:
-        name = component.name
-        for tracker in component.get_tracking_vars():
-          for resource in component.get_resources():
-            var_name = self.namingTemplates['dispatch'].format(component=name, tracker=tracker, resource=resource)
-            self._updateCommaSeperatedList(group, var_name)
+    # add another group for abce if component have value for capex and OM
+    var_groups.append(xmlUtils.newNode('Group', attrib={'name': 'GRO_abce_capex'}))
+    group_abce_capex = var_groups.find(".//Group[@name='GRO_abce_capex']")
+    capex_list = []
+    var_groups.append(xmlUtils.newNode('Group', attrib={'name': 'GRO_abce_FOM'}))
+    group_abce_fom = var_groups.find(".//Group[@name='GRO_abce_FOM']")
+    fom_list = []
+    var_groups.append(xmlUtils.newNode('Group', attrib={'name': 'GRO_abce_VOM'}))
+    group_abce_vom = var_groups.find(".//Group[@name='GRO_abce_VOM']")
+    vom_list = []
+    var_groups.append(xmlUtils.newNode('Group', attrib={'name': 'GRO_abce_FC'}))
+    group_abce_fc = var_groups.find(".//Group[@name='GRO_abce_FC']")
+    fc_list = []
+
+    for comp in components:
+      comp_eco = comp.get_economics()
+      cfs=comp_eco.get_cashflows()
+      for cf in cfs:
+        # if cf._alpha.type is not FixedValue added to the list 
+        # else value_to_change needs to be updated with the key 
+        # as the name of the component and cf.name and value as cf._alpha.get_value()
+        if cf._alpha.type == 'FixedValue':
+          self._abce_values_to_replace[f'{comp.name}_{cf.name}'] = cf._alpha.get_value()
+        else:
+          if cf.name=='capex' and cf._type=='one-time':
+            capex_list.append(f'{comp.name}_capex')
+            self.__sweep_vars.append(f'{comp.name}_capex')
+          if cf.name=='fixed_OM' and cf._type=='repeating':
+            fom_list.append(f'{comp.name}_FOM')
+            self.__sweep_vars.append(f'{comp.name}_FOM')
+          if cf.name=='var_OM' and cf._type=='repeating':
+            vom_list.append(f'{comp.name}_VOM')
+            self.__sweep_vars.append(f'{comp.name}_VOM')
+          if cf.name=='fuel_cost' and cf._type=='repeating':
+            fc_list.append(f'{comp.name}_FC')
+            self.__sweep_vars.append(f'{comp.name}_FC')
+    group_abce_capex.text = ', '.join(capex_list)
+    group_abce_fom.text = ', '.join(fom_list)
+    group_abce_vom.text = ', '.join(vom_list)
+    group_abce_fc.text = ', '.join(fc_list)
+    # remove empty groups
+    for group in var_groups:
+      if group.text is None or group.text == '':
+        self._remove_by_name(var_groups, [group.get('name')])
+    print ('value_to_change', self._abce_values_to_replace)
+
+
 
   def _modify_outer_dataobjects(self, template, case, components):
     """
@@ -538,7 +553,7 @@ class TemplateAbce(TemplateBase, Base):
 
     for component in components:
       interaction = component.get_interaction()
-      # NOTE this algorithm does not check for everthing to be swept! Future work could expand it.
+      # NOTE this algorithm does not check for everything to be swept! Future work could expand it.
       # This is approached by the labels feature above
       ## Currently checked: Component.Interaction.Capacity
       ## --> this really needs to be made generic for all kinds of valued params!
@@ -551,7 +566,7 @@ class TemplateAbce(TemplateBase, Base):
         # is the capacity variable being swept over?
         if isinstance(vals, list):
           # make new Distribution, Sampler.Grid.variable
-          dist, xml = self._create_new_sweep_capacity(name, var_name, vals, sampler)
+          dist, xml = self._create_new_sweep_variable(name, var_name, vals, sampler)
           dists_node.append(dist)
           samps_node.append(xml)
           # NOTE assumption (input checked): only one interaction per component
@@ -561,6 +576,28 @@ class TemplateAbce(TemplateBase, Base):
       else:
         # this capacity will be evaluated by ARMA/Function, and doesn't need to be added here.
         pass
+
+    for component in components:
+      name = component.name
+      comp_eco = component.get_economics()
+      cfs=comp_eco.get_cashflows()
+      for cf in cfs:
+        if cf.name == 'fixed_OM':
+          feature_name='FOM'
+        elif cf.name == 'var_OM':
+          feature_name='VOM'
+        elif cf.name == 'fuel_cost':  
+          feature_name='FC'
+        elif cf.name == 'capex':
+          feature_name='capex'
+        var_name = self.namingTemplates['variable'].format(unit=component.name, feature=feature_name)
+        vals = cf._alpha.get_value(debug=case.debug['enabled'])
+        if isinstance(vals, list):
+          dist, xml = self._create_new_sweep_variable(name, var_name, vals, sampler)
+          dists_node.append(dist)
+          samps_node.append(xml)
+
+
     if case.outerParallel == 0 and case.useParallel:
       #XXX if we had a way to calculate this ahead of time,
       # this could be done in _modify_outer_runinfo
@@ -671,7 +708,7 @@ class TemplateAbce(TemplateBase, Base):
         io_output = ET.SubElement(io_step, 'Output', attrib={'class': 'OutStreams', 'type': 'Plot'})
         io_output.text = 'dispatchPlot'
 
-  def _create_new_sweep_capacity(self, comp_name, var_name, capacities, sampler):
+  def _create_new_sweep_variable(self, comp_name, var_name, capacities, sampler):
     """
       for OUTER, creates new distribution and variable for grid/opt sampling
       @ In, comp_name, str, name of component
@@ -684,8 +721,17 @@ class TemplateAbce(TemplateBase, Base):
     # distribution
     if 'capacity' in var_name:
       dist_name = self.namingTemplates['distribution'].format(unit=comp_name, feature='capacity')
-    else:
+    elif 'dispatch' in var_name:
       dist_name = self.namingTemplates['distribution'].format(unit=comp_name, feature='dispatch')
+    elif 'capex' in var_name:
+      dist_name = self.namingTemplates['distribution'].format(unit=comp_name, feature='capex')
+    elif 'FOM' in var_name:
+      dist_name = self.namingTemplates['distribution'].format(unit=comp_name, feature='fom')
+    elif 'VOM' in var_name:
+      dist_name = self.namingTemplates['distribution'].format(unit=comp_name, feature='vom')
+    elif 'FC' in var_name:
+      dist_name = self.namingTemplates['distribution'].format(unit=comp_name, feature='fc')
+
     dist = copy.deepcopy(self.dist_template)
     dist.attrib['name'] = dist_name
     min_cap = min(capacities)
@@ -694,7 +740,6 @@ class TemplateAbce(TemplateBase, Base):
     dist.find('upperBound').text = str(max_cap)
     xml = copy.deepcopy(self.var_template)
     xml.attrib['name'] = var_name
-    self.__sweep_vars.append(var_name)
     xml.find('distribution').text = dist_name
     if sampler == 'grid':
       caps = ' '.join(str(x) for x in sorted(capacities))

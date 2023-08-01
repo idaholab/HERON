@@ -106,6 +106,7 @@ class TemplateAbce(TemplateBase, Base):
     self.__components = None
     self.__sources = None
     self.__sweep_vars = []
+    self._working_dir = None
     self.messageHandler = MessageHandler()
 
   def loadTemplate(self, path):
@@ -138,23 +139,25 @@ class TemplateAbce(TemplateBase, Base):
     self._template_abce_settings = dispatcher_settings['settings_file']
     # initialize case economics
     case.load_econ(components)
-    self._abce_files_to_copy = self._get_abce_files_to_copy()
-    abce_temp = self._abce_files_to_copy
     case_name = self.namingTemplates['jobname'].format(case=case.name, io='o')
     # create the location if not already there in the current working directory
     # the subfolder is called case_name
     if not os.path.exists(case_name):
       os.makedirs(case_name)
+    # load a copy of the outer template
+    outer = copy.deepcopy(self._template_outer)
+    # modify the outer templates
+    outer = self._modify_outer(outer, case, components, sources)
+
+    # get the abce_inputs files to copy
+    self._abce_files_to_copy = self._get_abce_files_to_copy(outer, case, components, sources)
+    abce_temp = self._abce_files_to_copy
     # copy the files to the location
     # location is the subfolder in the current working directory called case_name
-    new_loc = os.path.join(loc, case_name)
-    abce_inputs = self._copied_abce_inputs(new_loc, abce_temp)
+    self._working_dir = os.path.join(loc, case_name)
+    abce_inputs = self._copied_abce_inputs(self._working_dir, abce_temp)
     # modyify the abce_inputs
-    self._modify_abce_inputs(abce_inputs, case, components, sources)
-    # load a copy of the template
-    outer = copy.deepcopy(self._template_outer)
-    # modify the templates
-    outer = self._modify_outer(outer, case, components, sources)
+    self._modify_abce_inputs(abce_inputs, outer, case, components, sources)
 
     return outer
  
@@ -283,7 +286,7 @@ class TemplateAbce(TemplateBase, Base):
       if comp_cap_type  not in ['Function', 'ARMA', 'SyntheticHistory', 'StaticHistory']:
         if comp_cap_type == 'FixedValue':
           vals = comp_cap.get_value(debug=case.debug['enabled'])
-          self._abce_values_to_replace[f'{comp.name}_capacity'] = vals
+          self._abce_values_to_replace[f'{comp.name}|capacity'] = vals
         else:
           var_list.append(f'{comp.name}_capacity')
           self.__sweep_vars.append(f'{comp.name}_capacity')
@@ -311,13 +314,23 @@ class TemplateAbce(TemplateBase, Base):
 
     for comp in components:
       comp_eco = comp.get_economics()
+      comp_life = comp_eco.get_lifetime()
+      self._abce_values_to_replace[f'{comp.name}|unit_life'] = comp_life
       cfs=comp_eco.get_cashflows()
       for cf in cfs:
         # if cf._alpha.type is not FixedValue added to the list 
         # else value_to_change needs to be updated with the key 
         # as the name of the component and cf.name and value as cf._alpha.get_value()
         if cf._alpha.type == 'FixedValue':
-          self._abce_values_to_replace[f'{comp.name}_{cf.name}'] = cf._alpha.get_value()
+          if cf.name == 'capex':
+            abce_name = f'{comp.name}|overnight_capital_cost'
+          if cf.name == 'fixed_OM':
+            abce_name = f'{comp.name}|FOM'
+          if cf.name == 'var_OM':
+            abce_name = f'{comp.name}|VOM'
+          if cf.name == 'fuel_cost':
+            abce_name = f'{comp.name}|FC_per_MMBTU'
+          self._abce_values_to_replace[abce_name] = cf._alpha.get_value()
         else:
           if cf.name=='capex' and cf._type=='one-time':
             capex_list.append(f'{comp.name}_capex')
@@ -336,12 +349,11 @@ class TemplateAbce(TemplateBase, Base):
     group_abce_vom.text = ', '.join(vom_list)
     group_abce_fc.text = ', '.join(fc_list)
     # remove empty groups
+    groups_to_remove = []
     for group in var_groups:
       if group.text is None or group.text == '':
-        self._remove_by_name(var_groups, [group.get('name')])
-    print ('value_to_change', self._abce_values_to_replace)
-
-
+        groups_to_remove.append(group.get('name'))
+    self._remove_by_name(var_groups, groups_to_remove)
 
   def _modify_outer_dataobjects(self, template, case, components):
     """
@@ -352,28 +364,24 @@ class TemplateAbce(TemplateBase, Base):
       @ Out, None
     """
     DOs = template.find('DataObjects')
-    # labels pass to inner
-    if case.get_labels():
-      for node in DOs:
-        if node.get('name') == 'grid':
-          input_node = node.find('Input')
-          input_node.text += ', GRO_case_labels'
     # remove opt components if not used
     if case.get_mode() == 'sweep' or case.debug['enabled']:
       self._remove_by_name(DOs, ['opt_eval', 'opt_soln'])
     elif case.get_mode() == 'opt':
       self._remove_by_name(DOs, ['grid'])
-    # debug mode
-    if case.debug['enabled']:
-      # add debug dispatch output dataset
-      debug_gro = ['GRO_outer_debug_dispatch', 'GRO_outer_debug_synthetics']
-      deps = {self.__case.get_time_name(): debug_gro,
-              self.namingTemplates['cluster_index']: debug_gro,
-              self.__case.get_year_name(): debug_gro}
-      self._create_dataobject(DOs, 'DataSet', 'dispatch',
-                              inputs=['scaling'],
-                              outputs=debug_gro,
-                              depends=deps)
+    for dataObject in DOs:
+      if dataObject.get('name') == 'grid':
+        # add variable groups to the input
+        var_groups = template.find('VariableGroups')
+        for group in var_groups:
+          # if group is not none and is do not have outer in name
+          # add the group to the dataObject input
+          if group.text is not None and 'outer' not in group.get('name'):
+            group_name = group.get('name')
+            input = dataObject.find('Input')
+            # check if the input already has a group
+            if group_name not in input.text:
+              input.text = input.text + ', ' + group_name
 
   def _modify_outer_files(self, template, case, sources):
     """
@@ -398,7 +406,7 @@ class TemplateAbce(TemplateBase, Base):
     # if it exists, then add the files to the list of files to be transferred
     with open(self._template_abce_settings) as f:
       settings = yaml.safe_load(f)
-    # creat a subdirectory for the inputs
+    # create a subdirectory for the inputs
     if 'file_paths' in settings:
       for file, path in settings['file_paths'].items():
         file_node = xmlUtils.newNode('Input', attrib={'name': file, 
@@ -406,7 +414,7 @@ class TemplateAbce(TemplateBase, Base):
                                                       'subDirectory': "inputs"}, text=path)
         files.append(file_node)
     # TODO add C2N_project_definitions.yml here but it might not be needed for single agent runs
-    files.append(xmlUtils.newNode('Input', attrib={'name': "C2N_project_definitions.yml", 'type' : ""}, text='C2N_project_definitions.yml'))
+    files.append(xmlUtils.newNode('Input', attrib={'name': "C2N_project_definitions.yml", 'type' : "",'subDirectory': "inputs"}, text='C2N_project_definitions.yml'))
 
     # remove the files that are not needed
     files.remove(files.find('Input[@name="heron_lib"]'))
@@ -426,7 +434,11 @@ class TemplateAbce(TemplateBase, Base):
                                                       'type': "", 
                                                       'subDirectory': "inputs/ts_data"}, text=file)
         files.append(file_node)
-    files.remove(files.find('Input[@name="repDays_35.csv"]'))
+    # remove the file name start with repDays like repDays_35 or repDays_45 etc
+    # this is because the number of days is not known at this point
+    for file in files:
+      if file.get('name').startswith('repDays'):
+        files.remove(file)
 
   def _modify_outer_models(self, template, case, components, sources):
     """
@@ -440,12 +452,12 @@ class TemplateAbce(TemplateBase, Base):
     models = template.find('Models')
     raven = template.find('Models').find('Code')
     models.remove(raven)
-    abce_gc = xmlUtils.newNode('code', attrib={'name': "abce", 'subType' : "Abce"})
+    abce_gc = xmlUtils.newNode('Code', attrib={'name': "abce", 'subType' : "Abce"})
     models.append(abce_gc)
     abce_exec = xmlUtils.newNode('executable', text=self._template_abce_path)
     prepend = xmlUtils.newNode('clargs', attrib={'arg': "python",'type' : "prepend"})
     settings_file = xmlUtils.newNode('clargs', attrib={'arg': "--settings_file", 
-                                                       'extension':"yml",
+                                                       'extension':".yml",
                                                        'type' : "input",
                                                         'delimiter': "="})
     inputs_path = xmlUtils.newNode('clargs', attrib={'arg': "--inputs_path=inputs --verbosity=3", 
@@ -570,9 +582,7 @@ class TemplateAbce(TemplateBase, Base):
           dists_node.append(dist)
           samps_node.append(xml)
           # NOTE assumption (input checked): only one interaction per component
-        # if not being swept, then it's just a fixed value.
-        else:
-          samps_node.append(xmlUtils.newNode('constant', text=vals, attrib={'name': var_name}))
+        # if not being swept, then it's just a fixed value. Just change the value in the abce input
       else:
         # this capacity will be evaluated by ARMA/Function, and doesn't need to be added here.
         pass
@@ -757,10 +767,13 @@ class TemplateAbce(TemplateBase, Base):
 
   ##### ABCE #####
 
-  def _get_abce_files_to_copy(self):
+  def _get_abce_files_to_copy(self,template,case, components, sources):
     """
       Defines files to copy from ABCE to HERON working directory.
-      @ In, case, HERON Case, defining Case instance
+      @ In, template, xml.etree.ElementTree.Element, template to modify.
+      @ In, case, Case, HERON case object
+      @ In, components, list, list of components
+      @ In, sources, list, list of sources
       @ Out, files, list, list of files to copy
     """
     # create a list of abce input files to copy 
@@ -769,26 +782,30 @@ class TemplateAbce(TemplateBase, Base):
     abce_files_to_copy = {}
     # add input files as a list
     abce_input_files = []
+
+    files_in_outer = []
+    for file in template.find('Files'):
+      files_in_outer.append(file.text)
+
     for file in os.listdir(self._template_abce_inputs_path):
-      if os.path.isfile(os.path.join(self._template_abce_inputs_path, file)):
+      if file in files_in_outer and os.path.isfile(os.path.join(self._template_abce_inputs_path, file)):
+        self.raiseAMessage('Copying ABCE file "{}" from ABCE inputs folder to HERON'.format(file))
         abce_input_files.append(os.path.join(self._template_abce_inputs_path, file))
-    ts_files = [os.path.join(self._template_abce_inputs_path, 'ts_data', file) for file in os.listdir(os.path.join(self._template_abce_inputs_path, 'ts_data'))]
-    # remove the file start with 'repDays' in ts_files
-    ts_files = [file for file in ts_files if not file.startswith(os.path.join(self._template_abce_inputs_path, 'ts_data', 'repDays'))]
+        
+    ## ts_files are the files in DataGenerators
+
+    ts_files = []
+    for file in sources:
+      ts_files.append(file._target_file)
     abce_files_to_copy['abce_input_files'] = abce_input_files
     abce_files_to_copy['ts_files'] = ts_files
     # add abce_settings file
     abce_files_to_copy['abce_settings_file'] = self._template_abce_settings
-    # # print the lists in a readable format
-    # print('abce_files_to_copy:')
-    # for key, value in abce_files_to_copy.items():
-    #   # print key and value with a sep \n for each element if value is a list, otherwise print value
-    #   print(key, '\n', '\n'.join(value) if isinstance(value, list) else value)
     return abce_files_to_copy
 
   def _copied_abce_inputs(self, loc, abce_temp):
     """
-      Copies ABCE input files to working directory.
+      Copy ABCE input files to working directory.
       @ In, loc, str, location to copy files to
       @ In, abce_temp, dict, dictionary of ABCE files to copy
       @ Out, abce_input_files_copied, dict, dictionary of ABCE files copied
@@ -816,10 +833,11 @@ class TemplateAbce(TemplateBase, Base):
 
     return  abce_input_files_copied
 
-  def _modify_abce_inputs(self, abce_inputs, case, components, sources):
+  def _modify_abce_inputs(self, abce_inputs, outer, case, components, sources):
     """
       Modifies ABCE input files to match HERON case.
       @ In, abce_inputs, dict, dictionary of ABCE files copied
+      @ In, outer, xml.etree.ElementTree.Element, outer node of template
       @ In, case, HERON Case, defining Case instance
       @ In, components, dict, dictionary of components
       @ In, sources, dict, dictionary of sources
@@ -828,8 +846,8 @@ class TemplateAbce(TemplateBase, Base):
     # modify abce_settings file
     self._modify_abce_settings(abce_inputs['abce_settings_file'], case, components, sources)
     # modify abce input files
-    for file in abce_inputs['abce_input_files']:
-      self._modify_abce_other_input(file, case, components, sources)
+    other_inputs = abce_inputs['abce_input_files']
+    self._modify_abce_other_input(other_inputs, outer, case, components, sources)
     # modify ts files
     for file in abce_inputs['ts_files']:
       self._modify_ts_data(file, case, components, sources)
@@ -932,16 +950,84 @@ class TemplateAbce(TemplateBase, Base):
         yaml_lines[i] = line
     return yaml_lines
 
-  def _modify_abce_other_input(self, abce_input_file, case, components, sources):
+  def _modify_abce_other_input(self, abce_input_files, outer, case, components, sources):
     """
       Modifies ABCE input file to match HERON case.
-      @ In, abce_input_file, str, ABCE input file
+      @ In, abce_input_files, list, ABCE input file copied in working directory
+      @ In, outer, xml.etree.ElementTree.Element, outer node of template
       @ In, case, HERON Case, defining Case instance
       @ In, components, dict, dictionary of components
       @ In, sources, dict, dictionary of sources
       @ Out, None
     """
-    pass
+    #if self.__sweep_vars and self._abce_values_to_replace are empty, then no need to modify abce input files
+    # now we only need to modify the unit_specs_data_file
+    if not self.__sweep_vars and not self._abce_values_to_replace:
+      self.raiseAMessage(f'No need to modify other ABCE input files, since no sweep variables are defined, and no abce values to replace are defined')
+      pass
+    
+    unit_specs = outer.find('Files').find(".//Input[@name='unit_specs_data_file']")
+    sub_dir = unit_specs.attrib['subDirectory']
+    unit_specs_file = os.path.join(self._working_dir, sub_dir,unit_specs.text)
+
+    # if self.__sweep_vars is not empty, then we need to modify abce input files changing the values to raven variables
+    if self.__sweep_vars or self._abce_values_to_replace:
+      # locate the node in the unit_specs_file which is a yaml file
+      # read the yaml file
+      with open(unit_specs_file, 'r') as f:
+        unit_specs_data = yaml.safe_load(f)
+      # if self.__sweep_vars is not empty, then we need to modify abce input files changing the values to raven variables
+      if self._abce_values_to_replace:
+        self.raiseAMessage(f'For ABCE input files, modifying the values to HERON input values')
+        for value_to_change in self._abce_values_to_replace.items():
+          self.raiseAMessage(f'Modifying {value_to_change[0]} to {value_to_change[1]}')
+          # split the alias 
+          unit_name, abce_node = value_to_change[0].split('|')
+          unit = unit_specs_data[unit_name]
+          # # find the alias in the unit
+          for k, v in unit.items():
+            if k == abce_node:
+              # replace the value
+              unit[k] = value_to_change[1]
+              unit_specs_data[unit_name] = unit
+      if self.__sweep_vars:
+        self.raiseAMessage(f'For ABCE input files, modifying the values to raven variables')
+        for raven_alias in self.__sweep_vars:
+          self.raiseAMessage(f'Modifying {raven_alias}')
+          # split the alias from the last underscore
+          abce_alias = raven_alias.split('_')[-1]
+          print('abce_alias', abce_alias)
+          if abce_alias == 'capex':
+            abce_node = 'overnight_capital_cost'
+          elif abce_alias == 'FC':
+            abce_node = 'FC_per_MMBTU'
+          else:
+            abce_node = abce_alias
+          # unit name are the rest of the alias
+          unit_name = raven_alias.replace(f'_{abce_alias}', '')
+          # find the unit in the unit_specs_data
+          unit = unit_specs_data[unit_name]
+          # changed_alias is $RAVEN-raven_alias$
+          changed_alias = f'$RAVEN-{raven_alias}$'          
+          # replace the key name from abce_node to raven_alias
+          unit[abce_node] = changed_alias         
+          # replace the unit in the unit_specs_data
+          unit_specs_data[unit_name] = unit
+      # write the unit_specs_data back to the unit_specs_file
+      with open(unit_specs_file, 'w') as f:       
+        yaml.dump(unit_specs_data, f)
+    # 
+      
+    if self._abce_values_to_replace:
+      self.raiseAMessage(f'For ABCE input files, modifying the values to new setup values')
+    # if self._abce_values_to_replace is not empty, then we need to modify abce input files changing the values to new values  
+
+    # self.raiseAMessage(f'For ABCE input files,'
+    # cccc
+    # print('modify abce input file', self._abce_values_to_replace)
+    # print('sweep values', self.__sweep_vars)
+    # cccc
+    # pass
   
   def _modify_ts_data(self, ts_file, case, components, sources):
     """

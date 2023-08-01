@@ -8,19 +8,16 @@ import os
 import sys
 import copy
 import shutil
-import time
 import xml.etree.ElementTree as ET
-import itertools as it
-from prettyprinter import pprint
 import io
-import numpy as np
-import dill as pk
+
 import yaml
 from ravenframework.MessageHandler import MessageHandler
 # load utils
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from HERON.src.base import Base
 import HERON.src._utils as hutils
+from HERON.templates.template_driver import Template as HeronTemplate
 sys.path.pop()
 
 # get raven location
@@ -42,49 +39,19 @@ from ravenframework.utils import xmlUtils
 from ravenframework.InputTemplates.TemplateBaseClass import Template as TemplateBase
 sys.path.pop()
 
-class TemplateAbce(TemplateBase, Base):
+class TemplateAbce(HeronTemplate, TemplateBase, Base):
   """
-    Template for lcoe sweep opt class
-    This templates the workflow split into sweeping over unit capacities
-    in an OUTER run while optimizing unit dispatch in a INNER run.
-
-    As designed, the ARMA stochastic noise happens entirely on the INNER,
-    for easier parallelization.
+    Template for ABCE sweep class
+    This template is designed to be used with the ABCE dispatcher. The workflow
+    copies a set of input files from the ABCE input directory, then replaces
+    the values in the input files with the values from the HERON inputs. 
+    
+    The ABCE input files are then run using the RAVEN sampler.
   """
-
-  # dynamic naming templates
-  TemplateBase.addNamingTemplates({'jobname'        : '{case}_{io}',
-                                   'stepname'       : '{action}_{subject}',
-                                   'variable'       : '{unit}_{feature}',
-                                   'dispatch'       : 'Dispatch__{component}__{tracker}__{resource}',
-                                   'data object'    : '{source}_{contents}',
-                                   'distribution'   : '{unit}_{feature}_dist',
-                                   'ARMA sampler'   : '{rom}_sampler',
-                                   'lib file'       : 'heron.lib', # TODO use case name?
-                                   'cashfname'      : '_{component}{cashname}',
-                                   're_cash'        : '_rec_{period}_{driverType}{driverName}',
-                                   'cluster_index'  : '_ROM_Cluster',
-                                  })
-
-  # template nodes
-  dist_template = xmlUtils.newNode('Uniform')
-  dist_template.append(xmlUtils.newNode('lowerBound'))
-  dist_template.append(xmlUtils.newNode('upperBound'))
-
-  var_template = xmlUtils.newNode('variable')
-  var_template.append(xmlUtils.newNode('distribution'))
 
   ############
   # API      #
   ############
-  # def __repr__(self):
-  #   """
-  #     String representation of this Handler and its VP
-  #     @ In, None
-  #     @ Out, repr, str, string representation
-  #   """
-  #   msg = f'<Template Driver>'
-  #   return msg
 
   def __init__(self, **kwargs):
     """
@@ -126,8 +93,6 @@ class TemplateAbce(TemplateBase, Base):
       @ In, components, list, HERON component instances for this sim
       @ In, sources, list, HERON source instances for this sim
       @ Out, outer, XML Element, root node for outer
-      @ Out, abce_files, list, abce_inputs files 
-
     """
     # store pieces
     self.__case = case
@@ -192,6 +157,7 @@ class TemplateAbce(TemplateBase, Base):
   ############
   ##### OUTER #####
   # Right now we modify outer by RAVEN structure, rather than HERON features
+
   def _modify_outer(self, template, case, components, sources):
     """
       Defines modifications to the outer.xml RAVEN input file.
@@ -213,57 +179,6 @@ class TemplateAbce(TemplateBase, Base):
     self._modify_outer_optimizers(template, case)
     self._modify_outer_steps(template, case, components, sources)
     return template
-
-  def _modify_outer_mode(self, template, case, components, sources):
-    """
-      Defines major (entity-level) modifications to outer.xml RAVEN input file due to case mode
-      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
-      @ In, case, HERON Case, defining Case instance
-      @ In, components, list, list of HERON Component instances for this run
-      @ In, sources, list, list of HERON Placeholder instances for this run
-      @ Out, None
-    """
-    if case.get_mode() == 'sweep' or case.debug['enabled']:
-      template.remove(template.find('Optimizers'))
-    elif case.get_mode() == 'opt':
-      template.remove(template.find('Samplers'))
-
-  def _modify_outer_runinfo(self, template, case):
-    """
-      Defines modifications to the RunInfo of outer.xml RAVEN input file.
-      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
-      @ In, case, HERON Case, defining Case instance
-      @ Out, None
-    """
-    run_info = template.find('RunInfo')
-    case_name = self.namingTemplates['jobname'].format(case=case.name, io='o')
-    run_info.find('JobName').text = case_name
-    run_info.find('WorkingDir').text = case_name
-    if case.debug['enabled']:
-      seq = run_info.find('Sequence')
-      seq.text = 'debug'
-      self._updateCommaSeperatedList(seq, 'debug_output')
-    elif case.get_mode() == 'sweep':
-      run_info.find('Sequence').text = 'sweep'
-    elif case.get_mode() == 'opt':
-      run_info.find('Sequence').text = 'optimize, plot'
-    # parallel
-    if case.outerParallel:
-      # set outer batchsize and InternalParallel
-      batchSize = run_info.find('batchSize')
-      batchSize.text = f'{case.outerParallel}'
-      run_info.append(xmlUtils.newNode('internalParallel', text='True'))
-    if case.useParallel:
-      #XXX this doesn't handle non-mpi modes like torque or other custom ones
-      mode = xmlUtils.newNode('mode', text='mpi')
-      mode.append(xmlUtils.newNode('runQSUB'))
-      if 'memory' in case.parallelRunInfo:
-        mode.append(xmlUtils.newNode('memory', text=case.parallelRunInfo.pop('memory')))
-      for sub in case.parallelRunInfo:
-        run_info.append(xmlUtils.newNode(sub, text=str(case.parallelRunInfo[sub])))
-      run_info.append(mode)
-    if case.innerParallel:
-      run_info.append(xmlUtils.newNode('NumMPI', text=case.innerParallel))
 
   def _modify_outer_vargroups(self, template, case, components, sources):
     """
@@ -468,50 +383,6 @@ class TemplateAbce(TemplateBase, Base):
     abce_gc.append(settings_file)
     abce_gc.append(inputs_path)
 
-  def _modify_outer_outstreams(self, template, case, components, sources):
-    """
-      Defines modifications to the OutStreams of outer.xml RAVEN input file.
-      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
-      @ In, case, HERON Case, defining Case instance
-      @ In, components, list, list of HERON Component instances for this run
-      @ In, sources, list, list of HERON Placeholder instances for this run
-      @ Out, None
-    """
-    OSs = template.find('OutStreams')
-    # remove opt if not used
-    if case.get_mode() == 'sweep' or case.debug['enabled']:
-      self._remove_by_name(OSs, ['opt_soln'])
-      self._remove_by_name(OSs, ['opt_path'])
-    elif case.get_mode() == 'opt':
-      self._remove_by_name(OSs, ['sweep'])
-      # update plot 'opt_path' if necessary
-      new_opt_objective = self._build_opt_metric_out_name(case)
-      opt_path_plot_vars = OSs.find(".//Plot[@name='opt_path']").find('vars')
-      if (new_opt_objective != 'missing') and (new_opt_objective not in opt_path_plot_vars.text):
-        opt_path_plot_vars.text = opt_path_plot_vars.text.replace(f'mean_{case._metric}', new_opt_objective)
-    # debug mode
-    if case.debug['enabled']:
-      # modify normal metric output
-      out = OSs.findall('Print')[0]
-      out.attrib['name'] = 'dispatch_print'
-      out.find('source').text = 'dispatch'
-      # handle dispatch plots for debug mode
-      if case.debug['dispatch_plot']:
-        out_plot = ET.SubElement(OSs, 'Plot', attrib={'name': 'dispatchPlot', 'subType': 'HERON.DispatchPlot'})
-        out_plot_source = ET.SubElement(out_plot, 'source')
-        out_plot_source.text = 'dispatch'
-        out_plot_macro = ET.SubElement(out_plot, 'macro_variable')
-        out_plot_macro.text = case.get_year_name()
-        out_plot_micro = ET.SubElement(out_plot, 'micro_variable')
-        out_plot_micro.text = case.get_time_name()
-        out_plot_signals = ET.SubElement(out_plot, 'signals')
-        signals = set()
-        for source in sources:
-          new = source.get_variable()
-          if new is not None:
-            signals.update(set(new))
-        out_plot_signals.text = ', '.join(signals)
-
   def _modify_outer_samplers(self, template, case, components):
     """
       Defines modifications to the Samplers/Optimizers of outer.xml RAVEN input file.
@@ -607,7 +478,6 @@ class TemplateAbce(TemplateBase, Base):
           dists_node.append(dist)
           samps_node.append(xml)
 
-
     if case.outerParallel == 0 and case.useParallel:
       #XXX if we had a way to calculate this ahead of time,
       # this could be done in _modify_outer_runinfo
@@ -618,51 +488,6 @@ class TemplateAbce(TemplateBase, Base):
       batchSize = run_info.find('batchSize')
       batchSize.text = f'{case.outerParallel}'
       run_info.append(xmlUtils.newNode('internalParallel', text='True'))
-        
-  def _modify_outer_optimizers(self, template, case):
-    """
-      Defines modifications to the Optimizers of outer.xml RAVEN input file.
-      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
-      @ In, case, HERON Case, defining Case instance
-      @ Out, None
-    """
-
-    # only modify if optimization_settings is in Case
-    if (case.get_mode() == 'opt') and (case._optimization_settings is not None) and (not case.debug['enabled']):  # TODO there should be a better way to handle the debug case
-      # TODO will the optimizer always be GradientDescent?
-      opt_node = template.find('Optimizers').find(".//GradientDescent[@name='cap_opt']")
-      new_opt_objective = self._build_opt_metric_out_name(case)
-      # swap out objective if necessary
-      opt_node_objective = opt_node.find('objective')
-      if (new_opt_objective != 'missing') and (new_opt_objective != opt_node_objective.text):
-        opt_node_objective.text = new_opt_objective
-      # swap out samplerInit values (only type implemented now)
-      sampler_init = opt_node.find('samplerInit')
-      type_node = sampler_init.find('type')
-      try:
-        type_node.text = case._optimization_settings['type']
-      except KeyError:
-        # type was not provided, so use the default value
-        metric_raven_name = case._optimization_settings['metric']['name']
-        type_node.text = case.metrics_mapping[metric_raven_name]['optimization_default']
-
-      # swap out convergence values (only persistence implemented now)
-      convergence = opt_node.find('convergence')
-      persistence_node = convergence.find('persistence')
-      try:
-        persistence_node.text = str(case._optimization_settings['persistence'])
-      except KeyError:
-        # persistence was not provided, so use the default value
-        pass
-
-      # update convergence criteria, adding nodes as necessary
-      convergence_settings = case._optimization_settings.get('convergence', {})
-      for k, v in convergence_settings.items():
-        node = convergence.find(k)  # will return None if subnode is not found
-        if node is None:
-          convergence.append(ET.Element(k))
-          node = convergence.find(k)
-        node.text = v
 
   def _modify_outer_steps(self, template, case, components, sources):
     """
@@ -830,7 +655,6 @@ class TemplateAbce(TemplateBase, Base):
     abce_input_files_copied['abce_settings_file'] = os.path.join(loc, os.path.basename(abce_temp['abce_settings_file']))
     abce_input_files_copied['abce_input_files'] = [os.path.join(loc, 'inputs', os.path.basename(file)) for file in abce_temp['abce_input_files']]
     abce_input_files_copied['ts_files'] = [os.path.join(loc, 'inputs', 'ts_data', os.path.basename(file)) for file in abce_temp['ts_files']]
-
     return  abce_input_files_copied
 
   def _modify_abce_inputs(self, abce_inputs, outer, case, components, sources):
@@ -843,12 +667,14 @@ class TemplateAbce(TemplateBase, Base):
       @ In, sources, dict, dictionary of sources
       @ Out, None
     """
-    # modify abce_settings file
+    # Modify ABCE settings file
     self._modify_abce_settings(abce_inputs['abce_settings_file'], case, components, sources)
-    # modify abce input files
+    
+    # Modify ABCE input files
     other_inputs = abce_inputs['abce_input_files']
     self._modify_abce_other_input(other_inputs, outer, case, components, sources)
-    # modify ts files
+    
+    # Modify time series data files
     for file in abce_inputs['ts_files']:
       self._modify_ts_data(file, case, components, sources)
 
@@ -861,12 +687,14 @@ class TemplateAbce(TemplateBase, Base):
       @ In, sources, dict, dictionary of sources
       @ Out, None
     """
-    # parse the yml file
+    # Parse the YAML file
     with open(abce_settings_file, 'r') as f:
       settings = yaml.load(f, Loader=yaml.FullLoader)
-    # modify the yml file
+    
+    # Modify the YAML file
     yaml_lines = self._modify_abce_settings_yml(settings, case, components, sources)
-    # write the yml file
+    
+    # Write the modified YAML back to the file
     with open(abce_settings_file, 'w') as f:
       f.write('\n'.join(yaml_lines))
 
@@ -879,16 +707,16 @@ class TemplateAbce(TemplateBase, Base):
       @ In, sources, dict, dictionary of sources
       @ Out, None
     """
-    
     dispatch_settings = case.dispatcher._disp_settings
-    # update the settings dictionary
+    # Update the settings dictionary
     for key, value in settings['dispatch'].items():
       if key in dispatch_settings:
         settings['dispatch'][key] = dispatch_settings[key]
+    
     econ_settings = case._global_econ
     self._update_dict(settings['scenario'], econ_settings)
     yaml_lines = self._modify_abce_settings_global(settings)
-
+    
     return yaml_lines
 
   def _update_dict(self, target, source):
@@ -952,83 +780,70 @@ class TemplateAbce(TemplateBase, Base):
 
   def _modify_abce_other_input(self, abce_input_files, outer, case, components, sources):
     """
-      Modifies ABCE input file to match HERON case.
-      @ In, abce_input_files, list, ABCE input file copied in working directory
-      @ In, outer, xml.etree.ElementTree.Element, outer node of template
+      Modifies ABCE input files to match HERON case.
+      @ In, abce_input_files, dict, dictionary of ABCE input files
+      @ In, outer, ElementTree, outer XML element
       @ In, case, HERON Case, defining Case instance
       @ In, components, dict, dictionary of components
       @ In, sources, dict, dictionary of sources
       @ Out, None
     """
-    #if self.__sweep_vars and self._abce_values_to_replace are empty, then no need to modify abce input files
-    # now we only need to modify the unit_specs_data_file
     if not self.__sweep_vars and not self._abce_values_to_replace:
-      self.raiseAMessage(f'No need to modify other ABCE input files, since no sweep variables are defined, and no abce values to replace are defined')
-      pass
-    
+      self.raiseAMessage(f'No need to modify other ABCE input files, since no sweep variables are defined, and no ABCE values to replace are defined')
+      return
+      
     unit_specs = outer.find('Files').find(".//Input[@name='unit_specs_data_file']")
     sub_dir = unit_specs.attrib['subDirectory']
-    unit_specs_file = os.path.join(self._working_dir, sub_dir,unit_specs.text)
-
-    # if self.__sweep_vars is not empty, then we need to modify abce input files changing the values to raven variables
+    unit_specs_file = os.path.join(self._working_dir, sub_dir, unit_specs.text)
+      
     if self.__sweep_vars or self._abce_values_to_replace:
-      # locate the node in the unit_specs_file which is a yaml file
-      # read the yaml file
+      # Locate the node in the unit_specs_file which is a YAML file
+      # Read the YAML file
       with open(unit_specs_file, 'r') as f:
         unit_specs_data = yaml.safe_load(f)
-      # if self.__sweep_vars is not empty, then we need to modify abce input files changing the values to raven variables
+          
+      # Modify ABCE input files changing the values to RAVEN variables if needed
       if self._abce_values_to_replace:
         self.raiseAMessage(f'For ABCE input files, modifying the values to HERON input values')
         for value_to_change in self._abce_values_to_replace.items():
           self.raiseAMessage(f'Modifying {value_to_change[0]} to {value_to_change[1]}')
-          # split the alias 
+          # Split the alias
           unit_name, abce_node = value_to_change[0].split('|')
           unit = unit_specs_data[unit_name]
-          # # find the alias in the unit
+          # Find the alias in the unit
           for k, v in unit.items():
             if k == abce_node:
-              # replace the value
+              # Replace the value
               unit[k] = value_to_change[1]
               unit_specs_data[unit_name] = unit
+          
       if self.__sweep_vars:
-        self.raiseAMessage(f'For ABCE input files, modifying the values to raven variables')
+        self.raiseAMessage(f'For ABCE input files, modifying the values to RAVEN variables')
         for raven_alias in self.__sweep_vars:
           self.raiseAMessage(f'Modifying {raven_alias}')
-          # split the alias from the last underscore
+          # Split the alias from the last underscore
           abce_alias = raven_alias.split('_')[-1]
-          print('abce_alias', abce_alias)
           if abce_alias == 'capex':
             abce_node = 'overnight_capital_cost'
           elif abce_alias == 'FC':
             abce_node = 'FC_per_MMBTU'
           else:
             abce_node = abce_alias
-          # unit name are the rest of the alias
+          # Unit name is the rest of the alias
           unit_name = raven_alias.replace(f'_{abce_alias}', '')
-          # find the unit in the unit_specs_data
+          # Find the unit in the unit_specs_data
           unit = unit_specs_data[unit_name]
-          # changed_alias is $RAVEN-raven_alias$
-          changed_alias = f'$RAVEN-{raven_alias}$'          
-          # replace the key name from abce_node to raven_alias
-          unit[abce_node] = changed_alias         
-          # replace the unit in the unit_specs_data
+          # Changed_alias is $RAVEN-raven_alias$
+          changed_alias = f'$RAVEN-{raven_alias}$'
+          # Replace the key name from abce_node to raven_alias
+          unit[abce_node] = changed_alias
+          # Replace the unit in the unit_specs_data
           unit_specs_data[unit_name] = unit
-      # write the unit_specs_data back to the unit_specs_file
-      with open(unit_specs_file, 'w') as f:       
+          
+      # Write the unit_specs_data back to the unit_specs_file
+      with open(unit_specs_file, 'w') as f:
         yaml.dump(unit_specs_data, f)
-    # 
-      
-    if self._abce_values_to_replace:
-      self.raiseAMessage(f'For ABCE input files, modifying the values to new setup values')
-    # if self._abce_values_to_replace is not empty, then we need to modify abce input files changing the values to new values  
 
-    # self.raiseAMessage(f'For ABCE input files,'
-    # cccc
-    # print('modify abce input file', self._abce_values_to_replace)
-    # print('sweep values', self.__sweep_vars)
-    # cccc
-    # pass
-  
   def _modify_ts_data(self, ts_file, case, components, sources):
     """
       Modifies time series data file to match HERON case.
@@ -1038,22 +853,6 @@ class TemplateAbce(TemplateBase, Base):
       @ In, sources, dict, dictionary of sources
       @ Out, None
     """
-    # currently, no modification is needed
-    # TODO in the future, we may need to modify the ts data file to match HERON case for ARMA
+    # Currently, no modification is needed.
+    # TODO: In the future, we may need to modify the ts data file to match HERON case for ARMA.
     pass
-
-  ##### OTHER UTILS #####
-
-  def _remove_by_name(self, root, removable):
-    """
-      Removes subs of "root" whose "name" attribute is in "removable"
-      @ In, root. ET.Element, node whose subs should be searched through
-      @ In, removable, list(str), names to remove
-      @ Out, None
-    """
-    to_remove = []
-    for node in root:
-      if node.get('name', None) in removable:
-        to_remove.append(node)
-    for node in to_remove:
-      root.remove(node)

@@ -36,16 +36,17 @@
   <VariableGroups>
     <Group name='GRO_dispatch'           >GRO_dispatch_in, GRO_dispatch_out</Group>
     <Group name='GRO_dispatch_in'        >GRO_dispatch_in_scalar, GRO_dispatch_in_Time</Group>
-    <Group name='GRO_dispatch_out'       >NPV</Group>
+    <Group name='GRO_dispatch_out'       ></Group>
     <Group name='GRO_dispatch_in_scalar' >GRO_capacities, scaling</Group>
     <Group name='GRO_dispatch_in_Time'   ></Group>
     <Group name='GRO_armasamples'          >GRO_armasamples_in, GRO_armasamples_out</Group>
     <Group name='GRO_armasamples_in'       >GRO_armasamples_in_scalar</Group>
     <Group name='GRO_armasamples_out'      >GRO_armasamples_out_scalar</Group>
     <Group name='GRO_armasamples_in_scalar'>scaling, GRO_capacities</Group>
-    <Group name='GRO_armasamples_out_scalar'>NPV</Group>
+    <Group name='GRO_armasamples_out_scalar'></Group>
     <Group name='GRO_final_return'></Group>
     <Group name="GRO_full_dispatch"></Group>
+    <Group name="GRO_cashflows"></Group>
     <Group name="GRO_full_dispatch_indices"></Group>
     <Group name='GRO_interp'>stepwise</Group>
     <Group name='GRO_capacities'></Group>
@@ -58,16 +59,17 @@
       <Output>GRO_armasamples_out</Output>
     </DataSet>
     <PointSet name="arma_metrics">
-      <Output>NPV</Output>
+      <Output></Output>
     </PointSet>
     <PointSet name="metrics_stats">
       <Output>GRO_final_return</Output>
     </PointSet>
     <DataSet name="disp_full">
-      <Output>GRO_full_dispatch, GRO_dispatch</Output>
+      <Output>GRO_full_dispatch, GRO_dispatch, GRO_cashflows</Output>
       <Index var="Time">GRO_full_dispatch, GRO_dispatch_in_Time</Index>
       <Index var="Year">GRO_full_dispatch, GRO_dispatch_in_Time</Index>
       <Index var="_ROM_Cluster">GRO_full_dispatch, GRO_dispatch_in_Time</Index>
+      <Index var="cfYears">GRO_cashflows</Index>
     </DataSet>
     <DataSet name="dispatch_eval">
       <Input>GRO_dispatch_in</Input>

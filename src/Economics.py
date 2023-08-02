@@ -201,7 +201,7 @@ class CashFlowGroup:
       # FIXME why is it "repeating" and not "Recurring"?
       cost = dict((cf.name, cf.evaluate_cost(activity, meta))
                     for cf in self.get_cashflows()
-                    if (cf._type == 'repeating' and cf.get_period() != 'year'))
+                    if (cf.get_type() == 'repeating' and cf.get_period() != 'year'))
     else:
       cost = dict((cf.name, cf.evaluate_cost(activity, meta))
                     for cf in self.get_cashflows())
@@ -304,9 +304,10 @@ class CashFlow:
     cf.addParam('inflation', param_type=InputTypes.StringType, required=True,
         descr=r"""determines how inflation affects this CashFlow every cycle. See the CashFlow submodule
               of RAVEN.""")
-    cf.addParam('mult_target', param_type=InputTypes.BoolType, required=True,
-        descr=r"""indicates whether this parameter should be a target of the multiplication factor
-              for NPV matching analyses.""")
+    cf.addParam('mult_target', param_type=InputTypes.BoolType, required=False,
+        descr=r"""<DEPRECATED> indicates whether this parameter should be a target of the multiplication factor
+              for NPV matching analyses. This should now be specified within the desired Cash Flow: under the
+              ``reference price'' node with a ``levelized cost'' subnode. """)
     period_enum = InputTypes.makeEnumType('period_opts', 'period_opts', ['hour', 'year'])
     cf.addParam('period', param_type=period_enum, required=False,
         descr=r"""for a \xmlNode{CashFlow} with \xmlAttr{type} \xmlString{repeating}, indicates whether
@@ -323,6 +324,10 @@ class CashFlow:
             corresponds to $\alpha$ in the CashFlow equation. If \xmlNode{reference_driver}
             is 1, then this is the price-per-unit for the CashFlow."""
     reference_price = ValuedParams.factory.make_input_specs('reference_price', descr=descr, kind='post-dispatch')
+    levelized_cost = InputData.parameterInputFactory('levelized_cost', strictMode=True,
+                                            descr=r"""indicates whether HERON and TEAL are meant to solve for the
+                                            levelized price related to this cashflow.""")
+    reference_price.addSub(levelized_cost)
     cf.addSub(reference_price)
 
     descr = r"""determines the number of units sold to which the \xmlNode{reference_price}
@@ -379,7 +384,6 @@ class CashFlow:
     # handle type directly here momentarily
     self._taxable = item.parameterValues['taxable']
     self._inflation = item.parameterValues['inflation']
-    self._mult_target = item.parameterValues['mult_target']
     self._type = item.parameterValues['type']
     self._period = item.parameterValues.get('period', 'hour')
     # the remainder of the entries are ValuedParams, so they'll be evaluated as-needed
@@ -387,7 +391,7 @@ class CashFlow:
       if sub.getName() == 'driver':
         self._set_valued_param('_driver', sub)
       elif sub.getName() == 'reference_price':
-        self._set_valued_param('_alpha', sub)
+        price_is_levelized = self.set_reference_price(sub) # setting "_alpha" here
       elif sub.getName() == 'reference_driver':
         self._set_valued_param('_reference', sub)
       elif sub.getName() == 'scaling_factor_x':
@@ -396,13 +400,17 @@ class CashFlow:
         self._depreciate = sub.value
 
       else:
-        raise IOError('Unrecognized "CashFlow" node: "{}"'.format(sub.getName()))
+        raise IOError(f'Unrecognized "CashFlow" node: {sub.getName()}')
+
+    # resolve levelized cost
+    self._mult_target = price_is_levelized
+    # user asked to find Time Invariant levelized cost
+    if self._alpha is None and price_is_levelized:
+      self._set_fixed_param('_alpha', 1)
 
     # driver is required!
     if self._driver is None:
-      raise IOError('No <driver> node provided for CashFlow {}!'.format(self.name))
-    if self._alpha is None:
-      raise IOError('No <reference_price> node provided for CashFlow {}!'.format(self.name))
+      raise IOError(f'No <driver> node provided for CashFlow {self.name}!')
 
     # defaults
     var_names = ['_reference', '_scale']
@@ -410,6 +418,29 @@ class CashFlow:
       if getattr(self, name) is None:
         # TODO raise a warning?
         self._set_fixed_param(name, 1)
+
+  def set_reference_price(self, node):
+    """
+      Sets the reference_price attribute based on given ValuedParam or if Levelized Cost
+      @ In, node, InputParams.ParameterInput, reference_price head node
+      @ Out, price_is_levelized, bool, are we computing levelized cost for this cashflow?
+    """
+    levelized_cost = False
+    for sub in node.subparts:
+      if sub.name == 'levelized_cost':
+        levelized_cost = True
+        __ = node.popSub('levelized_cost')
+
+    try:
+      self._set_valued_param('_alpha', node)
+    except AttributeError as e:
+      if levelized_cost:
+        self._set_fixed_param('_alpha', 1)
+      else:
+        raise IOError(f'No <reference_price> node provided for CashFlow {self.name}!') from e
+    price_is_levelized = bool(levelized_cost)
+    return price_is_levelized
+
 
   # Not none set it to default 1
   def get_period(self):
@@ -439,11 +470,11 @@ class CashFlow:
       @ Out, None
     """
     vp = ValuedParamHandler(name)
-    signal = vp.read('CashFlow \'{}\''.format(self.name), spec, None) # TODO what "mode" to use?
+    signal = vp.read(f'CashFlow \'{self.name}\'', spec, None) # TODO what "mode" to use?
     self._signals.update(signal)
     self._crossrefs[name] = vp
     # standard alias: redirect "capacity" variable
-    if isinstance(vp, ValuedParams.factory.returnClass('variable')) and vp._raven_var == 'capacity':
+    if isinstance(vp, ValuedParams.factory.returnClass('variable')) and vp.get_raven_var() == 'capacity':
       #NOTE: we are assuming here that capacity_factors are only applied in dispatch and
       # are not a variable in the outer optimization.
       vp = self._component.get_capacity_param()
@@ -463,7 +494,7 @@ class CashFlow:
       ext = np.ones(life+1, dtype=float)
       ext[0] = 0.0
     else:
-      raise NotImplementedError('type is: {}'.format(self._type))
+      raise NotImplementedError(f'type is: {self._type}')
     return ext
 
   def get_crossrefs(self):
@@ -517,25 +548,77 @@ class CashFlow:
     params = {'alpha': a, 'driver': D, 'ref_driver': Dp, 'scaling': x, 'cost': cost} # TODO float(cost) except in pyomo it's not a float
     return params
 
-  def get_cashflow_params(self, values_dict, aliases, dispatches, years):
+  #######
+  # API #
+  #######
+  def get_price(self):
     """
-      creates a param dict for initializing a CashFlows.CashFlow
-      FIXME deprecated
-      @ In, values_dict, dict, parameters dictionary
-      @ In, aliases, dict, aliased names (unused)
-      @ In, dispatches, dict, component activity
-      @ In, years, int, years to obtain values for
-      @ Out, params, dict, params needed for CashFlow
+      Getter for Cashflow Price
+      @ In, None
+      @ Out, alpha, ValuedParam, valued param for the cash flow price
     """
-    # OLD
-    params = {'name': self.name,
-              'reference': vals_dict['ref_driver'],
-              'driver': vals_dict['driver'],
-              'alpha': vals_dict['alpha'],
-              'X': vals_dict['scaling'],
-              'mult_target': self._mult_target,
-              'inflation': self._inflation,
-              'multiply': None,
-              'tax': self._taxable,
-              }
-    return params
+    return self._alpha
+
+  def get_driver(self):
+    """
+      Getter for Cashflow Driver
+      @ In, None
+      @ Out, driver, ValuedParam, valued param for the cash flow driver
+    """
+    return self._driver
+
+  def get_reference(self):
+    """
+      Getter for Cashflow Reference Driver
+      @ In, None
+      @ Out, reference, ValuedParam, valued param for the cash flow reference driver
+    """
+    return self._reference
+
+  def get_scale(self):
+    """
+      Getter for Cashflow Scale
+      @ In, None
+      @ Out, scale, ValuedParam, valued param for the cash flow economy of scale
+    """
+    return self._scale
+
+  def get_type(self):
+    """
+      Getter for Cashflow Type
+      @ In, None
+      @ Out, type, str, one-time, yearly, repeating
+    """
+    return self._type
+
+  def get_depreciation(self):
+    """
+      Getter for Cashflow depreciation
+      @ In, None
+      @ Out, depreciate, int or None
+    """
+    return self._depreciate
+
+  def is_taxable(self):
+    """
+      Getter for Cashflow taxable boolean
+      @ In, None
+      @ Out, taxable, bool, is cashflow taxable?
+    """
+    return self._taxable
+
+  def is_inflation(self):
+    """
+      Getter for Cashflow inflation boolean
+      @ In, None
+      @ Out, inflation, bool, is inflation applied to cashflow?
+    """
+    return self._inflation
+
+  def is_mult_target(self):
+    """
+      Getter for Cashflow mult_target boolean
+      @ In, None
+      @ Out, taxable, bool, is cashflow a multiplier target?
+    """
+    return self._mult_target

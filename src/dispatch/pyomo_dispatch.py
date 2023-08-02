@@ -37,6 +37,14 @@ if platform.system() == 'Windows':
 else:
   SOLVERS = ['cbc', 'glpk', 'ipopt']
 
+# different solvers express "tolerance" for converging solution in different
+# ways. Further, they mean different things for different solvers. This map
+# just tracks the "nominal" argument that we should pass through pyomo.
+solver_tol_map = {
+  'ipopt': 'tol',
+  'cbc': 'primalTolerance',
+  'glpk': 'mipgap',
+}
 
 class Pyomo(Dispatcher):
   """
@@ -74,6 +82,11 @@ class Pyomo(Dispatcher):
     specs.addSub(InputData.parameterInputFactory('solver', contentType=InputTypes.StringType,
         descr=r"""Indicates which solver should be used by pyomo. Options depend on individual installation.
         \default{'glpk' for Windows, 'cbc' otherwise}."""))
+    specs.addSub(InputData.parameterInputFactory('tol', contentType=InputTypes.FloatType,
+        descr=r"""Relative tolerance for converging final optimal dispatch solutions. Specific implementation
+        depends on the solver selected. Changing this value could have significant impacts on the
+        dispatch optimization time and quality.
+        \default{solver dependent, often 1e-6}."""))
     # TODO specific for pyomo dispatcher
     return specs
 
@@ -83,8 +96,10 @@ class Pyomo(Dispatcher):
       @ In, None
       @ Out, None
     """
+    super().__init__()
     self.name = 'PyomoDispatcher' # identifying name
     self.debug_mode = False       # whether to print additional information
+    self.solve_options = {}       # options passed from Pyomo to the solver
     self._window_len = 24         # time window length to dispatch at a time # FIXME user input
     self._solver = None           # overwrite option for solver
     self._picard_limit = 10       # iterative solve limit
@@ -108,6 +123,14 @@ class Pyomo(Dispatcher):
     solver_node = specs.findFirst('solver')
     if solver_node is not None:
       self._solver = solver_node.value
+
+    # the tolerance value needs to be saved for after the solver is set
+    # since we don't know what key to assign it to otherwise
+    tol_node = specs.findFirst('tol')
+    if tol_node is not None:
+      solver_tol = tol_node.value
+    else:
+      solver_tol = None
 
     if self._solver is None:
       solvers_to_check = SOLVERS
@@ -146,6 +169,9 @@ class Pyomo(Dispatcher):
       msg += f' Options MAY include: {available}'
       raise RuntimeError(msg)
 
+    if solver_tol is not None:
+      key = solver_tol_map[self._solver]
+      self.solve_options[key] = solver_tol
 
   ### API
   def dispatch(self, case, components, sources, meta):
@@ -177,7 +203,7 @@ class Pyomo(Dispatcher):
         raise IOError("A rolling window of length 1 was requested, but this causes crashes in pyomo. " +
                       "Change the length of the rolling window to avoid length 1 histories.")
       specific_time = time[start_index:end_index]
-      print('DEBUGG starting window {} to {}'.format(start_index, end_index))
+      print(f'DEBUGG starting window {start_index} to {end_index}')
       start = time_mod.time()
       # set initial storage levels
       initial_levels = {}
@@ -208,7 +234,7 @@ class Pyomo(Dispatcher):
           converged = True
 
       end = time_mod.time()
-      print('DEBUGG solve time: {} s'.format(end-start))
+      print(f'DEBUGG solve time: {end-start} s')
       # store result in corresponding part of dispatch
       for comp in components:
         for tag in comp.get_tracking_vars():
@@ -216,6 +242,14 @@ class Pyomo(Dispatcher):
             dispatch.set_activity_vector(comp, res, values, tracker=tag, start_idx=start_index, end_idx=end_index)
       start_index = end_index
     return dispatch
+
+  def get_solver(self):
+    """
+      Retrieves the solver information (if applicable)
+      @ In, None
+      @ Out, solver, str, name of solver used
+    """
+    return self._solver
 
   ### INTERNAL
   def dispatch_window(self, time, time_offset,
@@ -308,9 +342,7 @@ class Pyomo(Dispatcher):
       attempts += 1
       print(f'DEBUGG solve attempt {attempts} ...:')
       # solve
-      # TODO someday if we want to give user access to options, we can add them to this dict. For now, no options.
-      solve_options = {}
-      soln = pyo.SolverFactory(self._solver).solve(m, options=solve_options)
+      soln = pyo.SolverFactory(self._solver).solve(m, options=self.solve_options)
       # check solve status
       if soln.solver.status == SolverStatus.ok and soln.solver.termination_condition == TerminationCondition.optimal:
         print('DEBUGG ... solve was successful!')
@@ -329,12 +361,8 @@ class Pyomo(Dispatcher):
         done_and_checked = False
         print('DEBUGG ... validation concerns raised:')
         for e in validation_errs:
-          print('DEBUGG ... ... Time {t} ({time}) Component "{c}" Resource "{r}": {m}'
-                .format(t=e['time_index'],
-                        time=e['time'],
-                        c=e['component'].name,
-                        r=e['resource'],
-                        m=e['msg']))
+          print(f"DEBUGG ... ... Time {e['time_index']} ({e['time']}) \n" +
+                f"Component \"{e['component'].name}\" Resource \"{e['resource']}\": {e['msg']}")
           self._create_production_limit(m, e)
         # go back and solve again
         # raise NotImplementedError('Validation failed, but idk how to handle that yet')
@@ -412,9 +440,7 @@ class Pyomo(Dispatcher):
     rule = lambda mod: self._prod_limit_rule(prod_name, r, limits, limit_type, t, mod)
     constr = pyo.Constraint(rule=rule)
     counter = 1
-    name_template = '{c}_{r}_{t}_vld_limit_constr_{{i}}'.format(c=comp.name,
-                                                                r=resource,
-                                                                t=t)
+    name_template = f'{comp.name}_{resource}_{t}_vld_limit_constr_{{i}}'
     # make sure we get a unique name for this constraint
     name = name_template.format(i=counter)
     while getattr(m, name, None) is not None:
@@ -462,7 +488,10 @@ class Pyomo(Dispatcher):
     # self._create_capacity(m, comp, prod_name, meta)    # capacity constraints
     # transfer function governs input -> output relationship
     self._create_transfer(m, comp, prod_name)
-    # ramp rates TODO ## INCLUDING previous-time boundary condition TODO
+    # ramp rates
+    if comp.ramp_limit is not None:
+      self._create_ramp_limit(m, comp, prod_name, meta)
+    return prod_name
 
   def _create_production_variable(self, m, comp, meta, tag=None, add_bounds=True, **kwargs):
     """
@@ -489,7 +518,7 @@ class Pyomo(Dispatcher):
     caps, mins = self._find_production_limits(m, comp, meta)
     if min(caps) < 0:
       # quick check that capacities signs are consistent #FIXME: revisit, this is an assumption
-      assert max(caps) < 0, \
+      assert max(caps) <= 0, \
         'Capacities are inconsistent: mix of positive and negative values not currently  supported.'
       # we have a unit that's consuming, so we need to flip the variables to be sensible
       mins, caps = caps, mins
@@ -513,6 +542,64 @@ class Pyomo(Dispatcher):
     setattr(m, prod_name, prod)
     return prod_name
 
+  def _create_ramp_limit(self, m, comp, prod_name, meta):
+    """
+      Creates ramping limitations for a producing component
+      @ In, m, pyo.ConcreteModel, associated model
+      @ In, comp, HERON Component, component to make ramping limits for
+      @ In, prod_name, str, name of production variable
+      @ In, meta, dict, dictionary of state variables
+      @ Out, None
+    """
+    # ramping is defined in terms of the capacity variable
+    cap_res = comp.get_capacity_var()       # name of resource that defines capacity
+    cap = comp.get_capacity(meta)[0][cap_res]
+    r = m.resource_index_map[comp][cap_res] # production index of the governing resource
+    # NOTE: this includes the built capacity * capacity factor, if any, which assumes
+    # the ramp rate depends on the available capacity, not the built capacity.
+    limit_delta = comp.ramp_limit * cap # NOTE: if cap is negative, then this is negative.
+    if limit_delta < 0:
+      neg_cap = True
+    else:
+      neg_cap = False
+    # if we're limiting ramp frequency, make vars and rules for that
+    if comp.ramp_freq:
+      # create binaries for tracking ramping
+      up = pyo.Var(m.T, initialize=0, domain=pyo.Binary)
+      down = pyo.Var(m.T, initialize=0, domain=pyo.Binary)
+      steady = pyo.Var(m.T, initialize=1, domain=pyo.Binary)
+      setattr(m, f'{comp.name}_up_ramp_tracker', up)
+      setattr(m, f'{comp.name}_down_ramp_tracker', down)
+      setattr(m, f'{comp.name}_steady_ramp_tracker', steady)
+      ramp_trackers = (down, up, steady)
+    else:
+      ramp_trackers = None
+    # limit production changes when ramping down
+    ramp_rule_down = lambda mod, t: \
+        self._ramp_rule_down(prod_name, r, limit_delta, neg_cap, t, mod,
+                        bins=ramp_trackers)
+    constr = pyo.Constraint(m.T, rule=ramp_rule_down)
+    setattr(m, f'{comp.name}_ramp_down_constr', constr)
+    # limit production changes when ramping up
+    ramp_rule_up = lambda mod, t: \
+        self._ramp_rule_up(prod_name, r, limit_delta, neg_cap, t, mod,
+                        bins=ramp_trackers)
+    constr = pyo.Constraint(m.T, rule=ramp_rule_up)
+    setattr(m, f'{comp.name}_ramp_up_constr', constr)
+    # if ramping frequency limit, impose binary constraints
+    if comp.ramp_freq:
+      # binaries rule, for exclusive choice up/down/steady
+      binaries_rule = lambda mod, t: \
+          self._ramp_freq_bins_rule(down, up, steady, t, mod)
+      constr = pyo.Constraint(m.T, rule=binaries_rule)
+      setattr(m, f'{comp.name}_ramp_freq_binaries', constr)
+      # limit frequency of ramping
+      # TODO calculate "tao" window using ramp freq and dt
+      # -> for now, just use the integer for number of windows
+      freq_rule = lambda mod, t: self._ramp_freq_rule(down, up, comp.ramp_freq, t, m)
+      constr = pyo.Constraint(m.T, rule=freq_rule)
+      setattr(m, f'{comp.name}_ramp_freq_constr', constr)
+
   def _create_capacity_constraints(self, m, comp, prod_name, meta):
     """
       Creates pyomo capacity constraints
@@ -528,7 +615,7 @@ class Pyomo(Dispatcher):
     # capacity
     max_rule = lambda mod, t: self._capacity_rule(prod_name, r, caps, mod, t)
     constr = pyo.Constraint(m.T, rule=max_rule)
-    setattr(m, '{c}_{r}_capacity_constr'.format(c=comp.name, r=cap_res), constr)
+    setattr(m, f'{comp.name}_{cap_res}_capacity_constr', constr)
     # minimum
     min_rule = lambda mod, t: self._min_prod_rule(prod_name, r, caps, mins, mod, t)
     constr = pyo.Constraint(m.T, rule=min_rule)
@@ -542,7 +629,7 @@ class Pyomo(Dispatcher):
         for k in values:
           values[k] = cap
         var.set_values(values)
-    setattr(m, '{c}_{r}_minprod_constr'.format(c=comp.name, r=cap_res), constr)
+    setattr(m, f'{comp.name}_{cap_res}_minprod_constr', constr)
 
   def _find_production_limits(self, m, comp, meta):
     """
@@ -591,7 +678,7 @@ class Pyomo(Dispatcher):
     ref_r, ref_name, _ = ratios.pop('__reference', (None, None, None))
     for resource, ratio in ratios.items():
       r = m.resource_index_map[comp][resource]
-      rule_name = '{c}_{r}_{fr}_transfer'.format(c=name, r=resource, fr=ref_name)
+      rule_name = f'{name}_{resource}_{ref_name}_transfer'
       rule = lambda mod, t: self._transfer_rule(ratio, r, ref_r, prod_name, mod, t)
       constr = pyo.Constraint(m.T, rule=rule)
       setattr(m, rule_name, constr)
@@ -652,10 +739,10 @@ class Pyomo(Dispatcher):
       @ In, meta, dict, dictionary of state variables
       @ Out, None
     """
-    for res, resource in enumerate(resources):
+    for resource in resources:
       rule = lambda mod, t: self._conservation_rule(initial_storage, meta, resource, mod, t)
       constr = pyo.Constraint(m.T, rule=rule)
-      setattr(m, '{r}_conservation'.format(r=resource), constr)
+      setattr(m, f'{resource}_conservation', constr)
 
   def _create_objective(self, meta, m):
     """
@@ -867,6 +954,119 @@ class Pyomo(Dispatcher):
       return prod[r, t] <= limits[t]
     else:
       raise TypeError('Unrecognized production limit "kind":', kind)
+
+  def _ramp_rule_down(self, prod_name, r, limit, neg_cap, t, m, bins=None):
+    """
+      Constructs pyomo production ramping constraints for reducing production level.
+      Note that this is number-getting-less-positive for positive-defined capacity, while
+        it is number-getting-less-negative for negative-defined capacity.
+      This means that dQ is negative for positive-defined capacity, but positive for vice versa
+      @ In, prod_name, str, name of production variable
+      @ In, r, int, index of resource for capacity constraining
+      @ In, limit, float, limiting change in production level across time steps. NOTE: negative for negative-defined capacity.
+      @ In, neg_cap, bool, True if capacity is expressed as negative (consumer)
+      @ In, t, int, time index for ramp limit rule (NOTE not pyomo index, rather fixed index)
+      @ In, m, pyo.ConcreteModel, associated model
+      @ In, bins, tuple, optional, (lower, upper, steady) binaries if limiting ramp frequency
+      @ Out, rule, expression, evaluation for Pyomo constraint
+    """
+    prod = getattr(m, prod_name)
+    if t == 0:
+      return pyo.Constraint.Skip
+    delta = prod[r, t] - prod[r, t-1]
+    # special treatment if we have frequency-limiting binaries available
+    if bins is None:
+      if neg_cap:
+        # NOTE change in production should be "less positive" than the max
+        #   "negative decrease" in production (decrease is positive when defined by consuming)
+        return delta <= - limit
+      else:
+        # dq is negative, - limit is negative
+        return delta >= - limit
+    else:
+      eps = 1.0 # aux parameter to force binaries to behave, TODO needed?
+      down = bins[0][t]
+      up = bins[1][t]
+      # NOTE we're following the convention that "less negative" is ramping "down"
+      #   for capacity defined by consumption
+      #   e.g. consuming 100 ramps down to consuming 70 is (-100 -> -70), dq = 30
+      if neg_cap:
+        # dq <= limit * dt * Bu + eps * Bd, if limit <= 0
+        # dq is positive, - limit is positive
+        return delta <= - limit * down - eps * up
+      else:
+        # dq <= limit * dt * Bu - eps * Bd, if limit >= 0
+        # dq is negative, - limit is negative
+        return delta >= - limit * down + eps * up
+
+  def _ramp_rule_up(self, prod_name, r, limit, neg_cap, t, m, bins=None):
+    """
+      Constructs pyomo production ramping constraints.
+      @ In, prod_name, str, name of production variable
+      @ In, r, int, index of resource for capacity constraining
+      @ In, limit, float, limiting change in production level across time steps
+      @ In, neg_cap, bool, True if capacity is expressed as negative (consumer)
+      @ In, t, int, time index for ramp limit rule (NOTE not pyomo index, rather fixed index)
+      @ In, m, pyo.ConcreteModel, associated model
+      @ In, bins, tuple, optional, (lower, steady, upper) binaries if limiting ramp frequency
+    """
+    prod = getattr(m, prod_name)
+    if t == 0:
+      return pyo.Constraint.Skip
+    delta = prod[r, t] - prod[r, t-1]
+    if bins is None:
+      if neg_cap:
+        # NOTE change in production should be "more positive" than the max
+        #   "negative increase" in production (increase is negative when defined by consuming)
+        return delta >= limit
+      else:
+        # change in production should be less than the max production increase
+        return delta <= limit
+    else:
+      # special treatment if we have frequency-limiting binaries available
+      eps = 1.0 # aux parameter to force binaries to behave, TODO needed?
+      down = bins[0][t]
+      up = bins[1][t]
+      # NOTE we're following the convention that "more negative" is ramping "up"
+      #   for capacity defined by consumption
+      #   e.g. consuming 100 ramps up to consuming 130 is (-100 -> -130), dq = -30
+      if neg_cap:
+        # dq >= limit * dt * Bu + eps * Bd, if limit <= 0
+        return delta >= limit * up + eps * down
+      else:
+        # dq <= limit * dt * Bu - eps * Bd, if limit >= 0
+        return delta <= limit * up - eps * down
+
+  def _ramp_freq_rule(self, Bd, Bu, tao, t, m):
+    """
+      Constructs pyomo frequency-of-ramp constraints.
+      @ In, Bd, bool var, binary tracking down-ramp events
+      @ In, Bu, bool var, binary tracking up-ramp events
+      @ In, tao, int, number of time steps to look back
+      @ In, t, int, time step indexer
+      @ In, m, pyo.ConcreteModel, pyomo model
+    """
+    if t == 0:
+      return pyo.Constraint.Skip
+    # looking-back-window shouldn't be longer than existing time
+    tao = min(t, tao)
+    # how many ramp-down events in backward window?
+    tally = sum(1 - Bd[tm] for tm in range(t - tao, t))
+    # only allow ramping up if no rampdowns in back window
+    ## but we can't use if statements, so use binary math
+    return Bu[t] <= 1 / tao * tally
+
+  def _ramp_freq_bins_rule(self, Bd, Bu, Bn, t, m):
+    """
+      Constructs pyomo constraint for ramping event tracking variables.
+      This forces choosing between ramping up, ramping down, and steady state operation.
+      @ In, Bd, bool var, binary tracking down-ramp events
+      @ In, Bu, bool var, binary tracking up-ramp events
+      @ In, Bn, bool var, binary tracking no-ramp events
+      @ In, t, int, time step indexer
+      @ In, m, pyo.ConcreteModel, pyomo model
+    """
+    return Bd[t] + Bu[t] + Bn[t] == 1
 
   def _cashflow_rule(self, meta, m):
     """

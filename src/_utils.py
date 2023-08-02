@@ -22,8 +22,6 @@ except ImportError:
      return lru_cache(maxsize=None)(user_function)
 from os import path
 
-import pandas as pd
-
 
 def get_heron_loc():
   """
@@ -192,6 +190,9 @@ def get_csv_structure(fpath, macro_var, micro_var):
     @ In, micro_var, str, Micro Variable name - typically 'Time'
     @ Out, structure, dict, Nested structure of the CSV dataframe.
   """
+  import pandas as pd #Note that this cannot be imported at the start of this
+  # file since _utils.py is used in heron script outside of the raven environment
+  # to find the environment.
   data = pd.read_csv(fpath)
   structure = {}
   if macro_var in data.columns:
@@ -227,4 +228,4 @@ if __name__ == '__main__':
   elif action == 'get_cashflow_loc':
     print(get_cashflow_loc())
   else:
-    raise IOError('Unrecognized action: "{}"'.format(action))
+    raise IOError(f'Unrecognized action: {action}')

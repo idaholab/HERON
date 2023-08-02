@@ -54,6 +54,7 @@ class DispatchRunner:
     self._sources = None           # HERON sources (placeholders) list
     self._override_time = None     # override for micro parameter
     self._save_dispatch = False    # if True then maintain and return full dispatch record
+    self._metric_name_map = {}
 
   #####################
   # API
@@ -80,6 +81,9 @@ class DispatchRunner:
     self._dispatcher = self._case.dispatcher
     if self._case.debug['enabled']:
       self._save_dispatch = True
+
+    self._metric_name_map = {econ_info['TEAL_out_name']:econ_info['output_name']
+                                for econ_info in self._case.economic_metrics_meta.values()}
 
   def extract_variables(self, raven, raven_dict):
     """
@@ -244,8 +248,27 @@ class DispatchRunner:
             setattr(raven, var_name, np.empty(shape)) # NOTE could use np.zeros, but slower?
           getattr(raven, var_name)[y, c] = data
           getattr(raven, '_indexMap')[0][var_name] = [year_name, clst_name, time_name]
+    cfYears = None
     for metric, value in metrics.items():
-      setattr(raven, metric, np.atleast_1d(value))
+      if metric not in ['outputType', 'all_data']:
+        mapped_metric = self._metric_name_map[metric]
+        setattr(raven, mapped_metric, np.atleast_1d(value))
+      elif metric == 'all_data':
+        # store the cashflow years index cfYears
+        ## implicitly assume the first cashflow has representative years
+        # store each of the cashflows
+        for comp, comp_data in value.items():
+          for cf, cf_values in comp_data.items():
+            if cfYears is None:
+              cfYears = len(cf_values)
+            if cf.endswith(('depreciation_tax_credit', 'depreciation')):
+              name = cf
+            else:
+              name = f'{comp}_{cf}_CashFlow'
+            setattr(raven, name, np.atleast_1d(cf_values))
+    if cfYears is not None:
+      setattr(raven, 'cfYears', np.arange(cfYears))
+
     # if component capacities weren't given by Outer, save them as part of Inner
     for comp in self._components:
       cap_name = self.naming_template['comp capacity'].format(comp=comp.name)
@@ -268,6 +291,9 @@ class DispatchRunner:
     structure = all_structure['summary']
     ## FINAL settings/components/cashflows use the multiplicity of divisions for aggregated evaluation
     final_settings, final_components = self._build_econ_objects(self._case, self._components, project_life)
+    # enable additional cashflow outputs if in debug mode
+    if self._case.debug['enabled']:
+      final_settings.setParams({'Output': True})
     active_index = {}
     dispatch_results = {}
     yearly_cluster_data = next(iter(all_structure['details'].values()))['clusters']
@@ -309,7 +335,7 @@ class DispatchRunner:
     global_params = heron_case.get_econ(heron_econs)
     global_settings = TEAL.src.CashFlows.GlobalSettings()
     global_settings.setParams(global_params)
-    global_settings._verbosity = 0 # FIXME direct access, also make user option?
+    global_settings.setVerbosity(global_params.get('verbosity',0)) # NOTE: this is verbosity in economics
     # build TEAL CashFlow component instances
     teal_components = {}
     for c, cfg in enumerate(heron_econs):
@@ -329,15 +355,19 @@ class DispatchRunner:
       teal_cfs = []
       for heron_cf in cfg.get_cashflows():
         cf_name = heron_cf.name
+        cf_type = heron_cf.get_type()
+        cf_taxable = heron_cf.is_taxable()
+        cf_inflation = heron_cf.is_inflation()
+        cf_mult_target = heron_cf.is_mult_target()
         # the way to build it slightly changes depending on the CashFlow type
-        if heron_cf._type == 'repeating': # FIXME protected access
+        if cf_type == 'repeating':
           teal_cf = TEAL.src.CashFlows.Recurring()
           # NOTE: the params are listed in order of how they're read in TEAL.CashFlows.CashFlow.setParams
           teal_cf_params = {'name': cf_name,
                           # driver: comes later
-                          'tax': heron_cf._taxable,
-                          'inflation': heron_cf._inflation,
-                          'mult_target': heron_cf._mult_target,
+                          'tax': cf_taxable,
+                          'inflation': cf_inflation,
+                          'mult_target': cf_mult_target,
                           # multiply: do we ever use this?
                           # alpha: comes later
                           # reference: not relevant for recurring
@@ -346,14 +376,14 @@ class DispatchRunner:
                           }
           teal_cf.setParams(teal_cf_params)
           teal_cf.initParams(project_life)
-        elif heron_cf._type == 'one-time':
+        elif cf_type == 'one-time':
           teal_cf = TEAL.src.CashFlows.Capex()
           teal_cf.name = cf_name
           teal_cf_params = {'name': cf_name,
                             'driver': 1.0, # handled in segment_cashflow
-                            'tax': heron_cf._taxable,
-                            'inflation': heron_cf._inflation,
-                            'mult_target': heron_cf._mult_target,
+                            'tax': cf_taxable,
+                            'inflation': cf_inflation,
+                            'mult_target': cf_mult_target,
                             # multiply: do we ever use this?
                             'alpha': 1.0, # handled in segment_cashflow
                             'reference': 1.0, # actually handled in segment_cashflow
@@ -364,7 +394,7 @@ class DispatchRunner:
           teal_cf.initParams(teal_comp.getLifetime())
           # alpha, driver aren't known yet, so set those later
         else:
-          raise NotImplementedError(f'Unknown HERON CashFlow Type: {heron_cf._type}')
+          raise NotImplementedError(f'Unknown HERON CashFlow Type: {cf_type}')
         # store new object
         teal_cfs.append(teal_cf)
       teal_comp.addCashflows(teal_cfs)
@@ -425,7 +455,8 @@ class DispatchRunner:
       teal_comp = local_comps[comp.name]
       final_comp = final_components[comp.name]
       # sanity check
-      if comp.name != teal_comp.name: raise RuntimeError
+      if comp.name != teal_comp.name:
+        raise RuntimeError
       specific_meta['HERON']['component'] = comp
       specific_meta['HERON']['all_activity'] = dispatch
       specific_activity = {}
@@ -457,14 +488,14 @@ class DispatchRunner:
             # NOTE: listing params in order of TEAL.CashFlows.CashFlow.setParams
             cf_params = {'name': teal_cf.name,
                          'driver': params['driver'],
-                         'tax': heron_cf._taxable,
-                         'inflation': heron_cf._inflation,
-                         'mult_target': heron_cf._mult_target,
+                         'tax': heron_cf.is_taxable(),
+                         'inflation': heron_cf.is_inflation(),
+                         'mult_target': heron_cf.is_mult_target(),
                          # TODO "multiply" needed? Can't think of an application right now.
                          'alpha': params['alpha'],
                          'reference': params['ref_driver'],
                          'X': params['scaling'],
-                         'depreciate': heron_cf._depreciate,
+                         'depreciate': heron_cf.get_depreciation(),
                         }
             teal_cf.setParams(cf_params)
 
@@ -477,8 +508,9 @@ class DispatchRunner:
             final_comp._cashFlows[f] = teal_cf
             # depreciators
             # FIXME do we need to know alpha, drivers first??
-            if heron_cf._depreciate and teal_cf.getAmortization() is None:
-              teal_cf.setAmortization('MACRS', heron_cf._depreciate)
+            depreciate = heron_cf.get_depreciation()
+            if depreciate and teal_cf.getAmortization() is None:
+              teal_cf.setAmortization('MACRS', depreciate)
               deprs = teal_comp._createDepreciation(teal_cf)
               final_comp._cashFlows.extend(deprs)
         elif teal_cf.type == 'Recurring':
@@ -535,19 +567,20 @@ class DispatchRunner:
       print(f' ... comp {comp_name} ...')
       for cf in comp.getCashflows():
         print(f' ... ... cf {cf.name} ...')
-        print(f' ... ... ... D', cf._driver)
-        print(f' ... ... ... a', cf._alpha)
-        print(f' ... ... ... Dp', cf._reference)
-        print(f' ... ... ... x', cf._scale)
+        print(f' ... ... ... D: {cf.getDriver()}')
+        print(f' ... ... ... a: {cf.getAlpha()}')
+        print(f' ... ... ... Dp: {cf.getReference()}')
+        print(f' ... ... ... x: {cf.getScale()}')
         if hasattr(cf, '_yearlyCashflow'):
-          print(f' ... ... ... hourly', cf._yearlyCashflow)
+          print(f' ... ... ... hourly: {cf.getYearlyCashflow()}')
     # END DEBUGG
     cf_metrics = TEAL.src.main.run(final_settings, list(final_components.values()), raven_vars)
     # DEBUGG
     print('****************************************')
     print('DEBUGG final cashflow metrics:')
     for k, v in cf_metrics.items():
-      print('  ', k, v)
+      if k not in ['outputType', 'all_data']:
+        print('  ', k, v)
     print('****************************************')
     # END DEBUGG
     return cf_metrics

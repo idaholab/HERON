@@ -123,7 +123,7 @@ class Placeholder(Base):
     # maybe it's not anything we know about
     if typ not in ['ARMA', 'Function', 'ROM', 'CSV']:
       return False
-    return eval('isinstance(self, {})'.format(typ))
+    return eval(f'isinstance(self, {typ})')
 
   def get_variable(self):
     """
@@ -333,9 +333,9 @@ class Function(Placeholder):
     """
     result = self._module_methods[method](request, data_dict)
     if not (hasattr(result, '__len__') and len(result) == 2 and all(isinstance(r, dict) for r in result)):
-      raise RuntimeError('From Function "{f}" method "{m}" expected {s}.{m} '.format(f=self.name, m=method, s=self._source) +\
+      raise RuntimeError(f'From Function "{self.name}" method "{method}" expected {self._source}.{method} ' +\
                          'to return with form (results_dict, meta_dict) with both as dictionaries, but received:\n' +\
-                         '    {}'.format(result))
+                         f'    {result}')
     return result
 
 

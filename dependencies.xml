@@ -3,12 +3,12 @@
     <networkx/>
     <dill>0.3.5</dill>
     <dispatches source='pip' optional='True'>1.1.0</dispatches>
-    <pyomo source='forge'/>
+    <pyomo source='forge'>6.4</pyomo>
     <pyutilib source='forge'/>
     <glpk source='forge' skip_check='True'/>
     <ipopt source='forge' skip_check='True'/>
     <!-- Windows doesn't have a reasonably-accessible installer for coincbc -->
-    <coincbc os="mac,linux" source='forge' skip_check='True'/>
+    <coincbc os="mac,linux" source='forge' skip_check='True'>2.10.5</coincbc>
   </main>
 
   <alternate name='pip'>

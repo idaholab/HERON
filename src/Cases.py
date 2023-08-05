@@ -277,7 +277,21 @@ class Case(Base):
 
     policies = InputData.parameterInputFactory('policies', ordered=False,
                                                 descr=r"""node containing general economic policy setting in which to perform ABCE analysis.""")
-
+    # additing economic metrics (or indicators in TEAL terms) to the global settings
+    desc_econ_metrics = r"""additional economic metric(s) which will be calculated for each
+                                                RAVEN Inner run, regardless of whether opt or sweep mode was specified.
+                                                Not to be confused with the ``opt_metric`` which is used only in opt mode.
+                                                \default{NPV}"""
+    econ_metrics = InputData.parameterInputFactory('EconMetrics', descr=desc_econ_metrics)
+    for econ_metric in cls.economic_metrics_input_names:
+      descr = rf"""{econ_metric} metric which will be calculated by TEAL and presented in the results output."""
+      metric = InputData.parameterInputFactory(econ_metric, strictMode=True, descr=descr)
+      if econ_metric == 'LC':
+        metric.addParam('target', param_type=InputTypes.FloatType,
+                            descr=r"""requested target for NPV search. In the case of levelized cost,
+                            the NPV target is 0 which results in the break-even cost. \default{0}""")
+      econ_metrics.addSub(metric)
+    econ.addSub(econ_metrics)
     ctax = InputData.parameterInputFactory('CTAX', ordered=False,
                                           descr=r"""node containing carbon tax setting in which to perform ABCE analysis.""")
     ctax.addSub(InputData.parameterInputFactory('enabled', contentType=InputTypes.BoolType, descr=r"""enable carbon tax"""))
@@ -572,6 +586,7 @@ class Case(Base):
       elif item.getName() == 'time_discretization':
         self._time_discretization = self._read_time_discr(item)
       elif item.getName() == 'economics':
+        self._global_econ, self._econ_metrics = self._read_global_econ_settings(item)
         for sub in item.subparts:
           if sub.subparts:
             self._global_econ[sub.getName()] = {}

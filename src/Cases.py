@@ -295,24 +295,24 @@ class Case(Base):
     ctax = InputData.parameterInputFactory('CTAX', ordered=False,
                                           descr=r"""node containing carbon tax setting in which to perform ABCE analysis.""")
     ctax.addSub(InputData.parameterInputFactory('enabled', contentType=InputTypes.BoolType, descr=r"""enable carbon tax"""))
-    
+
     ctax.addSub(InputData.parameterInputFactory('qty', contentType=InputTypes.FloatType, descr=r"""carbon tax rate"""))
-    
+
     policies.addSub(ctax)
 
     ptc = InputData.parameterInputFactory('PTC', ordered=False, descr=r"""node containing production tax credit setting in which to perform ABCE analysis.""")
-    
+
     ptc.addSub(InputData.parameterInputFactory('enabled', contentType=InputTypes.BoolType, descr=r"""enable production tax credit"""))
 
     ptc.addSub(InputData.parameterInputFactory('qty', contentType=InputTypes.FloatType, descr=r"""production tax credit rate"""))
-    
+
     unit_type = InputData.parameterInputFactory('unit_type', contentType=InputTypes.StringListType, descr=r"""unit type for production tax credit rate""")
 
     eligibility = InputData.parameterInputFactory('eligibility', ordered=False, descr=r"""node containing eligibility setting in which to perform ABCE analysis.""")
     eligibility.addSub(unit_type)
 
     ptc.addSub(eligibility)
-    
+
     ptc.addSub(InputData.parameterInputFactory('eligible', contentType=InputTypes.StringListType, descr=r"""eligible technologies"""))
 
     policies.addSub(ptc)

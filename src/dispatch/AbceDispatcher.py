@@ -40,7 +40,7 @@ class Abce(Dispatcher):
         descr=r"""The weight to give historical data."""))
     specs.addSub(InputData.parameterInputFactory('hist_decay', contentType=InputTypes.FloatType,
         descr=r"""The decay to give historical data."""))
-    agent_opt=InputData.parameterInputFactory('agent_opt', ordered=False, 
+    agent_opt=InputData.parameterInputFactory('agent_opt', ordered=False,
         descr=r"""The optimization parameters for the agent.""")
     agent_opt.addSub(InputData.parameterInputFactory('consider_future_projects', contentType=InputTypes.BoolType,
         descr=r"""Whether to consider future projects."""))

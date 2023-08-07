@@ -44,8 +44,8 @@ class TemplateAbce(HeronTemplate, TemplateBase, Base):
     Template for ABCE sweep class
     This template is designed to be used with the ABCE dispatcher. The workflow
     copies a set of input files from the ABCE input directory, then replaces
-    the values in the input files with the values from the HERON inputs. 
-    
+    the values in the input files with the values from the HERON inputs.
+
     The ABCE input files are then run using the RAVEN sampler.
   """
 
@@ -125,7 +125,7 @@ class TemplateAbce(HeronTemplate, TemplateBase, Base):
     self._modify_abce_inputs(abce_inputs, outer, case, components, sources)
 
     return outer
- 
+
   def writeWorkflow(self, templates, destination, run=False):
     """
       Write outer and inner RAVEN workflows.
@@ -233,8 +233,8 @@ class TemplateAbce(HeronTemplate, TemplateBase, Base):
       self._abce_values_to_replace[f'{comp.name}|unit_life'] = comp_life
       cfs=comp_eco.get_cashflows()
       for cf in cfs:
-        # if cf._alpha.type is not FixedValue added to the list 
-        # else value_to_change needs to be updated with the key 
+        # if cf._alpha.type is not FixedValue added to the list
+        # else value_to_change needs to be updated with the key
         # as the name of the component and cf.name and value as cf._alpha.get_value()
         if cf._alpha.type == 'FixedValue':
           if cf.name == 'capex':
@@ -313,7 +313,7 @@ class TemplateAbce(HeronTemplate, TemplateBase, Base):
       # the MultiRun 'name' attribute is either 'optimize' or 'sweep'.
       if case.get_mode() in run.attrib['name']:
         step = run
-    
+
 
     settings_file = xmlUtils.newNode('Input', attrib={'name': "settings.yml", 'type' : ""}, text='settings.yml')
     files.append(settings_file)
@@ -324,8 +324,8 @@ class TemplateAbce(HeronTemplate, TemplateBase, Base):
     # create a subdirectory for the inputs
     if 'file_paths' in settings:
       for file, path in settings['file_paths'].items():
-        file_node = xmlUtils.newNode('Input', attrib={'name': file, 
-                                                      'type' : "", 
+        file_node = xmlUtils.newNode('Input', attrib={'name': file,
+                                                      'type' : "",
                                                       'subDirectory': "inputs"}, text=path)
         files.append(file_node)
     # TODO add C2N_project_definitions.yml here but it might not be needed for single agent runs
@@ -339,14 +339,14 @@ class TemplateAbce(HeronTemplate, TemplateBase, Base):
     files.remove(files.find('Input[@name="logo"]'))
     files.remove(files.find('Input[@name="inner_workflow"]'))
     # add the timeseries file to the list of files to be transferred
-    # all the TS data should be in the ts_data folder under self._template_abce_inputs_path 
+    # all the TS data should be in the ts_data folder under self._template_abce_inputs_path
     # list the csv files in the directory
     # add them to the list of files to be transferred
     ts_data_path = os.path.join(self._template_abce_inputs_path, 'ts_data')
     for file in os.listdir(ts_data_path):
       if file.endswith('.csv'):
-        file_node = xmlUtils.newNode('Input', attrib={'name': file, 
-                                                      'type': "", 
+        file_node = xmlUtils.newNode('Input', attrib={'name': file,
+                                                      'type': "",
                                                       'subDirectory': "inputs/ts_data"}, text=file)
         files.append(file_node)
     # remove the file name start with repDays like repDays_35 or repDays_45 etc
@@ -371,11 +371,11 @@ class TemplateAbce(HeronTemplate, TemplateBase, Base):
     models.append(abce_gc)
     abce_exec = xmlUtils.newNode('executable', text=self._template_abce_path)
     prepend = xmlUtils.newNode('clargs', attrib={'arg': "python",'type' : "prepend"})
-    settings_file = xmlUtils.newNode('clargs', attrib={'arg': "--settings_file", 
+    settings_file = xmlUtils.newNode('clargs', attrib={'arg': "--settings_file",
                                                        'extension':".yml",
                                                        'type' : "input",
                                                         'delimiter': "="})
-    inputs_path = xmlUtils.newNode('clargs', attrib={'arg': "--inputs_path=inputs --verbosity=3", 
+    inputs_path = xmlUtils.newNode('clargs', attrib={'arg': "--inputs_path=inputs --verbosity=3",
                                                      'type' : "text"})
 
     abce_gc.append(abce_exec)
@@ -407,7 +407,7 @@ class TemplateAbce(HeronTemplate, TemplateBase, Base):
     # If it was removed, that means we are using a StaticHistory.
     if samps_node.find('.//constant[@name="denoises"]') is not None:
       #remove denoises variable
-      samps_node.remove(samps_node.find('.//constant[@name="denoises"]'))      
+      samps_node.remove(samps_node.find('.//constant[@name="denoises"]'))
     # add sweep variables to input
 
     ## TODO: Refactor this portion with the below portion to handle
@@ -467,7 +467,7 @@ class TemplateAbce(HeronTemplate, TemplateBase, Base):
           feature_name='FOM'
         elif cf.name == 'var_OM':
           feature_name='VOM'
-        elif cf.name == 'fuel_cost':  
+        elif cf.name == 'fuel_cost':
           feature_name='FC'
         elif cf.name == 'capex':
           feature_name='capex'
@@ -514,10 +514,10 @@ class TemplateAbce(HeronTemplate, TemplateBase, Base):
     files = template.find('Files')
     for file in files:
       if file.tag == 'Input':
-        file_node = xmlUtils.newNode('Input', attrib={'class': "Files", 
+        file_node = xmlUtils.newNode('Input', attrib={'class': "Files",
                                                       'type' : ""}, text=file.attrib['name'])
         multi_run_step.append(file_node)
-    # add files 
+    # add files
     if case.debug['enabled']:
       # repurpose the sweep multirun
       sweep = steps.findall('MultiRun')[0]
@@ -601,7 +601,7 @@ class TemplateAbce(HeronTemplate, TemplateBase, Base):
       @ In, sources, list, list of sources
       @ Out, files, list, list of files to copy
     """
-    # create a list of abce input files to copy 
+    # create a list of abce input files to copy
     # files should be in the self._template_abce_inputs_path
     # and not be a folder
     abce_files_to_copy = {}
@@ -616,7 +616,7 @@ class TemplateAbce(HeronTemplate, TemplateBase, Base):
       if file in files_in_outer and os.path.isfile(os.path.join(self._template_abce_inputs_path, file)):
         self.raiseAMessage('Copying ABCE file "{}" from ABCE inputs folder to HERON'.format(file))
         abce_input_files.append(os.path.join(self._template_abce_inputs_path, file))
-        
+
     ## ts_files are the files in DataGenerators
 
     ts_files = []
@@ -646,7 +646,7 @@ class TemplateAbce(HeronTemplate, TemplateBase, Base):
     # create ts_data folder under inputs folder in working directory if not exist
     if not os.path.exists(os.path.join(loc, 'inputs', 'ts_data')):
       os.makedirs(os.path.join(loc, 'inputs', 'ts_data'))
-    # only copy csv files to working directory 
+    # only copy csv files to working directory
     for file in abce_temp['ts_files']:
       if file.endswith('.csv'):
         shutil.copy(file, os.path.join(loc, 'inputs', 'ts_data'))
@@ -669,11 +669,11 @@ class TemplateAbce(HeronTemplate, TemplateBase, Base):
     """
     # Modify ABCE settings file
     self._modify_abce_settings(abce_inputs['abce_settings_file'], case, components, sources)
-    
+
     # Modify ABCE input files
     other_inputs = abce_inputs['abce_input_files']
     self._modify_abce_other_input(other_inputs, outer, case, components, sources)
-    
+
     # Modify time series data files
     for file in abce_inputs['ts_files']:
       self._modify_ts_data(file, case, components, sources)
@@ -690,10 +690,10 @@ class TemplateAbce(HeronTemplate, TemplateBase, Base):
     # Parse the YAML file
     with open(abce_settings_file, 'r') as f:
       settings = yaml.load(f, Loader=yaml.FullLoader)
-    
+
     # Modify the YAML file
     yaml_lines = self._modify_abce_settings_yml(settings, case, components, sources)
-    
+
     # Write the modified YAML back to the file
     with open(abce_settings_file, 'w') as f:
       f.write('\n'.join(yaml_lines))
@@ -712,11 +712,11 @@ class TemplateAbce(HeronTemplate, TemplateBase, Base):
     for key, value in settings['dispatch'].items():
       if key in dispatch_settings:
         settings['dispatch'][key] = dispatch_settings[key]
-    
+
     econ_settings = case._global_econ
     self._update_dict(settings['scenario'], econ_settings)
     yaml_lines = self._modify_abce_settings_global(settings)
-    
+
     return yaml_lines
 
   def _update_dict(self, target, source):
@@ -745,11 +745,11 @@ class TemplateAbce(HeronTemplate, TemplateBase, Base):
       if key[0] == '_':
         key = key[1:]
       yaml_lines.append(f'{key}: ')
-      for k, v in value.items(): 
-        # add indentation for all the subkeys 
+      for k, v in value.items():
+        # add indentation for all the subkeys
         stream = io.StringIO()
         # if v is a dict, add indentation for all the subkeys in v
-        yaml.dump({k: v}, stream, indent=2) 
+        yaml.dump({k: v}, stream, indent=2)
         # if stream has multiple lines, add indentation for all the lines, if it contains quotes, remove them
         if len(stream.getvalue().splitlines()) > 1:
           for line in stream.getvalue().splitlines():
@@ -770,7 +770,7 @@ class TemplateAbce(HeronTemplate, TemplateBase, Base):
           else:
             yaml_lines.append('  ' + stream.getvalue().strip())
       yaml_lines.append('\n')
-    
+
 
     for i, line in enumerate(yaml_lines):
       if line.strip().startswith('-'):
@@ -791,17 +791,17 @@ class TemplateAbce(HeronTemplate, TemplateBase, Base):
     if not self.__sweep_vars and not self._abce_values_to_replace:
       self.raiseAMessage(f'No need to modify other ABCE input files, since no sweep variables are defined, and no ABCE values to replace are defined')
       return
-      
+
     unit_specs = outer.find('Files').find(".//Input[@name='unit_specs_data_file']")
     sub_dir = unit_specs.attrib['subDirectory']
     unit_specs_file = os.path.join(self._working_dir, sub_dir, unit_specs.text)
-      
+
     if self.__sweep_vars or self._abce_values_to_replace:
       # Locate the node in the unit_specs_file which is a YAML file
       # Read the YAML file
       with open(unit_specs_file, 'r') as f:
         unit_specs_data = yaml.safe_load(f)
-          
+
       # Modify ABCE input files changing the values to RAVEN variables if needed
       if self._abce_values_to_replace:
         self.raiseAMessage(f'For ABCE input files, modifying the values to HERON input values')
@@ -816,7 +816,7 @@ class TemplateAbce(HeronTemplate, TemplateBase, Base):
               # Replace the value
               unit[k] = value_to_change[1]
               unit_specs_data[unit_name] = unit
-          
+
       if self.__sweep_vars:
         self.raiseAMessage(f'For ABCE input files, modifying the values to RAVEN variables')
         for raven_alias in self.__sweep_vars:
@@ -839,7 +839,7 @@ class TemplateAbce(HeronTemplate, TemplateBase, Base):
           unit[abce_node] = changed_alias
           # Replace the unit in the unit_specs_data
           unit_specs_data[unit_name] = unit
-          
+
       # Write the unit_specs_data back to the unit_specs_file
       with open(unit_specs_file, 'w') as f:
         yaml.dump(unit_specs_data, f)

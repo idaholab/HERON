@@ -44,7 +44,7 @@ DEFAULT_STATS_NAMES = ['expectedValue', 'sigma', 'median']
 SWEEP_DEFAULT_STATS_NAMES = ['maximum', 'minimum', 'percentile', 'samples', 'variance']
 
 # prefixes for financial metrics only
-fin_pre = ["sharpe", "sortino", "es", "VaR", "glr"]
+FINANCIAL_PREFIXES = ["sharpe", "sortino", "es", "VaR", "glr"]
 
 class Template(TemplateBase, Base):
   """
@@ -306,9 +306,14 @@ class Template(TemplateBase, Base):
     default_stats_prefixes = self._get_stats_metrics_prefixes(case, DEFAULT_STATS_NAMES)
     default_stats = [self.namingTemplates['metric_name'].format(stats=sp, econ=em) \
                      for em in econ_metrics for sp in default_stats_prefixes]
-
     # total activity statistics
-    default_stats_tot_act = [self.namingTemplates['tot_activity'].format(stats=sp, component=component.name, tracker=tracker, resource=resource) for component in components for tracker in component.get_tracking_vars() for resource in component.get_resources() for sp in default_stats_prefixes]
+    default_stats_tot_act = []
+    for sp in default_stats_prefixes:
+      for component in components:
+        for tracker in component.get_tracking_vars():
+          for resource in component.get_resources():
+            default_stats_tot_activity = self.namingTemplates['tot_activity'].format(stats=sp, component=component.name, tracker=tracker, resource=resource)
+            default_stats_tot_act.append(default_stats_tot_activity)
 
     has_mult_metrics = len(econ_metrics + default_stats_tot_act) > 1
 
@@ -329,7 +334,13 @@ class Template(TemplateBase, Base):
                       for em in econ_metrics for sp in sweep_stats_prefixes]
 
       # total activity statistics
-      sweep_stats_tot_act = [self.namingTemplates['tot_activity'].format(stats=sp, component=component.name, tracker=tracker, resource=resource) for component in components for tracker in component.get_tracking_vars() for resource in component.get_resources() for sp in sweep_stats_prefixes]
+      sweep_stats_tot_act = []
+      for sp in sweep_stats_prefixes:
+        for component in components:
+          for tracker in component.get_tracking_vars():
+            for resource in component.get_resources():
+                sweep_stats_tot_activity = self.namingTemplates['tot_activity'].format(stats=sp, component=component.name, tracker=tracker, resource=resource)
+                sweep_stats_tot_act.append(sweep_stats_tot_activity )
 
       for sweep_name in sweep_default + sweep_stats_tot_act:
         if sweep_name not in default_stats + default_stats_tot_act:
@@ -1271,7 +1282,14 @@ class Template(TemplateBase, Base):
     default_stats = [self.namingTemplates['metric_name'].format(stats=sp, econ=em) \
                      for em in econ_metrics for sp in default_stats_prefixes]
 
-    default_stats_tot_act = [self.namingTemplates['tot_activity'].format(stats=sp, component=component.name, tracker=tracker, resource=resource) for component in components for tracker in component.get_tracking_vars() for resource in component.get_resources() for sp in default_stats_prefixes]
+    # total activity statistics
+    default_stats_tot_act = []
+    for sp in default_stats_prefixes:
+      for component in components:
+        for tracker in component.get_tracking_vars():
+          for resource in component.get_resources():
+            default_stats_tot_activity = self.namingTemplates['tot_activity'].format(stats=sp, component=component.name, tracker=tracker, resource=resource)
+            default_stats_tot_act.append(default_stats_tot_activity)
 
     has_mult_metrics = len(econ_metrics + default_stats_tot_act) > 1
 
@@ -1291,6 +1309,28 @@ class Template(TemplateBase, Base):
                        for em in econ_metrics for sp in sweep_stats_prefixes]
 
       sweep_stats_tot_act = [self.namingTemplates['tot_activity'].format(stats=sp, component=component.name, tracker=tracker, resource=resource) for component in components for tracker in component.get_tracking_vars() for resource in component.get_resources() for sp in sweep_stats_prefixes]
+
+
+      # total activity statistics
+      sweep_stats_tot_act = []
+      for sp in sweep_stats_prefixes:
+        for component in components:
+          for tracker in component.get_tracking_vars():
+            for resource in component.get_resources():
+              sweep_stats_tot_activity = self.namingTemplates['tot_activity'].format(stats=sp, component=component.name, tracker=tracker, resource=resource)
+              sweep_stats_tot_act.append(sweep_stats_tot_activity)
+
+
+
+
+
+
+
+
+
+
+
+
 
       for sweep_name in sweep_default + sweep_stats_tot_act:
         if sweep_name not in default_stats + default_stats_tot_act:
@@ -1356,7 +1396,7 @@ class Template(TemplateBase, Base):
                 pp_node.append(xmlUtils.newNode(raven_metric_name, text=em,
                                               attrib={'prefix': prefix}))
               if em.startswith("TotalActivity"):
-                if prefix not in fin_pre:
+                if prefix not in FINANCIAL_PREFIXES:
                   pp_node.append(xmlUtils.newNode(raven_metric_name, text=em,
                                               attrib={'prefix': prefix}))
 
@@ -1589,8 +1629,6 @@ class Template(TemplateBase, Base):
       #metric_entries = list(x.split('_')[-1] for x in entries)
       metric_entries = []
       for x in entries:
-        # if not x.startswith("perc_"):
-        #   metric_entry = x.split("_", 1)[1]
         if x.startswith("perc_") or x.startswith("glr_") or x.startswith("sortino_") or x.startswith("es_") or x.startswith("VaR_"):
            metric_entry = x.split("_", 2)[2]
         else:
@@ -1695,7 +1733,7 @@ class Template(TemplateBase, Base):
     removed_names = [] # removed some names because it does not make sense to calculate financial metrics of total activity
     for name in names:
       if "TotalActivity" in name:
-        if name.split("_")[0] in fin_pre:
+        if name.split("_")[0] in FINANCIAL_PREFIXES:
           removed_names.append(name)
     names = list(set(names) - set(removed_names))
     return names

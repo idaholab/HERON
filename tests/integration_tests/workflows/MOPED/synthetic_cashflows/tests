@@ -1,5 +1,6 @@
 [Tests]
   [./Moped_synthetic_cashflows]
+    skip = 'MOPED is currently in beta and testing is not yet supported'
     type = HeronMoped
     input = moped_input.xml
     needed_executable = 'ipopt'

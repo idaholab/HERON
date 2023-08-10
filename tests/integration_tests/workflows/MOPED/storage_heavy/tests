@@ -1,5 +1,6 @@
 [Tests]
   [./Moped_storage_heavy]
+    skip = 'Skipping MOPED Testing -- See Discussion #311 on Github.'
     type = HeronMoped
     input = moped_input.xml
     heavy = true

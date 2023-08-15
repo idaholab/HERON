@@ -69,7 +69,6 @@
       <alpha>1e-8</alpha>
       <n_restarts_optimizer>5</n_restarts_optimizer>
       <normalize_y>True</normalize_y>
-      <random_state>42</random_state>
       <kernel>Custom</kernel>
       <custom_kernel>(Constant*Matern)</custom_kernel>
       <anisotropic>True</anisotropic>

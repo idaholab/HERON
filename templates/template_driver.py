@@ -230,6 +230,7 @@ class Template(TemplateBase, Base):
     """
     if case.get_mode() == 'sweep' or case.debug['enabled']:
       template.remove(template.find('Optimizers'))
+      template.find('Samplers').remove(template.find(".//Stratified[@name='LHS_samp']"))
     elif case.get_mode() == 'opt':
       template.find('Samplers').remove(template.find(".//Grid[@name='grid']"))
 
@@ -443,7 +444,6 @@ class Template(TemplateBase, Base):
       @ Out, None
     """
     raven = template.find('Models').find('Code')
-    gpr = template.find('Models').find('ROM')
 
     # executable
     raven_exec = raven.find('executable')
@@ -490,8 +490,12 @@ class Template(TemplateBase, Base):
       if cap.is_parametric() and isinstance(cap.get_value(debug=case.debug['enabled']) , list):
         feature_list += name + '_capacity' + ','
     feature_list = feature_list[0:-1]
-    gpr.find('Features').text = feature_list
-    gpr.find('Target').text = self._build_opt_metric_out_name(case)
+    if case.get_mode() == 'opt':
+      gpr = template.find('Models').find('ROM')
+      gpr.find('Features').text = feature_list
+      gpr.find('Target').text = self._build_opt_metric_out_name(case)
+    else:
+      template.find('Models').remove(template.find(".//ROM[@name='gpROM']"))
 
     # Now we check for any non-component dispatch variables and assign aliases
     for name in case.dispatch_vars.keys():
@@ -680,15 +684,24 @@ class Template(TemplateBase, Base):
       @ In, case, HERON Case, defining Case instance
       @ Out, None
     """
-
-    # only modify if optimization_settings is in Case
-    if (case.get_mode() == 'opt') and (case.get_optimization_settings() is not None) and (not case.debug['enabled']):  # TODO there should be a better way to handle the debug case
-      optimization_settings = case.get_optimization_settings()
-      strategy = case.get_strategy()
+    # Setting base outer for opt based on optimizer used
+    strategy = case.get_strategy()
+    if case.get_mode() == 'opt':
       # Strategy tells us which optimizer to use
       if strategy == 'BayesianOptimizer':
         opt_node = template.find('Optimizers').find(".//BayesianOptimizer[@name='cap_opt']")
         template.find('Optimizers').remove(template.find(".//GradientDescent[@name='cap_opt']"))
+      # Its either BO or GD
+      else:
+        opt_node = template.find('Optimizers').find(".//GradientDescent[@name='cap_opt']")
+        template.remove(template.find('Samplers'))
+        template.find('Models').remove(template.find(".//ROM[@name='gpROM']"))
+        template.find('Optimizers').remove(template.find(".//BayesianOptimizer[@name='cap_opt']"))
+    # only modify if optimization_settings is in Case
+    if (case.get_mode() == 'opt') and (case.get_optimization_settings() is not None) and (not case.debug['enabled']):  # TODO there should be a better way to handle the debug case
+      optimization_settings = case.get_optimization_settings()
+      # Strategy tells us which optimizer to use
+      if strategy == 'BayesianOptimizer':
         # Setting kernel for GPR model
         if 'kernel' in optimization_settings.keys():
           gpr_node = template.find('Models').find(".//ROM[@name='gpROM']")
@@ -719,12 +732,6 @@ class Template(TemplateBase, Base):
           model_settings = optimization_settings['modelSelection']
           model_node.find('Duration').text = str(model_settings['duration'])
           model_node.find('Method').text = model_settings['method']
-      # Its either BO or GD
-      else:
-        opt_node = template.find('Optimizers').find(".//GradientDescent[@name='cap_opt']")
-        template.remove(template.find('Samplers'))
-        template.find('Models').remove(template.find(".//ROM[@name='gpROM']"))
-        template.find('Optimizers').remove(template.find(".//BayesianOptimizer[@name='cap_opt']"))
       new_opt_objective = self._build_opt_metric_out_name(case)
       # setting job limit to optimizer
       if 'limit' in optimization_settings.keys():

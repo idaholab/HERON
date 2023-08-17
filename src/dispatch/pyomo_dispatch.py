@@ -709,6 +709,12 @@ class Pyomo(Dispatcher):
     rule = lambda mod, t: self._level_rule(comp, level_name, charge_name, discharge_name,
                                            initial_storage, r, mod, t)
     setattr(m, level_rule_name, pyo.Constraint(m.T, rule=rule))
+    # periodic boundary condition for storage level
+    if comp.get_interaction().apply_periodic_level:
+      periodic_rule_name = prefix + '_level_periodic_constr'
+      rule = lambda mod, t: self._periodic_level_rule(comp, level_name, initial_storage, r, mod, t)
+      setattr(m, periodic_rule_name, pyo.Constraint(m.T, rule=rule))
+
     # (4) a binary variable to track whether we're charging or discharging, to prevent BOTH happening
     # -> 0 is charging, 1 is discharging
     # -> TODO make this a user-based option to disable, if they want to allow dual operation
@@ -906,6 +912,7 @@ class Pyomo(Dispatcher):
       @ In, level_name, str, name of level-tracking variable
       @ In, charge_name, str, name of charging variable
       @ In, discharge_name, str, name of discharging variable
+      @ In, initial_storage, dict, initial storage levels by component
       @ In, r, int, index of stored resource (is this always 0?)
       @ In, m, pyo.ConcreteModel, associated model
       @ In, t, int, time index for capacity rule
@@ -923,6 +930,21 @@ class Pyomo(Dispatcher):
     rte2 = comp.get_sqrt_RTE() # square root of the round-trip efficiency
     production = - rte2 * charge_var[r, t] - discharge_var[r, t] / rte2
     return level_var[r, t] == previous + production * dt
+
+  def _periodic_level_rule(self, comp, level_name, initial_storage, r, m, t):
+    """
+      Mandates storage units end with the same level they start with, which prevents
+      "free energy" or "free sink" due to initial starting levels.
+      For storage units specificially.
+      @ In, comp, Component, storage component of interest
+      @ In, level_name, str, name of level-tracking variable
+      @ In, initial_storage, dict, initial storage levels by component
+      @ In, r, int, index of stored resource (is this always 0?)
+      @ In, m, pyo.ConcreteModel, associated model
+      @ In, t, int, time index for capacity rule
+      @ Out, rule, bool, inequality used to limit level behavior
+    """
+    return getattr(m, level_name)[r, m.T[-1]] == initial_storage[comp]
 
   def _capacity_rule(self, prod_name, r, caps, m, t):
     """

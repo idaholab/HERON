@@ -1,0 +1,127 @@
+<HERON>
+  <TestInfo>
+    <name>optimization_type_test_VaR_NPV</name>
+    <author>dgarrett622</author>
+    <created>2022-02-18</created>
+    <description>
+      Tests to ensure that HERON writes outer XML scripts correctly if user omits certain inputs
+      in the `optimization_settings` node. HERON input script has been modified from
+      `tests/integration_tests/mechanics/optimization_settings`. This test ensures that if the
+      optimization metric (NPV) and statistic metric (ValueAtRisk) are both specified but the type
+      is not, then HERON selects the correct type (min).
+    </description>
+    <classesTested>HERON</classesTested>
+  </TestInfo>
+
+  <Case name="Opt_Runs">
+    <mode>opt</mode>
+    <optimization_settings>
+      <convergence>
+        <gradient>1e-4</gradient>
+        <objective>1e-8</objective>
+      </convergence>
+    </optimization_settings>
+    <num_arma_samples>3</num_arma_samples>
+    <time_discretization>
+      <time_variable>Time</time_variable>
+      <end_time>2</end_time>
+      <num_steps>21</num_steps>
+    </time_discretization>
+    <economics>
+      <ProjectTime>3</ProjectTime>
+      <DiscountRate>0.08</DiscountRate>
+      <tax>0.0</tax>
+      <inflation>0.0</inflation>
+      <verbosity>50</verbosity>
+    </economics>
+    <dispatcher>
+      <pyomo/>
+    </dispatcher>
+    <optimization_settings>
+      <opt_metric>NPV</opt_metric>
+      <stats_metric>valueAtRisk</stats_metric>
+      <persistence>5</persistence>
+    </optimization_settings>
+    <data_handling>
+      <inner_to_outer>csv</inner_to_outer>
+    </data_handling>
+  </Case>
+
+  <Components>
+    <Component name="steamer">
+      <produces resource="steam" dispatch="fixed">
+        <capacity resource="steam">
+          <opt_bounds>1, 10</opt_bounds>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>27</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="generator">
+      <produces resource="electricity" dispatch="independent">
+        <consumes>steam</consumes>
+        <capacity resource="steam">
+          <fixed_value>-100</fixed_value>
+        </capacity>
+        <transfer>
+          <linear>
+            <rate resource="steam">-1</rate>
+            <rate resource="electricity">0.5</rate>
+          </linear>
+        </transfer>
+      </produces>
+      <economics>
+        <lifetime>27</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="electr_market">
+      <demands resource="electricity" dispatch="dependent">
+        <capacity>
+          <fixed_value>-2</fixed_value>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>30</lifetime>
+        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <fixed_value>0.5</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="electr_flex">
+      <demands resource="electricity" dispatch="dependent">
+        <capacity>
+          <opt_bounds>-2e3, -2.05e3</opt_bounds>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>30</lifetime>
+        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <Function method="electric_consume">transfers</Function>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <Function method="flex_price">transfers</Function>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+  </Components>
+
+  <DataGenerators>
+    <!-- <ARMA name='Price' variable="Signal">%BASE_WORKING_DIR%/../../../ARMA/Sine/arma.pk</ARMA> -->
+    <Function name="transfers">%BASE_WORKING_DIR%/../../transfers.py</Function>
+  </DataGenerators>
+
+</HERON>

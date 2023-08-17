@@ -748,7 +748,8 @@ class Template(TemplateBase, Base):
       except KeyError:
         # type was not provided, so use the default value
         opt_metric, _ = case.get_opt_metric()
-        type_node.text = case.economic_metrics_meta[opt_metric]['optimization_default']
+        stats_metric = optimization_settings['stats_metric']['name']
+        type_node.text = case.economic_metrics_meta[opt_metric]['stats_map'][stats_metric]['optimization_default']
 
       # swap out convergence values (only persistence implemented now)
       convergence = opt_node.find('convergence')

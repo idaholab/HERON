@@ -8,6 +8,7 @@ from __future__ import unicode_literals, print_function
 import os
 import sys
 import importlib
+import copy
 
 import numpy as np
 
@@ -66,7 +67,7 @@ class Case(Base):
   flipped_stats_metrics_meta = {}
   for stat, stat_info in stats_metrics_meta.items():
     # copying entries
-    flipped_stats_metrics_meta[stat] = stat_info
+    flipped_stats_metrics_meta[stat] = copy.deepcopy(stat_info)
     # here we flip optimization default
     if 'optimization_default' in stat_info:
       opt_default = flipped_stats_metrics_meta[stat]['optimization_default']
@@ -518,6 +519,7 @@ class Case(Base):
     self._npv_target = None
     self.use_levelized_inner = False
     self._default_econ_metric = 'NPV'  # default metric for both opt and sweep
+    self._default_stats_metric = 'expectedValue' # default stats metric for opt/sweep metric
     self.run_dir = run_dir             # location of HERON input file
     self._verbosity = 'all'            # default verbosity for RAVEN inner/outer
 
@@ -820,6 +822,8 @@ class Case(Base):
         # add other information to opt_settings dictionary (type is only information implemented)
         opt_settings[sub_name] = sub.value
 
+    if 'stats_metric' not in list(opt_settings):
+      opt_settings['stats_metric'] = {'name':self._default_stats_metric, 'tol':1e-4}
     return opt_settings
 
   def _read_result_statistics(self, node):

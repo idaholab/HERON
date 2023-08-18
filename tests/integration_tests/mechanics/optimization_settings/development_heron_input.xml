@@ -29,8 +29,8 @@
         <duration>1</duration>
         <method>Internal</method>
       </modelSelection>
-      <stats_metric>valueAtRisk</stats_metric>
-      <type>min</type>
+      <!-- <stats_metric>valueAtRisk</stats_metric>
+      <type>min</type> -->
     </optimization_settings>
     <num_arma_samples>3</num_arma_samples>
     <time_discretization>

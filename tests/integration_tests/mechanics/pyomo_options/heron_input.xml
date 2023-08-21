@@ -57,6 +57,7 @@
         <initial_stored>
           <fixed_value>0.01</fixed_value>
         </initial_stored>
+        <!-- NOTE: periodic level boundary condition is True by default -->
       </stores>
       <economics>
         <lifetime>10</lifetime>
@@ -101,7 +102,6 @@
       </economics>
     </Component>
 
-
     <Component name="electr_flex">
       <demands resource="electricity" dispatch="dependent">
         <capacity>
@@ -117,6 +117,27 @@
           </driver>
           <reference_price>
             <Function method="flex_price">transfers</Function>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="steam_offload">
+      <!-- necessary for conservation of resources -->
+      <demands resource="steam" dispatch="dependent">
+        <capacity>
+          <fixed_value>-100</fixed_value>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>1</lifetime>
+        <CashFlow name="steam_sink" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>steam</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <fixed_value>-0.01</fixed_value>
           </reference_price>
         </CashFlow>
       </economics>

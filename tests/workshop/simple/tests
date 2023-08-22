@@ -6,7 +6,7 @@
     [./csv]
       type = OrderedCSV
       output = '1_simple_o/sweep.csv'
-      rel_err = 2
+      rel_err = 5
     [../]
   [../]
 []

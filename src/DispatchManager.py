@@ -209,7 +209,7 @@ class DispatchRunner:
       raise IOError(f'An interpolated ARMA ROM was used, but there are less interpolated years ' +
                     f'({list(range(*structure["interpolated"]))}) ' +
                     f'than requested project years ({project_life})!')
-    # do the dispatching
+    # do the dispatching and calculate the component's total activity
     all_dispatch, metrics, tot_activity = self._do_dispatch(meta, all_structure, project_life, interp_years, segs)
     return all_dispatch, metrics, tot_activity
 

@@ -209,11 +209,11 @@ class DispatchRunner:
       raise IOError(f'An interpolated ARMA ROM was used, but there are less interpolated years ' +
                     f'({list(range(*structure["interpolated"]))}) ' +
                     f'than requested project years ({project_life})!')
-    # do the dispatching
-    all_dispatch, metrics = self._do_dispatch(meta, all_structure, project_life, interp_years, segs, seg_type)
-    return all_dispatch, metrics
+    # do the dispatching and calculate the component's total activity
+    all_dispatch, metrics, tot_activity = self._do_dispatch(meta, all_structure, project_life, interp_years, segs)
+    return all_dispatch, metrics, tot_activity
 
-  def save_variables(self, raven, all_dispatch, metrics):
+  def save_variables(self, raven, all_dispatch, metrics, tot_activity):
     """
       generates RAVEN-acceptable variables
       Saves variables on "raven" object for returning
@@ -266,6 +266,10 @@ class DispatchRunner:
             else:
               name = f'{comp}_{cf}_CashFlow'
             setattr(raven, name, np.atleast_1d(cf_values))
+    # store the total activty
+    for activity, value in tot_activity.items():
+       setattr(raven, activity, np.atleast_1d(value))
+
     if cfYears is not None:
       setattr(raven, 'cfYears', np.arange(cfYears))
 
@@ -278,16 +282,19 @@ class DispatchRunner:
 
   #####################
   # UTILITIES
-  def _do_dispatch(self, meta, all_structure, project_life, interp_years, segs, seg_type):
+  def _do_dispatch(self, meta, all_structure, project_life, interp_years, segs):
     """
       perform dispatching
       @ In, meta, dict, dictionary of passthrough variables
+      @ In: all_structure, dict, the dispatcher structure
       @ In, project_life, int, total analysis years (e.g. 30)
       @ In, interp_years, list, actual analysis tagged years (e.g. range(2015, 2045))
       @ In, segs, list(int), segments/clusters/divisions
-      @ In, seg_type, str, "segment" or "cluster" if segmented or clustered
       @ Out, dispatch_results, list(DispatchState), results of dispatch for each segment/cluster and year
+      @ Out, cf_metrics, dict, values for calculated metrics of final cashflow calculations
+      @ Out, tot_activity_over_all_years, dict, the total activity of each components over tue entire project life
     """
+
     structure = all_structure['summary']
     ## FINAL settings/components/cashflows use the multiplicity of divisions for aggregated evaluation
     final_settings, final_components = self._build_econ_objects(self._case, self._components, project_life)
@@ -297,16 +304,21 @@ class DispatchRunner:
     active_index = {}
     dispatch_results = {}
     yearly_cluster_data = next(iter(all_structure['details'].values()))['clusters']
+
+    # Initiate significant lists
+    tot_activity_over_clusters_years, list_of_years = [], []
     for year in range(project_life):
       interp_year = interp_years[year] if len(interp_years) > 1 else (interp_years[0] + year)
+      list_of_years.append(interp_year )
       if self._save_dispatch:
         dispatch_results[interp_year] = {}
       # If the ARMA is interpolated, we need to track which year we're in.
       # Otherwise, use just the nominal first year.
       active_index['year'] = year if len(range(*structure['interpolated'])) > 1 else 0 # FIXME MacroID not year
+
+      tot_activity_series_dict_list = [] # initialization
       for s, seg in enumerate(segs):
-        multiplicity = self._update_meta_for_segment(meta, seg, interp_year, yearly_cluster_data,
-                                                     interp_years, active_index, all_structure)
+        multiplicity = self._update_meta_for_segment(meta, seg, interp_year, yearly_cluster_data, interp_years, active_index, all_structure)
         # perform dispatch
         dispatch = self._dispatcher.dispatch(self._case, self._components, self._sources, meta)
         if self._save_dispatch:
@@ -314,9 +326,88 @@ class DispatchRunner:
         # build evaluation cash flows
         self._segment_cashflow(meta, s, seg, year, dispatch, multiplicity,
                                project_life, interp_years, all_structure, final_components)
+
+        tot_activity_series_dict, variable_name_list =  self._get_activity_per_cluster_per_year (dispatch, interp_year, seg, multiplicity)
+        tot_activity_series_dict_list.append(tot_activity_series_dict)
+      tot_activity_over_clusters_years.append(tot_activity_series_dict_list)
+
+    tot_activity_over_clusters_years_result = [element for nestedlist in tot_activity_over_clusters_years for element in nestedlist]
+    tot_activity_over_all_years = self._sum_activities_over_years(list_of_years, variable_name_list, tot_activity_over_clusters_years_result)
+
     # TEAL, take it away.
     cf_metrics = self._final_cashflow(meta, final_components, final_settings)
-    return dispatch_results, cf_metrics
+    return dispatch_results, cf_metrics, tot_activity_over_all_years
+
+
+  def _get_activity_per_cluster_per_year(self, dispatch, interp_year, seg, multiplicity):
+    """
+      Calculate the component's activity per cluster per year
+      @ In, interp_year, int, a year in the project life (e.g. 2021))
+      @ In, dispatch, HERON.src.dispatch.DispatchState.NumpyState, the entire record of the components' dispatch (all years and clusters)
+      @ In, seg, int, segment/cluster index
+      @ In, multiplicity, int, number of segments represented by this segment within the year
+      @ Out, tot_activity_series_dict, dict, component's activity per cluster per year
+      @ Out, variable_name_list, list, the list of the activity variables with the format : TotalActivity__{component}__{tracker}__{resource}'. For example: TotalActivity__import__production__electricity
+    """
+
+    cluster_year_list_of_dicts = [] # collect all component activity data for for one cluster for one year here
+    for step_index in range(len(dispatch._times)):
+      activity_per_cluster_per_year = {}
+      variable_name_list=[]
+
+      for k in (dispatch._data.keys()):
+        var_name = k.replace("_"+k.split("_")[-1], "") # variable name
+        for ky in (dispatch._resources.keys()):
+          if ky.name == var_name:
+            for index in range (len(dispatch._data[k])):
+              res_name = (list(((dispatch._resources).get(ky)).keys()))[index]
+              variable_name = "TotalActivity__" + "__".join((str(k)).rsplit("_", 1)) + "__" + res_name
+              variable_name_list.append(variable_name)
+              activity_per_cluster_per_year[variable_name] = (dispatch._data[k])[index][step_index]
+
+              activity_per_cluster_per_year['Year', 'Time', 'Cluster', "multiplicity"] = interp_year, dispatch._times[step_index], seg,  multiplicity
+      cluster_year_list_of_dicts.append(activity_per_cluster_per_year)
+
+    activity_series_dict, tot_activity_series_dict = {}, {}
+    for variable in variable_name_list:
+      activity_series_dict[variable] = [sub[variable] for sub in cluster_year_list_of_dicts]
+      tot_activity = 0 # initialization
+      for h in range(len(activity_series_dict[variable])-1):
+        timestep_tot_activity = 0.5*(activity_series_dict[variable][h] + activity_series_dict[variable][h+1]) * (dispatch._times[h+1]- dispatch._times[h])
+        tot_activity = tot_activity + timestep_tot_activity
+
+      tot_activity_series_dict[variable] = tot_activity
+      tot_activity_series_dict["Year"] = interp_year
+      tot_activity_series_dict["Cluster"] = seg
+      tot_activity_series_dict["multiplicity"] = multiplicity
+    return tot_activity_series_dict, variable_name_list
+
+  def _sum_activities_over_years(self, list_of_years, variable_name_list, tot_activity_over_clusters_years_result):
+    """
+      Add up the component's activity over the entire project life
+      @ In, list_of_years, list, list of year in the project life (e.g. [2021, 2021, 2022])
+      @ In, variable_name_list, list, the list of the activity variables with the format : TotalActivity__{component}__{tracker}__{resource}'. For example: TotalActivity__import__production__electricity
+      @ In, tot_activity_over_clusters_years_result, list, list of dictionaries where each dictionary includes an activity for one component for one cluster and one year
+
+      @ In, tot_activity_over_all_years, dict, total activity over the entire project life for each component
+    """
+
+    tot_activity_per_year_list = [] # The total activity per year
+    for year in list_of_years:
+      keys = ["Year"]+ variable_name_list
+      values =[year] + [0] * len(variable_name_list)
+      tot_activity_per_year = dict(zip(keys,values))
+      for d in tot_activity_over_clusters_years_result:
+        if d["Year"] == year:
+          for v in variable_name_list:
+            tot_activity_per_year[v] = tot_activity_per_year[v] + d[v] * d['multiplicity']
+      tot_activity_per_year_list.append(tot_activity_per_year)
+
+    tot_activity_over_all_years = dict(zip(variable_name_list, [0] * len(variable_name_list))) # initialization
+    for v in variable_name_list:
+      for d in tot_activity_per_year_list:
+        tot_activity_over_all_years[v] = tot_activity_over_all_years[v] + d[v]
+    return tot_activity_over_all_years
 
   def _build_econ_objects(self, heron_case, heron_components, project_life):
     """
@@ -786,7 +877,7 @@ class DispatchManager(ExternalModelPluginBase):
     override_time = getattr(raven, '_override_time', None)
     if override_time is not None:
       runner.override_time(override_time) # TODO setter
-    dispatch, metrics = runner.run(raven_vars)
-    runner.save_variables(raven, dispatch, metrics)
+    dispatch, metrics, tot_activity = runner.run(raven_vars)
+    runner.save_variables(raven, dispatch, metrics, tot_activity)
 
 

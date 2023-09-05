@@ -903,13 +903,6 @@ class Case(Base):
                         for comp in components}
     levelized_cfs = {comp:cf for comp,cf in levelized_cfs.items() if cf} # trimming components w/o LC
 
-    # 0. zero-order check: are we using an appropriate nonlinear solver? assuming PyomoDispatcher
-    # TODO: should compile a list of linear vs nonlinear solvers...
-    if self.dispatcher.get_solver() in ['glpk', 'cbc']:
-      appropriate_solvers = ['ipopt']
-      self.raiseAnError('Levelized Cost metric requires a nonlinear optimization in the inner' +
-                        f' step, please use any of the following solvers: {appropriate_solvers}')
-
     # 1. check first that there is a levelized cost CashFlow in any of available components
     if not levelized_cfs:
       self.raiseAnError('Levelized Cost metric was selected, but no <levelized_cost> node was ' +
@@ -924,16 +917,6 @@ class Case(Base):
       # so no need to use levelized objective in inner
       return False
 
-    # 2a. (temporary) check if driver is a variable in outer
-    # TODO: need to fix TEAL to carry over depreciation terms for CAPEX into NPV_search
-    # TODO: do we want to check the period of the cashflow? hourly, yearly, one-time...?
-    if any(cf.get_driver().type =='variable'
-            for cfs_list in levelized_cfs.values()
-              for cf in cfs_list):
-      self.raiseAnError('Levelized Cost metric not implemented for Variable ValuedParam yet. ' +
-                        'Driver is a variable in the outer optimization, at worst it is an upper ' +
-                        'bound in inner.')
-
     # 3. check the dispatchability of the components
     if all(comp.get_interaction().is_dispatchable() != 'independent'
             for comp in levelized_cfs.keys()):
@@ -943,6 +926,13 @@ class Case(Base):
 
     # by this point in the filter process, this is the only option.
     use_levelized_inner = True
+
+    # 4. final check: are we using an appropriate nonlinear solver? assuming PyomoDispatcher
+    # TODO: should compile a list of linear vs nonlinear solvers...
+    if self.dispatcher.get_solver() in ['glpk', 'cbc']:
+      appropriate_solvers = ['ipopt']
+      self.raiseAnError('Levelized Cost metric requires a nonlinear optimization in the inner' +
+                        f' step, please use any of the following solvers: {appropriate_solvers}')
 
     # for all remaining levelized cash flows, get tracker and resource for related Activity (saving it to component)
     for comp, cfs in levelized_cfs.items():

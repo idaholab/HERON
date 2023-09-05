@@ -51,7 +51,7 @@
             <variable>source_capacity</variable>
           </driver>
           <reference_price>
-            <fixed_value>5000.0</fixed_value>
+            <fixed_value>1000.0</fixed_value>
             <multiplier>-1</multiplier>
           </reference_price>
         </CashFlow>
@@ -83,6 +83,7 @@
         <initial_stored>
           <fixed_value>0.2</fixed_value>
         </initial_stored>
+        <periodic_level>False</periodic_level>
       </stores>
       <economics>
         <lifetime>30</lifetime>

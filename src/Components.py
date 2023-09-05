@@ -346,6 +346,15 @@ class Component(Base, CashFlowUser):
     """
     return self.get_interaction().ramp_limit
 
+  @property
+  def ramp_freq(self):
+    """
+      Accessor for ramp frequency limits on interactions.
+      @ In, None
+      @ Out, limit, float, limit
+    """
+    return self.get_interaction().ramp_freq
+
   def get_capacity_param(self):
     """
       Provides direct access to the ValuedParam for the capacity of this component.
@@ -447,6 +456,7 @@ class Interaction(Base):
     self._minimum = None                # lowest interaction level, if dispatchable
     self._minimum_var = None            # limiting variable for minimum
     self.ramp_limit = None              # limiting change of production in a time step
+    self.ramp_freq = None               # time steps required between production ramping events
     self._function_method_map = {}      # maps things that call functions to the method within the function that needs calling
     self._transfer = None               # the production rate (if any), in produces per consumes
                                         #   for example, {(Producer, 'capacity'): 'method'}
@@ -645,33 +655,6 @@ class Interaction(Base):
     # Default option is False; specifics by interaction type
     return False
 
-  def produce(self, *args, **kwargs):
-    """
-      Determines the results of this interaction producing resources.
-      @ In, args, list, positional arguments
-      @ In, kwargs, dict, keyword arguments
-      @ Out, None
-    """
-    raise NotImplementedError('This interaction has no "produce" method.')
-
-  def produce_max(self, *args, **kwargs):
-    """
-      Determines the results of this interaction producing maximum resources.
-      @ In, args, list, positional arguments
-      @ In, kwargs, dict, keyword arguments
-      @ Out, None
-    """
-    raise NotImplementedError('This interaction has no produce_max method yet!')
-
-  def produce_min(self, *args, **kwargs):
-    """
-      Determines the results of this interaction producing minimum resources.
-      @ In, args, list, positional arguments
-      @ In, kwargs, dict, keyword arguments
-      @ Out, None
-    """
-    raise NotImplementedError('This interaction has no produce_min method yet!')
-
   def check_expected_present(self, data, expected, premessage):
     """
       checks dict to make sure members are present and not None
@@ -767,6 +750,18 @@ class Producer(Interaction):
                   \default{1.0}"""
         )
     )
+    specs.addSub(
+        InputData.parameterInputFactory(
+            'ramp_freq',
+            contentType=InputTypes.IntegerType,
+            descr=r"""Places a limit on the number of time steps between successive production level
+                      ramping events. For example, if time steps are an hour long and the ramp frequency
+                      is set to 4, then once this component has changed production levels, 4 hours must
+                      pass before another production change can occur. Note this limit introduces binary
+                      variables and may require selection of appropriate solvers. \default{0}"""
+        )
+    )
+
     return specs
 
   def __init__(self, **kwargs):
@@ -798,6 +793,8 @@ class Producer(Interaction):
         self._set_valued_param('_transfer', comp_name, item, mode)
       elif item.getName() == 'ramp_limit':
         self.ramp_limit = item.value
+      elif item.getName() == 'ramp_freq':
+        self.ramp_freq = item.value
 
     # input checking
     ## if a transfer function not given, can't be consuming a resource
@@ -841,63 +838,6 @@ class Producer(Interaction):
     self.raiseADebug(pre+'  consumes:', self._consumes)
     self.raiseADebug(pre+'  transfer:', self._transfer)
     self.raiseADebug(pre+'  capacity:', self._capacity)
-
-  def produce(self, request, meta, raven_vars, dispatch, t, level=None):
-    """
-      Determines the results of this interaction producing resources.
-      @ In, request, dict, requested action {resource: amount}
-      @ In, meta, dict, additional variables to pass through
-      @ In, raven_vars, dict, TODO part of meta! consolidate!
-      @ In, dispatch, dict, TODO part of meta! consolidate!
-      @ In, t, int, TODO part of meta! consolidate!
-      @ In, level, float, storage leven (unused for this Interaction)
-      @ Out, balance, dict, results of requested action
-      @ Out, meta, dict, additional variable passthrough
-    """
-    # is there a transfer function to apply?
-    res, amt = next(iter(request.items()))
-    if self._transfer:
-      balance, meta = self.transfer(request, meta, raven_vars, dispatch, t)
-    # TODO catch errors! Custom user-based errors?
-    else:
-      # no transfer function, then we provide the request as-is
-      balance = request
-    # check if capacity was exceeded
-    balance, meta = self._check_capacity_limit(res, amt, balance, meta, raven_vars, dispatch, t)
-    return balance, meta
-
-  def produce_max(self, meta, raven_vars, dispatch, t):
-    """
-      Determines the results of this interaction producing maximum resources.
-      @ In, meta, dict, additional variables to pass through
-      @ In, raven_vars, dict, TODO part of meta! consolidate!
-      @ In, dispatch, dict, TODO part of meta! consolidate!
-      @ In, t, int, TODO part of meta! consolidate!
-      @ Out, balance, dict, results of requested action
-      @ Out, meta, dict, additional variable passthrough
-    """
-    request, meta = self.get_capacity(meta, raven_vars, dispatch, t)
-    balance, meta = self.produce(request, meta, raven_vars, dispatch, t)
-    # dict((prod, self._capacity[p]) for p, prod in enumerate(self._produces))
-    return balance, meta
-
-  def produce_min(self, meta, raven_vars, dispatch, t):
-    """
-      Determines the results of this interaction producing minimum resources.
-      @ In, meta, dict, additional variables to pass through
-      @ In, raven_vars, dict, TODO part of meta! consolidate!
-      @ In, dispatch, dict, TODO part of meta! consolidate!
-      @ In, t, int, TODO part of meta! consolidate!
-      @ Out, balance, dict, results of requested action
-      @ Out, meta, dict, additional variable passthrough
-    """
-    if self._minimum:
-      request, meta = self.get_minimum(meta, raven_vars, dispatch, t)#[self._minimum]
-      request = {self._minimum_var: request[self._minimum_var]}
-    else:
-      request = {next(iter(self.get_outputs())): 0.0}
-    balance, meta = self.produce(request, meta, raven_vars, dispatch, t)
-    return balance, meta
 
   def transfer(self, request, meta, raven_vars, dispatch, t):
     """
@@ -958,12 +898,21 @@ class Storage(Interaction):
     # TODO unused, please implement ... :
     # descr = r"""the limiting charge/discharge rate of this storage. """
     # specs.addSub(ValuedParam.get_input_specs('rate'))
+    # initial stored
     descr=r"""indicates what percent of the storage unit is full at the start of each optimization sequence,
               from 0 to 1. \default{0.0}. """
     sub = vp_factory.make_input_specs('initial_stored', descr=descr)
     specs.addSub(sub)
+    # periodic level boundary condition
+    descr=r"""indicates whether the level of the storage should be required to return to its initial level
+              within each modeling window. If True, this reduces the flexibility of the storage, but if False,
+              can result in breaking conservation of resources. \default{True}. """
+    sub = InputData.parameterInputFactory('periodic_level', contentType=InputTypes.BoolType, descr=descr)
+    specs.addSub(sub)
+    # control strategy
     descr=r"""control strategy for operating the storage. If not specified, uses a perfect foresight strategy. """
     specs.addSub(vp_factory.make_input_specs('strategy', allowed=['Function'], descr=descr))
+    # round trip efficiency
     descr = r"""round-trip efficiency for this component as a scalar multiplier. \default{1.0}"""
     specs.addSub(InputData.parameterInputFactory('RTE', contentType=InputTypes.FloatType, descr=descr))
     return specs
@@ -975,10 +924,11 @@ class Storage(Interaction):
       @ Out, None
     """
     Interaction.__init__(self, **kwargs)
-    self._stores = None         # the resource stored by this interaction
-    self._rate = None           # the rate at which this component can store up or discharge
-    self._initial_stored = None # how much resource does this component start with stored?
-    self._strategy = None       # how to operate storage unit
+    self.apply_periodic_level = True # whether to apply periodic boundary conditions for the level of the storage
+    self._stores = None              # the resource stored by this interaction
+    self._rate = None                # the rate at which this component can store up or discharge
+    self._initial_stored = None      # how much resource does this component start with stored?
+    self._strategy = None            # how to operate storage unit
     self._tracking_vars = ['level', 'charge', 'discharge'] # stored quantity, charge activity, discharge activity
 
   def read_input(self, specs, mode, comp_name):
@@ -997,6 +947,8 @@ class Storage(Interaction):
         self._set_valued_param('_rate', comp_name, item, mode)
       elif item.getName() == 'initial_stored':
         self._set_valued_param('_initial_stored', comp_name, item, mode)
+      elif item.getName() == 'periodic_level':
+        self.apply_periodic_level = item.value
       elif item.getName() == 'strategy':
         self._set_valued_param('_strategy', comp_name, item, mode)
       elif item.getName() == 'RTE':
@@ -1069,34 +1021,6 @@ class Storage(Interaction):
     self.raiseADebug(pre+'  stores:', self._stores)
     self.raiseADebug(pre+'  rate:', self._rate)
     self.raiseADebug(pre+'  capacity:', self._capacity)
-
-  def produce(self, request, meta, raven_vars, dispatch, t, level=None):
-    """
-      Determines the results of this interaction producing resources.
-      @ In, request, dict, requested action {resource: amount}
-      @ In, meta, dict, additional variables to pass through
-      @ In, raven_vars, dict, TODO part of meta! consolidate!
-      @ In, dispatch, dict, TODO part of meta! consolidate!
-      @ In, t, int, TODO part of meta! consolidate!
-      @ In, level, float, storage level
-      @ Out, balance, dict, results of requested action
-      @ Out, meta, dict, additional variable passthrough
-    """
-    if level is None:
-      raise RuntimeError('Storage level information was not provided to Storage produce call!')
-    dt = dispatch()['time'].values
-    dt = dt[t] - dt[t-1] if t > 0 else dt[t+1] - dt[t]
-    res, amt_rate = next(iter(request.items()))
-    # UNITS: amt_rate is in resource per time, NOT pure resource!
-    amt_amount = amt_rate * dt
-    assert res == self.get_resource(), 'Requested var is not the same as stored var!'
-    balance, meta = self._check_capacity_limit(res, amt_amount, {}, meta, raven_vars, dispatch, t, level)
-    # also check rate limit
-    delta_amount = balance[res]
-    delta_rate = delta_amount / dt # flip the sign to show we're doing as we were asked ...?
-    #print('DEBUGG effective battery cons/prod rate:', delta_rate)
-    balance, meta = self._check_rate_limit(res, delta_rate, {}, meta, raven_vars, dispatch, t)
-    return balance, meta
 
   def _check_capacity_limit(self, res, amt, balance, meta, raven_vars, dispatch, t, level):
     """
@@ -1241,53 +1165,3 @@ class Demand(Interaction):
     self.raiseADebug(pre+'  demands:', self._demands)
     self.raiseADebug(pre+'  penalty:', self._penalty)
     self.raiseADebug(pre+'  capacity:', self._capacity)
-
-  def produce(self, request, meta, raven_vars, dispatch, t, level=None):
-    """
-      Determines the results of this interaction producing resources.
-      @ In, request, dict, requested action {resource: amount}
-      @ In, meta, dict, additional variables to pass through
-      @ In, raven_vars, dict, TODO part of meta! consolidate!
-      @ In, dispatch, dict, TODO part of meta! consolidate!
-      @ In, t, int, TODO part of meta! consolidate!
-      @ In, level, float, storage level (unused for this Interaction)
-      @ Out, balance, dict, results of requested action
-      @ Out, meta, dict, additional variable passthrough
-    """
-    # Q: should this have a transfer function or something? At least capacity limits?
-    # A: no; if you want this functionality, add an intervening component with a transfer function.
-    res, amt = next(iter(request.items()))
-    balance, meta = self._check_capacity_limit(res, amt, request, meta, raven_vars, dispatch, t)
-    res, amt = next(iter(balance.items()))
-    amt = -1 * abs(amt)
-    balance[res] = amt
-    return balance, meta
-
-  def produce_max(self, meta, raven_vars, dispatch, t):
-    """
-      Determines the results of this interaction producing maximum resources.
-      @ In, meta, dict, additional variables to pass through
-      @ In, raven_vars, dict, TODO part of meta! consolidate!
-      @ In, dispatch, dict, TODO part of meta! consolidate!
-      @ In, t, int, TODO part of meta! consolidate!
-      @ Out, balance, dict, results of requested action
-      @ Out, meta, dict, additional variable passthrough
-    """
-    request, meta = self.get_capacity(meta, raven_vars, dispatch, t)
-    return request, meta
-
-  def produce_min(self, meta, raven_vars, dispatch, t):
-    """
-      Determines the results of this interaction producing minimum resources.
-      @ In, meta, dict, additional variables to pass through
-      @ In, raven_vars, dict, TODO part of meta! consolidate!
-      @ In, dispatch, dict, TODO part of meta! consolidate!
-      @ In, t, int, TODO part of meta! consolidate!
-      @ Out, balance, dict, results of requested action
-      @ Out, meta, dict, additional variable passthrough
-    """
-    if self._minimum:
-      request, meta = self.get_minimum(meta, raven_vars, dispatch, t)
-    else:
-      request = {next(iter(self.get_inputs())): 0.0} # TODO is this a good choice when no min var avail?
-    return request, meta

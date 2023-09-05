@@ -8,7 +8,6 @@ import os
 import sys
 import copy
 import shutil
-import time
 import xml.etree.ElementTree as ET
 import itertools as it
 
@@ -44,6 +43,9 @@ sys.path.pop()
 DEFAULT_STATS_NAMES = ['expectedValue', 'sigma', 'median']
 SWEEP_DEFAULT_STATS_NAMES = ['maximum', 'minimum', 'percentile', 'samples', 'variance']
 
+# prefixes for financial metrics only
+FINANCIAL_PREFIXES = ["sharpe", "sortino", "es", "VaR", "glr"]
+
 class Template(TemplateBase, Base):
   """
     Template for lcoe sweep opt class
@@ -59,6 +61,7 @@ class Template(TemplateBase, Base):
                                    'stepname'       : '{action}_{subject}',
                                    'variable'       : '{unit}_{feature}',
                                    'dispatch'       : 'Dispatch__{component}__{tracker}__{resource}',
+                                   'tot_activity'   :'{stats}_TotalActivity__{component}__{tracker}__{resource}',
                                    'data object'    : '{source}_{contents}',
                                    'distribution'   : '{unit}_{feature}_dist',
                                    'ARMA sampler'   : '{rom}_sampler',
@@ -299,27 +302,48 @@ class Template(TemplateBase, Base):
     group_outer_results = var_groups.find(".//Group[@name='GRO_outer_results']")
     # add required defaults
     econ_metrics = case.get_econ_metrics(nametype='output')
-    has_mult_metrics = len(econ_metrics) > 1
     # loop through all economic metrics (e.g., NPV, IRR) and apply required defaults to each
     default_stats_prefixes = self._get_stats_metrics_prefixes(case, DEFAULT_STATS_NAMES)
     default_stats = [self.namingTemplates['metric_name'].format(stats=sp, econ=em) \
                      for em in econ_metrics for sp in default_stats_prefixes]
-    for stat in default_stats:
+    # total activity statistics
+    default_stats_tot_act = []
+    for sp in default_stats_prefixes:
+      for component in components:
+        for tracker in component.get_tracking_vars():
+          for resource in component.get_resources():
+            default_stats_tot_activity = self.namingTemplates['tot_activity'].format(stats=sp, component=component.name, tracker=tracker, resource=resource)
+            default_stats_tot_act.append(default_stats_tot_activity)
+
+    has_mult_metrics = len(econ_metrics + default_stats_tot_act) > 1
+
+    # total activity statistics and economic stats added to the outer group
+    for stat in default_stats+ default_stats_tot_act:
       self._updateCommaSeperatedList(group_outer_results, stat)
     # make sure user provided statistics beyond defaults get there
     if any(stat not in DEFAULT_STATS_NAMES for stat in case.get_result_statistics()):
-      stats_list = self._build_result_statistic_names(case) #NOTE: this loops through metrics
+      stats_list = self._build_result_statistic_names(case, components) #NOTE: this loops through metrics
       for stat_name in stats_list:
-        if stat_name not in default_stats:
-          self._updateCommaSeperatedList(group_outer_results, stat_name, organize_economics=has_mult_metrics)
+        if stat_name not in default_stats + default_stats_tot_act:
+            self._updateCommaSeperatedList(group_outer_results, stat_name, organize_economics=has_mult_metrics)
     # sweep mode has default variable names
     elif case.get_mode() == 'sweep':
       # loop through all economic metrics (e.g., NPV, IRR) and apply required sweep defaults to each
       sweep_stats_prefixes = self._get_stats_metrics_prefixes(case, DEFAULT_STATS_NAMES+SWEEP_DEFAULT_STATS_NAMES)
       sweep_default = [self.namingTemplates['metric_name'].format(stats=sp, econ=em) \
                       for em in econ_metrics for sp in sweep_stats_prefixes]
-      for sweep_name in sweep_default:
-        if sweep_name not in default_stats:
+
+      # total activity statistics
+      sweep_stats_tot_act = []
+      for sp in sweep_stats_prefixes:
+        for component in components:
+          for tracker in component.get_tracking_vars():
+            for resource in component.get_resources():
+                sweep_stats_tot_activity = self.namingTemplates['tot_activity'].format(stats=sp, component=component.name, tracker=tracker, resource=resource)
+                sweep_stats_tot_act.append(sweep_stats_tot_activity )
+
+      for sweep_name in sweep_default + sweep_stats_tot_act:
+        if sweep_name not in default_stats + default_stats_tot_act:
           self._updateCommaSeperatedList(group_outer_results, sweep_name, organize_economics=has_mult_metrics)
     # opt mode adds optimization variable if not already there
     if (case.get_mode() == 'opt') and (case.get_optimization_settings() is not None):
@@ -824,8 +848,8 @@ class Template(TemplateBase, Base):
     self._modify_inner_components(template, case, components)
     self._modify_inner_caselabels(template, case)
     self._modify_inner_time_vars(template, case)
-    self._modify_inner_econ_metrics(template, case)
-    self._modify_inner_result_statistics(template, case)
+    self._modify_inner_econ_metrics(template, case, components)
+    self._modify_inner_result_statistics(template, case, components)
     self._modify_inner_optimization_settings(template, case)
     self._modify_inner_data_handling(template, case)
     if case.debug['enabled']:
@@ -1225,7 +1249,7 @@ class Template(TemplateBase, Base):
         if 'mean' != subnode.attrib['prefix']:
           subnode.attrib['prefix'] = 'mean'
 
-  def _modify_inner_econ_metrics(self, template, case):
+  def _modify_inner_econ_metrics(self, template, case, components):
     """
       Modifies template to include economic metrics
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
@@ -1234,6 +1258,12 @@ class Template(TemplateBase, Base):
     """
     # get all economic metrics intended for use in TEAL and reported back
     econ_metrics = case.get_econ_metrics(nametype='output')
+    tot_act_vars = []
+    for component in components:
+      for tracker in component.get_tracking_vars():
+        for resource in component.get_resources():
+          tot_act_var = "TotalActivity__" + component.name + "__" + tracker + "__"+ resource
+          tot_act_vars.append(tot_act_var)
     # handle VariableGroups and data objects
     var_groups = template.find('VariableGroups')
     data_objs = template.find('DataObjects')
@@ -1245,12 +1275,12 @@ class Template(TemplateBase, Base):
     arma_metrics = data_objs.find(".//PointSet[@name='arma_metrics']")
     arma_metrics_out = arma_metrics.find("Output")
     # update fields with econ metric names
-    for em in econ_metrics:
+    for em in econ_metrics + tot_act_vars:
       self._updateCommaSeperatedList(dispatch_out, em)
       self._updateCommaSeperatedList(arma_samp_out, em)
       self._updateCommaSeperatedList(arma_metrics_out, em)
 
-  def _modify_inner_result_statistics(self, template, case):
+  def _modify_inner_result_statistics(self, template, case, components):
     """
       Modifies template to include result statistics
       @ In, template, xml.etree.ElementTree.Element, root of XML to modify
@@ -1263,18 +1293,30 @@ class Template(TemplateBase, Base):
     group_final_return = var_groups.find(".//Group[@name='GRO_final_return']")
     # add required defaults
     econ_metrics = case.get_econ_metrics(nametype='output')
-    has_mult_metrics = len(econ_metrics) > 1
+
     # loop through all economic metrics (e.g., NPV, IRR) and apply required defaults to each
     default_stats_prefixes = self._get_stats_metrics_prefixes(case, DEFAULT_STATS_NAMES)
     default_stats = [self.namingTemplates['metric_name'].format(stats=sp, econ=em) \
                      for em in econ_metrics for sp in default_stats_prefixes]
-    for stat in default_stats:
+
+    # total activity statistics
+    default_stats_tot_act = []
+    for sp in default_stats_prefixes:
+      for component in components:
+        for tracker in component.get_tracking_vars():
+          for resource in component.get_resources():
+            default_stats_tot_activity = self.namingTemplates['tot_activity'].format(stats=sp, component=component.name, tracker=tracker, resource=resource)
+            default_stats_tot_act.append(default_stats_tot_activity)
+
+    has_mult_metrics = len(econ_metrics + default_stats_tot_act) > 1
+
+    for stat in default_stats + default_stats_tot_act:
       self._updateCommaSeperatedList(group_final_return, stat)
     # make sure user provided statistics beyond defaults get there
     if any(stat not in DEFAULT_STATS_NAMES for stat in case.get_result_statistics()):
-      stats_list = self._build_result_statistic_names(case) #NOTE: this loops through metrics
+      stats_list = self._build_result_statistic_names(case, components) #NOTE: this loops through metrics
       for stat_name in stats_list:
-        if stat_name not in default_stats:
+        if stat_name not in default_stats + default_stats_tot_act:
           self._updateCommaSeperatedList(group_final_return, stat_name, organize_economics=has_mult_metrics)
     # sweep mode has default variable names
     elif case.get_mode() == 'sweep':
@@ -1282,8 +1324,33 @@ class Template(TemplateBase, Base):
       sweep_stats_prefixes = self._get_stats_metrics_prefixes(case, DEFAULT_STATS_NAMES+SWEEP_DEFAULT_STATS_NAMES)
       sweep_default = [self.namingTemplates['metric_name'].format(stats=sp, econ=em) \
                        for em in econ_metrics for sp in sweep_stats_prefixes]
-      for sweep_name in sweep_default:
-        if sweep_name not in default_stats:
+
+      sweep_stats_tot_act = [self.namingTemplates['tot_activity'].format(stats=sp, component=component.name, tracker=tracker, resource=resource) for component in components for tracker in component.get_tracking_vars() for resource in component.get_resources() for sp in sweep_stats_prefixes]
+
+
+      # total activity statistics
+      sweep_stats_tot_act = []
+      for sp in sweep_stats_prefixes:
+        for component in components:
+          for tracker in component.get_tracking_vars():
+            for resource in component.get_resources():
+              sweep_stats_tot_activity = self.namingTemplates['tot_activity'].format(stats=sp, component=component.name, tracker=tracker, resource=resource)
+              sweep_stats_tot_act.append(sweep_stats_tot_activity)
+
+
+
+
+
+
+
+
+
+
+
+
+
+      for sweep_name in sweep_default + sweep_stats_tot_act:
+        if sweep_name not in default_stats + default_stats_tot_act:
           self._updateCommaSeperatedList(group_final_return, sweep_name, organize_economics=has_mult_metrics)
     # opt mode uses optimization variable if no other stats are given, this is handled below
     if (case.get_mode == 'opt') and (case.get_optimization_settings() is not None):
@@ -1296,11 +1363,21 @@ class Template(TemplateBase, Base):
     pp_node = template.find('Models').find(".//PostProcessor[@name='statistics']")
     # add default statistics
     result_statistics = case.get_result_statistics() # list of stats beyond default
-    for em in econ_metrics:
+    tot_act_vars = []
+    for component in components:
+      for tracker in component.get_tracking_vars():
+        for resource in component.get_resources():
+          tot_act_var = "TotalActivity"+ "__" +component.name + "__" + tracker + "__" + resource
+          tot_act_vars.append(tot_act_var)
+    for var in tot_act_vars:
+      for stat, pref in zip(DEFAULT_STATS_NAMES, default_stats_prefixes):
+        pp_node.append(xmlUtils.newNode(stat, text=var, attrib={'prefix': pref}))
+
+    for em in econ_metrics + tot_act_vars:
       for stat, pref in zip(DEFAULT_STATS_NAMES, default_stats_prefixes):
         pp_node.append(xmlUtils.newNode(stat, text=em, attrib={'prefix': pref}))
       # add any user supplied statistics beyond defaults
-      if any(stat not in DEFAULT_STATS_NAMES for stat in result_statistics):
+      if any(stat not in DEFAULT_STATS_NAMES + default_stats_tot_act for stat in result_statistics):
         for raven_metric_name in result_statistics:
           if raven_metric_name not in DEFAULT_STATS_NAMES:
             prefix = self._get_stats_metrics_prefixes(case, [raven_metric_name], use_extra=False)[0]
@@ -1314,6 +1391,7 @@ class Template(TemplateBase, Base):
                                                   attrib={'prefix': prefix,
                                                           'percent': p}))
               else:
+
                 pp_node.append(xmlUtils.newNode(raven_metric_name, text=em,
                                                 attrib={'prefix': prefix,
                                                         'percent': percent}))
@@ -1321,22 +1399,33 @@ class Template(TemplateBase, Base):
               threshold = result_statistics[raven_metric_name]
               if isinstance(threshold, list):
                 for t in threshold:
-                  pp_node.append(xmlUtils.newNode(raven_metric_name, text=em,
+                  if not em.startswith("TotalActivity"):
+                    pp_node.append(xmlUtils.newNode(raven_metric_name, text=em,
                                                   attrib={'prefix': prefix,
                                                           'threshold': t}))
               else:
-                pp_node.append(xmlUtils.newNode(raven_metric_name, text=em,
+                if not em.startswith("TotalActivity"):
+                  pp_node.append(xmlUtils.newNode(raven_metric_name, text=em,
                                                 attrib={'prefix': prefix,
                                                         'threshold': threshold}))
             else:
-              pp_node.append(xmlUtils.newNode(raven_metric_name, text=em,
+              if not em.startswith("TotalActivity"):
+                pp_node.append(xmlUtils.newNode(raven_metric_name, text=em,
                                               attrib={'prefix': prefix}))
+              if em.startswith("TotalActivity"):
+                if prefix not in FINANCIAL_PREFIXES:
+                  pp_node.append(xmlUtils.newNode(raven_metric_name, text=em,
+                                              attrib={'prefix': prefix}))
+
       # if not specified, "sweep" mode has additional defaults
       elif case.get_mode() == 'sweep':
         sweep_stats_prefixes = self._get_stats_metrics_prefixes(case, SWEEP_DEFAULT_STATS_NAMES, use_extra=False)
         for em in econ_metrics:
           for stat, pref in zip(SWEEP_DEFAULT_STATS_NAMES, sweep_stats_prefixes):
             pp_node.append(xmlUtils.newNode(stat, text=em, attrib={'prefix': pref}))
+        for var in tot_act_vars:
+          for stat, pref in zip(SWEEP_DEFAULT_STATS_NAMES, sweep_stats_prefixes):
+            pp_node.append(xmlUtils.newNode(stat, text=var, attrib={'prefix': pref}))
     # if not specified, "opt" mode is handled in _modify_inner_optimization_settings
 
   def _modify_inner_data_handling(self, template, case):
@@ -1554,12 +1643,27 @@ class Template(TemplateBase, Base):
     if organize_economics:
       # all entries with full name and with JUST the economic metric (e.g., NPV, IRR) respectively
       entries = list(x.strip() for x in node.text.split(',')) if node.text is not None else []
-      metric_entries = list(x.split('_')[-1] for x in entries)
+      #metric_entries = list(x.split('_')[-1] for x in entries)
+      metric_entries = []
+      for x in entries:
+        if x.startswith("perc_") or x.startswith("glr_") or x.startswith("sortino_") or x.startswith("es_") or x.startswith("VaR_"):
+           metric_entry = x.split("_", 2)[2]
+        else:
+          metric_entry = x.split("_", 1)[1]
+        metric_entries.append(metric_entry)
+
       # getting the economic metric name, the index where it is first found and counts
       metric, ind_start, ind_len = np.unique(metric_entries, return_index=True, return_counts=True)
       # index map (e.g., {'NPV':(0,3), }) to get first instance of metric in list + # of times found
       metric_ind_map = {a:(b,c) for a,(b,c) in zip(metric, zip(ind_start, ind_len))}
-      first, length = metric_ind_map[new.split('_')[-1]]
+
+      if new.startswith("perc_") or new.startswith("sortino_") or new.startswith("es_") or new.startswith("glr_") or new.startswith("VaR_"):
+        first, length = metric_ind_map[new.split("_", 2)[2]]
+      else:
+        first, length = metric_ind_map[new.split("_", 1)[1]]
+
+
+      #first, length = metric_ind_map[new.split('_')[-1]]
       # finding appropriate relative location within entries list to add new entry
       if first == 0:
         before = entries[length]
@@ -1612,7 +1716,7 @@ class Template(TemplateBase, Base):
     return opt_out_metric_name
 
   @staticmethod
-  def _build_result_statistic_names(case):
+  def _build_result_statistic_names(case, components):
     """
       Constructs the names of the statistics requested for output
       @ In, case, HERON Case, defining Case instance
@@ -1622,7 +1726,14 @@ class Template(TemplateBase, Base):
     econ_metrics = case.get_econ_metrics(nametype='output')
     result_statistics = case.get_result_statistics()
 
-    for e_metric in econ_metrics:
+    tot_act_vars = []
+    for component in components:
+      for tracker in component.get_tracking_vars():
+        for resource in component.get_resources():
+          tot_act_var = "TotalActivity__" + component.name + "__" + tracker + "__"+ resource
+          tot_act_vars.append(tot_act_var)
+
+    for e_metric in econ_metrics+tot_act_vars:
       for name in result_statistics:
         out_name = case.stats_metrics_meta[name]['prefix']
         # do I need to add percent or threshold?
@@ -1636,7 +1747,12 @@ class Template(TemplateBase, Base):
         else:
           out_name += '_'+e_metric
           names.append(out_name)
-
+    removed_names = [] # removed some names because it does not make sense to calculate financial metrics of total activity
+    for name in names:
+      if "TotalActivity" in name:
+        if name.split("_")[0] in FINANCIAL_PREFIXES:
+          removed_names.append(name)
+    names = list(set(names) - set(removed_names))
     return names
 
   @staticmethod

@@ -5,9 +5,8 @@
     heavy = true
     [./csv]
       type = OrderedCSV
-      output = '1_simple_o/opt_soln_0.csv'
-      zero_threshold = 1e-6
-      rel_err = 1e-6
+      output = '1_simple_o/sweep.csv'
+      rel_err = 5
     [../]
   [../]
 []

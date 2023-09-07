@@ -44,7 +44,7 @@
 
   <Models>
     <Code name="raven" subType="RAVEN">
-      <executable>C:\Users\sotogj\projects\raven\raven_framework</executable>
+      <executable></executable>
       <outputDatabase>disp_results</outputDatabase>
       <conversion>
         <input source="../write_inner.py" />

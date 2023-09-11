@@ -44,11 +44,11 @@
   [./LevelizedStorage]
     type = HeronIntegration
     input = LC_Storage/heron_input__LC_Storage.xml
-	needed_executable = 'ipopt'
+	  needed_executable = 'ipopt'
 	# prereq = SineArma
     [./csv]
       type = OrderedCSV
-	  output = 'LC_Storage/LC_Storage_o/sweep.csv'
+	    output = 'LC_Storage/LC_Storage_o/sweep.csv'
       gold_files = 'LC_Storage_o/sweep.csv'
       zero_threshold = 1e-6
       rel_err = 1e-6
@@ -76,8 +76,8 @@
 	# prereq = SineArma
     [./csv]
       type = OrderedCSV
-	  output = 'Opt_LC_Price/Opt_LC_Price_o/sweep.csv'
-      gold_files = 'Opt_LC_Price_o/sweep.csv'
+	  output = 'Opt_LC_Price/Opt_LC_Price_o/opt_soln_0.csv'
+      gold_files = 'Opt_LC_Price_o/opt_soln_0.csv'
       zero_threshold = 1e-6
       rel_err = 1e-6
     [../]

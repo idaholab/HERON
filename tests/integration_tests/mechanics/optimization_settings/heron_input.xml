@@ -18,10 +18,10 @@
     <optimization_settings>
       <convergence>
         <gradient>1e-4</gradient>
-        <objective>1e-8</objective>
+        <objective>1e-6</objective>
       </convergence>
     </optimization_settings>
-    <num_arma_samples>3</num_arma_samples>
+    <num_arma_samples>2</num_arma_samples>
     <time_discretization>
       <time_variable>Time</time_variable>
       <end_time>2</end_time>
@@ -41,7 +41,7 @@
       <opt_metric>NPV</opt_metric>
       <stats_metric>valueAtRisk</stats_metric>
       <type>min</type>
-      <persistence>5</persistence>
+      <persistence>4</persistence>
     </optimization_settings>
     <data_handling>
       <inner_to_outer>csv</inner_to_outer>
@@ -52,7 +52,7 @@
     <Component name="steamer">
       <produces resource="steam" dispatch="fixed">
         <capacity resource="steam">
-          <opt_bounds>1, 10</opt_bounds>
+          <opt_bounds>9, 11</opt_bounds>
         </capacity>
       </produces>
       <economics>

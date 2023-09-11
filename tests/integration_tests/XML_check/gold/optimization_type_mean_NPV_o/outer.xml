@@ -12,7 +12,7 @@
       <Input class="Files" type="raven">inner_workflow</Input>
       <Input class="Files" type="">heron_lib</Input>
       <Model class="Models" type="Code">raven</Model>
-      <Optimizer class="Optimizers" type="FiniteDifference">cap_opt</Optimizer>
+      <Optimizer class="Optimizers" type="GradientDescent">cap_opt</Optimizer>
       <Output class="DataObjects" type="PointSet">opt_eval</Output>
       <SolutionExport class="DataObjects" type="PointSet">opt_soln</SolutionExport>
       <Output class="OutStreams" type="Print">opt_soln</Output>
@@ -26,7 +26,7 @@
 
   <VariableGroups>
     <Group name="GRO_capacities">steamer_capacity, generator_capacity, electr_market_capacity, electr_flex_capacity</Group>
-    <Group name="GRO_outer_results">mean_NPV, std_NPV, med_NPV</Group>
+    <Group name="GRO_outer_results">mean_NPV, std_NPV, med_NPV, mean_TotalActivity__steamer__production__steam, mean_TotalActivity__generator__production__electricity, mean_TotalActivity__generator__production__steam, mean_TotalActivity__electr_market__production__electricity, mean_TotalActivity__electr_flex__production__electricity, std_TotalActivity__steamer__production__steam, std_TotalActivity__generator__production__electricity, std_TotalActivity__generator__production__steam, std_TotalActivity__electr_market__production__electricity, std_TotalActivity__electr_flex__production__electricity, med_TotalActivity__steamer__production__steam, med_TotalActivity__generator__production__electricity, med_TotalActivity__generator__production__steam, med_TotalActivity__electr_market__production__electricity, med_TotalActivity__electr_flex__production__electricity</Group>
     <Group name="GRO_outer_debug_dispatch" />
     <Group name="GRO_outer_debug_synthetics" />
     <Group name="GRO_outer_debug_cashflows" />

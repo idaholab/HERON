@@ -11,7 +11,7 @@
       <Input class="Files" type="raven">inner_workflow</Input>
       <Input class="Files" type="">heron_lib</Input>
       <Model class="Models" type="Code">raven</Model>
-      <Optimizer class="Optimizers" type="FiniteDifference">cap_opt</Optimizer>
+      <Optimizer class="Optimizers" type="GradientDescent">cap_opt</Optimizer>
       <Output class="DataObjects" type="PointSet">opt_eval</Output>
       <SolutionExport class="DataObjects" type="PointSet">opt_soln</SolutionExport>
       <Output class="OutStreams" type="Print">opt_soln</Output>
@@ -25,7 +25,7 @@
 
   <VariableGroups>
     <Group name="GRO_capacities">source_capacity, sink_capacity, import_capacity</Group>
-    <Group name="GRO_outer_results">mean_LC_Mult, std_LC_Mult, med_LC_Mult</Group>
+    <Group name="GRO_outer_results">mean_LC_Mult, std_LC_Mult, med_LC_Mult, mean_TotalActivity__source__production__a, mean_TotalActivity__sink__production__a, mean_TotalActivity__import__production__a, std_TotalActivity__source__production__a, std_TotalActivity__sink__production__a, std_TotalActivity__import__production__a, med_TotalActivity__source__production__a, med_TotalActivity__sink__production__a, med_TotalActivity__import__production__a</Group>
     <Group name="GRO_outer_debug_dispatch" />
     <Group name="GRO_outer_debug_synthetics" />
     <Group name="GRO_outer_debug_cashflows" />

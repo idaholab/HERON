@@ -1,0 +1,209 @@
+<HERON>
+  <TestInfo>
+    <name>IES</name>
+    <author>dylanjm</author>
+    <created>2023-03-07</created>
+    <description>
+      Simple workshop case detailing a full IES with secondary resource market and storage components.
+    </description>
+    <classesTested>HERON</classesTested>
+  </TestInfo>
+
+  <Case name="IES">
+    <mode>sweep</mode>
+    <!-- Uncomment the <debug> node to turn on debug mode! -->
+    <!-- <debug>
+       <inner_samples>2</inner_samples>
+       <macro_steps>1</macro_steps>
+       <dispatch_plot>True</dispatch_plot>
+     </debug> -->
+    <num_arma_samples>25</num_arma_samples> <!-- Try a different value -->
+    <time_discretization>
+      <year_variable>YEAR</year_variable>
+      <time_variable>HOUR</time_variable>
+      <end_time>23</end_time>
+      <num_steps>24</num_steps>
+    </time_discretization>
+    <economics>
+      <ProjectTime>3</ProjectTime>
+      <DiscountRate>0.08</DiscountRate> <!-- Try a different value -->
+      <tax>0.3</tax>                    <!-- Try a different value -->
+      <inflation>0.06</inflation>       <!-- Try a different value -->
+    </economics>
+    <dispatcher>
+      <pyomo/>
+    </dispatcher>
+  </Case>
+
+  <Components>
+    <Component name="npp">
+      <produces resource="steam" dispatch="independent">
+        <capacity resource="steam">
+          <sweep_values debug_value="25">25, 50</sweep_values> <!-- MW -->
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>5</lifetime>
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <variable>npp_capacity</variable>
+          </driver>
+          <reference_price>
+            <fixed_value>-12_800_000.00</fixed_value> <!-- Try a different value -->
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="turbine">
+      <produces resource="electricity" dispatch="independent">
+        <consumes>steam</consumes>
+        <capacity resource="electricity">
+          <fixed_value>40</fixed_value> <!-- MW -->
+        </capacity>
+        <transfer>
+          <linear>
+            <rate resource="steam">-1</rate>
+            <rate resource="electricity">0.33</rate>
+          </linear>
+        </transfer>
+      </produces>
+      <economics>
+        <lifetime>5</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="wind">
+      <produces resource="electricity" dispatch="independent">
+        <capacity resource="electricity">
+          <sweep_values debug_value="10">5, 10</sweep_values>
+        </capacity>
+        <capacity_factor>
+          <ARMA variable="WIND">synth</ARMA>
+        </capacity_factor>
+      </produces>
+      <economics>
+        <lifetime>5</lifetime>
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <variable>wind_capacity</variable>
+          </driver>
+          <reference_price>
+            <fixed_value>-1_300_000.00</fixed_value> <!-- Try a different value -->
+          </reference_price>
+        </CashFlow>
+        <CashFlow name="fixed_OM" type="repeating" period="year" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <variable>wind_capacity</variable>
+          </driver>
+          <reference_price>
+            <fixed_value>-15_000.00</fixed_value> <!-- Try a different value -->
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="HTSE">
+      <produces resource="H2" dispatch="independent">
+        <capacity resource="H2">
+          <sweep_values debug_value="10">10, 15</sweep_values> <!-- MW -->
+        </capacity>
+        <consumes>electricity,steam</consumes>
+        <transfer>
+          <linear>
+            <rate resource="steam">-0.17</rate>
+            <rate resource="electricity">-1</rate>
+            <rate resource="H2">29.31</rate>
+          </linear>
+        </transfer>
+      </produces>
+      <economics>
+        <lifetime>5</lifetime>
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <variable>HTSE_capacity</variable>
+          </driver>
+          <reference_price>
+            <fixed_value>-2_840_000.00</fixed_value> <!-- Try a different value -->
+          </reference_price>
+        </CashFlow>
+        <CashFlow name="fixed_OM" type="repeating" period="year" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <variable>HTSE_capacity</variable>
+          </driver>
+          <reference_price>
+            <fixed_value>-197_000.00</fixed_value> <!-- Try a different value -->
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="H2_storage">
+      <stores resource="H2" dispatch="independent">
+        <capacity resource="H2">
+          <sweep_values debug_value="25">0, 25, 50</sweep_values>
+        </capacity>
+        <initial_stored>
+          <fixed_value>0.2</fixed_value> <!-- Try a different value -->
+        </initial_stored>
+      </stores>
+      <economics>
+        <lifetime>5</lifetime>
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <variable>H2_storage_capacity</variable>
+          </driver>
+          <reference_price>
+            <fixed_value>-1_200_000.00</fixed_value> <!-- Try a different value -->
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="grid">
+      <demands resource="electricity" dispatch="independent">
+        <capacity>
+          <ARMA variable="TOTALLOAD">synth</ARMA>
+          <multiplier>-1</multiplier>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>5</lifetime>
+        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <fixed_value>100.00</fixed_value> <!-- Try a different value -->
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="H2_market">
+      <demands resource="H2" dispatch="fixed">
+        <capacity>
+          <fixed_value>-10</fixed_value>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>5</lifetime>
+        <CashFlow name="H2_sales" type="repeating" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <activity>H2</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <fixed_value>8.00</fixed_value> <!-- Try a different value -->
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+  </Components>
+
+  <DataGenerators>
+    <ARMA name='synth' variable="TOTALLOAD,WIND">%HERON%/tests/integration_tests/ARMA/NYISO/nyiso_arma_2yr.pk</ARMA>
+  </DataGenerators>
+
+</HERON>

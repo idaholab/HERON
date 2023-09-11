@@ -29,9 +29,7 @@
       <verbosity>50</verbosity>
     </economics>
     <dispatcher>
-      <pyomo>
-        <solver>ipopt</solver> <!-- LEVELIZED COST ONLY WORKS WITH IPOPT -->
-      </pyomo>
+      <pyomo/>
     </dispatcher>
     <optimization_settings>
       <opt_metric target="0">LC</opt_metric>
@@ -58,8 +56,7 @@
             <variable>source_capacity</variable>
           </driver>
           <reference_price>
-            <fixed_value>1000.0</fixed_value>
-            <multiplier>-1</multiplier>
+            <levelized_cost/>  <!-- FINDING LEVELIZED COST HERE! -->
           </reference_price>
         </CashFlow>
         <CashFlow name="FOM" type="repeating" period='year' taxable="False" inflation="none" mult_target="False">
@@ -96,7 +93,7 @@
             <multiplier>-1</multiplier>
           </driver>
           <reference_price>
-            <levelized_cost/>  <!-- FINDING LEVELIZED COST HERE! -->
+            <fixed_value>0.5</fixed_value>
           </reference_price>
         </CashFlow>
       </economics>

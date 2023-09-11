@@ -29,7 +29,7 @@
  [./XML_check_opt_type_mean_LC]
   type = HeronIntegration
   kind = heron_only
-  input = optimization_type_mean_LC/heron_input__opt_LC_Price.xml
+  input = optimization_type_mean_LC/heron_input__opt_LC_Capex.xml
   [./xml_check]
     type = XML
     unordered = true

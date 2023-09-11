@@ -37,29 +37,29 @@
 
   <Components>
     <Component name="npp">
-      <produces resource="steam" dispatch="independent">
-        <capacity resource="steam">
+      <produces resource="<!--here--> " dispatch="independent">
+        <capacity resource="electricity">
           <sweep_values debug_value="25">25, 50</sweep_values> <!-- MW -->
         </capacity>
       </produces>
       <economics>
         <lifetime>5</lifetime>
-        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+        <CashFlow name="<!--here--> " type="one-time" taxable="True" inflation="none" mult_target="False">
           <driver>
-            <variable>npp_capacity</variable>
+            <variable> <!--here--> </variable>
           </driver>
           <reference_price>
-            <fixed_value>-12_800_000.00</fixed_value> <!-- Try a different value -->
+            <fixed_value><!--here--> </fixed_value> <!-- Try a different value -->
           </reference_price>
         </CashFlow>
       </economics>
     </Component>
 
     <Component name="turbine">
-      <produces resource="electricity" dispatch="independent">
-        <consumes>steam</consumes>
+      <produces resource="<!--here--> " dispatch="independent">
+        <consumes><!--here--> </consumes>
         <capacity resource="electricity">
-          <fixed_value>40</fixed_value> <!-- MW -->
+          <fixed_value><!--here--> </fixed_value> <!-- MW -->
         </capacity>
         <transfer>
           <linear>
@@ -89,26 +89,26 @@
             <variable>wind_capacity</variable>
           </driver>
           <reference_price>
-            <fixed_value>-1_300_000.00</fixed_value> <!-- Try a different value -->
+            <fixed_value><!--here--> </fixed_value> <!-- Try a different value -->
           </reference_price>
         </CashFlow>
         <CashFlow name="fixed_OM" type="repeating" period="year" taxable="True" inflation="none" mult_target="False">
           <driver>
-            <variable>wind_capacity</variable>
+            <variable><!--here--> </variable>
           </driver>
           <reference_price>
-            <fixed_value>-15_000.00</fixed_value> <!-- Try a different value -->
+            <fixed_value><!--here--> </fixed_value> <!-- Try a different value -->
           </reference_price>
         </CashFlow>
       </economics>
     </Component>
 
     <Component name="HTSE">
-      <produces resource="H2" dispatch="independent">
+      <produces resource= "<!--here-->"  dispatch="independent">
         <capacity resource="H2">
           <sweep_values debug_value="10">10, 15</sweep_values> <!-- MW -->
         </capacity>
-        <consumes>electricity,steam</consumes>
+        <consumes><!--here--> </consumes>
         <transfer>
           <linear>
             <rate resource="steam">-0.17</rate>
@@ -124,7 +124,7 @@
             <variable>HTSE_capacity</variable>
           </driver>
           <reference_price>
-            <fixed_value>-2_840_000.00</fixed_value> <!-- Try a different value -->
+            <fixed_value><!--here--> </fixed_value> <!-- Try a different value -->
           </reference_price>
         </CashFlow>
         <CashFlow name="fixed_OM" type="repeating" period="year" taxable="True" inflation="none" mult_target="False">
@@ -132,15 +132,15 @@
             <variable>HTSE_capacity</variable>
           </driver>
           <reference_price>
-            <fixed_value>-197_000.00</fixed_value> <!-- Try a different value -->
+            <fixed_value><!--here--> </fixed_value> <!-- Try a different value -->
           </reference_price>
         </CashFlow>
       </economics>
     </Component>
 
     <Component name="H2_storage">
-      <stores resource="H2" dispatch="independent">
-        <capacity resource="H2">
+      <stores resource="<!--here--> " dispatch="independent">
+        <capacity resource="<!--here--> ">
           <sweep_values debug_value="25">0, 25, 50</sweep_values>
         </capacity>
         <initial_stored>
@@ -151,17 +151,17 @@
         <lifetime>5</lifetime>
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
           <driver>
-            <variable>H2_storage_capacity</variable>
+            <variable><!--here--> </variable>
           </driver>
           <reference_price>
-            <fixed_value>-1_200_000.00</fixed_value> <!-- Try a different value -->
+            <fixed_value><!--here--> </fixed_value> <!-- Try a different value -->
           </reference_price>
         </CashFlow>
       </economics>
     </Component>
 
     <Component name="grid">
-      <demands resource="electricity" dispatch="independent">
+      <demands resource="<!--here--> " dispatch="independent">
         <capacity>
           <ARMA variable="TOTALLOAD">synth</ARMA>
           <multiplier>-1</multiplier>
@@ -175,7 +175,7 @@
             <multiplier>-1</multiplier>
           </driver>
           <reference_price>
-            <fixed_value>100.00</fixed_value> <!-- Try a different value -->
+            <fixed_value><!--here--> </fixed_value> <!-- Try a different value -->
           </reference_price>
         </CashFlow>
       </economics>

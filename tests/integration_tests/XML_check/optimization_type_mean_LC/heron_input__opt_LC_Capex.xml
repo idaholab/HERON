@@ -1,0 +1,126 @@
+<HERON>
+  <TestInfo>
+    <name>optimization_type_test_mean_LC</name>
+    <author>sotogj</author>
+    <created>2023-08-17</created>
+    <description>
+      Tests to ensure that HERON writes outer XML scripts correctly if user omits certain inputs
+      in the `optimization_settings` node. HERON input script has been modified from
+      `tests/integration_tests/mechanics/optimization_settings`. This test ensures that if the
+      optimization metric (levelized cost) and statistic metric (expectedValue) are both specified
+      but the type is not, then HERON selects the correct type (min).
+      </description>
+    <classesTested>HERON</classesTested>
+  </TestInfo>
+
+  <Case name="Opt_LC_Price">
+    <mode>opt</mode>
+    <num_arma_samples>3</num_arma_samples>
+    <time_discretization>
+      <time_variable>Time</time_variable>
+      <end_time>2</end_time>
+      <num_steps>21</num_steps>
+    </time_discretization>
+    <economics>
+      <ProjectTime>2</ProjectTime>
+      <DiscountRate>0.08</DiscountRate>
+      <tax>0.25</tax>
+      <inflation>0.00</inflation>
+      <verbosity>50</verbosity>
+    </economics>
+    <dispatcher>
+      <pyomo/>
+    </dispatcher>
+    <optimization_settings>
+      <opt_metric target="0">LC</opt_metric>
+      <stats_metric>expectedValue</stats_metric>
+      <convergence>
+        <gradient>1e-2</gradient>
+        <objective>1e-2</objective>
+      </convergence>
+    </optimization_settings>
+  </Case>
+
+  <Components>
+    <Component name="source">
+      <produces resource="a" dispatch="independent">
+        <capacity resource="a">
+          <opt_bounds>0, 5</opt_bounds>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>30</lifetime>
+        <!-- NOTE THAT "mult_target" PARAMETER IS DEPRECATED, WON'T DO ANYTHING -->
+        <CashFlow name="capex" type="one-time" taxable="False" inflation="none" mult_target="False">
+          <driver>
+            <variable>source_capacity</variable>
+          </driver>
+          <reference_price>
+            <levelized_cost/>  <!-- FINDING LEVELIZED COST HERE! -->
+          </reference_price>
+        </CashFlow>
+        <CashFlow name="FOM" type="repeating" period='year' taxable="False" inflation="none" mult_target="False">
+          <driver>
+            <variable>source_capacity</variable>
+          </driver>
+          <reference_price>
+            <fixed_value>100.0</fixed_value>
+            <multiplier>-1</multiplier>
+          </reference_price>
+        </CashFlow>
+        <CashFlow name="VOM" type="repeating" taxable="True" inflation="none" mult_target="False">
+          <driver>
+            <activity>a</activity>
+          </driver>
+          <reference_price>
+            <fixed_value>-1</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="sink">
+      <demands resource="a" dispatch="independent">
+        <capacity>
+          <fixed_value>-3</fixed_value>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>30</lifetime>
+        <CashFlow name="sales" type="repeating" taxable="False" inflation="none" mult_target="False">
+          <driver>
+            <activity>a</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <fixed_value>0.5</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="import">
+      <produces resource="a" dispatch="independent">
+        <capacity resource="a">
+          <fixed_value>100</fixed_value>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>1</lifetime>
+        <CashFlow name="import" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>a</activity>
+          </driver>
+          <reference_price>
+            <fixed_value>-1e6</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+  </Components>
+
+  <DataGenerators>
+    <ARMA name='flex' variable="Signal">%BASE_WORKING_DIR%/../../../ARMA/Sine/arma.pk</ARMA>
+  </DataGenerators>
+</HERON>

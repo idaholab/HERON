@@ -1,0 +1,42 @@
+[Tests]
+ # testing that if optimization type is not specified, we get the correct type (min or max)
+ [./XML_check_opt_type_mean_NPV]
+  type = HeronIntegration
+  kind = heron_only
+  input = optimization_type_mean_NPV/heron_input.xml
+  [./xml_check]
+    type = XML
+    unordered = true
+    output = optimization_type_mean_NPV/outer.xml
+    gold_files = optimization_type_mean_NPV_o/outer.xml
+    ignored_nodes = Models|Code@name:raven|executable
+  [../]
+ [../]
+
+ [./XML_check_opt_type_VaR_NPV]
+  type = HeronIntegration
+  kind = heron_only
+  input = optimization_type_VaR_NPV/heron_input.xml
+  [./xml_check]
+    type = XML
+    unordered = true
+    output = optimization_type_VaR_NPV/outer.xml
+    gold_files = optimization_type_VaR_NPV_o/outer.xml
+    ignored_nodes = Models|Code@name:raven|executable
+  [../]
+ [../]
+
+ [./XML_check_opt_type_mean_LC]
+  type = HeronIntegration
+  kind = heron_only
+  input = optimization_type_mean_LC/heron_input__opt_LC_Capex.xml
+  [./xml_check]
+    type = XML
+    unordered = true
+    output = optimization_type_mean_LC/outer.xml
+    gold_files = optimization_type_mean_LC_o/outer.xml
+    ignored_nodes = Models|Code@name:raven|executable
+  [../]
+ [../]
+
+[]

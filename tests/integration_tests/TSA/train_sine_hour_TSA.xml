@@ -85,7 +85,6 @@
         <macroParameter>YEAR</macroParameter>
         <Classifier class="Models" type="PostProcessor">classifier</Classifier>
         <subspace divisions="1">Hour</subspace>
-        <evalMode>full</evalMode>
       </Segment>
     </ROM>
     <PostProcessor name="classifier" subType="DataMining">

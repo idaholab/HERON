@@ -311,7 +311,8 @@ class Template(TemplateBase, Base):
     for sp in default_stats_prefixes:
       for component in components:
         for tracker in component.get_tracking_vars():
-          for resource in component.get_resources():
+          resource_list = np.sort(list(component.get_resources()))
+          for resource in resource_list:
             default_stats_tot_activity = self.namingTemplates['tot_activity'].format(stats=sp, component=component.name, tracker=tracker, resource=resource)
             default_stats_tot_act.append(default_stats_tot_activity)
 
@@ -338,9 +339,10 @@ class Template(TemplateBase, Base):
       for sp in sweep_stats_prefixes:
         for component in components:
           for tracker in component.get_tracking_vars():
-            for resource in component.get_resources():
-                sweep_stats_tot_activity = self.namingTemplates['tot_activity'].format(stats=sp, component=component.name, tracker=tracker, resource=resource)
-                sweep_stats_tot_act.append(sweep_stats_tot_activity )
+            resource_list = np.sort(list(component.get_resources()))
+            for resource in resource_list:
+              sweep_stats_tot_activity = self.namingTemplates['tot_activity'].format(stats=sp, component=component.name, tracker=tracker, resource=resource)
+              sweep_stats_tot_act.append(sweep_stats_tot_activity )
 
       for sweep_name in sweep_default + sweep_stats_tot_act:
         if sweep_name not in default_stats + default_stats_tot_act:
@@ -362,7 +364,8 @@ class Template(TemplateBase, Base):
       for component in components:
         name = component.name
         for tracker in component.get_tracking_vars():
-          for resource in component.get_resources():
+          resource_list = np.sort(list(component.get_resources()))
+          for resource in resource_list:
             var_name = self.namingTemplates['dispatch'].format(component=name, tracker=tracker, resource=resource)
             self._updateCommaSeperatedList(group, var_name)
       group = var_groups.find(".//Group[@name='GRO_outer_debug_cashflows']")
@@ -715,7 +718,8 @@ class Template(TemplateBase, Base):
       except KeyError:
         # type was not provided, so use the default value
         opt_metric, _ = case.get_opt_metric()
-        type_node.text = case.economic_metrics_meta[opt_metric]['optimization_default']
+        stats_metric = optimization_settings['stats_metric']['name']
+        type_node.text = case.economic_metrics_meta[opt_metric]['stats_map'][stats_metric]['optimization_default']
 
       # swap out convergence values (only persistence implemented now)
       convergence = opt_node.find('convergence')
@@ -1127,7 +1131,8 @@ class Template(TemplateBase, Base):
         raise NotImplementedError(f'Capacity from "{capacity}" not implemented yet. Component: {cap_name}')
 
       for tracker in component.get_tracking_vars():
-        for resource in component.get_resources():
+        resource_list = np.sort(list(component.get_resources()))
+        for resource in resource_list:
           var_name = self.namingTemplates['dispatch'].format(component=name, tracker=tracker, resource=resource)
           self._updateCommaSeperatedList(groups['init_disp'], var_name)
           self._updateCommaSeperatedList(groups['full_dispatch'], var_name)
@@ -1261,7 +1266,8 @@ class Template(TemplateBase, Base):
     tot_act_vars = []
     for component in components:
       for tracker in component.get_tracking_vars():
-        for resource in component.get_resources():
+        resource_list = np.sort(list(component.get_resources()))
+        for resource in resource_list:
           tot_act_var = "TotalActivity__" + component.name + "__" + tracker + "__"+ resource
           tot_act_vars.append(tot_act_var)
     # handle VariableGroups and data objects
@@ -1304,7 +1310,8 @@ class Template(TemplateBase, Base):
     for sp in default_stats_prefixes:
       for component in components:
         for tracker in component.get_tracking_vars():
-          for resource in component.get_resources():
+          resource_list = np.sort(list(component.get_resources()))
+          for resource in resource_list:
             default_stats_tot_activity = self.namingTemplates['tot_activity'].format(stats=sp, component=component.name, tracker=tracker, resource=resource)
             default_stats_tot_act.append(default_stats_tot_activity)
 
@@ -1325,15 +1332,13 @@ class Template(TemplateBase, Base):
       sweep_default = [self.namingTemplates['metric_name'].format(stats=sp, econ=em) \
                        for em in econ_metrics for sp in sweep_stats_prefixes]
 
-      sweep_stats_tot_act = [self.namingTemplates['tot_activity'].format(stats=sp, component=component.name, tracker=tracker, resource=resource) for component in components for tracker in component.get_tracking_vars() for resource in component.get_resources() for sp in sweep_stats_prefixes]
-
-
       # total activity statistics
       sweep_stats_tot_act = []
       for sp in sweep_stats_prefixes:
         for component in components:
           for tracker in component.get_tracking_vars():
-            for resource in component.get_resources():
+            resource_list = np.sort(list(component.get_resources()))
+            for resource in resource_list:
               sweep_stats_tot_activity = self.namingTemplates['tot_activity'].format(stats=sp, component=component.name, tracker=tracker, resource=resource)
               sweep_stats_tot_act.append(sweep_stats_tot_activity)
 
@@ -1366,7 +1371,8 @@ class Template(TemplateBase, Base):
     tot_act_vars = []
     for component in components:
       for tracker in component.get_tracking_vars():
-        for resource in component.get_resources():
+        resource_list = np.sort(list(component.get_resources()))
+        for resource in resource_list:
           tot_act_var = "TotalActivity"+ "__" +component.name + "__" + tracker + "__" + resource
           tot_act_vars.append(tot_act_var)
     for var in tot_act_vars:
@@ -1729,7 +1735,8 @@ class Template(TemplateBase, Base):
     tot_act_vars = []
     for component in components:
       for tracker in component.get_tracking_vars():
-        for resource in component.get_resources():
+        resource_list = np.sort(list(component.get_resources()))
+        for resource in resource_list:
           tot_act_var = "TotalActivity__" + component.name + "__" + tracker + "__"+ resource
           tot_act_vars.append(tot_act_var)
 

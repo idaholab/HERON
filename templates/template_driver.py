@@ -583,6 +583,23 @@ class Template(TemplateBase, Base):
           if new is not None:
             signals.update(set(new))
         out_plot_signals.text = ', '.join(signals)
+
+        # Add main component color for each resources from user input
+        resources = []
+        main_colors = ['red', 'blue', 'green', 'cyan', 'yellow', 'orange', 'purple', 'pink', 'brown', 'olive']
+        for component in components:
+            for resource in component.get_resources():
+                resources.append(resource)
+        resources = set(resources)
+        i = 0 # color index
+        for resource in resources:
+            if i >= len(main_colors): # loop through the main_colors list if there are more than 10 resources
+                i = 0
+            out_plot_color = ET.SubElement(out_plot, 'component_color')
+            out_plot_color.text = main_colors[i]
+            out_plot_color.attrib['name'] = resource
+            i = i + 1
+
       if case.debug['cashflow_plot']:
         # cashflow plot
         cf_plot = ET.SubElement(OSs, 'Plot', attrib={'name': 'cashflow_plot', 'subType': 'TEAL.CashFlowPlot'})

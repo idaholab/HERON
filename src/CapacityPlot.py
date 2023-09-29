@@ -128,11 +128,11 @@ class CapacityPlot(PlotPlugin):
     fig, ax = plt.subplots()
     # Get accepted results for all iterations
     accepted = [] # Final accepted run
-    zero_capacity = [] # Zero capacity components in the final accepted run    
+    zero_capacity = [] # Zero capacity components in the final accepted run
     labels = []
     zero_labels = ''
     negative_exist = False
-    for r in range(len(self.source)): 
+    for r in range(len(self.source)):
       rlz = self.source.realization(index=r, asDataSet=True, unpackXArray=False)
       accepted.append(rlz['accepted'])
     # Check if there's a final results. If not, get the last accepted run.
@@ -156,7 +156,7 @@ class CapacityPlot(PlotPlugin):
           if data[var] > 0: # if mean_NPV is positive, color it red; otherwise, color it green
             c = 'green'
           else:
-            c = 'red'          
+            c = 'red'
         else:
             if round(data[var],2) == 0: #components optimized to zero capacity
                zero_capacity.append(var)
@@ -193,13 +193,13 @@ class CapacityPlot(PlotPlugin):
               zero_var = zero_var + '\n'
               zero_labels += zero_var
             zero_labels = 'Component optimized to zero capacity:\n' + zero_labels
-        #Text box 
+        #Text box
         props = dict(boxstyle='round', facecolor='white', alpha=0.5)
         if len(plot_data.values()) > 0:
             cmap = plt.get_cmap('Pastel1')(np.arange(len(labels), dtype = int))
             # donut chart and mean NPV value in the center
             ax.pie(plot_data.values(), textprops={'fontsize': 13}, pctdistance=13,labels = labels, labeldistance=1.05, colors = cmap)
-            ax.text(0, 0, mean_txt, fontsize = 15, va = 'center', ha = 'center', color = c)  # mean NPV  
+            ax.text(0, 0, mean_txt, fontsize = 15, va = 'center', ha = 'center', color = c)  # mean NPV
             if negative_exist == True:
                 ax.text(0, -1.3, 'Negative values represent components that only consume\n resources and are still nominally part of the system size.', fontsize = 13, va = 'center', ha = 'center', color = 'grey')
             if len(labels_lt1) > 0:

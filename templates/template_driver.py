@@ -744,7 +744,7 @@ class Template(TemplateBase, Base):
       self._remove_by_name(steps, ['optimize', 'plot'])
     elif case.get_mode() == 'opt':
       self._remove_by_name(steps, ['sweep'])
-      if case.debug['enabled'] == False: 
+      if case.debug['enabled'] == False:
         io_step = steps.find('IOStep')
         io_step.append(self._assemblerNode('Output', 'OutStreams', 'Plot', 'capacity_plot'))
     if case.debug['enabled']:

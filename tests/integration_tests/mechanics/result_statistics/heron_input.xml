@@ -61,7 +61,7 @@
     <Component name="Electric_Grid">
       <demands resource="electricity" dispatch="independent">
         <capacity>
-          <ARMA variable="TOTALLOAD">load</ARMA>
+          <fixed_value>-1e200</fixed_value>
         </capacity>
       </demands>
       <economics>
@@ -72,7 +72,7 @@
             <multiplier>-1</multiplier>
           </driver>
           <reference_price>
-            <fixed_value>1</fixed_value>
+            <ARMA variable="WIND">signal</ARMA>
           </reference_price>
           <reference_driver>
             <fixed_value>1</fixed_value>
@@ -87,7 +87,7 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='load' variable="TOTALLOAD">%BASE_WORKING_DIR%/../../../TSA/NYISO/nyiso_arma_2yr.pk</ARMA>
+    <ARMA name='signal' variable="WIND">%BASE_WORKING_DIR%/../../../TSA/NYISO/nyiso_arma_2yr.pk</ARMA>
   </DataGenerators>
 
 </HERON>

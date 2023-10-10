@@ -12,7 +12,7 @@
 
   <Case name="Sweep_Runs">
     <mode>sweep</mode>
-    <num_arma_samples>3</num_arma_samples>
+    <num_arma_samples>4</num_arma_samples>
     <time_discretization>
       <year_variable>YEAR</year_variable>
       <time_variable>HOUR</time_variable>

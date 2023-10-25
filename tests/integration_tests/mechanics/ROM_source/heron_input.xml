@@ -71,7 +71,7 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='placeholder' variable="Signal">%BASE_WORKING_DIR%/../../../ARMA/Sine/arma.pk</ARMA>
+    <ARMA name='placeholder' variable="Signal">%BASE_WORKING_DIR%/../../../TSA/Sine/arma.pk</ARMA>
     <ROM name="myROM">%BASE_WORKING_DIR%/../../../ROM/linear_rom.pk</ROM>
   </DataGenerators>
 

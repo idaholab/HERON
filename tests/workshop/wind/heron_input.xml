@@ -159,7 +159,7 @@
 
 
   <DataGenerators>
-    <ARMA name='synth' variable="TOTALLOAD,WIND">%HERON%/tests/integration_tests/ARMA/NYISO/nyiso_arma_2yr.pk</ARMA>
+    <ARMA name='synth' variable="TOTALLOAD,WIND">%BASE_WORKING_DIR%/../../../integration_tests/TSA/NYISO/nyiso_arma_2yr.pk</ARMA>
   </DataGenerators>
 
 </HERON>

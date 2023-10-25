@@ -76,6 +76,7 @@
       <pivotParameter>Hour</pivotParameter>
       <P>0</P>
       <Q>0</Q>
+      <Fourier>10</Fourier>
       <Segment grouping="interpolate">
         <macroParameter>YEAR</macroParameter>
         <Classifier class="Models" type="PostProcessor">classifier</Classifier>

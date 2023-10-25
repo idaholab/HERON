@@ -13,7 +13,7 @@
   <Case name="wind_coarse_opt">
     <mode>opt</mode>
     <!-- <mode>sweep</mode> -->
-    <debug/>
+    <!-- <debug/> -->
     <num_arma_samples>20</num_arma_samples>
     <time_discretization>
       <year_variable>YEAR</year_variable>
@@ -171,7 +171,7 @@
 
 
   <DataGenerators>
-    <ARMA name='synth' variable="TOTALLOAD,WIND">%HERON%/tests/integration_tests/ARMA/NYISO/nyiso_arma_2yr.pk</ARMA>
+    <ARMA name='synth' variable="TOTALLOAD,WIND">%BASE_WORKING_DIR%/../../../integration_tests/TSA/NYISO/nyiso_arma_2yr.pk</ARMA>
   </DataGenerators>
 
 </HERON>

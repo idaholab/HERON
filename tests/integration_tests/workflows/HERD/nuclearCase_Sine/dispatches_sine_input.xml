@@ -268,7 +268,7 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='LMP' variable="Signal">%BASE_WORKING_DIR%/../../../../ARMA/Sine/arma.pk</ARMA>
+    <ARMA name='LMP' variable="Signal">%BASE_WORKING_DIR%/../../../../TSA/Sine/arma.pk</ARMA>
   </DataGenerators>
 
 </HERON>

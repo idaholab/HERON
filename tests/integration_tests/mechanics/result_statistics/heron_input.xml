@@ -12,14 +12,15 @@
 
   <Case name="Sweep_Runs">
     <mode>sweep</mode>
-    <num_arma_samples>3</num_arma_samples>
+    <num_arma_samples>4</num_arma_samples>
     <time_discretization>
-      <time_variable>Time</time_variable>
-      <end_time>2</end_time>
-      <num_steps>21</num_steps>
+      <year_variable>YEAR</year_variable>
+      <time_variable>HOUR</time_variable>
+      <end_time>23</end_time>
+      <num_steps>24</num_steps>
     </time_discretization>
     <economics>
-      <ProjectTime>3</ProjectTime>
+      <ProjectTime>2</ProjectTime>
       <DiscountRate>0.08</DiscountRate>
       <tax>0.0</tax>
       <inflation>0.0</inflation>
@@ -71,7 +72,7 @@
             <multiplier>-1</multiplier>
           </driver>
           <reference_price>
-            <ARMA variable="Signal">Speed</ARMA>
+            <ARMA variable="WIND">signal</ARMA>
           </reference_price>
           <reference_driver>
             <fixed_value>1</fixed_value>
@@ -86,8 +87,7 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='Speed' variable="Signal">%BASE_WORKING_DIR%/../../../ARMA/Sine/arma.pk</ARMA>
-    <Function name="transfers">transfers.py</Function>
+    <ARMA name='signal' variable="WIND">%BASE_WORKING_DIR%/../../../TSA/NYISO/nyiso_arma_2yr.pk</ARMA>
   </DataGenerators>
 
 </HERON>

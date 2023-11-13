@@ -3,6 +3,17 @@
 import numpy as np
 import pyomo.environ as pyo
 
+def get_all_resources(components):
+  """
+    Provides a set of all resources used among all components
+    @ In, components, list, HERON component objects
+    @ Out, resources, list, resources used in case
+  """
+  res = set()
+  for comp in components:
+    res.update(comp.get_resources())
+  return res
+
 def get_prod_bounds(m, comp, meta):
   """
     Determines the production limits of the given component

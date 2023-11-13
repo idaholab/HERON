@@ -199,3 +199,46 @@ class NumpyState(DispatchState):
 
     r = self._resources[comp][res]
     self._data[f'{comp.name}_{tracker}'][r, start_idx:end_idx] = values
+
+# DispatchState for Pyomo dispatcher
+class PyomoState(DispatchState):
+  def __init__(self):
+    """
+      Constructor.
+      @ In, None
+      @ Out, None
+    """
+    DispatchState.__init__(self)
+    self._model = None # Pyomo model object
+
+  def initialize(self, components, resources_map, times, model):
+    """
+      Connect information about this State to other objects
+      @ In, components, list, HERON components
+      @ In, resources_map, dict, map of component names to resources used
+      @ In, times, np.array, values of "time" this state represents
+      @ In, model, pyomo.Model, associated model for this state
+      @ Out, None
+    """
+    DispatchState.initialize(self, components, resources_map, times)
+    self._model = model
+
+  def get_activity_indexed(self, comp, activity, r, t, valued=True, **kwargs):
+    """
+      Getter for activity level.
+      @ In, comp, HERON Component, component whose information should be retrieved
+      @ In, activity, str, tracking variable name for activity subset
+      @ In, r, int, index of resource to retrieve (as given by meta[HERON][resource_indexer])
+      @ In, t, int, index of time at which activity should be provided
+      @ In, valued, bool, optional, if True then get float value instead of pyomo expression
+      @ In, kwargs, dict, additional pass-through keyword arguments
+      @ Out, activity, float, amount of resource "res" produced/consumed by "comp" at time "time";
+                              note positive is producting, negative is consuming
+    """
+    prod = getattr(self._model, f'{comp.name}_{activity}')[r, t]
+    if valued:
+      return prod()
+    return prod
+
+  def set_activity_indexed(self, comp, r, t, value, valued=False):
+    raise NotImplementedError

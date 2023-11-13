@@ -4,33 +4,27 @@
 """
   pyomo-based dispatch strategy
 """
-
-import os
-import sys
 import time as time_mod
 import platform
-from itertools import compress
 import pprint
-
 import numpy as np
+import pyutilib.subprocess.GlobalData
+from itertools import compress
+
 import pyomo.environ as pyo
 from pyomo.opt import SolverStatus, TerminationCondition
-
+from pyomo.common.errors import ApplicationError
 from ravenframework.utils import InputData, InputTypes
 
-# allows pyomo to solve on threaded processes
-import pyutilib.subprocess.GlobalData
-pyutilib.subprocess.GlobalData.DEFINE_SIGNAL_HANDLERS_DEFAULT = False
-from pyomo.common.errors import ApplicationError
-
+from . import PyomoRuleLibrary as prl
+from . import putils
 from .Dispatcher import Dispatcher
-from .DispatchState import DispatchState, NumpyState
-try:
-  import _utils as hutils
-except (ModuleNotFoundError, ImportError):
-  sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-  import _utils as hutils
+from .DispatchState import DispatchState, NumpyState, PyomoState
+from .. import _utils as hutils
 
+
+# allows pyomo to solve on threaded processes
+pyutilib.subprocess.GlobalData.DEFINE_SIGNAL_HANDLERS_DEFAULT = False
 # Choose solver; CBC is a great choice unless we're on Windows
 if platform.system() == 'Windows':
   SOLVERS = ['glpk', 'cbc', 'ipopt']
@@ -252,20 +246,51 @@ class Pyomo(Dispatcher):
     return self._solver
 
   ### INTERNAL
-  def dispatch_window(self, time, time_offset,
-                      case, components, sources, resources,
-                      initial_storage, meta):
+  @staticmethod
+  def _calculate_deltas(activity, initial_level):
     """
-      Dispatches one part of a rolling window.
-      @ In, time, np.array, value of time to evaluate
-      @ In, time_offset, int, offset of the time index in the greater history
-      @ In, case, HERON Case, Case that this dispatch is part of
-      @ In, components, list, HERON components available to the dispatch
-      @ In, sources, list, HERON source (placeholders) for signals
-      @ In, resources, list, sorted list of all resources in problem
-      @ In, initial_storage, dict, initial storage levels if any
-      @ In, meta, dict, additional variables passed through
-      @ Out, result, dict, results of window dispatch
+    """
+    deltas = np.zeros(len(activity))
+    deltas[1:] = activity[1:] - activity[:-1]
+    deltas[0] = activity[0] - initial_level
+    return deltas
+
+  def _process_storage_component(self, m, comp, intr, meta):
+    """
+    """
+    activity = intr.get_strategy().evaluate(meta)[0]["level"]
+    self._create_production_param(m, comp, activity, tag="level")
+    dt = m.Times[1] - m.Times[0]
+    rte2 = comp.get_sqrt_RTE()
+    deltas = self._calculate_deltas(activity, intr.get_initial_level(meta))
+    charge = np.where(deltas > 0, -deltas / dt / rte2, 0)
+    discharge = np.where(deltas < 0, -deltas / dt * rte2, 0)
+    self._create_production_param(m, comp, charge, tag="charge")
+    self._create_production_param(m, comp, discharge, tag="discharge")
+
+  def _process_components(self, m, comp, time, initial_storage, meta):
+    """
+    """
+    intr = comp.get_interaction()
+    if intr.is_governed():
+      self._process_governed_component(m, comp, time, intr, meta)
+    elif intr.is_type("Storage"):
+      self._create_storage(m, comp, initial_storage, meta)
+    else:
+      self._create_production(m, comp, meta)
+
+  def _process_governed_component(self, m, comp, time, intr, meta):
+    """
+    """
+    meta["request"] = {"component": comp, "time": time}
+    if intr.is_type("Storage"):
+      self._process_storage_component(m, comp, intr, meta)
+    else:
+      activity = intr.get_strategy().evaluate(meta)[0]['level']
+      self._create_production_param(m, comp, activity)
+      
+  def _build_pyomo_model(self, time, time_offset, case, components, resources, meta):
+    """
     """
     # build the Pyomo model
     # TODO abstract this model as much as possible BEFORE, then concrete initialization per window
@@ -279,7 +304,6 @@ class Pyomo(Dispatcher):
     m.R = pyo.Set(initialize=R)
     m.T = pyo.Set(initialize=T)
     m.Times = time
-    dt = m.Times[1] - m.Times[0] # TODO assumes consistent step sizing
     m.time_offset = time_offset
     m.resource_index_map = meta['HERON']['resource_indexer'] # maps the resource to its index WITHIN APPLICABLE components (sparse matrix)
                                                              #   e.g. component: {resource: local index}, ... etc}
@@ -288,56 +312,44 @@ class Pyomo(Dispatcher):
     m.Components = components
     m.Activity = PyomoState()
     m.Activity.initialize(m.Components, m.resource_index_map, m.Times, m)
+    return m
+  
+  def _populate_pyomo_model(self, model, components, initial_storage, time, resources, meta):
+    """
+    """
     # constraints and variables
     for comp in components:
-      # components using a governing strategy (not opt) are Parameters, not Variables
-      # TODO should this come BEFORE or AFTER each dispatch opt solve?
-      # -> responsive or proactive?
-      intr = comp.get_interaction()
-      if intr.is_governed():
-        meta['request'] = {'component': comp, 'time': time}
-        activity = intr.get_strategy().evaluate(meta)[0]['level']
-        if intr.is_type('Storage'):
-          self._create_production_param(m, comp, activity, tag='level')
-          # set up "activity" rates (change in level over time, plus efficiency)
-          rte2 = comp.get_sqrt_RTE() # square root of the round-trip efficiency
-          L  = len(activity)
-          deltas = np.zeros(L)
-          deltas[1:] = activity[1:] - activity[:-1]
-          deltas[0] = activity[0] - intr.get_initial_level(meta)
-          # rate of charge
-          # change sign, since increasing level means absorbing energy from system
-          # also scale by RTE, since to get level increase you have to over-absorb
-          charge = np.zeros(L)
-          charge_mask = np.where(deltas > 0)
-          charge[charge_mask] = - deltas[charge_mask] / dt / rte2
-          self._create_production_param(m, comp, charge, tag='charge')
-          # rate of discharge
-          # change sign, since decreasing level means emitting energy into system
-          # also scale by RTE, since level decrease yields less to system
-          discharge = np.zeros(L)
-          discharge_mask = np.where(deltas < 0)
-          discharge[discharge_mask] = - deltas[discharge_mask] / dt * rte2
-          self._create_production_param(m, comp, discharge, tag='discharge')
-        else:
-          self._create_production_param(m, comp, activity)
-        continue
-      # NOTE: "fixed" components could hypothetically be treated differently
-      ## however, in order for the "production" variable for components to be treatable as the
-      ## same as other production variables, we create components with limitation
-      ## lowerbound == upperbound == capacity (just for "fixed" dispatch components)
-      if intr.is_type('Storage'):
-        self._create_storage(m, comp, initial_storage, meta)
-      else:
-        self._create_production(m, comp, meta) # variables
-    self._create_conservation(m, resources, initial_storage, meta) # conservation of resources (e.g. production == consumption)
-    self._create_objective(meta, m) # objective
+      self._process_components(model, comp, time, initial_storage, meta)
+    self._create_conservation(model, resources, initial_storage, meta) # conservation of resources (e.g. production == consumption)
+    self._create_objective(meta, model) # objective
+
+  def dispatch_window(self, time, time_offset, case, components, sources, resources, initial_storage, meta):
+    """
+      Dispatches one part of a rolling window.
+      @ In, time, np.array, value of time to evaluate
+      @ In, time_offset, int, offset of the time index in the greater history
+      @ In, case, HERON Case, Case that this dispatch is part of
+      @ In, components, list, HERON components available to the dispatch
+      @ In, sources, list, HERON source (placeholders) for signals
+      @ In, resources, list, sorted list of all resources in problem
+      @ In, initial_storage, dict, initial storage levels if any
+      @ In, meta, dict, additional variables passed through
+      @ Out, result, dict, results of window dispatch
+    """
+    model = self._build_pyomo_model(time, time_offset, case, components, resources, meta)
+    self._populate_pyomo_model(model, components, initial_storage, time, resources, meta)
+    result = self._solve_dispatch(model, meta)
+    return result
+    
+  def _solve_dispatch(self, m, meta):
+    """
+    """
     # start a solution search
     done_and_checked = False
     attempts = 0
     # DEBUGG show variables, bounds
     if self.debug_mode:
-      self._debug_pyomo_print(m)
+      putils.debug_pyomo_print(m)
     while not done_and_checked:
       attempts += 1
       print(f'DEBUGG solve attempt {attempts} ...:')
@@ -350,7 +362,7 @@ class Pyomo(Dispatcher):
         print('DEBUGG ... solve was unsuccessful!')
         print('DEBUGG ... status:', soln.solver.status)
         print('DEBUGG ... termination:', soln.solver.termination_condition)
-        self._debug_pyomo_print(m)
+        putils.debug_pyomo_print(m)
         print('Resource Map:')
         pprint.pprint(m.resource_index_map)
         raise RuntimeError(f"Solve was unsuccessful! Status: {soln.solver.status} Termination: {soln.solver.termination_condition}")
@@ -373,9 +385,9 @@ class Pyomo(Dispatcher):
         raise RuntimeError('Exceeded validation attempt limit!')
     if self.debug_mode:
       soln.write()
-      self._debug_print_soln(m)
+      putils.debug_print_soln(m)
     # return dict of numpy arrays
-    result = self._retrieve_solution(m)
+    result = putils.retrieve_solution(m)
     return result
 
   def check_converged(self, new, old, components):
@@ -437,7 +449,7 @@ class Pyomo(Dispatcher):
     limits[t] = limit
     limit_type = validation['limit_type']
     prod_name = f'{comp.name}_production'
-    rule = lambda mod: self._prod_limit_rule(prod_name, r, limits, limit_type, t, mod)
+    rule = lambda mod: prl.prod_limit_rule(prod_name, r, limits, limit_type, t, mod)
     constr = pyo.Constraint(rule=rule)
     counter = 1
     name_template = f'{comp.name}_{resource}_{t}_vld_limit_constr_{{i}}'
@@ -575,28 +587,23 @@ class Pyomo(Dispatcher):
     else:
       ramp_trackers = None
     # limit production changes when ramping down
-    ramp_rule_down = lambda mod, t: \
-        self._ramp_rule_down(prod_name, r, limit_delta, neg_cap, t, mod,
-                        bins=ramp_trackers)
+    ramp_rule_down = lambda mod, t: prl.ramp_rule_down(prod_name, r, limit_delta, neg_cap, t, mod, bins=ramp_trackers)
     constr = pyo.Constraint(m.T, rule=ramp_rule_down)
     setattr(m, f'{comp.name}_ramp_down_constr', constr)
     # limit production changes when ramping up
-    ramp_rule_up = lambda mod, t: \
-        self._ramp_rule_up(prod_name, r, limit_delta, neg_cap, t, mod,
-                        bins=ramp_trackers)
+    ramp_rule_up = lambda mod, t: prl.ramp_rule_up(prod_name, r, limit_delta, neg_cap, t, mod, bins=ramp_trackers)
     constr = pyo.Constraint(m.T, rule=ramp_rule_up)
     setattr(m, f'{comp.name}_ramp_up_constr', constr)
     # if ramping frequency limit, impose binary constraints
     if comp.ramp_freq:
       # binaries rule, for exclusive choice up/down/steady
-      binaries_rule = lambda mod, t: \
-          self._ramp_freq_bins_rule(down, up, steady, t, mod)
+      binaries_rule = lambda mod, t: prl.ramp_freq_bins_rule(down, up, steady, t, mod)
       constr = pyo.Constraint(m.T, rule=binaries_rule)
       setattr(m, f'{comp.name}_ramp_freq_binaries', constr)
       # limit frequency of ramping
       # TODO calculate "tao" window using ramp freq and dt
       # -> for now, just use the integer for number of windows
-      freq_rule = lambda mod, t: self._ramp_freq_rule(down, up, comp.ramp_freq, t, m)
+      freq_rule = lambda mod, t: prl.ramp_freq_rule(down, up, comp.ramp_freq, t, m)
       constr = pyo.Constraint(m.T, rule=freq_rule)
       setattr(m, f'{comp.name}_ramp_freq_constr', constr)
 
@@ -613,11 +620,11 @@ class Pyomo(Dispatcher):
     r = m.resource_index_map[comp][cap_res] # production index of the governing resource
     caps, mins = self._find_production_limits(m, comp, meta)
     # capacity
-    max_rule = lambda mod, t: self._capacity_rule(prod_name, r, caps, mod, t)
+    max_rule = lambda mod, t: prl.capacity_rule(prod_name, r, caps, mod, t)
     constr = pyo.Constraint(m.T, rule=max_rule)
     setattr(m, f'{comp.name}_{cap_res}_capacity_constr', constr)
     # minimum
-    min_rule = lambda mod, t: self._min_prod_rule(prod_name, r, caps, mins, mod, t)
+    min_rule = lambda mod, t: prl.min_prod_rule(prod_name, r, caps, mins, mod, t)
     constr = pyo.Constraint(m.T, rule=min_rule)
     # set initial conditions
     for t, time in enumerate(m.Times):
@@ -674,12 +681,12 @@ class Pyomo(Dispatcher):
     # TODO this could also take a transfer function from an external Python function assuming
     #    we're careful about how the expression-vs-float gets used
     #    and figure out how to handle multiple ins, multiple outs
-    ratios = self._get_transfer_coeffs(m, comp)
+    ratios = putils.get_transfer_coeffs(m, comp)
     ref_r, ref_name, _ = ratios.pop('__reference', (None, None, None))
     for resource, ratio in ratios.items():
       r = m.resource_index_map[comp][resource]
       rule_name = f'{name}_{resource}_{ref_name}_transfer'
-      rule = lambda mod, t: self._transfer_rule(ratio, r, ref_r, prod_name, mod, t)
+      rule = lambda mod, t: prl.transfer_rule(ratio, r, ref_r, prod_name, mod, t)
       constr = pyo.Constraint(m.T, rule=rule)
       setattr(m, rule_name, constr)
 
@@ -706,13 +713,12 @@ class Pyomo(Dispatcher):
     discharge_name = self._create_production_variable(m, comp, meta, tag='discharge', add_bounds=False, within=pyo.NonNegativeReals)
     # balance level, charge/discharge
     level_rule_name = prefix + '_level_constr'
-    rule = lambda mod, t: self._level_rule(comp, level_name, charge_name, discharge_name,
-                                           initial_storage, r, mod, t)
+    rule = lambda mod, t: prl.level_rule(comp, level_name, charge_name, discharge_name, initial_storage, r, mod, t)
     setattr(m, level_rule_name, pyo.Constraint(m.T, rule=rule))
     # periodic boundary condition for storage level
     if comp.get_interaction().apply_periodic_level:
       periodic_rule_name = prefix + '_level_periodic_constr'
-      rule = lambda mod, t: self._periodic_level_rule(comp, level_name, initial_storage, r, mod, t)
+      rule = lambda mod, t: prl.periodic_level_rule(comp, level_name, initial_storage, r, mod, t)
       setattr(m, periodic_rule_name, pyo.Constraint(m.T, rule=rule))
 
     # (4) a binary variable to track whether we're charging or discharging, to prevent BOTH happening
@@ -730,10 +736,10 @@ class Pyomo(Dispatcher):
       large_eps = 1e8 #0.01 * sys.float_info.max
       # charging constraint: don't charge while discharging (note the sign matters)
       charge_rule_name = prefix + '_charge_constr'
-      rule = lambda mod, t: self._charge_rule(charge_name, bin_name, large_eps, r, mod, t)
+      rule = lambda mod, t: prl.charge_rule(charge_name, bin_name, large_eps, r, mod, t)
       setattr(m, charge_rule_name, pyo.Constraint(m.T, rule=rule))
       discharge_rule_name = prefix + '_discharge_constr'
-      rule = lambda mod, t: self._discharge_rule(discharge_name, bin_name, large_eps, r, mod, t)
+      rule = lambda mod, t: prl.discharge_rule(discharge_name, bin_name, large_eps, r, mod, t)
       setattr(m, discharge_rule_name, pyo.Constraint(m.T, rule=rule))
 
   def _create_conservation(self, m, resources, initial_storage, meta):
@@ -746,7 +752,7 @@ class Pyomo(Dispatcher):
       @ Out, None
     """
     for resource in resources:
-      rule = lambda mod, t: self._conservation_rule(initial_storage, meta, resource, mod, t)
+      rule = lambda mod, t: prl.conservation_rule(resource, mod, t)
       constr = pyo.Constraint(m.T, rule=rule)
       setattr(m, f'{resource}_conservation', constr)
 
@@ -758,500 +764,5 @@ class Pyomo(Dispatcher):
       @ Out, None
     """
     # cashflow eval
-    rule = lambda mod: self._cashflow_rule(meta, mod)
+    rule = lambda mod: prl.cashflow_rule(self._compute_cashflows, meta, mod)
     m.obj = pyo.Objective(rule=rule, sense=pyo.maximize)
-
-  ### UTILITIES for general use
-  def _get_prod_bounds(self, m, comp, meta):
-    """
-      Determines the production limits of the given component
-      @ In, comp, HERON component, component to get bounds of
-      @ In, meta, dict, additional state information
-      @ Out, lower, dict, lower production limit (might be negative for consumption)
-      @ Out, upper, dict, upper production limit (might be 0 for consumption)
-    """
-    raise NotImplementedError
-    cap_res = comp.get_capacity_var()       # name of resource that defines capacity
-    r = m.resource_index_map[comp][cap_res]
-    maxs = []
-    mins = []
-    for t, time in enumerate(m.Times):
-      meta['HERON']['time_index'] = t + m.time_offset
-      cap = comp.get_capacity(meta)[0][cap_res]
-      low = comp.get_minimum(meta)[0][cap_res]
-      maxs.append(cap)
-      if (comp.is_dispatchable() == 'fixed') or (low == cap):
-        low = cap
-        # initialize values to avoid boundary errors
-        var = getattr(m, prod_name)
-        values = var.get_values()
-        for k in values:
-          values[k] = cap
-        var.set_values(values)
-      mins.append(low)
-    maximum = comp.get_capacity(None, None, None, None)[0][cap_res]
-    # TODO minimum!
-    # producing or consuming the defining resource?
-    # -> put these in dictionaries so we can "get" limits or return None
-    if maximum > 0:
-      lower = {r: 0}
-      upper = {r: maximum}
-    else:
-      lower = {r: maximum}
-      upper = {r: 0}
-    return lower, upper
-
-  def _get_transfer_coeffs(self, m, comp):
-    """
-      Obtains transfer function ratios (assuming Linear ValuedParams)
-      Form: 1A + 3B -> 2C + 4D
-      Ratios are calculated with respect to first resource listed, so e.g. B = 3/1 * A
-      TODO I think we can handle general external functions, maybe?
-      @ In, m, pyo.ConcreteModel, associated model
-      @ In, comp, HERON component, component to get coefficients of
-      @ Out, ratios, dict, ratios of transfer function variables
-    """
-    name = comp.name
-    transfer = comp.get_interaction().get_transfer()  # get the transfer ValuedParam, if any
-    if transfer is None:
-      return {}
-    coeffs = transfer.get_coefficients() # linear transfer coefficients, dict as {resource: coeff}, SIGNS MATTER
-    # it's all about ratios -> store as ratio of resource / first resource (arbitrary)
-    first_r = None
-    first_name = None
-    first_coef = None
-    ratios = {}
-    for resource, coef in coeffs.items():
-      r = m.resource_index_map[comp][resource]
-      if first_r is None:
-        # set up nominal resource to compare to
-        first_r = r
-        first_name = resource
-        first_coef = coef
-        ratios['__reference'] = (first_r, first_name, first_coef)
-        continue
-      ratio = coef / first_coef
-      ratios[resource] = ratio
-    return ratios
-
-  def _retrieve_solution(self, m):
-    """
-      Extracts solution from Pyomo optimization
-      @ In, m, pyo.ConcreteModel, associated (solved) model
-      @ Out, result, dict, {comp: {activity: {resource: [production]}} e.g. generator[production][steam]
-    """
-    result = {} # {component: {activity_tag: {resource: production}}}
-    for comp in m.Components:
-      result[comp.name] = {}
-      for tag in comp.get_tracking_vars():
-        tag_values = self._retrieve_value_from_model(m, comp, tag)
-        result[comp.name][tag] = tag_values
-    return result
-
-  def _retrieve_value_from_model(self, m, comp, tag):
-    """
-      Retrieve values of a series from the pyomo model.
-      @ In, m, pyo.ConcreteModel, associated (solved) model
-      @ In, comp, Component, relevant component
-      @ In, tag, str, particular history type to retrieve
-      @ Out, result, dict, {resource: [array], etc}
-    """
-    result = {}
-    prod = getattr(m, f'{comp.name}_{tag}')
-    if isinstance(prod, pyo.Var):
-      kind = 'Var'
-    elif isinstance(prod, pyo.Param):
-      kind = 'Param'
-    for res, comp_r in m.resource_index_map[comp].items():
-      if kind == 'Var':
-        result[res] = np.fromiter((prod[comp_r, t].value for t in m.T), dtype=float, count=len(m.T))
-      elif kind == 'Param':
-        result[res] = np.fromiter((prod[comp_r, t] for t in m.T), dtype=float, count=len(m.T))
-    return result
-
-  ### RULES for lambda function calls
-  # these get called using lambda functions to make Pyomo constraints, vars, objectives, etc
-
-  def _charge_rule(self, charge_name, bin_name, large_eps, r, m, t):
-    """
-      Constructs pyomo don't-charge-while-discharging constraints.
-      For storage units specificially.
-      @ In, charge_name, str, name of charging variable
-      @ In, bin_name, str, name of forcing binary variable
-      @ In, large_eps, float, a large-ish number w.r.t. storage activity
-      @ In, r, int, index of stored resource (is this always 0?)
-      @ In, m, pyo.ConcreteModel, associated model
-      @ In, t, int, time index for capacity rule
-      @ Out, rule, bool, inequality used to limit charge behavior
-    """
-    charge_var = getattr(m, charge_name)
-    bin_var = getattr(m, bin_name)
-    return -charge_var[r, t] <= (1 - bin_var[r, t]) * large_eps
-
-  def _discharge_rule(self, discharge_name, bin_name, large_eps, r, m, t):
-    """
-      Constructs pyomo don't-discharge-while-charging constraints.
-      For storage units specificially.
-      @ In, discharge_name, str, name of discharging variable
-      @ In, bin_name, str, name of forcing binary variable
-      @ In, large_eps, float, a large-ish number w.r.t. storage activity
-      @ In, r, int, index of stored resource (is this always 0?)
-      @ In, m, pyo.ConcreteModel, associated model
-      @ In, t, int, time index for capacity rule
-      @ Out, rule, bool, inequality used to limit discharge behavior
-    """
-    discharge_var = getattr(m, discharge_name)
-    bin_var = getattr(m, bin_name)
-    return discharge_var[r, t] <= bin_var[r, t] * large_eps
-
-  def _level_rule(self, comp, level_name, charge_name, discharge_name, initial_storage, r, m, t):
-    """
-      Constructs pyomo charge-discharge-level balance constraints.
-      For storage units specificially.
-      @ In, comp, Component, storage component of interest
-      @ In, level_name, str, name of level-tracking variable
-      @ In, charge_name, str, name of charging variable
-      @ In, discharge_name, str, name of discharging variable
-      @ In, initial_storage, dict, initial storage levels by component
-      @ In, r, int, index of stored resource (is this always 0?)
-      @ In, m, pyo.ConcreteModel, associated model
-      @ In, t, int, time index for capacity rule
-      @ Out, rule, bool, inequality used to limit level behavior
-    """
-    level_var = getattr(m, level_name)
-    charge_var = getattr(m, charge_name)
-    discharge_var = getattr(m, discharge_name)
-    if t > 0:
-      previous = level_var[r, t-1]
-      dt = m.Times[t] - m.Times[t-1]
-    else:
-      previous = initial_storage[comp]
-      dt = m.Times[1] - m.Times[0]
-    rte2 = comp.get_sqrt_RTE() # square root of the round-trip efficiency
-    production = - rte2 * charge_var[r, t] - discharge_var[r, t] / rte2
-    return level_var[r, t] == previous + production * dt
-
-  def _periodic_level_rule(self, comp, level_name, initial_storage, r, m, t):
-    """
-      Mandates storage units end with the same level they start with, which prevents
-      "free energy" or "free sink" due to initial starting levels.
-      For storage units specificially.
-      @ In, comp, Component, storage component of interest
-      @ In, level_name, str, name of level-tracking variable
-      @ In, initial_storage, dict, initial storage levels by component
-      @ In, r, int, index of stored resource (is this always 0?)
-      @ In, m, pyo.ConcreteModel, associated model
-      @ In, t, int, time index for capacity rule
-      @ Out, rule, bool, inequality used to limit level behavior
-    """
-    return getattr(m, level_name)[r, m.T[-1]] == initial_storage[comp]
-
-  def _capacity_rule(self, prod_name, r, caps, m, t):
-    """
-      Constructs pyomo capacity constraints.
-      @ In, prod_name, str, name of production variable
-      @ In, r, int, index of resource for capacity constraining
-      @ In, caps, list(float), value to constrain resource at in time
-      @ In, m, pyo.ConcreteModel, associated model
-      @ In, t, int, time index for capacity rule
-    """
-    kind = 'lower' if min(caps) < 0 else 'upper'
-    return self._prod_limit_rule(prod_name, r, caps, kind, t, m)
-
-  def _prod_limit_rule(self, prod_name, r, limits, kind, t, m):
-    """
-      Constructs pyomo production constraints.
-      @ In, prod_name, str, name of production variable
-      @ In, r, int, index of resource for capacity constraining
-      @ In, limits, list(float), values in time at which to constrain resource production
-      @ In, kind, str, either 'upper' or 'lower' for limiting production
-      @ In, t, int, time index for production rule (NOTE not pyomo index, rather fixed index)
-      @ In, m, pyo.ConcreteModel, associated model
-    """
-    prod = getattr(m, prod_name)
-    if kind == 'lower':
-      # production must exceed value
-      return prod[r, t] >= limits[t]
-    elif kind == 'upper':
-      return prod[r, t] <= limits[t]
-    else:
-      raise TypeError('Unrecognized production limit "kind":', kind)
-
-  def _ramp_rule_down(self, prod_name, r, limit, neg_cap, t, m, bins=None):
-    """
-      Constructs pyomo production ramping constraints for reducing production level.
-      Note that this is number-getting-less-positive for positive-defined capacity, while
-        it is number-getting-less-negative for negative-defined capacity.
-      This means that dQ is negative for positive-defined capacity, but positive for vice versa
-      @ In, prod_name, str, name of production variable
-      @ In, r, int, index of resource for capacity constraining
-      @ In, limit, float, limiting change in production level across time steps. NOTE: negative for negative-defined capacity.
-      @ In, neg_cap, bool, True if capacity is expressed as negative (consumer)
-      @ In, t, int, time index for ramp limit rule (NOTE not pyomo index, rather fixed index)
-      @ In, m, pyo.ConcreteModel, associated model
-      @ In, bins, tuple, optional, (lower, upper, steady) binaries if limiting ramp frequency
-      @ Out, rule, expression, evaluation for Pyomo constraint
-    """
-    prod = getattr(m, prod_name)
-    if t == 0:
-      return pyo.Constraint.Skip
-    delta = prod[r, t] - prod[r, t-1]
-    # special treatment if we have frequency-limiting binaries available
-    if bins is None:
-      if neg_cap:
-        # NOTE change in production should be "less positive" than the max
-        #   "negative decrease" in production (decrease is positive when defined by consuming)
-        return delta <= - limit
-      else:
-        # dq is negative, - limit is negative
-        return delta >= - limit
-    else:
-      eps = 1.0 # aux parameter to force binaries to behave, TODO needed?
-      down = bins[0][t]
-      up = bins[1][t]
-      # NOTE we're following the convention that "less negative" is ramping "down"
-      #   for capacity defined by consumption
-      #   e.g. consuming 100 ramps down to consuming 70 is (-100 -> -70), dq = 30
-      if neg_cap:
-        # dq <= limit * dt * Bu + eps * Bd, if limit <= 0
-        # dq is positive, - limit is positive
-        return delta <= - limit * down - eps * up
-      else:
-        # dq <= limit * dt * Bu - eps * Bd, if limit >= 0
-        # dq is negative, - limit is negative
-        return delta >= - limit * down + eps * up
-
-  def _ramp_rule_up(self, prod_name, r, limit, neg_cap, t, m, bins=None):
-    """
-      Constructs pyomo production ramping constraints.
-      @ In, prod_name, str, name of production variable
-      @ In, r, int, index of resource for capacity constraining
-      @ In, limit, float, limiting change in production level across time steps
-      @ In, neg_cap, bool, True if capacity is expressed as negative (consumer)
-      @ In, t, int, time index for ramp limit rule (NOTE not pyomo index, rather fixed index)
-      @ In, m, pyo.ConcreteModel, associated model
-      @ In, bins, tuple, optional, (lower, steady, upper) binaries if limiting ramp frequency
-    """
-    prod = getattr(m, prod_name)
-    if t == 0:
-      return pyo.Constraint.Skip
-    delta = prod[r, t] - prod[r, t-1]
-    if bins is None:
-      if neg_cap:
-        # NOTE change in production should be "more positive" than the max
-        #   "negative increase" in production (increase is negative when defined by consuming)
-        return delta >= limit
-      else:
-        # change in production should be less than the max production increase
-        return delta <= limit
-    else:
-      # special treatment if we have frequency-limiting binaries available
-      eps = 1.0 # aux parameter to force binaries to behave, TODO needed?
-      down = bins[0][t]
-      up = bins[1][t]
-      # NOTE we're following the convention that "more negative" is ramping "up"
-      #   for capacity defined by consumption
-      #   e.g. consuming 100 ramps up to consuming 130 is (-100 -> -130), dq = -30
-      if neg_cap:
-        # dq >= limit * dt * Bu + eps * Bd, if limit <= 0
-        return delta >= limit * up + eps * down
-      else:
-        # dq <= limit * dt * Bu - eps * Bd, if limit >= 0
-        return delta <= limit * up - eps * down
-
-  def _ramp_freq_rule(self, Bd, Bu, tao, t, m):
-    """
-      Constructs pyomo frequency-of-ramp constraints.
-      @ In, Bd, bool var, binary tracking down-ramp events
-      @ In, Bu, bool var, binary tracking up-ramp events
-      @ In, tao, int, number of time steps to look back
-      @ In, t, int, time step indexer
-      @ In, m, pyo.ConcreteModel, pyomo model
-    """
-    if t == 0:
-      return pyo.Constraint.Skip
-    # looking-back-window shouldn't be longer than existing time
-    tao = min(t, tao)
-    # how many ramp-down events in backward window?
-    tally = sum(1 - Bd[tm] for tm in range(t - tao, t))
-    # only allow ramping up if no rampdowns in back window
-    ## but we can't use if statements, so use binary math
-    return Bu[t] <= 1 / tao * tally
-
-  def _ramp_freq_bins_rule(self, Bd, Bu, Bn, t, m):
-    """
-      Constructs pyomo constraint for ramping event tracking variables.
-      This forces choosing between ramping up, ramping down, and steady state operation.
-      @ In, Bd, bool var, binary tracking down-ramp events
-      @ In, Bu, bool var, binary tracking up-ramp events
-      @ In, Bn, bool var, binary tracking no-ramp events
-      @ In, t, int, time step indexer
-      @ In, m, pyo.ConcreteModel, pyomo model
-    """
-    return Bd[t] + Bu[t] + Bn[t] == 1
-
-  def _cashflow_rule(self, meta, m):
-    """
-      Objective function rule.
-      @ In, meta, dict, additional variable passthrough
-      @ In, m, pyo.ConcreteModel, associated model
-      @ Out, total, float, evaluation of cost
-    """
-    activity = m.Activity # dict((comp, getattr(m, f"{comp.name}_production")) for comp in m.Components)
-    state_args = {'valued': False}
-    total = self._compute_cashflows(m.Components, activity, m.Times, meta,
-                                    state_args=state_args, time_offset=m.time_offset)
-    return total
-
-  def _conservation_rule(self, initial_storage, meta, res, m, t):
-    """
-      Constructs conservation constraints.
-      @ In, initial_storage, dict, initial storage levels at t==0 (not t+offset==0)
-      @ In, meta, dict, dictionary of state variables
-      @ In, res, str, name of resource
-      @ In, m, pyo.ConcreteModel, associated model
-      @ In, t, int, index of time variable
-      @ Out, conservation, bool, balance check
-    """
-    balance = 0 # sum of production rates, which needs to be zero
-    for comp, res_dict in m.resource_index_map.items():
-      if res in res_dict:
-        # activity information depends on if storage or component
-        r = res_dict[res]
-        intr = comp.get_interaction()
-        if intr.is_type('Storage'):
-          # Storages have 3 variables: level, charge, and discharge
-          # -> so calculate activity
-          charge = getattr(m, f'{comp.name}_charge')
-          discharge = getattr(m, f'{comp.name}_discharge')
-          # note that "charge" is negative (as it's consuming) and discharge is positive
-          # -> so the intuitive |discharge| - |charge| becomes discharge + charge
-          production = discharge[r, t] + charge[r, t]
-        else:
-          var = getattr(m, f'{comp.name}_production')
-          # TODO move to this? balance += m._activity.get_activity(comp, res, t)
-          production = var[r, t]
-        balance += production
-    return balance == 0 # TODO tol?
-
-  def _min_prod_rule(self, prod_name, r, caps, minimums, m, t):
-    """
-      Constructs minimum production constraint
-      @ In, prod_name, str, name of production variable
-      @ In, r, int, index of resource for capacity constraining
-      @ In, caps, list(float), capacity(t) value for component
-      @ In, minimums, list(float), minimum allowable production in time
-      @ In, m, pyo.ConcreteModel, associated model
-      @ In, t, int, index of time variable
-      @ Out, minimum, bool, min check
-    """
-    prod = getattr(m, prod_name)
-    # negative capacity means consuming instead of producing
-    if max(caps) > 0:
-      return prod[r, t] >= minimums[t]
-    else:
-      return prod[r, t] <= minimums[t]
-
-  def _transfer_rule(self, ratio, r, ref_r, prod_name, m, t):
-    """
-      Constructs transfer function constraints
-      @ In, ratio, float, ratio for resource to nominal first resource
-      @ In, r, int, index of transfer resource
-      @ In, ref_r, int, index of reference resource
-      @ In, prod_name, str, name of production variable
-      @ In, m, pyo.ConcreteModel, associated model
-      @ In, t, int, index of time variable
-      @ Out, transfer, bool, transfer ratio check
-    """
-    prod = getattr(m, prod_name)
-    return prod[r, t] == prod[ref_r, t] * ratio # TODO tolerance??
-
-  ### DEBUG
-  def _debug_pyomo_print(self, m):
-    """
-      Prints the setup pieces of the Pyomo model
-      @ In, m, pyo.ConcreteModel, model to interrogate
-      @ Out, None
-    """
-    print('/' + '='*80)
-    print('DEBUGG model pieces:')
-    print('  -> objective:')
-    print('     ', m.obj.pprint())
-    print('  -> variables:')
-    for var in m.component_objects(pyo.Var):
-      print('     ', var.pprint())
-    print('  -> constraints:')
-    for constr in m.component_objects(pyo.Constraint):
-      print('     ', constr.pprint())
-    print('\\' + '='*80)
-    print('')
-
-  def _debug_print_soln(self, m):
-    """
-      Prints the solution from the Pyomo model
-      @ In, m, pyo.ConcreteModel, model to interrogate
-      @ Out, None
-    """
-    print('*'*80)
-    print('DEBUGG solution:')
-    print('  objective value:', m.obj())
-    for c, comp in enumerate(m.Components):
-      name = comp.name
-      print('  component:', c, name)
-      for tracker in comp.get_tracking_vars():
-        for res, r in m.resource_index_map[comp].items():
-          print(f'    tracker: {tracker} resource {r}: {res}')
-          for t, time in enumerate(m.Times):
-            prod = getattr(m, f'{name}_{tracker}')
-            if isinstance(prod, pyo.Var):
-              print('      time:', t + m.time_offset, time, prod[r, t].value)
-            elif isinstance(prod, pyo.Param):
-              print('      time:', t + m.time_offset, time, prod[r, t])
-    print('*'*80)
-
-
-
-
-
-# DispatchState for Pyomo dispatcher
-class PyomoState(DispatchState):
-  def __init__(self):
-    """
-      Constructor.
-      @ In, None
-      @ Out, None
-    """
-    DispatchState.__init__(self)
-    self._model = None # Pyomo model object
-
-  def initialize(self, components, resources_map, times, model):
-    """
-      Connect information about this State to other objects
-      @ In, components, list, HERON components
-      @ In, resources_map, dict, map of component names to resources used
-      @ In, times, np.array, values of "time" this state represents
-      @ In, model, pyomo.Model, associated model for this state
-      @ Out, None
-    """
-    DispatchState.initialize(self, components, resources_map, times)
-    self._model = model
-
-  def get_activity_indexed(self, comp, activity, r, t, valued=True, **kwargs):
-    """
-      Getter for activity level.
-      @ In, comp, HERON Component, component whose information should be retrieved
-      @ In, activity, str, tracking variable name for activity subset
-      @ In, r, int, index of resource to retrieve (as given by meta[HERON][resource_indexer])
-      @ In, t, int, index of time at which activity should be provided
-      @ In, valued, bool, optional, if True then get float value instead of pyomo expression
-      @ In, kwargs, dict, additional pass-through keyword arguments
-      @ Out, activity, float, amount of resource "res" produced/consumed by "comp" at time "time";
-                              note positive is producting, negative is consuming
-    """
-    prod = getattr(self._model, f'{comp.name}_{activity}')[r, t]
-    if valued:
-      return prod()
-    return prod
-
-  def set_activity_indexed(self, comp, r, t, value, valued=False):
-    raise NotImplementedError

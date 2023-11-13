@@ -19,7 +19,7 @@ from ravenframework.utils import InputData, InputTypes
 from . import PyomoRuleLibrary as prl
 from . import putils
 from .Dispatcher import Dispatcher
-from .DispatchState import DispatchState, NumpyState, PyomoState
+from .DispatchState import NumpyState, PyomoState
 from .. import _utils as hutils
 
 
@@ -40,17 +40,22 @@ solver_tol_map = {
   'glpk': 'mipgap',
 }
 
+class DispatchError(Exception):
+    """Custom exception for dispatch errors."""
+    pass
+
 class Pyomo(Dispatcher):
   """
     Dispatches using rolling windows in Pyomo
   """
-  naming_template = {'comp prod': '{comp}|{res}|prod',
-                     'comp transfer': '{comp}|{res}|trans',
-                     'comp max': '{comp}|{res}|max',
-                     'comp ramp up': '{comp}|{res}|rampup',
-                     'comp ramp down': '{comp}|{res}|rampdown',
-                     'conservation': '{res}|consv',
-                    }
+  naming_template = {
+    'comp prod': '{comp}|{res}|prod',
+    'comp transfer': '{comp}|{res}|trans',
+    'comp max': '{comp}|{res}|max',
+    'comp ramp up': '{comp}|{res}|rampup',
+    'comp ramp down': '{comp}|{res}|rampdown',
+    'conservation': '{res}|consv',
+  }
 
   ### INITIALIZATION
   @classmethod
@@ -178,64 +183,116 @@ class Pyomo(Dispatcher):
       @ Out, disp, DispatchScenario, resulting dispatch
     """
     t_start, t_end, t_num = self.get_time_discr()
-    time = np.linspace(t_start, t_end, t_num) # Note we don't care about segment/cluster here
-    resources = sorted(list(hutils.get_all_resources(components))) # list of all active resources
-    # pre-build results structure
-    ## we can use NumpyState here so we don't need to worry about a Pyomo model object
-    dispatch = NumpyState()# dict((comp.name, dict((res, np.zeros(len(time))) for res in comp.get_resources())) for comp in components)
+    time = np.linspace(t_start, t_end, t_num)
+    resources = sorted(putils.get_all_resources(components))
+    dispatch = NumpyState()
     dispatch.initialize(components, meta['HERON']['resource_indexer'], time)
-    # rolling window
+
     start_index = 0
     final_index = len(time)
-    # TODO window overlap!  ( )[ ] -> (   [  )   ]
-    while start_index < final_index:
-      end_index = start_index + self._window_len
-      if end_index > final_index:
-        end_index = final_index
-      if end_index - start_index == 1:
-        # TODO custom error raise for catching in DispatchManager?
-        raise IOError("A rolling window of length 1 was requested, but this causes crashes in pyomo. " +
-                      "Change the length of the rolling window to avoid length 1 histories.")
-      specific_time = time[start_index:end_index]
-      print(f'DEBUGG starting window {start_index} to {end_index}')
-      start = time_mod.time()
-      # set initial storage levels
-      initial_levels = {}
-      for comp in components:
-        if comp.get_interaction().is_type('Storage'):
-          if start_index == 0:
-            initial_levels[comp] = comp.get_interaction().get_initial_level(meta)
-          else:
-            initial_levels[comp] = subdisp[comp.name]['level'][comp.get_interaction().get_resource()][-1]
-      # allow for converging solution iteratively
-      converged = False
-      conv_counter = 0
-      previous = None
-      while not converged:
-        conv_counter += 1
-        if conv_counter > self._picard_limit:
-          break
-        # dispatch
-        subdisp = self.dispatch_window(specific_time, start_index,
-                                      case, components, sources, resources,
-                                      initial_levels, meta)
-        # do we need a convergence criteria? Check now.
-        if self.needs_convergence(components):
-          print(f'DEBUGG iteratively solving window, iteration {conv_counter}/{self._picard_limit} ...')
-          converged = self.check_converged(subdisp, previous, components)
-          previous = subdisp
-        else:
-          converged = True
+    initial_levels = self._get_initial_storage_levels(components, meta, 0)
 
-      end = time_mod.time()
-      print(f'DEBUGG solve time: {end-start} s')
-      # store result in corresponding part of dispatch
-      for comp in components:
-        for tag in comp.get_tracking_vars():
-          for res, values in subdisp[comp.name][tag].items():
-            dispatch.set_activity_vector(comp, res, values, tracker=tag, start_idx=start_index, end_idx=end_index)
-      start_index = end_index
+    while start_index < final_index:
+        end_index = min(start_index + self._window_len, final_index)
+        self._validate_window_length(start_index, end_index)
+
+        specific_time = time[start_index:end_index]
+        subdisp, solve_time = self._solve_dispatch_window(specific_time, start_index, case, components, sources, resources, initial_levels, meta)
+
+        self._store_results_in_dispatch(dispatch, subdisp, components, start_index, end_index)
+        start_index = end_index
+
     return dispatch
+  
+  @staticmethod
+  def _get_initial_storage_levels(components, meta, start_index):
+    """
+    """
+    initial_levels = {}
+    for comp in components:
+        if comp.get_interaction().is_type('Storage'):
+            if start_index == 0:
+              initial_levels[comp] = comp.get_interaction().get_initial_level(meta)
+
+    return initial_levels
+  
+  @staticmethod
+  def _validate_window_length(start_index, end_index):
+    """
+    """
+    if end_index - start_index == 1:
+        raise DispatchError("Window length of 1 detected, which is not supported.")
+
+  def _solve_dispatch_window(self, specific_time, start_index, case, components, sources, resources, initial_levels, meta):
+    """
+    """
+    start = time_mod.time()
+    subdisp = self.dispatch_window(specific_time, start_index, case, components, sources, resources, initial_levels, meta)
+    end = time_mod.time()
+    solve_time = end - start
+    
+    conv_counter = 0
+    converged = not self.needs_convergence(components)
+    previous = None
+
+    while not converged and conv_counter < self._picard_limit:
+        conv_counter += 1
+        subdisp = self.dispatch_window(specific_time, start_index, case, components, sources, resources, initial_levels, meta)
+        converged = self.check_converged(subdisp, previous, components)
+        previous = subdisp
+
+    if conv_counter >= self._picard_limit and not converged:
+        raise DispatchError(f"Convergence not reached after {self._picard_limit} iterations.")
+
+    return subdisp, solve_time
+
+  def _store_results_in_dispatch(self, dispatch, subdisp, components, start_index, end_index):
+    """
+    """
+    for comp in components:
+        for tag in comp.get_tracking_vars():
+            for res, values in subdisp[comp.name][tag].items():
+                dispatch.set_activity_vector(comp, res, values, tracker=tag, start_idx=start_index, end_idx=end_index)
+
+  def check_converged(self, new, old, components):
+    """
+      Checks convergence of consecutive dispatch solves
+      @ In, new, dict, results of dispatch # TODO should this be the model rather than dict?
+      @ In, old, dict, results of previous dispatch
+      @ In, components, list, HERON component list
+      @ Out, converged, bool, True if convergence is met
+    """
+    tol = 1e-4 # TODO user option
+    if old is None:
+      return False
+    converged = True
+    for comp in components:
+      intr = comp.get_interaction()
+      name = comp.name
+      tracker = comp.get_tracking_vars()[0]
+      if intr.is_governed(): # by "is_governed" we mean "isn't optimized in pyomo"
+        # check activity L2 norm as a differ
+        # TODO this may be specific to storage right now
+        res = intr.get_resource()
+        scale = np.max(old[name][tracker][res])
+        diff = np.linalg.norm(new[name][tracker][res] - old[name][tracker][res]) / (scale if scale != 0 else 1)
+        if diff > tol:
+          converged = False
+    return converged
+
+  def needs_convergence(self, components):
+    """
+      Determines whether the current setup needs convergence to solve.
+      @ In, components, list, HERON component list
+      @ Out, needs_convergence, bool, True if iteration is needed
+    """
+    for comp in components:
+      intr = comp.get_interaction()
+      # storages with a prescribed strategy MAY need iteration
+      if intr.is_governed():
+        return True
+    # if we get here, no iteration is needed
+    return False
 
   def get_solver(self):
     """
@@ -389,48 +446,7 @@ class Pyomo(Dispatcher):
     # return dict of numpy arrays
     result = putils.retrieve_solution(m)
     return result
-
-  def check_converged(self, new, old, components):
-    """
-      Checks convergence of consecutive dispatch solves
-      @ In, new, dict, results of dispatch # TODO should this be the model rather than dict?
-      @ In, old, dict, results of previous dispatch
-      @ In, components, list, HERON component list
-      @ Out, converged, bool, True if convergence is met
-    """
-    tol = 1e-4 # TODO user option
-    if old is None:
-      return False
-    converged = True
-    for comp in components:
-      intr = comp.get_interaction()
-      name = comp.name
-      tracker = comp.get_tracking_vars()[0]
-      if intr.is_governed(): # by "is_governed" we mean "isn't optimized in pyomo"
-        # check activity L2 norm as a differ
-        # TODO this may be specific to storage right now
-        res = intr.get_resource()
-        scale = np.max(old[name][tracker][res])
-        diff = np.linalg.norm(new[name][tracker][res] - old[name][tracker][res]) / (scale if scale != 0 else 1)
-        if diff > tol:
-          converged = False
-    return converged
-
-  def needs_convergence(self, components):
-    """
-      Determines whether the current setup needs convergence to solve.
-      @ In, components, list, HERON component list
-      @ Out, needs_convergence, bool, True if iteration is needed
-    """
-    for comp in components:
-      intr = comp.get_interaction()
-      # storages with a prescribed strategy MAY need iteration
-      if intr.is_governed():
-        return True
-    # if we get here, no iteration is needed
-    return False
-
-
+  
   ### PYOMO Element Constructors
   def _create_production_limit(self, m, validation):
     """

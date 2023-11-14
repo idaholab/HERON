@@ -1,4 +1,3 @@
-
 # Copyright 2020, Battelle Energy Alliance, LLC
 # ALL RIGHTS RESERVED
 """
@@ -9,22 +8,20 @@ import platform
 import pprint
 import numpy as np
 import pyutilib.subprocess.GlobalData
-from itertools import compress
 
 import pyomo.environ as pyo
 from pyomo.opt import SolverStatus, TerminationCondition
 from pyomo.common.errors import ApplicationError
 from ravenframework.utils import InputData, InputTypes
 
-from . import PyomoRuleLibrary as prl
 from . import putils
+from . import PyomoRuleLibrary as prl
 from .Dispatcher import Dispatcher
 from .DispatchState import NumpyState, PyomoState
-from .. import _utils as hutils
-
 
 # allows pyomo to solve on threaded processes
 pyutilib.subprocess.GlobalData.DEFINE_SIGNAL_HANDLERS_DEFAULT = False
+
 # Choose solver; CBC is a great choice unless we're on Windows
 if platform.system() == 'Windows':
   SOLVERS = ['glpk', 'cbc', 'ipopt']
@@ -34,14 +31,16 @@ else:
 # different solvers express "tolerance" for converging solution in different
 # ways. Further, they mean different things for different solvers. This map
 # just tracks the "nominal" argument that we should pass through pyomo.
-solver_tol_map = {
+SOLVER_TOL_MAP = {
   'ipopt': 'tol',
   'cbc': 'primalTolerance',
   'glpk': 'mipgap',
 }
 
 class DispatchError(Exception):
-    """Custom exception for dispatch errors."""
+    """
+      Custom exception for dispatch errors.
+    """
     pass
 
 class Pyomo(Dispatcher):
@@ -89,6 +88,7 @@ class Pyomo(Dispatcher):
     # TODO specific for pyomo dispatcher
     return specs
 
+
   def __init__(self):
     """
       Constructor.
@@ -103,6 +103,7 @@ class Pyomo(Dispatcher):
     self._solver = None           # overwrite option for solver
     self._picard_limit = 10       # iterative solve limit
 
+
   def read_input(self, specs):
     """
       Read in input specifications.
@@ -114,7 +115,7 @@ class Pyomo(Dispatcher):
     window_len_node = specs.findFirst('rolling_window_length')
     if window_len_node is not None:
       self._window_len = window_len_node.value
-
+    
     debug_node = specs.findFirst('debug_mode')
     if debug_node is not None:
       self.debug_mode = debug_node.value
@@ -123,54 +124,52 @@ class Pyomo(Dispatcher):
     if solver_node is not None:
       self._solver = solver_node.value
 
-    # the tolerance value needs to be saved for after the solver is set
-    # since we don't know what key to assign it to otherwise
     tol_node = specs.findFirst('tol')
     if tol_node is not None:
       solver_tol = tol_node.value
     else:
       solver_tol = None
 
-    if self._solver is None:
-      solvers_to_check = SOLVERS
-    else:
-      solvers_to_check = [self._solver]
-    # check solver exists
-    for solver in solvers_to_check:
-      self._solver = solver
-      found_solver = True
-      try:
-        if not pyo.SolverFactory(self._solver).available():
-          found_solver = False
-        else:
-          break
-      except ApplicationError:
-        found_solver = False
-    # NOTE: we probably need a consistent way to test and check viable solvers,
-    # maybe through a unit test that mimics the model setup here. For now, I assume
-    # that anything that shows as not available or starts with an underscore is not
-    # viable, and it will crash if the solver can't solve our kinds of models.
-    # This should only come up if the user is specifically requesting a solver, though,
-    # the default glpk and cbc are tested.
-    if not found_solver:
-      all_options = pyo.SolverFactory._cls.keys() # TODO shorten to list of tested options?
-      solver_filter = []
-      for op in all_options:
-        if op.startswith('_'): # These don't seem like legitimate options, based on testing
-          solver_filter.append(False)
-          continue
-        try:
-          solver_filter.append(pyo.SolverFactory(op).available())
-        except (ApplicationError, NameError, ImportError):
-          solver_filter.append(False)
-      available = list(compress(all_options, solver_filter))
-      msg = f'Requested solver "{self._solver}" was not found for pyomo dispatcher!'
-      msg += f' Options MAY include: {available}'
-      raise RuntimeError(msg)
+    self._solver = self._check_solver_availability(self._solver)
 
     if solver_tol is not None:
-      key = solver_tol_map[self._solver]
-      self.solve_options[key] = solver_tol
+      key = SOLVER_TOL_MAP.get(self._solver, None)
+      if key is not None:
+        self.solve_options[key] = solver_tol
+      else:
+        raise ValueError(f"Tolerance setting not available for solver '{self._solver}'.")
+  
+
+  def _check_solver_availability(self, requested_solver):
+    """
+    """
+    solvers_to_check = SOLVERS if requested_solver is None else [requested_solver]
+    for solver in solvers_to_check:
+      if self._is_solver_available(solver):
+        return solver
+    
+    available_sovers = self._get_available_solvers()
+    raise RuntimeError(
+      f'Requested solver "{requested_solver} not found. Available options may include: {available_sovers}.'
+    )
+  
+
+  def _get_available_solvers(self):
+    """
+    """
+    all_options = pyo.SolverFactory._cls.keys() # TODO shorten to list of tested options?
+    available = [op for op in all_options if not op.startswith('_') and self._is_solver_available(op)]
+    return available
+  
+
+  def _is_solver_available(self, solver):
+    """
+    """
+    try:
+      return pyo.SolverFactory(solver).available()
+    except (ApplicationError, NameError, ImportError):
+      return False
+
 
   ### API
   def dispatch(self, case, components, sources, meta):
@@ -190,95 +189,123 @@ class Pyomo(Dispatcher):
 
     start_index = 0
     final_index = len(time)
-    initial_levels = self._get_initial_storage_levels(components, meta, 0)
+    initial_levels = self._get_initial_storage_levels(components, meta, start_index)
 
     while start_index < final_index:
         end_index = min(start_index + self._window_len, final_index)
         self._validate_window_length(start_index, end_index)
 
         specific_time = time[start_index:end_index]
-        subdisp, solve_time = self._solve_dispatch_window(specific_time, start_index, case, components, sources, resources, initial_levels, meta)
+        subdisp, solve_time = self._handle_dispatch_window_solve(
+          specific_time, start_index, case, components, sources, resources, initial_levels, meta
+        )
+        print(f'DEBUGG solve time: {solve_time} s')
 
         self._store_results_in_dispatch(dispatch, subdisp, components, start_index, end_index)
         start_index = end_index
 
     return dispatch
-  
+
+
   @staticmethod
   def _get_initial_storage_levels(components, meta, start_index):
     """
+
     """
     initial_levels = {}
     for comp in components:
         if comp.get_interaction().is_type('Storage'):
             if start_index == 0:
               initial_levels[comp] = comp.get_interaction().get_initial_level(meta)
-
+            # NOTE: There used to be an else conditional here that depended on the
+            # variable `subdisp` which was not defined yet. Leaving an unreachable
+            # branch of code, thus, I removed it. So currently, this function assumes
+            # start_index will always be zero, otherwise it will return an empty dict. 
+            # Here was the line in case we need it in the future:
+            # else: initial_levels[comp] = subdisp[comp.name]['level'][comp.get_interaction().get_resource()][-1]
     return initial_levels
-  
+
+
   @staticmethod
   def _validate_window_length(start_index, end_index):
     """
+
     """
     if end_index - start_index == 1:
         raise DispatchError("Window length of 1 detected, which is not supported.")
 
-  def _solve_dispatch_window(self, specific_time, start_index, case, components, sources, resources, initial_levels, meta):
+
+  def _handle_dispatch_window_solve(self, specific_time, start_index, case, components, sources, resources, initial_levels, meta):
     """
+
     """
     start = time_mod.time()
     subdisp = self.dispatch_window(specific_time, start_index, case, components, sources, resources, initial_levels, meta)
-    end = time_mod.time()
-    solve_time = end - start
-    
-    conv_counter = 0
-    converged = not self.needs_convergence(components)
-    previous = None
 
-    while not converged and conv_counter < self._picard_limit:
+    if self.needs_convergence(components):
+      conv_counter = 0
+      converged = False
+      previous = None
+
+      while not converged and conv_counter < self._picard_limit:
         conv_counter += 1
+        print(f'DEBUGG iteratively solving window, iteration {conv_counter}/{self._picard_limit} ...')
         subdisp = self.dispatch_window(specific_time, start_index, case, components, sources, resources, initial_levels, meta)
         converged = self.check_converged(subdisp, previous, components)
         previous = subdisp
 
-    if conv_counter >= self._picard_limit and not converged:
+      if conv_counter >= self._picard_limit and not converged:
         raise DispatchError(f"Convergence not reached after {self._picard_limit} iterations.")
-
+      
+    else:
+      # No convergence process needed
+      pass
+    
+    end = time_mod.time()
+    solve_time = end - start
     return subdisp, solve_time
+
 
   def _store_results_in_dispatch(self, dispatch, subdisp, components, start_index, end_index):
     """
+
     """
     for comp in components:
         for tag in comp.get_tracking_vars():
             for res, values in subdisp[comp.name][tag].items():
                 dispatch.set_activity_vector(comp, res, values, tracker=tag, start_idx=start_index, end_idx=end_index)
 
-  def check_converged(self, new, old, components):
+
+  def check_converged(self, new, old, components, tol=1e-4):
     """
       Checks convergence of consecutive dispatch solves
       @ In, new, dict, results of dispatch # TODO should this be the model rather than dict?
       @ In, old, dict, results of previous dispatch
       @ In, components, list, HERON component list
+      @ In, tol, float, optional, tolerance for convergence
       @ Out, converged, bool, True if convergence is met
     """
-    tol = 1e-4 # TODO user option
     if old is None:
       return False
-    converged = True
+    
     for comp in components:
       intr = comp.get_interaction()
-      name = comp.name
-      tracker = comp.get_tracking_vars()[0]
       if intr.is_governed(): # by "is_governed" we mean "isn't optimized in pyomo"
         # check activity L2 norm as a differ
         # TODO this may be specific to storage right now
+        name = comp.name
+        tracker = comp.get_tracking_vars()[0]
         res = intr.get_resource()
         scale = np.max(old[name][tracker][res])
-        diff = np.linalg.norm(new[name][tracker][res] - old[name][tracker][res]) / (scale if scale != 0 else 1)
+        # Avoid division by zero
+        if scale == 0:
+          diff = np.linalg.norm(new[name][tracker][res] - old[name][tracker][res])
+        else:
+          diff = np.linalg.norm(new[name][tracker][res] - old[name][tracker][res]) / scale
         if diff > tol:
-          converged = False
-    return converged
+          return False
+    return True
+
 
   def needs_convergence(self, components):
     """
@@ -286,13 +313,8 @@ class Pyomo(Dispatcher):
       @ In, components, list, HERON component list
       @ Out, needs_convergence, bool, True if iteration is needed
     """
-    for comp in components:
-      intr = comp.get_interaction()
-      # storages with a prescribed strategy MAY need iteration
-      if intr.is_governed():
-        return True
-    # if we get here, no iteration is needed
-    return False
+    return any(comp.get_interaction().is_governed() for comp in components)
+
 
   def get_solver(self):
     """
@@ -301,6 +323,7 @@ class Pyomo(Dispatcher):
       @ Out, solver, str, name of solver used
     """
     return self._solver
+
 
   ### INTERNAL
   @staticmethod
@@ -311,6 +334,7 @@ class Pyomo(Dispatcher):
     deltas[1:] = activity[1:] - activity[:-1]
     deltas[0] = activity[0] - initial_level
     return deltas
+
 
   def _process_storage_component(self, m, comp, intr, meta):
     """
@@ -325,6 +349,7 @@ class Pyomo(Dispatcher):
     self._create_production_param(m, comp, charge, tag="charge")
     self._create_production_param(m, comp, discharge, tag="discharge")
 
+
   def _process_components(self, m, comp, time, initial_storage, meta):
     """
     """
@@ -336,6 +361,7 @@ class Pyomo(Dispatcher):
     else:
       self._create_production(m, comp, meta)
 
+
   def _process_governed_component(self, m, comp, time, intr, meta):
     """
     """
@@ -345,7 +371,8 @@ class Pyomo(Dispatcher):
     else:
       activity = intr.get_strategy().evaluate(meta)[0]['level']
       self._create_production_param(m, comp, activity)
-      
+
+
   def _build_pyomo_model(self, time, time_offset, case, components, resources, meta):
     """
     """
@@ -370,7 +397,8 @@ class Pyomo(Dispatcher):
     m.Activity = PyomoState()
     m.Activity.initialize(m.Components, m.resource_index_map, m.Times, m)
     return m
-  
+
+
   def _populate_pyomo_model(self, model, components, initial_storage, time, resources, meta):
     """
     """
@@ -379,6 +407,7 @@ class Pyomo(Dispatcher):
       self._process_components(model, comp, time, initial_storage, meta)
     self._create_conservation(model, resources, initial_storage, meta) # conservation of resources (e.g. production == consumption)
     self._create_objective(meta, model) # objective
+
 
   def dispatch_window(self, time, time_offset, case, components, sources, resources, initial_storage, meta):
     """
@@ -397,7 +426,8 @@ class Pyomo(Dispatcher):
     self._populate_pyomo_model(model, components, initial_storage, time, resources, meta)
     result = self._solve_dispatch(model, meta)
     return result
-    
+
+
   def _solve_dispatch(self, m, meta):
     """
     """
@@ -446,7 +476,8 @@ class Pyomo(Dispatcher):
     # return dict of numpy arrays
     result = putils.retrieve_solution(m)
     return result
-  
+
+
   ### PYOMO Element Constructors
   def _create_production_limit(self, m, validation):
     """
@@ -477,6 +508,7 @@ class Pyomo(Dispatcher):
     setattr(m, name, constr)
     print(f'DEBUGG added validation constraint "{name}"')
 
+
   def _create_production_param(self, m, comp, values, tag=None):
     """
       Creates production pyomo fixed parameter object for a component
@@ -497,6 +529,7 @@ class Pyomo(Dispatcher):
     prod = pyo.Param(res_indexer, m.T, initialize=dict(init))
     setattr(m, prod_name, prod)
     return prod_name
+
 
   def _create_production(self, m, comp, meta):
     """
@@ -520,6 +553,7 @@ class Pyomo(Dispatcher):
     if comp.ramp_limit is not None:
       self._create_ramp_limit(m, comp, prod_name, meta)
     return prod_name
+
 
   def _create_production_variable(self, m, comp, meta, tag=None, add_bounds=True, **kwargs):
     """
@@ -569,6 +603,7 @@ class Pyomo(Dispatcher):
     #     prod[limit_r, t].fix(caps[t])
     setattr(m, prod_name, prod)
     return prod_name
+
 
   def _create_ramp_limit(self, m, comp, prod_name, meta):
     """
@@ -623,6 +658,7 @@ class Pyomo(Dispatcher):
       constr = pyo.Constraint(m.T, rule=freq_rule)
       setattr(m, f'{comp.name}_ramp_freq_constr', constr)
 
+
   def _create_capacity_constraints(self, m, comp, prod_name, meta):
     """
       Creates pyomo capacity constraints
@@ -654,6 +690,7 @@ class Pyomo(Dispatcher):
         var.set_values(values)
     setattr(m, f'{comp.name}_{cap_res}_minprod_constr', constr)
 
+
   def _find_production_limits(self, m, comp, meta):
     """
       Determines the capacity limits of a unit's operation, in time.
@@ -682,6 +719,7 @@ class Pyomo(Dispatcher):
       mins.append(minimum)
     return caps, mins
 
+
   def _create_transfer(self, m, comp, prod_name):
     """
       Creates pyomo transfer function constraints
@@ -705,6 +743,7 @@ class Pyomo(Dispatcher):
       rule = lambda mod, t: prl.transfer_rule(ratio, r, ref_r, prod_name, mod, t)
       constr = pyo.Constraint(m.T, rule=rule)
       setattr(m, rule_name, constr)
+
 
   def _create_storage(self, m, comp, initial_storage, meta):
     """
@@ -758,6 +797,7 @@ class Pyomo(Dispatcher):
       rule = lambda mod, t: prl.discharge_rule(discharge_name, bin_name, large_eps, r, mod, t)
       setattr(m, discharge_rule_name, pyo.Constraint(m.T, rule=rule))
 
+
   def _create_conservation(self, m, resources, initial_storage, meta):
     """
       Creates pyomo conservation constraints
@@ -771,6 +811,7 @@ class Pyomo(Dispatcher):
       rule = lambda mod, t: prl.conservation_rule(resource, mod, t)
       constr = pyo.Constraint(m.T, rule=rule)
       setattr(m, f'{resource}_conservation', constr)
+
 
   def _create_objective(self, meta, m):
     """

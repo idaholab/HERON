@@ -6,9 +6,9 @@
   Primarily intended for transfer functions.
 """
 from .ValuedParam import ValuedParam, InputData, InputTypes
+from Polynomial import Polynomial
 
-# class for custom dynamically-evaluated quantities
-class Linear(ValuedParam):
+class Linear(Polynomial):
   """
     Represents a ValuedParam that is a linearized transfer function.
   """
@@ -16,10 +16,13 @@ class Linear(ValuedParam):
   @classmethod
   def get_input_specs(cls):
     """
-      Template for parameters that can take a scalar, an ARMA history, or a function
+      Define parameters for a linear transfer function.
       @ In, None
       @ Out, spec, InputData, value-based spec
     """
+    # TODO should this be reconciled with Polynomial?
+    # Pro: maintainability
+    # Con: degraded user experience
     spec = InputData.parameterInputFactory('linear', contentType=InputTypes.StringType,
         descr=r"""indicates this value should be interpreted as a ratio based on an input value.""")
     rate = InputData.parameterInputFactory('rate', contentType=InputTypes.FloatType,
@@ -36,7 +39,6 @@ class Linear(ValuedParam):
       @ Out, None
     """
     super().__init__()
-    self._coefficients = None # ratios, stored in a dict as key: value
 
   def read(self, comp_name, spec, mode, alias_dict=None):
     """
@@ -48,19 +50,11 @@ class Linear(ValuedParam):
       @ Out, needs, list, signals needed to evaluate this ValuedParam at runtime
     """
     super().read(comp_name, spec, mode, alias_dict=None)
-    self._coefficients = {}
     for rate_node in spec.findAll('rate'):
       resource = rate_node.parameterValues['resource']
-      self._coefficients[resource] = rate_node.value
+      # linear coefficients are all 1
+      self._coefficients[(resource)][(1)] = rate_node.value
     return []
-
-  def get_coefficients(self):
-    """
-      Returns linear coefficients.
-      @ In, None
-      @ Out, coeffs, dict, coefficient mapping
-    """
-    return self._coefficients
 
   def evaluate(self, inputs, target_var=None, aliases=None):
     """
@@ -71,11 +65,12 @@ class Linear(ValuedParam):
       @ Out, balance, dict, dictionary of resulting evaluation as {vars: vals}
       @ Out, inputs, dict, dictionary of meta (possibly changed during evaluation)
     """
-    if target_var not in self._coefficients:
+    # TODO is this an unnecessarily slow check?
+    if target_var not in [x[0] for x in self._coefficients]:
       self.raiseAnError(RuntimeError, f'"rate" for target variable "{target_var}" not found for ' +
                         f'ValuedParam {self.name}!')
     req_res, req_amt = next(iter(inputs['request'].items()))
-    req_rate = self._coefficients[req_res]
+    req_rate = self._coefficients[(req_res)][(1)]
     balance = {req_res: req_amt}
     for res, rate in self._coefficients.items():
       if res == req_res:

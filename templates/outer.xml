@@ -19,7 +19,7 @@
       <Input          class='Files'       type='raven'            >inner_workflow</Input>
       <Input          class='Files'       type=''                 >heron_lib</Input>
       <Model          class='Models'      type='Code'             >raven</Model>
-      <Optimizer      class='Optimizers'  type='BayesianOptimizer'>cap_opt</Optimizer>
+      <Optimizer      class='Optimizers'  type='GradientDescent'  >cap_opt</Optimizer>
       <Output         class='DataObjects' type='PointSet'         >opt_eval</Output>
       <SolutionExport class='DataObjects' type='PointSet'         >opt_soln</SolutionExport>
       <Output         class='OutStreams'  type='Print'            >opt_soln</Output>
@@ -124,7 +124,7 @@
       <TargetEvaluation class="DataObjects" type="PointSet">opt_eval</TargetEvaluation>
       <samplerInit>
         <limit>100</limit>
-        <type>max</type>>
+        <type>max</type>
         <writeSteps>every</writeSteps>
       </samplerInit>
       <Sampler    class="Samplers"  type="Stratified" >LHS_samp</Sampler>

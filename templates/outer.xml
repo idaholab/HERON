@@ -124,11 +124,7 @@
       <TargetEvaluation class="DataObjects" type="PointSet">opt_eval</TargetEvaluation>
       <samplerInit>
         <limit>100</limit>
-<<<<<<< HEAD
         <type>max</type>
-=======
-        <type>max</type>>
->>>>>>> eedf1d4263c28ac726e91c95cb14e19756e114b8
         <writeSteps>every</writeSteps>
       </samplerInit>
       <Sampler    class="Samplers"  type="Stratified" >LHS_samp</Sampler>

@@ -11,6 +11,7 @@ from .ROM import ROM
 from .Function import Function
 from .Parametric import Parametric, FixedValue, OptBounds, SweepValues
 from .Linear import Linear
+from .Polynomial import Polynomial
 from .Variable import Variable
 from .Activity import Activity
 
@@ -76,6 +77,7 @@ factory.registerType('Function', Function)
 factory.registerType('activity', Activity)
 # ratios, transfers
 factory.registerType('linear', Linear)
+factory.registerType('poly', Polynomial)
 # TODO add: ROM
 
 # TODO are transfer functions and valued evaluations really the same creature?

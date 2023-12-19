@@ -54,6 +54,7 @@ def get_prod_bounds(m, comp, meta):
   # return lower, upper
 
 def get_transfer_coeffs(m, comp) -> dict:
+  # FIXME DEPRECATE
   """
     Obtains transfer function ratios (assuming Linear ValuedParams)
     Form: 1A + 3B -> 2C + 4D
@@ -66,7 +67,7 @@ def get_transfer_coeffs(m, comp) -> dict:
   transfer = comp.get_interaction().get_transfer()
   if transfer is None:
     return {}
-  
+
   # linear transfer coefficients, dict as {resource: coeff}, SIGNS MATTER
   # it's all about ratios -> store as ratio of resource / first resource (arbitrary)
   coeffs = transfer.get_coefficients()
@@ -77,7 +78,7 @@ def get_transfer_coeffs(m, comp) -> dict:
 
   for resource, coef in coeffs_iter:
     ratios[resource] = coef / first_coef
-  
+
   return ratios
 
 def retrieve_solution(m) -> dict:
@@ -153,6 +154,6 @@ def debug_print_soln(m) -> None:
           elif kind == 'Param':
             value = prod[r, t]
           output.append(f'      time: {t + m.time_offset} {time} {value}')
-  
+
   output.append('*' * 80)
   print('\n'.join(output))

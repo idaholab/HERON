@@ -1,0 +1,102 @@
+<HERON>
+  <TestInfo>
+    <name>TransferFuncs</name>
+    <author>talbpaul</author>
+    <created>2023-11-28</created>
+    <description>
+      Tests various transfer function forms. Make the Source large enough that all transformers play.
+    </description>
+    <classesTested>HERON</classesTested>
+  </TestInfo>
+
+  <Case name="Debug_Run">
+    <mode>sweep</mode>
+    <debug>
+      <inner_samples>1</inner_samples>
+      <macro_steps>1</macro_steps>
+    </debug>
+    <num_arma_samples>1</num_arma_samples>
+    <time_discretization>
+      <time_variable>Time</time_variable>
+      <end_time>2</end_time>
+      <num_steps>21</num_steps>
+    </time_discretization>
+    <economics>
+      <ProjectTime>3</ProjectTime>
+      <DiscountRate>0.08</DiscountRate>
+      <tax>0.3</tax>
+      <inflation>0.02</inflation>
+      <verbosity>50</verbosity>
+    </economics>
+    <dispatcher>
+      <pyomo/>
+    </dispatcher>
+  </Case>
+
+  <Components>
+    <Component name="Source">
+      <produces resource="funding" dispatch="fixed">
+        <capacity resource="funding">
+          <sweep_values debug_value="200">1, 1000</sweep_values>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>2</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="Linear">
+      <produces resource="work" dispatch="independent">
+        <consumes>funding</consumes>
+        <capacity resource="funding">
+          <fixed_value>-100</fixed_value>
+        </capacity>
+        <transfer>
+          <linear>
+            <rate resource="funding">-1</rate>
+            <rate resource="work">0.25</rate>
+          </linear>
+        </transfer>
+      </produces>
+      <economics>
+        <lifetime>2</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="Milestones">
+      <demands resource="work" dispatch="dependent">
+        <capacity>
+          <fixed_value>-1e3</fixed_value>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>3</lifetime>
+        <CashFlow name="proposals" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>work</activity>
+          </driver>
+          <reference_price>
+            <fixed_value>-1</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="Outsource">
+      <demands resource="funding" dispatch="dependent">
+        <capacity>
+          <fixed_value>-1e4</fixed_value>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>3</lifetime>
+      </economics>
+    </Component>
+
+  </Components>
+
+  <DataGenerators>
+    <ARMA name='Price' variable="Signal">%BASE_WORKING_DIR%/../../../TSA/Sine/arma.pk</ARMA>
+  </DataGenerators>
+
+</HERON>

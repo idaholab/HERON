@@ -6,7 +6,7 @@
   Primarily intended for transfer functions.
 """
 from .ValuedParam import ValuedParam, InputData, InputTypes
-from Polynomial import Polynomial
+from .Polynomial import Polynomial
 
 class Linear(Polynomial):
   """
@@ -52,7 +52,7 @@ class Linear(Polynomial):
     super().read(comp_name, spec, mode, alias_dict=None)
     for rate_node in spec.findAll('rate'):
       resource = rate_node.parameterValues['resource']
-      # linear coefficients are all 1
+      # linear coefficients are all order 1, no cross-variable multipyling
       self._coefficients[(resource)][(1)] = rate_node.value
     return []
 

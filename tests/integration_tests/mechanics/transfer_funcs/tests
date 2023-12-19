@@ -1,0 +1,27 @@
+[Tests]
+  [./DebugMode]
+    type = 'HeronIntegration'
+    input = heron_input.xml
+    [./dispatch_db]
+      type = NetCDF
+      output = 'Debug_Run_o/dispatch.nc'
+      gold_files = 'dispatch.nc'
+    [../]
+    [./dispatch_csv]
+      type = UnorderedCSV
+      output = 'Debug_Run_o/dispatch_print.csv'
+      gold_files = 'dispatch_print.csv'
+      rel_err = 1e-8
+    [../]
+    [./debug_plot]
+      type = Exists
+      output = 'Debug_Run_o/dispatch_id0_y10_c0.png Debug_Run_o/dispatch_id0_y11_c0.png Debug_Run_o/dispatch_id1_y10_c0.png Debug_Run_o/dispatch_id1_y11_c0.png'
+    [../]
+    [./debug_plot]
+      type = Exists
+      output = 'network.png'
+    [../]
+  [../]
+[]
+
+

@@ -1,4 +1,8 @@
-
+# Copyright 2020, Battelle Energy Alliance, LLC
+# ALL RIGHTS RESERVED
+"""
+  This module constructs the dispatch optimization model used by HERON.
+"""
 import numpy as np
 import pyomo.environ as pyo
 
@@ -17,23 +21,25 @@ class PyomoModelHandler:
     self.resources = resources
     self.initial_storage = initial_storage
     self.meta = meta
-    self.model = pyo.ConcreteModel()
+    self.model = self.build_model() 
 
   def build_model(self):
+    model = pyo.ConcreteModel()
     C = np.arange(0, len(self.components), dtype=int) # indexes component
     R = np.arange(0, len(self.resources), dtype=int) # indexes resources
     T = np.arange(0, len(self.time), dtype=int) # indexes resources
-    self.model.C = pyo.Set(initialize=C)
-    self.model.R = pyo.Set(initialize=R)
-    self.model.T = pyo.Set(initialize=T)
-    self.model.Times = self.time
-    self.model.time_offset = self.time_offset
-    self.model.resource_index_map = self.meta['HERON']['resource_indexer'] # maps the resource to its index WITHIN APPLICABLE components (sparse matrix) e.g. component: {resource: local index}, ... etc}
+    model.C = pyo.Set(initialize=C)
+    model.R = pyo.Set(initialize=R)
+    model.T = pyo.Set(initialize=T)
+    model.Times = self.time
+    model.time_offset = self.time_offset
+    model.resource_index_map = self.meta['HERON']['resource_indexer'] # maps the resource to its index WITHIN APPLICABLE components (sparse matrix) e.g. component: {resource: local index}, ... etc}
     # properties
-    self.model.Case = self.case
-    self.model.Components = self.components
-    self.model.Activity = PyomoState()
-    self.model.Activity.initialize(self.model.Components, self.model.resource_index_map, self.model.Times, self.model)
+    model.Case = self.case
+    model.Components = self.components
+    model.Activity = PyomoState()
+    model.Activity.initialize(model.Components, model.resource_index_map, model.Times, model)
+    return model
 
   def populate_model(self):
     for comp in self.components:
@@ -124,7 +130,7 @@ class PyomoModelHandler:
     return prod_name
 
 
-  def _create_production(self, m, comp, meta):
+  def _create_production(self, comp):
     """
       Creates all pyomo variable objects for a non-storage component
       @ In, m, pyo.ConcreteModel, associated model
@@ -132,7 +138,7 @@ class PyomoModelHandler:
       @ In, meta, dict, dictionary of state variables
       @ Out, None
     """
-    prod_name = self._create_production_variable(m, comp, meta)
+    prod_name = self._create_production_variable(comp)
     ## if you cannot set limits directly in the production variable, set separate contraint:
     ## Method 1: set variable bounds directly --> TODO more work needed, but would be nice
     # lower, upper = self._get_prod_bounds(m, comp)
@@ -141,14 +147,14 @@ class PyomoModelHandler:
     ## Method 2: set variable bounds directly --> TODO more work needed, but would be nice
     # self._create_capacity(m, comp, prod_name, meta)    # capacity constraints
     # transfer function governs input -> output relationship
-    self._create_transfer(m, comp, prod_name)
+    self._create_transfer(comp, prod_name)
     # ramp rates
     if comp.ramp_limit is not None:
-      self._create_ramp_limit(m, comp, prod_name, meta)
+      self._create_ramp_limit(comp, prod_name)
     return prod_name
 
 
-  def _create_production_variable(self, m, comp, meta, tag=None, add_bounds=True, **kwargs):
+  def _create_production_variable(self, comp, tag=None, add_bounds=True, **kwargs):
     """
       Creates production pyomo variable object for a component
       @ In, m, pyo.ConcreteModel, associated model
@@ -162,15 +168,15 @@ class PyomoModelHandler:
       tag = 'production'
     name = comp.name
     cap_res = comp.get_capacity_var()       # name of resource that defines capacity
-    limit_r = m.resource_index_map[comp][cap_res] # production index of the governing resource
+    limit_r = self.model.resource_index_map[comp][cap_res] # production index of the governing resource
     # create pyomo indexer for this component's resources
     indexer_name = f'{name}_res_index_map'
-    indexer = getattr(m, indexer_name, None)
+    indexer = getattr(self.model, indexer_name, None)
     if indexer is None:
-      indexer = pyo.Set(initialize=range(len(m.resource_index_map[comp])))
-      setattr(m, indexer_name, indexer)
+      indexer = pyo.Set(initialize=range(len(self.model.resource_index_map[comp])))
+      setattr(self.model, indexer_name, indexer)
     prod_name = f'{name}_{tag}'
-    caps, mins = self._find_production_limits(m, comp, meta)
+    caps, mins = self._find_production_limits(comp)
     if min(caps) < 0:
       # quick check that capacities signs are consistent #FIXME: revisit, this is an assumption
       assert max(caps) <= 0, \
@@ -189,12 +195,12 @@ class PyomoModelHandler:
       initial = 0
     # production variable depends on resources, time
     #FIXME initials! Should be lambda with mins for tracking var!
-    prod = pyo.Var(indexer, m.T, initialize=initial, bounds=bounds, **kwargs)
+    prod = pyo.Var(indexer, self.model.T, initialize=initial, bounds=bounds, **kwargs)
     # TODO it may be that we need to set variable values to avoid problems in some solvers.
     # if comp.is_dispatchable() == 'fixed':
     #   for t, _ in enumerate(m.Times):
     #     prod[limit_r, t].fix(caps[t])
-    setattr(m, prod_name, prod)
+    setattr(self.model, prod_name, prod)
     return prod_name
 
 
@@ -284,7 +290,7 @@ class PyomoModelHandler:
     setattr(m, f'{comp.name}_{cap_res}_minprod_constr', constr)
 
 
-  def _find_production_limits(self, m, comp, meta):
+  def _find_production_limits(self, comp):
     """
       Determines the capacity limits of a unit's operation, in time.
       @ In, m, pyo.ConcreteModel, associated model
@@ -294,26 +300,26 @@ class PyomoModelHandler:
       @ Out, mins, array, min production values by time
     """
     cap_res = comp.get_capacity_var()       # name of resource that defines capacity
-    r = m.resource_index_map[comp][cap_res] # production index of the governing resource
+    r = self.model.resource_index_map[comp][cap_res] # production index of the governing resource
     # production is always lower than capacity
     ## NOTE get_capacity returns (data, meta) and data is dict
     ## TODO does this work with, e.g., ARMA-based capacities?
     ### -> "time" is stored on "m" and could be used to correctly evaluate the capacity
     caps = []
     mins = []
-    for t, time in enumerate(m.Times):
-      meta['HERON']['time_index'] = t + m.time_offset
-      cap = comp.get_capacity(meta)[0][cap_res] # value of capacity limit (units of governing resource)
+    for t, time in enumerate(self.model.Times):
+      self.meta['HERON']['time_index'] = t + self.model.time_offset
+      cap = comp.get_capacity(self.meta)[0][cap_res] # value of capacity limit (units of governing resource)
       caps.append(cap)
       if (comp.is_dispatchable() == 'fixed'):
         minimum = cap
       else:
-        minimum = comp.get_minimum(meta)[0][cap_res]
+        minimum = comp.get_minimum(self.meta)[0][cap_res]
       mins.append(minimum)
     return caps, mins
 
 
-  def _create_transfer(self, m, comp, prod_name):
+  def _create_transfer(self, comp, prod_name):
     """
       Creates pyomo transfer function constraints
       @ In, m, pyo.ConcreteModel, associated model
@@ -328,17 +334,17 @@ class PyomoModelHandler:
     # TODO this could also take a transfer function from an external Python function assuming
     #    we're careful about how the expression-vs-float gets used
     #    and figure out how to handle multiple ins, multiple outs
-    ratios = putils.get_transfer_coeffs(m, comp)
+    ratios = putils.get_transfer_coeffs(self.model, comp)
     ref_r, ref_name, _ = ratios.pop('__reference', (None, None, None))
     for resource, ratio in ratios.items():
-      r = m.resource_index_map[comp][resource]
+      r = self.model.resource_index_map[comp][resource]
       rule_name = f'{name}_{resource}_{ref_name}_transfer'
       rule = lambda mod, t: prl.transfer_rule(ratio, r, ref_r, prod_name, mod, t)
-      constr = pyo.Constraint(m.T, rule=rule)
-      setattr(m, rule_name, constr)
+      constr = pyo.Constraint(self.model.T, rule=rule)
+      setattr(self.model, rule_name, constr)
 
 
-  def _create_storage(self, m, comp, initial_storage, meta):
+  def _create_storage(self, comp):
     """
       Creates storage pyomo variable objects for a storage component
       Similar to create_production, but for storages
@@ -353,21 +359,21 @@ class PyomoModelHandler:
     r = 0 # NOTE this is only true if each storage ONLY uses 1 resource
     # storages require a few variables:
     # (1) a level tracker,
-    level_name = self._create_production_variable(m, comp, meta, tag='level')
+    level_name = self._create_production_variable(comp, tag='level')
     # -> set operational limits
     # self._create_capacity(m, comp, level_name, meta)
     # (2, 3) separate charge/discharge trackers, so we can implement round-trip efficiency and ramp rates
-    charge_name = self._create_production_variable(m, comp, meta, tag='charge', add_bounds=False, within=pyo.NonPositiveReals)
-    discharge_name = self._create_production_variable(m, comp, meta, tag='discharge', add_bounds=False, within=pyo.NonNegativeReals)
+    charge_name = self._create_production_variable(comp, tag='charge', add_bounds=False, within=pyo.NonPositiveReals)
+    discharge_name = self._create_production_variable(comp, tag='discharge', add_bounds=False, within=pyo.NonNegativeReals)
     # balance level, charge/discharge
     level_rule_name = prefix + '_level_constr'
-    rule = lambda mod, t: prl.level_rule(comp, level_name, charge_name, discharge_name, initial_storage, r, mod, t)
-    setattr(m, level_rule_name, pyo.Constraint(m.T, rule=rule))
+    rule = lambda mod, t: prl.level_rule(comp, level_name, charge_name, discharge_name, self.initial_storage, r, mod, t)
+    setattr(self.model, level_rule_name, pyo.Constraint(self.model.T, rule=rule))
     # periodic boundary condition for storage level
     if comp.get_interaction().apply_periodic_level:
       periodic_rule_name = prefix + '_level_periodic_constr'
-      rule = lambda mod, t: prl.periodic_level_rule(comp, level_name, initial_storage, r, mod, t)
-      setattr(m, periodic_rule_name, pyo.Constraint(m.T, rule=rule))
+      rule = lambda mod, t: prl.periodic_level_rule(comp, level_name, self.initial_storage, r, mod, t)
+      setattr(self.model, periodic_rule_name, pyo.Constraint(self.model.T, rule=rule))
 
     # (4) a binary variable to track whether we're charging or discharging, to prevent BOTH happening
     # -> 0 is charging, 1 is discharging
@@ -377,7 +383,7 @@ class PyomoModelHandler:
     # and frequently results in spurious errors. For now, disable it.
     allow_both = True # allow simultaneous charging and discharging
     if not allow_both:
-      bin_name = self._create_production_variable(m, comp, meta, tag='dcforcer', add_bounds=False, within=pyo.Binary)
+      bin_name = self._create_production_variable(comp, tag='dcforcer', add_bounds=False, within=pyo.Binary)
       # we need a large epsilon, but not so large that addition stops making sense
       # -> we don't know what any values for this component will be! How do we choose?
       # -> NOTE that choosing this value has VAST impact on solve stability!!
@@ -385,13 +391,13 @@ class PyomoModelHandler:
       # charging constraint: don't charge while discharging (note the sign matters)
       charge_rule_name = prefix + '_charge_constr'
       rule = lambda mod, t: prl.charge_rule(charge_name, bin_name, large_eps, r, mod, t)
-      setattr(m, charge_rule_name, pyo.Constraint(m.T, rule=rule))
+      setattr(self.model, charge_rule_name, pyo.Constraint(self.model.T, rule=rule))
       discharge_rule_name = prefix + '_discharge_constr'
       rule = lambda mod, t: prl.discharge_rule(discharge_name, bin_name, large_eps, r, mod, t)
-      setattr(m, discharge_rule_name, pyo.Constraint(m.T, rule=rule))
+      setattr(self.model, discharge_rule_name, pyo.Constraint(self.model.T, rule=rule))
 
 
-  def _create_conservation(self, m, resources):
+  def _create_conservation(self):
     """
       Creates pyomo conservation constraints
       @ In, m, pyo.ConcreteModel, associated model
@@ -400,13 +406,13 @@ class PyomoModelHandler:
       @ In, meta, dict, dictionary of state variables
       @ Out, None
     """
-    for resource in resources:
+    for resource in self.resources:
       rule = lambda mod, t: prl.conservation_rule(resource, mod, t)
-      constr = pyo.Constraint(m.T, rule=rule)
-      setattr(m, f'{resource}_conservation', constr)
+      constr = pyo.Constraint(self.model.T, rule=rule)
+      setattr(self.model, f'{resource}_conservation', constr)
 
 
-  def _create_objective(self, meta, m):
+  def _create_objective(self):
     """
       Creates pyomo objective function
       @ In, meta, dict, additional variables to pass through
@@ -414,8 +420,8 @@ class PyomoModelHandler:
       @ Out, None
     """
     # cashflow eval
-    rule = lambda mod: prl.cashflow_rule(self._compute_cashflows, meta, mod)
-    m.obj = pyo.Objective(rule=rule, sense=pyo.maximize)
+    rule = lambda mod: prl.cashflow_rule(self._compute_cashflows, self.meta, mod)
+    self.model.obj = pyo.Objective(rule=rule, sense=pyo.maximize)
 
   
   

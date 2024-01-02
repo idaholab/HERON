@@ -34,10 +34,21 @@
   </Case>
 
   <Components>
-    <Component name="Source">
+    <Component name="FundingSource">
       <produces resource="funding" dispatch="fixed">
         <capacity resource="funding">
           <sweep_values debug_value="200">1, 1000</sweep_values>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>2</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="LaborSource">
+      <produces resource="labor" dispatch="dependent">
+        <capacity resource="labor">
+          <fixed_value>500</fixed_value>
         </capacity>
       </produces>
       <economics>
@@ -56,6 +67,28 @@
             <rate resource="funding">-1</rate>
             <rate resource="work">0.25</rate>
           </linear>
+        </transfer>
+      </produces>
+      <economics>
+        <lifetime>2</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="Quadratic">
+      <produces resource="work" dispatch="independent">
+        <consumes>funding, labor</consumes>
+        <capacity resource="funding">
+          <fixed_value>-100</fixed_value>
+        </capacity>
+        <transfer>
+          <poly>
+            <!-- 0.9f + 1.0l + 0.01fl^2 + 0.2fl^0.5 = 1.0w-->
+            <coeff resource="funding" order="1">-0.9</coeff>
+            <coeff resource="labor" order="1">-1</coeff>
+            <coeff resource="funding,labor" order="1,2">-0.01</coeff>
+            <coeff resource="funding,labor" order="1,0.5">-0.2</coeff>
+            <coeff resource="work" order="1">1</coeff>
+          </poly>
         </transfer>
       </produces>
       <economics>

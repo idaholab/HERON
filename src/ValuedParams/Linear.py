@@ -8,6 +8,8 @@
 from .ValuedParam import ValuedParam, InputData, InputTypes
 from .Polynomial import Polynomial
 
+ONE_TUP = tuple([1])
+
 class Linear(Polynomial):
   """
     Represents a ValuedParam that is a linearized transfer function.
@@ -53,7 +55,7 @@ class Linear(Polynomial):
     for rate_node in spec.findAll('rate'):
       resource = rate_node.parameterValues['resource']
       # linear coefficients are all order 1, no cross-variable multipyling
-      self._coefficients[(resource)][(1)] = rate_node.value
+      self._coefficients[tuple([resource])][ONE_TUP] = rate_node.value
     return []
 
   def evaluate(self, inputs, target_var=None, aliases=None):

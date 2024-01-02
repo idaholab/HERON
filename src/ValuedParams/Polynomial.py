@@ -7,6 +7,7 @@
   Primarily intended for transfer functions.
 """
 from collections import defaultdict
+from pprint import pprint
 
 from .ValuedParam import ValuedParam, InputData, InputTypes
 
@@ -46,7 +47,10 @@ class Polynomial(ValuedParam):
       @ Out, None
     """
     super().__init__()
-    self._coefficients = defaultdict(dict) # coeffs, stored as {(resources): {(order): coeff}}
+    # coeffs, stored as { (resources): { (order): coeff, }, }
+    # e.g., {(water, flour): {(1,1): 42, (1,2): 3.14},
+    #        (water): {(1): 1.61} }
+    self._coefficients = defaultdict(dict)
 
   def read(self, comp_name, spec, mode, alias_dict=None):
     """

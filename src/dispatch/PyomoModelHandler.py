@@ -140,6 +140,7 @@ class PyomoModelHandler:
       @ In, meta, dict, dictionary of state variables
       @ Out, None
     """
+    print('DEBUGG creating production:', comp.name)
     prod_name = self._create_production_variable(comp)
     ## if you cannot set limits directly in the production variable, set separate contraint:
     ## Method 1: set variable bounds directly --> TODO more work needed, but would be nice
@@ -326,42 +327,26 @@ class PyomoModelHandler:
       Creates pyomo transfer function constraints
       @ In, m, pyo.ConcreteModel, associated model
       @ In, comp, HERON Component, component to make variables for
+      @ In, prod_name, str, production variable name
       @ Out, None
     """
-    name = comp.name
-    # transfer functions
-    # e.g. 2A + 3B -> 1C + 2E
-
-    #### OLD ####
-    # get linear coefficients
-    # TODO this could also take a transfer function from an external Python function assuming
-    #    we're careful about how the expression-vs-float gets used
-    #    and figure out how to handle multiple ins, multiple outs
-
-    # ratios = putils.get_transfer_coeffs(self.model, comp)
-    # ref_r, ref_name, _ = ratios.pop('__reference', (None, None, None))
-    # for resource, ratio in ratios.items():
-    #   r = self.model.resource_index_map[comp][resource]
-    #   rule_name = f'{name}_{resource}_{ref_name}_transfer'
-    #   rule = lambda mod, t: prl.transfer_rule(ratio, r, ref_r, prod_name, mod, t)
-    #   constr = pyo.Constraint(self.model.T, rule=rule)
-    #   setattr(self.model, rule_name, constr)
-    # XXX working here ... instead of making lots of little constraints, make one transfer constraint
-    #   using the coefficients and polynomial orders
+    print('DEBUGG creating transfer:', comp.name)
+    rule_name = f'{comp.name}_transfer_func'
     transfer = comp.get_interaction().get_transfer()
     if transfer is None:
-      return {}
-
+      print('DEBUGG skipping transfer:', comp.name)
+      return
     coeffs = transfer.get_coefficients()
+    print('DEBUGG coeffs:', coeffs)
     # dict of form {(r1, r2): {(o1, o2): n}}
     #   where:
     #   r1, r2 are resource names
     #   o1, o2 are polynomial orders (may not be integers?)
     #   n is the float polynomial coefficient for the term
-    rule_name = f'{name}_transfer_func'
-    rule = lambda mod, t: prl.transfer_rules(coeffs, m.resource_index_map[comp], prod_name, mod, t)
-    constr = pyo.Constraint(m.T, rule=rule)
-    setattr(m, rule_name, constr)
+    rule = lambda mod, t: prl.transfer_rule(coeffs, self.model.resource_index_map[comp], prod_name, mod, t)
+    constr = pyo.Constraint(self.model.T, rule=rule)
+    setattr(self.model, rule_name, constr)
+
 
   def _create_storage(self, comp):
     """

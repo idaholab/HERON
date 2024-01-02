@@ -85,7 +85,7 @@ factory.registerType('poly', Polynomial)
 # map of "kinds" of ValuedParams to the default acceptable ValuedParam types
 allowable = {}
 # transfer functions, such as producing components' transfer functions
-allowable['transfer'] = ['linear', 'Function']
+allowable['transfer'] = ['linear', 'poly', 'Function']
 # single evaluations, like cashflow prices and component capacities
 allowable['singular'] = [
   'fixed_value',

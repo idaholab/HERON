@@ -7,7 +7,6 @@
   Primarily intended for transfer functions.
 """
 from collections import defaultdict
-from pprint import pprint
 
 from .ValuedParam import ValuedParam, InputData, InputTypes
 

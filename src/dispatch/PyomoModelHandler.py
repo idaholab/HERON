@@ -140,7 +140,6 @@ class PyomoModelHandler:
       @ In, meta, dict, dictionary of state variables
       @ Out, None
     """
-    print('DEBUGG creating production:', comp.name)
     prod_name = self._create_production_variable(comp)
     ## if you cannot set limits directly in the production variable, set separate contraint:
     ## Method 1: set variable bounds directly --> TODO more work needed, but would be nice
@@ -330,14 +329,11 @@ class PyomoModelHandler:
       @ In, prod_name, str, production variable name
       @ Out, None
     """
-    print('DEBUGG creating transfer:', comp.name)
     rule_name = f'{comp.name}_transfer_func'
     transfer = comp.get_interaction().get_transfer()
     if transfer is None:
-      print('DEBUGG skipping transfer:', comp.name)
       return
     coeffs = transfer.get_coefficients()
-    print('DEBUGG coeffs:', coeffs)
     # dict of form {(r1, r2): {(o1, o2): n}}
     #   where:
     #   r1, r2 are resource names

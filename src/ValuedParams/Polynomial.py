@@ -32,7 +32,7 @@ class Polynomial(ValuedParam):
     coeff.addParam('resource', param_type=InputTypes.StringListType,
         descr=r"""indicates the resource(s) for which the polynomial coefficient is being provided in this node.
                   Note that the order of the resources matters for specifying the polynomial \xmlAttr{order}.""")
-    coeff.addParam('order', param_type=InputTypes.FloatListType,
+    coeff.addParam('order', param_type=InputTypes.IntegerListType,
         descr=r"""indicates the orders of the polynomial for each resource specified, in order.
                   For example, if \xmlAttr{resources} is ``x, y'', then order ``2,3'' would mean
                   the specified coefficient is for $x^{2}y^{3}$.""")

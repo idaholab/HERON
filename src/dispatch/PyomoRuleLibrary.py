@@ -297,10 +297,9 @@ def transfer_rule(coeffs, r_map, prod_name, m, t) -> bool:
   for resources, ord_dict in coeffs.items():
     for orders, coeff in ord_dict.items():
       term = coeff
-      for i, res in enumerate(resources):
-        print(f'DEBUGG ... rsr {resources}, term {term}, i {i}, res {res}')
-        r = r_map[res]
-        prod = activity[r, t]
-        term *= prod ** orders[i]
+      for r, res in enumerate(resources):
+        map_index = r_map[res]
+        prod = activity[map_index, t]
+        term *= prod ** orders[r]
       eqn += term
   return eqn == 0

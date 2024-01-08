@@ -67,19 +67,19 @@ class Pyomo(Dispatcher):
     """
     specs = InputData.parameterInputFactory(
       'pyomo', ordered=False, baseNode=None,
-      descr=r"""The \texttt{pyomo} dispatcher uses analytic modeling and rolling 
-      windows to solve dispatch optimization with perfect information via the 
+      descr=r"""The \texttt{pyomo} dispatcher uses analytic modeling and rolling
+      windows to solve dispatch optimization with perfect information via the
       pyomo optimization library."""
     )
 
     specs.addSub(
       InputData.parameterInputFactory(
         'rolling_window_length', contentType=InputTypes.IntegerType,
-        descr=r"""Sets the length of the rolling window that the Pyomo optimization 
-        algorithm uses to break down histories. Longer window lengths will minimize 
-        boundary effects, such as nonoptimal storage dispatch, at the cost of slower 
-        optimization solves. Note that if the rolling window results in a window 
-        of length 1 (such as at the end of a history), this can cause problems for pyomo. 
+        descr=r"""Sets the length of the rolling window that the Pyomo optimization
+        algorithm uses to break down histories. Longer window lengths will minimize
+        boundary effects, such as nonoptimal storage dispatch, at the cost of slower
+        optimization solves. Note that if the rolling window results in a window
+        of length 1 (such as at the end of a history), this can cause problems for pyomo.
         \default{24}"""
       )
     )
@@ -87,7 +87,7 @@ class Pyomo(Dispatcher):
     specs.addSub(
       InputData.parameterInputFactory(
         'debug_mode', contentType=InputTypes.BoolType,
-        descr=r"""Enables additional printing in the pyomo dispatcher. 
+        descr=r"""Enables additional printing in the pyomo dispatcher.
         Highly discouraged for production runs. \default{False}."""
       )
     )
@@ -95,7 +95,7 @@ class Pyomo(Dispatcher):
     specs.addSub(
       InputData.parameterInputFactory(
         'solver', contentType=InputTypes.StringType,
-        descr=r"""Indicates which solver should be used by pyomo. Options depend 
+        descr=r"""Indicates which solver should be used by pyomo. Options depend
         on individual installation. \default{'glpk' for Windows, 'cbc' otherwise}."""
       )
     )
@@ -103,8 +103,8 @@ class Pyomo(Dispatcher):
     specs.addSub(
       InputData.parameterInputFactory(
         'tol', contentType=InputTypes.FloatType,
-        descr=r"""Relative tolerance for converging final optimal dispatch solutions. 
-        Specific implementation depends on the solver selected. Changing this value 
+        descr=r"""Relative tolerance for converging final optimal dispatch solutions.
+        Specific implementation depends on the solver selected. Changing this value
         could have significant impacts on the dispatch optimization time and quality.
         \default{solver dependent, often 1e-6}."""
       )
@@ -139,7 +139,7 @@ class Pyomo(Dispatcher):
     window_len_node = specs.findFirst('rolling_window_length')
     if window_len_node is not None:
       self._window_len = window_len_node.value
-    
+
     debug_node = specs.findFirst('debug_mode')
     if debug_node is not None:
       self.debug_mode = debug_node.value
@@ -162,7 +162,7 @@ class Pyomo(Dispatcher):
         self.solve_options[key] = solver_tol
       else:
         raise ValueError(f"Tolerance setting not available for solver '{self._solver}'.")
-  
+
 
   def _check_solver_availability(self, requested_solver: str) -> str:
     """
@@ -174,13 +174,13 @@ class Pyomo(Dispatcher):
     for solver in solvers_to_check:
       if self._is_solver_available(solver):
         return solver
-    
+
     all_options = pyo.SolverFactory._cls.keys()
     available_solvers = [op for op in all_options if not op.startswith('_') and self._is_solver_available(op)]
     raise RuntimeError(
       f'Requested solver "{requested_solver} not found. Available options may include: {available_solvers}.'
     )
-  
+
 
   def _is_solver_available(self, solver: str) -> bool:
     """
@@ -249,7 +249,7 @@ class Pyomo(Dispatcher):
           # NOTE: There used to be an else conditional here that depended on the
           # variable `subdisp` which was not defined yet. Leaving an unreachable
           # branch of code, thus, I removed it. So currently, this function assumes
-          # start_index will always be zero, otherwise it will return an empty dict. 
+          # start_index will always be zero, otherwise it will return an empty dict.
           # Here was the line in case we need it in the future:
           # else: initial_levels[comp] = subdisp[comp.name]['level'][comp.get_interaction().get_resource()][-1]
     return initial_levels
@@ -285,11 +285,11 @@ class Pyomo(Dispatcher):
 
       if conv_counter >= self._picard_limit and not converged:
         raise DispatchError(f"Convergence not reached after {self._picard_limit} iterations.")
-      
+
     else:
       # No convergence process needed
       pass
-    
+
     end = time_mod.time()
     solve_time = end - start
     return subdisp, solve_time
@@ -324,7 +324,7 @@ class Pyomo(Dispatcher):
     """
     if old is None:
       return False
-    
+
     for comp in components:
       intr = comp.get_interaction()
       if intr.is_governed(): # by "is_governed" we mean "isn't optimized in pyomo"
@@ -508,6 +508,8 @@ class Pyomo(Dispatcher):
     if self.debug_mode:
       soln.write()
       putils.debug_print_soln(m)
+    else:
+      print('DEBUGG debug mode is turned off!')
     # return dict of numpy arrays
     result = putils.retrieve_solution(m)
     return result

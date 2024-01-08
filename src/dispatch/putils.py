@@ -2,6 +2,7 @@
 """
 import numpy as np
 import pyomo.environ as pyo
+from pprint import pprint
 
 def get_all_resources(components):
   """
@@ -121,6 +122,8 @@ def debug_pyomo_print(m) -> None:
     @ Out, None
   """
   print('/' + '='*80)
+  print('DEBUGG resource map:')
+  pprint(m.resource_index_map)
   print('DEBUGG model pieces:')
   print('  -> objective:')
   print('     ', m.obj.pprint())

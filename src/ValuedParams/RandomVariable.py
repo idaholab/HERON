@@ -38,6 +38,7 @@ class RandomVariable(ValuedParam):
               \xmlNode{DataGenerator} node.""")
     # grabbing DistributionsCollection which has all Distribution specs as subnodes
     dist_collection = returnInputParameter()
+    # NOTE: any input errors (missing XML attribs or subnodes) will have been found when parsing XML
     for sub in dist_collection.subs:
       spec.addSub(sub)
     return spec
@@ -65,11 +66,16 @@ class RandomVariable(ValuedParam):
     # aliases get used to convert variable names, notably for the cashflow's "capacity"
     if alias_dict is None:
       alias_dict = {}
+    # get_input_specs() will have already generated all RAVEN distribution templates, now find the one the user provided
     sub_distributions = spec.subparts
+    # check that the user provided *something*
     if len(sub_distributions) == 0:
-      self.raiseAnError(RuntimeError, 'No distribution found.')
+      msg = 'RandomVariable ValuedParam was requested but no distribution found in HERON XML input.'
+      self.raiseAnError(RuntimeError,msg)
     else:
+      # seems something is there in a list, get the first instance (multiple distributions doesn't make sense)
       sub_distribution = sub_distributions[0]
+    # now convert the given XML Distribution subnode from the RAVEN InputData/specs back to XML
     self._distribution = self.convert_spec_to_xml(sub_distribution)
     return []
 
@@ -85,16 +91,27 @@ class RandomVariable(ValuedParam):
     if aliases is None:
       aliases = {}
 
-    # oh boy, this is wild
+    # getting the correct key to extract RAVEN variable
     try:
+      # this assumes that HERON template driver overwrote the name of the distribution
+      # something like `{comp_name}_{cashflow_name}_{cashflow_attrib}_dist`
       dist_name = self._distribution.attrib['name']
       key = dist_name.split('_dist')[0]
-    except:
-      self.raiseAnError(RuntimeError, 'RandomVariable VP distribution name not set properly.')
+    except KeyError as e:
+      msg = 'RandomVariable VP distribution name not set properly.'
+      raise KeyError(msg) from e
+    except RuntimeError as e:
+      # just in case there is some other error
+      msg = 'RandomVariable VP distribution not found.'
+      raise RuntimeError(msg) from e
 
+    # mapping from `template_driver` naming convention to HERON Dispatch Manager naming convention
+    # also serves as a running list of acceptable HERON inputs that can take RandomVariable ValuedParam
     if CF_TARGET_MAP[target_var] not in key:
-      self.raiseAnError(RuntimeError, 'Target variable not matching with RandomVariable VP distribution.')
+      msg = 'Target variable not matching with RandomVariable VP distribution.'
+      self.raiseAnError(RuntimeError, msg)
 
+    # extract raven variable (already compiled in HERON Dispatch Manager upstream of this)
     value = inputs['HERON']['RAVEN_vars'][key][0]
     return {target_var: value}, inputs
 
@@ -117,7 +134,7 @@ class RandomVariable(ValuedParam):
     """
     xml = xmlUtils.newNode(input_spec.name)
     if input_spec.parameterValues:
-      xml.attrib = input.parameterValues
+      xml.attrib = input_spec.parameterValues
     if input_spec.value != '':
       xml.text = str(input_spec.value)
     if input_spec.subparts:

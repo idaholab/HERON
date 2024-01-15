@@ -75,7 +75,7 @@ factory.registerType('ARMA', SyntheticHistory)
 factory.registerType('ROM', ROM)
 factory.registerType('Function', Function)
 factory.registerType('activity', Activity)
-factory.registerType('UQ', RandomVariable)
+factory.registerType('uncertainty', RandomVariable)
 # ratios, transfers
 factory.registerType('linear', Linear)
 # TODO add: ROM
@@ -96,7 +96,7 @@ allowable['singular'] = [
   'Function',
   'ROM',
   'CSV',
-  'UQ'
+  'uncertainty'
 ]
 # evaluations available only after dispatch (e.g. for economics)
 ## for example, we can't base a capacity on the dispatch activity ... right?

@@ -31,7 +31,7 @@ class RandomVariable(ValuedParam):
       @ In, None
       @ Out, spec, InputData, value-based spec
     """
-    spec = InputData.parameterInputFactory('UQ', contentType=InputTypes.StringType,
+    spec = InputData.parameterInputFactory('uncertainty', contentType=InputTypes.StringType,
         descr=r"""indicates that this value will be taken from synthetically-generated signals,
               which will be provided to the dispatch at run time by RAVEN from trained models. The value
               of this node should be the name of a synthetic history generator in the
@@ -50,7 +50,7 @@ class RandomVariable(ValuedParam):
       @ Out, None
     """
     super().__init__()
-    self._source_kind = 'UQ'  # name of ValuedParam
+    self._source_kind = 'uncertainty'  # name of ValuedParam
     self._distribution = None # instance of provided RAVEN distribution
 
   def read(self, comp_name, spec, mode, alias_dict=None):

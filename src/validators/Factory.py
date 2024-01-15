@@ -27,7 +27,7 @@ except ModuleNotFoundError:
     farm_loc = None
 
 if farm_loc is not None:
-  from FARM.src.FARMValidatorsForHeron import FARM_Beta, FARM_Gamma_LTI, FARM_Gamma_FMU, FARM_Delta_FMU
+  from FARM.src.FARMValidatorsForHeron import FARM_SISO, FARM_MIMO
 
 # default known validators
 known = {
@@ -37,10 +37,8 @@ known = {
 
 # add farm validators to the known dictionary
 if farm_loc is not None:
-  known['FARM_Beta'] = FARM_Beta
-  known['FARM_Gamma_LTI'] = FARM_Gamma_LTI
-  known['FARM_Gamma_FMU'] = FARM_Gamma_FMU
-  known['FARM_Delta_FMU'] = FARM_Delta_FMU
+  known['FARM_SISO'] = FARM_SISO
+  known['FARM_MIMO'] = FARM_MIMO
 
 def get_class(typ):
   """

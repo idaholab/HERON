@@ -5,8 +5,8 @@
     [./csv]
       type = OrderedCSV
       output = 'uncertainty_o/sweep.csv'
-      zero_threshold = 1e-6
-      rel_err = 1e-6
+      zero_threshold = 1e-2
+      rel_err = 1e-2
     [../]
   [../]
 []

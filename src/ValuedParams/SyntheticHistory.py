@@ -19,7 +19,7 @@ class SyntheticHistory(ValuedParam):
   def get_input_specs(cls):
     """
       Template for parameters that can take a synthetic history generated from RAVEN-trained ARMA
-      or Synthetic History reduced order model.
+      or SyntheticHistory reduced order model.
       @ In, None
       @ Out, spec, InputData, value-based spec
     """

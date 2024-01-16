@@ -65,7 +65,7 @@
           </CashFlow>
           <CashFlow name="FOM" type="repeating" period='year' taxable="False" inflation="none" mult_target="False">
             <driver>
-              <Function method="capacity">functions</Function>
+              <variable>source_capacity</variable>
             </driver>
             <reference_price>
               <fixed_value>100.0</fixed_value>

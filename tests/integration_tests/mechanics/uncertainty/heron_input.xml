@@ -4,9 +4,12 @@
     <author>sotogj</author>
     <created>2024-01-15</created>
     <description>
-      Tests usage of uncertainty quantification in HERON. Based on the existing Cashflows regression
-      test. A random variable
-
+      Tests usage of uncertainty quantification in HERON. Based on the existing
+      tests/integration_tests/mechanics/cashflows regression test. Small difference in that the
+      "source" "capex" cashflow is linked to a variable rather than function call. Uncertainty is
+      introduced in two places: the source capex price is sampled from a Normal distribution and
+      the sink sales price from a Weibull distribution. Values in the gold file should be close to
+      those in the cashflows regression test with a non-zero variance.
     </description>
     <classesTested>HERON</classesTested>
   </TestInfo>
@@ -42,7 +45,7 @@
           <lifetime>30</lifetime>
           <CashFlow name="capex" type="one-time" taxable="False" inflation="none" mult_target="False">
             <driver>
-              <Function method="capacity">functions</Function>
+              <variable>source_capacity</variable>
             </driver>
             <reference_price>
               <uncertainty>
@@ -59,7 +62,6 @@
             <scaling_factor_x>
               <fixed_value>0.999</fixed_value>
             </scaling_factor_x>
-            <!--  <depreciate>5</depreciate> -->
           </CashFlow>
           <CashFlow name="FOM" type="repeating" period='year' taxable="False" inflation="none" mult_target="False">
             <driver>
@@ -107,7 +109,7 @@
                   <lambda>1.0</lambda>
                 </Weibull>
               </uncertainty>
-              <multiplier>-3.14</multiplier>
+              <multiplier>-31.4</multiplier>
             </reference_price>
           </CashFlow>
         </economics>
@@ -116,7 +118,6 @@
 
     <DataGenerators>
       <ARMA name='flex' variable="Signal">%BASE_WORKING_DIR%/../../../TSA/Sine30yr/arma_30yr.pk</ARMA>
-      <Function name="functions">functions.py</Function>
     </DataGenerators>
 </HERON>
 

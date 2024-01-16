@@ -17,7 +17,7 @@ class Activity(ValuedParam):
   @classmethod
   def get_input_specs(cls):
     """
-      Template for parameters that can take a scalar, an ARMA history, or a function
+      Template for parameters that can take values from a tracking variable of the dispatch activity.
       @ In, None
       @ Out, spec, InputData, value-based spec
     """

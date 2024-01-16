@@ -10,6 +10,7 @@ from .ValuedParam import ValuedParam, InputData, InputTypes
 from ravenframework.Distributions import returnInputParameter
 from ravenframework.utils import xmlUtils
 
+# TODO: this is temporary until it becomes a part of the ValuedParam registry
 CF_TARGET_MAP = {
   'reference_price': 'alpha',
   'driver': 'driver',
@@ -20,22 +21,22 @@ CF_TARGET_MAP = {
 # class for potentially dynamically-evaluated quantities
 class RandomVariable(ValuedParam):
   """
-    Represents a ValuedParam that takes values directly from synthetic histories
-    sampled in RAVEN.
+    Represents a ValuedParam that takes values directly from a sampled distribution. Users specify
+    a distribution from RAVEN and values are sampled using a RAVEN MonteCarlo sampler.
   """
   # these types represent values that do not need to be evaluated at run time, as they are determined.
   @classmethod
   def get_input_specs(cls):
     """
-      Template for parameters that can take a scalar, an ARMA history, or a function
+      Template for parameters that can take a value sampled from a distribution.
       @ In, None
       @ Out, spec, InputData, value-based spec
     """
     spec = InputData.parameterInputFactory('uncertainty', contentType=InputTypes.StringType,
-        descr=r"""indicates that this value will be taken from synthetically-generated signals,
-              which will be provided to the dispatch at run time by RAVEN from trained models. The value
-              of this node should be the name of a synthetic history generator in the
-              \xmlNode{DataGenerator} node.""")
+        descr=r"""indicates that this value is a random variable whose value is sampled from a
+              distribution which needs to be provided by the user. A subnode must be provided
+              which matches one of the RAVEN Distributions from `ravenframework/Distributions`.
+              """)
     # grabbing DistributionsCollection which has all Distribution specs as subnodes
     dist_collection = returnInputParameter()
     # NOTE: any input errors (missing XML attribs or subnodes) will have been found when parsing XML
@@ -116,7 +117,7 @@ class RandomVariable(ValuedParam):
     return {target_var: value}, inputs
 
 
-### HELPERS
+  ### HELPERS
   def get_distribution(self):
     """
       Returns distribution XML node from user.
@@ -127,10 +128,11 @@ class RandomVariable(ValuedParam):
 
   def convert_spec_to_xml(self, input_spec, rec_depth=0):
     """
-      Returns distribution XML node from user.
-      @ In, input, InputData, value-based spec
-      @ In, recDepth, int, how many levels deep are we in recursive calls
-      @ Out, distribution, XML node
+      Returns XML node from user.
+      TODO: This should be moved to RAVEN in the near future.
+      @ In, input_spec, InputData, value-based spec
+      @ In, rec_depth, int, how many levels deep are we in recursive calls
+      @ Out, xml, XML node
     """
     xml = xmlUtils.newNode(input_spec.name)
     if input_spec.parameterValues:

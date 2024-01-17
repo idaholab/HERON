@@ -23,7 +23,7 @@ class ROM(ValuedParam):
   @classmethod
   def get_input_specs(cls):
     """
-      Template for parameters that can take a scalar, an ARMA history, or a function
+      Template for parameters that can take values evaluated from a RAVEN ROM.
       @ In, None
       @ Out, spec, InputData, value-based spec
     """

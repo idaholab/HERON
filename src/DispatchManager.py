@@ -41,6 +41,10 @@ class DispatchRunner:
   naming_template = {
     'comp capacity': '{comp}_capacity',
     'dispatch var': 'Dispatch__{comp}__{tracker}__{res}',
+    'cashflow alpha': '{comp}_{cf}_alpha',
+    'cashflow driver': '{comp}_{cf}_driver',
+    'cashflow reference': '{comp}_{cf}_reference',
+    'cashflow scale': '{comp}_{cf}_scale',
   }
 
   def __init__(self):
@@ -135,6 +139,16 @@ class DispatchRunner:
       if update_capacity is not None:
         comp.set_capacity(update_capacity)
         pass_vars[f'{comp.name}_capacity'] = update_capacity
+
+      # component cashflows
+      # TODO this should be more automated - registry?
+      for cf in comp.get_cashflows():
+        for att in ['alpha', 'driver', 'reference', 'scale']:
+          cf_att = self.naming_template[f'cashflow {att}'].format(comp=comp.name, cf=cf.name)
+          update_cf_att = raven_dict.get(cf_att) # TODO
+          if update_cf_att is not None:
+            pass_vars[cf_att] = update_cf_att
+
     # TODO other case, component properties
 
     # check macro parameter

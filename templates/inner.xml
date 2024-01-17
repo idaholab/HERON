@@ -106,6 +106,9 @@
     <Input name="libs">../../heron.lib</Input>
   </Files>
 
+  <Distributions>
+  </Distributions>
+
   <Samplers>
     <MonteCarlo name='mc_arma_dispatch'>
       <samplerInit>

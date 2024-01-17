@@ -842,6 +842,7 @@ class Template(TemplateBase, Base):
     if case.debug['enabled']:
       self._modify_inner_debug(template, case, components, sources)
     self._modify_inner_static_history(template, case, sources)
+    self._modify_inner_UQ(template, case, components)
     # TODO modify based on resources ... should only need if units produce multiple things, right?
     # TODO modify CashFlow input ... this will be a big undertaking with changes to the inner.
     ## Maybe let the user change them? but then we don't control the variable names. We probably have to do it.
@@ -1119,6 +1120,76 @@ class Template(TemplateBase, Base):
           var_name = self.namingTemplates['dispatch'].format(component=name, tracker=tracker, resource=resource)
           self._updateCommaSeperatedList(groups['init_disp'], var_name)
           self._updateCommaSeperatedList(groups['full_dispatch'], var_name)
+
+  def _modify_inner_UQ(self, template, case, components):
+    """
+      Defines modifications to the inner.xml RAVEN input file due to UQ requiring further sampling.
+      NOTE: currently assuming only new distributions are within component cashflows...
+      @ In, template, xml.etree.ElementTree.Element, root of XML to modify
+      @ In, case, HERON Case, defining Case instance
+      @ In, components, list, list of HERON Component instances for this run
+      @ Out, None
+    """
+    mc = template.find('Samplers').find('MonteCarlo')
+    if not mc:
+      pass #idk, error?
+    # find specific variable groups
+    var_groups = template.find('VariableGroups')
+    # find distributions group
+    distributions = template.find('Distributions')
+
+    # check if UQ group exists, if not create variable group
+    group_UQ = var_groups.find("Group[@name='GRO_UQ']")
+    if not group_UQ:
+      group_UQ = xmlUtils.newNode('Group', attrib={'name': 'GRO_UQ'})
+
+    comp_distributions = {}
+    cf_attrs = ['_driver', '_alpha', '_reference', '_scale']
+
+    # looping through components to find UQs
+    for component in components:
+      comp_name = component.name
+      # this is gonna be gross
+      cfs = component.get_cashflows()
+      for cf in cfs:
+        for attr in cf_attrs:
+          vp = getattr(cf,attr)
+          if vp.type == 'RandomVariable':
+            unit_name = f'{comp_name}_{cf.name}'
+            feature_name = attr.split('_')[-1]
+            dist_name = self.namingTemplates['distribution'].format(unit=unit_name, feature=feature_name)
+            feat_name = self.namingTemplates['variable'].format(unit=unit_name, feature=feature_name)
+
+            dist_node = vp._vp.get_distribution() #ugh, this is NOT the XML... will have to reconstruct.
+            dist_node.attrib['name'] = dist_name
+            comp_distributions[dist_name] = {}
+            comp_distributions[dist_name]['xml'] = dist_node
+            comp_distributions[dist_name]['var'] = feat_name
+
+    if not comp_distributions:
+      return
+
+    # These variable groups need to have GRO_UQ
+    groups = {}
+    for tag in ['dispatch_in_scalar', 'armasamples_in_scalar']:
+      groups[tag] = var_groups.find(f".//Group[@name='GRO_{tag}']")
+    # Now we have to add GroupUQ to other groups
+    self._updateCommaSeperatedList(groups['dispatch_in_scalar'], 'GRO_UQ', position=1)
+    self._updateCommaSeperatedList(groups['armasamples_in_scalar'], 'GRO_UQ', position=2)
+
+    for dist_name, dist_contents in comp_distributions.items():
+      # 0. add VP name to Group UQ
+      self._updateCommaSeperatedList(group_UQ, dist_contents['var'])
+      # 1. add the distribution to Distribution group
+      distributions.append(dist_contents['xml'])
+      # 2. add VP name as variable in MC sampler
+      new_var = xmlUtils.newNode('variable', attrib={'name':dist_contents['var']})
+      # 3. add distribution to MC variable
+      new_var.append(xmlUtils.newNode('distribution', text=dist_name))
+      mc.append(new_var)
+
+    var_groups.append(group_UQ)
+
 
   def _modify_inner_debug(self, template, case, components, sources):
     """
@@ -1560,7 +1631,7 @@ class Template(TemplateBase, Base):
     # add the model
     model = xmlUtils.newNode('ROM', attrib={'name':rom_name, 'subType':'pickledROM'})
     econ_comps = list(comp.get_economics() for comp in components)
-    econ_global_params = case.get_econ(econ_comps)
+    econ_global_params = case.get_econ(econ_comps) # FIXME: is this part still necessary?
     econ_global_settings = CashFlows.GlobalSettings()
     econ_global_settings.setParams(econ_global_params)
     ## update the ARMA model to sample a number of years equal to the ProjectLife from CashFlow

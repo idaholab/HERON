@@ -13,6 +13,7 @@ from .Parametric import Parametric, FixedValue, OptBounds, SweepValues
 from .Linear import Linear
 from .Variable import Variable
 from .Activity import Activity
+from .RandomVariable import RandomVariable
 
 class ValuedParamFactory(EntityFactory):
   """
@@ -74,6 +75,7 @@ factory.registerType('ARMA', SyntheticHistory)
 factory.registerType('ROM', ROM)
 factory.registerType('Function', Function)
 factory.registerType('activity', Activity)
+factory.registerType('uncertainty', RandomVariable)
 # ratios, transfers
 factory.registerType('linear', Linear)
 # TODO add: ROM
@@ -93,7 +95,8 @@ allowable['singular'] = [
   'ARMA',
   'Function',
   'ROM',
-  'CSV'
+  'CSV',
+  'uncertainty'
 ]
 # evaluations available only after dispatch (e.g. for economics)
 ## for example, we can't base a capacity on the dispatch activity ... right?

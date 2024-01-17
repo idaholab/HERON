@@ -1,6 +1,8 @@
+# Copyright 2020, Battelle Energy Alliance, LLC
+# ALL RIGHTS RESERVED
 """
+Library of Pyomo rules for HERON dispatch.
 """
-
 import pyomo.environ as pyo
 
 def charge_rule(charge_name, bin_name, large_eps, r, m, t) -> bool:

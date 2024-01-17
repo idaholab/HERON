@@ -1,7 +1,48 @@
+# Copyright 2020, Battelle Energy Alliance, LLC
+# ALL RIGHTS RESERVED
 """
+Pyomo Utilities for Model Dispatch.
 """
+import platform
 import numpy as np
 import pyomo.environ as pyo
+from pyomo.common.errors import ApplicationError
+
+def check_solver_availability(requested_solver: str) -> str:
+  """
+    Check if any of the requested solvers are available. If not, display available options.
+    @ In, requested_solver, str, requested solver (e.g. 'cbc', 'glpk', 'ipopt')
+    @ Out, solver, str, name of solver that is available to use.
+  """
+  # Choose solver; CBC is a great choice unless we're on Windows
+  if platform.system() == 'Windows':
+    platform_solvers = ['glpk', 'cbc', 'ipopt']
+  else:
+    platform_solvers = ['cbc', 'glpk', 'ipopt']
+  
+  solvers_to_check = platform_solvers if requested_solver is None else [requested_solver]
+  for solver in solvers_to_check:
+    if is_solver_available(solver):
+      # Early return if everything is a-ok
+      return solver
+  
+  # Otherwise raise an error
+  all_options = pyo.SolverFactory._cls.keys()
+  available_solvers = [op for op in all_options if not op.startswith('_') and is_solver_available(op)]
+  raise RuntimeError(
+    f'Requested solver "{requested_solver}" not found. Available options may include: {available_solvers}.'
+  )
+  
+def is_solver_available(solver: str) -> bool:
+  """
+    Check if specified soler is available on the system.
+    @ In, solver, str, name of solver to check.
+    @ Out, is_available, bool, True if solver is available.
+  """
+  try:
+    return pyo.SolverFactory(solver).available()
+  except (ApplicationError, NameError, ImportError):
+    return False
 
 def get_all_resources(components):
   """

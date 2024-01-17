@@ -11,10 +11,14 @@ from . import putils
 from .DispatchState import PyomoState
 
 class PyomoModelHandler:
+  """
+  """
 
   _eps = 1e-9
 
   def __init__(self, time, time_offset, case, components, resources, initial_storage, meta) -> None:
+    """
+    """
     self.time = time
     self.time_offset = time_offset
     self.case = case
@@ -26,6 +30,8 @@ class PyomoModelHandler:
     self.model = self.build_model() 
 
   def build_model(self):
+    """
+    """
     model = pyo.ConcreteModel()
     C = np.arange(0, len(self.components), dtype=int) # indexes component
     R = np.arange(0, len(self.resources), dtype=int) # indexes resources
@@ -35,7 +41,9 @@ class PyomoModelHandler:
     model.T = pyo.Set(initialize=T)
     model.Times = self.time
     model.time_offset = self.time_offset
-    model.resource_index_map = self.meta['HERON']['resource_indexer'] # maps the resource to its index WITHIN APPLICABLE components (sparse matrix) e.g. component: {resource: local index}, ... etc}
+    # maps the resource to its index WITHIN APPLICABLE components (sparse matrix) 
+    # e.g. component: {resource: local index}, ... etc}
+    model.resource_index_map = self.meta['HERON']['resource_indexer'] 
     # properties
     model.Case = self.case
     model.Components = self.components
@@ -44,12 +52,16 @@ class PyomoModelHandler:
     return model
 
   def populate_model(self):
+    """
+    """
     for comp in self.components:
       self._process_component(comp)
     self._create_conservation() # conservation of resources (e.g. production == consumption)
     self._create_objective() # objective function
 
   def _process_component(self, component):
+    """
+    """
     interaction = component.get_interaction()
     if interaction.is_governed():
       self._process_governed_component(component, interaction)
@@ -69,6 +81,8 @@ class PyomoModelHandler:
       self._create_production_param(component, activity)
 
   def _process_storage_component(self, m, component, interaction):
+    """
+    """
     activity = interaction.get_strategy().evaluate(self.meta)[0]["level"]
     self._create_production_param(m, component, activity, tag="level")
     dt = self.model.Times[1] - self.model.Times[0]

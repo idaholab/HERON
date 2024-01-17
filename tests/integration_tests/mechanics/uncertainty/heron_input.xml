@@ -51,7 +51,7 @@
               <uncertainty>
                 <Normal name="capex_dist">
                   <mean>10000</mean>
-                  <sigma>20</sigma>
+                  <sigma>2</sigma>
                 </Normal>
               </uncertainty>
               <multiplier>-1</multiplier>
@@ -103,13 +103,12 @@
             </driver>
             <reference_price>
               <uncertainty>
-                <Weibull name="price_dist">
-                  <low>0</low>
-                  <k>1.5</k>
-                  <lambda>1.0</lambda>
-                </Weibull>
+                <Normal name="price_dist">
+                  <mean>10</mean>
+                  <sigma>0.05</sigma>
+                </Normal>
               </uncertainty>
-              <multiplier>-31.4</multiplier>
+              <multiplier>-3.14</multiplier>
             </reference_price>
           </CashFlow>
         </economics>

@@ -94,6 +94,29 @@ def get_prod_bounds(m, comp, meta):
   #   upper = {r: 0}
   # return lower, upper
 
+
+def get_initial_storage_levels(components: list, meta: dict, start_index: int) -> dict:
+  """
+      Return initial storage levels for 'Storage' component types.
+      @ In, components, list, HERON components available to the dispatch.
+      @ In, meta, dict, additional variables passed through.
+      @ In, start_index, int, index of the start of the window.
+      @ Out, initial_levels, dict, initial storage levels for 'Storage' component types.
+  """
+  initial_levels = {}
+  for comp in components:
+    if comp.get_interaction().is_type('Storage'):
+      if start_index == 0:
+        initial_levels[comp] = comp.get_interaction().get_initial_level(meta)
+        # NOTE: There used to be an else conditional here that depended on the
+        # variable `subdisp` which was not defined yet. Leaving an unreachable
+        # branch of code, thus, I removed it. So currently, this function assumes
+        # start_index will always be zero, otherwise it will return an empty dict. 
+        # Here was the line in case we need it in the future:
+        # else: initial_levels[comp] = subdisp[comp.name]['level'][comp.get_interaction().get_resource()][-1]
+  return initial_levels
+
+
 def get_transfer_coeffs(m, comp) -> dict:
   """
     Obtains transfer function ratios (assuming Linear ValuedParams)

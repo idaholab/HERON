@@ -166,47 +166,28 @@ class Pyomo(Dispatcher):
 
     start_index = 0
     final_index = len(time)
-    initial_levels = self._get_initial_storage_levels(components, meta, start_index)
+    initial_levels = putils.get_initial_storage_levels(components, meta, start_index)
 
     while start_index < final_index:
-        end_index = min(start_index + self._window_len, final_index)
-        if end_index - start_index == 1:
-          raise DispatchError("Window length of 1 detected, which is not supported.")
+      end_index = min(start_index + self._window_len, final_index)
+      if end_index - start_index == 1:
+        raise DispatchError("Window length of 1 detected, which is not supported.")
 
-        specific_time = time[start_index:end_index]
-        print(f"Start: {start_index} End: {end_index}")
-        subdisp, solve_time = self._handle_dispatch_window_solve(
-          specific_time, start_index, case, components, sources, resources, initial_levels, meta
-        )
-        print(f'DEBUGG solve time: {solve_time} s')
+      specific_time = time[start_index:end_index]
+      print(f"Start: {start_index} End: {end_index}")
+      subdisp, solve_time = self._handle_dispatch_window_solve(
+        specific_time, start_index, case, components, sources, resources, initial_levels, meta
+      )
+      print(f'DEBUGG solve time: {solve_time} s')
 
-        self._store_results_in_dispatch(dispatch, subdisp, components, start_index, end_index)
-        start_index = end_index
+      # Store Results of optimization into dispatch container
+      for comp in components:
+        for tag in comp.get_tracking_vars():
+          for res, values in subdisp[comp.name][tag].items():
+            dispatch.set_activity_vector(comp, res, values, tracker=tag, start_idx=start_index, end_idx=end_index)
+      start_index = end_index
 
     return dispatch
-
-
-  @staticmethod
-  def _get_initial_storage_levels(components: list, meta: dict, start_index: int) -> dict:
-    """
-      Return initial storage levels for 'Storage' component types.
-      @ In, components, list, HERON components available to the dispatch.
-      @ In, meta, dict, additional variables passed through.
-      @ In, start_index, int, index of the start of the window.
-      @ Out, initial_levels, dict, initial storage levels for 'Storage' component types.
-    """
-    initial_levels = {}
-    for comp in components:
-      if comp.get_interaction().is_type('Storage'):
-        if start_index == 0:
-          initial_levels[comp] = comp.get_interaction().get_initial_level(meta)
-          # NOTE: There used to be an else conditional here that depended on the
-          # variable `subdisp` which was not defined yet. Leaving an unreachable
-          # branch of code, thus, I removed it. So currently, this function assumes
-          # start_index will always be zero, otherwise it will return an empty dict. 
-          # Here was the line in case we need it in the future:
-          # else: initial_levels[comp] = subdisp[comp.name]['level'][comp.get_interaction().get_resource()][-1]
-    return initial_levels
 
 
   def _handle_dispatch_window_solve(self, specific_time, start_index, case, components, sources, resources, initial_levels, meta):
@@ -247,22 +228,6 @@ class Pyomo(Dispatcher):
     end = time_mod.time()
     solve_time = end - start
     return subdisp, solve_time
-
-
-  def _store_results_in_dispatch(self, dispatch, subdisp, components, start_index, end_index) -> None:
-    """
-      Store results from a dispatch window in the overall dispatch container.
-      @ In, dispatch, DispatchScenario, resulting dispatch.
-      @ In, subdisp, dict, results of window dispatch.
-      @ In, components, list, HERON components available to the dispatch.
-      @ In, start_index, int, index of the start of the window.
-      @ In, end_index, int, index of the end of the window.
-      @ Out, None
-    """
-    for comp in components:
-      for tag in comp.get_tracking_vars():
-        for res, values in subdisp[comp.name][tag].items():
-          dispatch.set_activity_vector(comp, res, values, tracker=tag, start_idx=start_index, end_idx=end_index)
 
 
   def check_converged(self, new, old, components, tol=1e-4):
@@ -329,7 +294,7 @@ class Pyomo(Dispatcher):
     """
     model = PyomoModelHandler(time, time_offset, case, components, resources, initial_storage, meta)
     model.populate_model()
-    result = self._solve_dispatch(model.model, meta)
+    result = self._solve_dispatch(model, meta)
     return result
 
 
@@ -341,12 +306,12 @@ class Pyomo(Dispatcher):
     attempts = 0
     # DEBUGG show variables, bounds
     if self.debug_mode:
-      putils.debug_pyomo_print(m)
+      putils.debug_pyomo_print(m.model)
     while not done_and_checked:
       attempts += 1
       print(f'DEBUGG solve attempt {attempts} ...:')
       # solve
-      soln = pyo.SolverFactory(self._solver).solve(m, options=self.solve_options)
+      soln = pyo.SolverFactory(self._solver).solve(m.model, options=self.solve_options)
       # check solve status
       if soln.solver.status == SolverStatus.ok and soln.solver.termination_condition == TerminationCondition.optimal:
         print('DEBUGG ... solve was successful!')
@@ -354,22 +319,22 @@ class Pyomo(Dispatcher):
         print('DEBUGG ... solve was unsuccessful!')
         print('DEBUGG ... status:', soln.solver.status)
         print('DEBUGG ... termination:', soln.solver.termination_condition)
-        putils.debug_pyomo_print(m)
+        putils.debug_pyomo_print(m.model)
         print('Resource Map:')
-        pprint.pprint(m.resource_index_map)
+        pprint.pprint(m.model.resource_index_map)
         raise RuntimeError(
           f"Solve was unsuccessful! Status: {soln.solver.status} Termination: {soln.solver.termination_condition}"
         )
       # try validating
       print('DEBUGG ... validating ...')
-      validation_errs = self.validate(m.Components, m.Activity, m.Times, meta)
+      validation_errs = self.validate(m.model.Components, m.model.Activity, m.model.Times, meta)
       if validation_errs:
         done_and_checked = False
         print('DEBUGG ... validation concerns raised:')
         for e in validation_errs:
           print(f"DEBUGG ... ... Time {e['time_index']} ({e['time']}) \n" +
                 f"Component \"{e['component'].name}\" Resource \"{e['resource']}\": {e['msg']}")
-          self._create_production_limit(m, e)
+          m._create_production_limit(e)
         # go back and solve again
         # raise NotImplementedError('Validation failed, but idk how to handle that yet')
       else:
@@ -379,7 +344,7 @@ class Pyomo(Dispatcher):
         raise RuntimeError('Exceeded validation attempt limit!')
     if self.debug_mode:
       soln.write()
-      putils.debug_print_soln(m)
+      putils.debug_print_soln(m.model)
     # return dict of numpy arrays
-    result = putils.retrieve_solution(m)
+    result = putils.retrieve_solution(m.model)
     return result

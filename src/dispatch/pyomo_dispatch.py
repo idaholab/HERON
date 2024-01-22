@@ -357,7 +357,9 @@ class Pyomo(Dispatcher):
         putils.debug_pyomo_print(m)
         print('Resource Map:')
         pprint.pprint(m.resource_index_map)
-        raise RuntimeError(f"Solve was unsuccessful! Status: {soln.solver.status} Termination: {soln.solver.termination_condition}")
+        raise RuntimeError(
+          f"Solve was unsuccessful! Status: {soln.solver.status} Termination: {soln.solver.termination_condition}"
+        )
       # try validating
       print('DEBUGG ... validating ...')
       validation_errs = self.validate(m.Components, m.Activity, m.Times, meta)

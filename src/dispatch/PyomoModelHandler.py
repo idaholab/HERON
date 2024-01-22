@@ -12,18 +12,27 @@ from .DispatchState import PyomoState
 
 class PyomoModelHandler:
   """
+    Class for constructing the pyomo model, populate with objective/constraints, and evaluate.
   """
 
   _eps = 1e-9
 
   def __init__(self, time, time_offset, case, components, resources, initial_storage, meta) -> None:
     """
+      Initializes a PyomoModelHandler instance.
+      @ In, time, np.array(float), time values to evaluate; may be length 1 or longer
+      @ In, time_offset, int, optional, increase time index tracker by this value if provided
+      @ In, case, HERON Case, case to evaluate
+      @ In, components, list, HERON components to evaluate
+      @ In, resources, list, HERON resources to evaluate
+      @ In, initial_storage, dict, initial storage levels
+      @ In, meta, dict, additional state information
+      @ Out, None
     """
     self.time = time
     self.time_offset = time_offset
     self.case = case
     self.components = components
-    # self.sources = sources
     self.resources = resources
     self.initial_storage = initial_storage
     self.meta = meta
@@ -31,6 +40,9 @@ class PyomoModelHandler:
 
   def build_model(self):
     """
+      Construct the skeleton of the pyomo model. 
+      @ In, None
+      @ Out, model, pyo.ConcreteModel, model
     """
     model = pyo.ConcreteModel()
     C = np.arange(0, len(self.components), dtype=int) # indexes component
@@ -53,6 +65,9 @@ class PyomoModelHandler:
 
   def populate_model(self):
     """
+      Populate the pyomo model with generated objectives/contraints.
+      @ In, None
+      @ Out, None
     """
     for comp in self.components:
       self._process_component(comp)
@@ -61,6 +76,9 @@ class PyomoModelHandler:
 
   def _process_component(self, component):
     """
+      Determine what kind of component this is and process it accordingly.
+      @ In, component, HERON Component, component to process
+      @ Out, None
     """
     interaction = component.get_interaction()
     if interaction.is_governed():
@@ -72,6 +90,10 @@ class PyomoModelHandler:
 
   def _process_governed_component(self, component, interaction):
     """
+      Process a component that is governed since it requires special attention.
+      @ In, component, HERON Component, component to process
+      @ In, interaction, HERON Interaction, interaction to process
+      @ Out, None
     """
     self.meta["request"] = {"component": component, "time": self.time}
     if interaction.is_type("Storage"):
@@ -80,8 +102,13 @@ class PyomoModelHandler:
       activity = interaction.get_strategy().evaluate(self.meta)[0]['level']
       self._create_production_param(component, activity)
 
+
   def _process_storage_component(self, m, component, interaction):
     """
+      Process a storage component.
+      @ In, m, pyo.ConcreteModel, associated model
+      @ In, component, HERON Component, component to process
+      @ In, interaction, HERON Interaction, interaction to process
     """
     activity = interaction.get_strategy().evaluate(self.meta)[0]["level"]
     self._create_production_param(m, component, activity, tag="level")
@@ -93,7 +120,7 @@ class PyomoModelHandler:
     self._create_production_param(m, component, charge, tag="charge")
     self._create_production_param(m, component, discharge, tag="discharge")
 
- ### PYOMO Element Constructors
+
   def _create_production_limit(self, m, validation):
     """
       Creates pyomo production constraint given validation errors

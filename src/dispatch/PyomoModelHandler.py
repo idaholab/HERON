@@ -110,7 +110,6 @@ class PyomoModelHandler:
   def _process_storage_component(self, component, interaction):
     """
       Process a storage component.
-      @ In, m, pyo.ConcreteModel, associated model
       @ In, component, HERON Component, component to process
       @ In, interaction, HERON Interaction, interaction to process
     """
@@ -130,7 +129,6 @@ class PyomoModelHandler:
   def _create_production_limit(self, validation):
     """
       Creates pyomo production constraint given validation errors
-      @ In, m, pyo.ConcreteModel, associated model
       @ In, validation, dict, information from Validator about limit violation
       @ Out, None
     """
@@ -160,7 +158,6 @@ class PyomoModelHandler:
   def _create_production_param(self, comp, values, tag=None):
     """
       Creates production pyomo fixed parameter object for a component
-      @ In, m, pyo.ConcreteModel, associated model
       @ In, comp, HERON Component, component to make production variables for
       @ In, values, np.array(float), values to set for param
       @ In, tag, str, optional, if not None then name will be component_[tag]
@@ -182,9 +179,7 @@ class PyomoModelHandler:
   def _create_production(self, comp):
     """
       Creates all pyomo variable objects for a non-storage component
-      @ In, m, pyo.ConcreteModel, associated model
       @ In, comp, HERON Component, component to make production variables for
-      @ In, meta, dict, dictionary of state variables
       @ Out, None
     """
     prod_name = self._create_production_variable(comp)
@@ -206,7 +201,6 @@ class PyomoModelHandler:
   def _create_production_variable(self, comp, tag=None, add_bounds=True, **kwargs):
     """
       Creates production pyomo variable object for a component
-      @ In, m, pyo.ConcreteModel, associated model
       @ In, comp, HERON Component, component to make production variables for
       @ In, tag, str, optional, if not None then name will be component_[tag]; otherwise "production"
       @ In, add_bounds, bool, optional, if True then determine and set bounds for variable
@@ -308,10 +302,8 @@ class PyomoModelHandler:
   def _create_capacity_constraints(self, comp, prod_name):
     """
       Creates pyomo capacity constraints
-      @ In, m, pyo.ConcreteModel, associated model
       @ In, comp, HERON Component, component to make variables for
       @ In, prod_name, str, name of production variable
-      @ In, meta, dict, additional state information
       @ Out, None
     """
     cap_res = comp.get_capacity_var()       # name of resource that defines capacity
@@ -340,9 +332,7 @@ class PyomoModelHandler:
   def _find_production_limits(self, comp):
     """
       Determines the capacity limits of a unit's operation, in time.
-      @ In, m, pyo.ConcreteModel, associated model
       @ In, comp, HERON Component, component to make variables for
-      @ In, meta, dict, additional state information
       @ Out, caps, array, max production values by time
       @ Out, mins, array, min production values by time
     """
@@ -369,7 +359,6 @@ class PyomoModelHandler:
   def _create_transfer(self, comp, prod_name):
     """
       Creates pyomo transfer function constraints
-      @ In, m, pyo.ConcreteModel, associated model
       @ In, comp, HERON Component, component to make variables for
       @ In, prod_name, str, name of production variable
       @ Out, None
@@ -395,11 +384,8 @@ class PyomoModelHandler:
     """
       Creates storage pyomo variable objects for a storage component
       Similar to create_production, but for storages
-      @ In, m, pyo.ConcreteModel, associated model
       @ In, comp, HERON Component, component to make production variables for
-      @ In, initial_storage, dict, initial storage levels
-      @ In, meta, dict, additional state information
-      @ Out, level_name, str, name of storage level variable
+      @ Out, None
     """
     prefix = comp.name
     # what resource index? Isn't it always 0? # assumption
@@ -447,10 +433,7 @@ class PyomoModelHandler:
   def _create_conservation(self):
     """
       Creates pyomo conservation constraints
-      @ In, m, pyo.ConcreteModel, associated model
-      @ In, resources, list, list of resources in problem
-      @ In, initial_storage, dict, initial storage levels
-      @ In, meta, dict, dictionary of state variables
+      @ In, None
       @ Out, None
     """
     for resource in self.resources:
@@ -462,8 +445,7 @@ class PyomoModelHandler:
   def _create_objective(self):
     """
       Creates pyomo objective function
-      @ In, meta, dict, additional variables to pass through
-      @ In, m, pyo.ConcreteModel, associated model
+      @ In, None
       @ Out, None
     """
     # cashflow eval
@@ -488,7 +470,7 @@ class PyomoModelHandler:
     if meta['HERON']['Case'].use_levelized_inner:
       total = self._compute_levelized_cashflows(components, activity, times, meta, state_args, time_offset)
       return total
-
+            
     total = 0
     specific_meta = dict(meta) # TODO what level of copying do we need here?
     resource_indexer = meta['HERON']['resource_indexer']

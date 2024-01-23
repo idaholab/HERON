@@ -19,20 +19,20 @@ def check_solver_availability(requested_solver: str) -> str:
     platform_solvers = ['glpk', 'cbc', 'ipopt']
   else:
     platform_solvers = ['cbc', 'glpk', 'ipopt']
-  
+
   solvers_to_check = platform_solvers if requested_solver is None else [requested_solver]
   for solver in solvers_to_check:
     if is_solver_available(solver):
       # Early return if everything is a-ok
       return solver
-  
+
   # Otherwise raise an error
   all_options = pyo.SolverFactory._cls.keys()
   available_solvers = [op for op in all_options if not op.startswith('_') and is_solver_available(op)]
   raise RuntimeError(
     f'Requested solver "{requested_solver}" not found. Available options may include: {available_solvers}.'
   )
-  
+
 def is_solver_available(solver: str) -> bool:
   """
     Check if specified soler is available on the system.
@@ -111,7 +111,7 @@ def get_initial_storage_levels(components: list, meta: dict, start_index: int) -
         # NOTE: There used to be an else conditional here that depended on the
         # variable `subdisp` which was not defined yet. Leaving an unreachable
         # branch of code, thus, I removed it. So currently, this function assumes
-        # start_index will always be zero, otherwise it will return an empty dict. 
+        # start_index will always be zero, otherwise it will return an empty dict.
         # Here was the line in case we need it in the future:
         # else: initial_levels[comp] = subdisp[comp.name]['level'][comp.get_interaction().get_resource()][-1]
   return initial_levels
@@ -130,7 +130,7 @@ def get_transfer_coeffs(m, comp) -> dict:
   transfer = comp.get_interaction().get_transfer()
   if transfer is None:
     return {}
-  
+
   # linear transfer coefficients, dict as {resource: coeff}, SIGNS MATTER
   # it's all about ratios -> store as ratio of resource / first resource (arbitrary)
   coeffs = transfer.get_coefficients()
@@ -141,7 +141,7 @@ def get_transfer_coeffs(m, comp) -> dict:
 
   for resource, coef in coeffs_iter:
     ratios[resource] = coef / first_coef
-  
+
   return ratios
 
 def retrieve_solution(m) -> dict:
@@ -217,6 +217,6 @@ def debug_print_soln(m) -> None:
           elif kind == 'Param':
             value = prod[r, t]
           output.append(f'      time: {t + m.time_offset} {time} {value}')
-  
+
   output.append('*' * 80)
   print('\n'.join(output))

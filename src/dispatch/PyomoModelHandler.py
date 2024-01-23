@@ -36,12 +36,12 @@ class PyomoModelHandler:
     self.resources = resources
     self.initial_storage = initial_storage
     self.meta = meta
-    self.model = self.build_model() 
+    self.model = self.build_model()
 
 
   def build_model(self):
     """
-      Construct the skeleton of the pyomo model. 
+      Construct the skeleton of the pyomo model.
       @ In, None
       @ Out, model, pyo.ConcreteModel, model
     """
@@ -54,9 +54,9 @@ class PyomoModelHandler:
     model.T = pyo.Set(initialize=T)
     model.Times = self.time
     model.time_offset = self.time_offset
-    # maps the resource to its index WITHIN APPLICABLE components (sparse matrix) 
+    # maps the resource to its index WITHIN APPLICABLE components (sparse matrix)
     # e.g. component: {resource: local index}, ... etc}
-    model.resource_index_map = self.meta['HERON']['resource_indexer'] 
+    model.resource_index_map = self.meta['HERON']['resource_indexer']
     # properties
     model.Case = self.case
     model.Components = self.components
@@ -574,9 +574,3 @@ class PyomoModelHandler:
     total = (meta['HERON']['Case'].npv_target - non_multiplied) / multiplied
     total *= -1
     return total
-
-
-  
-  
-
-    

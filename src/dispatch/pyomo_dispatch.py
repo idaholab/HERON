@@ -52,19 +52,19 @@ class Pyomo(Dispatcher):
     """
     specs = InputData.parameterInputFactory(
       'pyomo', ordered=False, baseNode=None,
-      descr=r"""The \texttt{pyomo} dispatcher uses analytic modeling and rolling 
-      windows to solve dispatch optimization with perfect information via the 
+      descr=r"""The \texttt{pyomo} dispatcher uses analytic modeling and rolling
+      windows to solve dispatch optimization with perfect information via the
       pyomo optimization library."""
     )
 
     specs.addSub(
       InputData.parameterInputFactory(
         'rolling_window_length', contentType=InputTypes.IntegerType,
-        descr=r"""Sets the length of the rolling window that the Pyomo optimization 
-        algorithm uses to break down histories. Longer window lengths will minimize 
-        boundary effects, such as nonoptimal storage dispatch, at the cost of slower 
-        optimization solves. Note that if the rolling window results in a window 
-        of length 1 (such as at the end of a history), this can cause problems for pyomo. 
+        descr=r"""Sets the length of the rolling window that the Pyomo optimization
+        algorithm uses to break down histories. Longer window lengths will minimize
+        boundary effects, such as nonoptimal storage dispatch, at the cost of slower
+        optimization solves. Note that if the rolling window results in a window
+        of length 1 (such as at the end of a history), this can cause problems for pyomo.
         \default{24}"""
       )
     )
@@ -72,7 +72,7 @@ class Pyomo(Dispatcher):
     specs.addSub(
       InputData.parameterInputFactory(
         'debug_mode', contentType=InputTypes.BoolType,
-        descr=r"""Enables additional printing in the pyomo dispatcher. 
+        descr=r"""Enables additional printing in the pyomo dispatcher.
         Highly discouraged for production runs. \default{False}."""
       )
     )
@@ -80,7 +80,7 @@ class Pyomo(Dispatcher):
     specs.addSub(
       InputData.parameterInputFactory(
         'solver', contentType=InputTypes.StringType,
-        descr=r"""Indicates which solver should be used by pyomo. Options depend 
+        descr=r"""Indicates which solver should be used by pyomo. Options depend
         on individual installation. \default{'glpk' for Windows, 'cbc' otherwise}."""
       )
     )
@@ -88,8 +88,8 @@ class Pyomo(Dispatcher):
     specs.addSub(
       InputData.parameterInputFactory(
         'tol', contentType=InputTypes.FloatType,
-        descr=r"""Relative tolerance for converging final optimal dispatch solutions. 
-        Specific implementation depends on the solver selected. Changing this value 
+        descr=r"""Relative tolerance for converging final optimal dispatch solutions.
+        Specific implementation depends on the solver selected. Changing this value
         could have significant impacts on the dispatch optimization time and quality.
         \default{solver dependent, often 1e-6}."""
       )
@@ -124,7 +124,7 @@ class Pyomo(Dispatcher):
     window_len_node = specs.findFirst('rolling_window_length')
     if window_len_node is not None:
       self._window_len = window_len_node.value
-    
+
     debug_node = specs.findFirst('debug_mode')
     if debug_node is not None:
       self.debug_mode = debug_node.value
@@ -147,7 +147,7 @@ class Pyomo(Dispatcher):
         self.solve_options[key] = solver_tol
       else:
         raise ValueError(f"Tolerance setting not available for solver '{self._solver}'.")
-  
+
 
   def dispatch(self, case, components, sources, meta):
     """
@@ -204,7 +204,7 @@ class Pyomo(Dispatcher):
       @ Out, subdisp, dict, results of window dispatch.
     """
     start = time_mod.time()
-    subdisp = self.dispatch_window(specific_time, start_index, case, components, sources, resources, initial_levels, meta)
+    subdisp = self.dispatch_window(specific_time, start_index, case, components, resources, initial_levels, meta)
 
     if self.needs_convergence(components):
       conv_counter = 0
@@ -220,11 +220,11 @@ class Pyomo(Dispatcher):
 
       if conv_counter >= self._picard_limit and not converged:
         raise DispatchError(f"Convergence not reached after {self._picard_limit} iterations.")
-      
+
     else:
       # No convergence process needed
       pass
-    
+
     end = time_mod.time()
     solve_time = end - start
     return subdisp, solve_time
@@ -241,7 +241,7 @@ class Pyomo(Dispatcher):
     """
     if old is None:
       return False
-    
+
     for comp in components:
       intr = comp.get_interaction()
       if intr.is_governed(): # by "is_governed" we mean "isn't optimized in pyomo"
@@ -279,7 +279,7 @@ class Pyomo(Dispatcher):
     return self._solver
 
 
-  def dispatch_window(self, time, time_offset, case, components, sources, resources, initial_storage, meta):
+  def dispatch_window(self, time, time_offset, case, components, resources, initial_storage, meta):
     """
       Dispatches one part of a rolling window.
       @ In, time, np.array, value of time to evaluate
@@ -307,6 +307,7 @@ class Pyomo(Dispatcher):
     # DEBUGG show variables, bounds
     if self.debug_mode:
       putils.debug_pyomo_print(m.model)
+
     while not done_and_checked:
       attempts += 1
       print(f'DEBUGG solve attempt {attempts} ...:')
@@ -316,15 +317,16 @@ class Pyomo(Dispatcher):
       if soln.solver.status == SolverStatus.ok and soln.solver.termination_condition == TerminationCondition.optimal:
         print('DEBUGG ... solve was successful!')
       else:
-        print('DEBUGG ... solve was unsuccessful!')
-        print('DEBUGG ... status:', soln.solver.status)
-        print('DEBUGG ... termination:', soln.solver.termination_condition)
+        print(f"""DEBUGG ... solve was unsuccessful!
+          DEBUGG ... status: {soln.solver.status}
+          DEBUGG ... termination: {soln.solver.termination_condition}""")
         putils.debug_pyomo_print(m.model)
         print('Resource Map:')
         pprint.pprint(m.model.resource_index_map)
         raise RuntimeError(
           f"Solve was unsuccessful! Status: {soln.solver.status} Termination: {soln.solver.termination_condition}"
         )
+
       # try validating
       print('DEBUGG ... validating ...')
       validation_errs = self.validate(m.model.Components, m.model.Activity, m.model.Times, meta)
@@ -340,11 +342,14 @@ class Pyomo(Dispatcher):
       else:
         print('DEBUGG Solve successful and no validation concerns raised.')
         done_and_checked = True
+
       if attempts > 100:
         raise RuntimeError('Exceeded validation attempt limit!')
+
     if self.debug_mode:
       soln.write()
       putils.debug_print_soln(m.model)
+
     # return dict of numpy arrays
     result = putils.retrieve_solution(m.model)
     return result

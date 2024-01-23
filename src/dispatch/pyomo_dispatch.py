@@ -233,7 +233,7 @@ class Pyomo(Dispatcher):
     end = time_mod.time()
     solve_time = end - start
     return subdisp, solve_time
-  
+
 
   def _dispatch_window(self, time, time_offset, case, components, resources, initial_storage, meta):
     """
@@ -312,7 +312,7 @@ class Pyomo(Dispatcher):
       attempts += 1
       print(f'DEBUGG solve attempt {attempts} ...:')
       soln = pyo.SolverFactory(self._solver).solve(m.model, options=self.solve_options)
-      
+
       # check solve status
       if soln.solver.status == SolverStatus.ok and soln.solver.termination_condition == TerminationCondition.optimal:
         print('DEBUGG ... solve was successful!')

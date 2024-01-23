@@ -470,7 +470,7 @@ class PyomoModelHandler:
     if meta['HERON']['Case'].use_levelized_inner:
       total = self._compute_levelized_cashflows(components, activity, times, meta, state_args, time_offset)
       return total
-            
+
     total = 0
     specific_meta = dict(meta) # TODO what level of copying do we need here?
     resource_indexer = meta['HERON']['resource_indexer']

@@ -164,6 +164,7 @@ def ramp_rule_up(prod_name, r, limit, neg_cap, t, m, bins=None) -> bool:
     @ In, t, int, time index for ramp limit rule (NOTE not pyomo index, rather fixed index)
     @ In, m, pyo.ConcreteModel, associated model
     @ In, bins, tuple, optional, (lower, steady, upper) binaries if limiting ramp frequency
+    @ Out, rule, expression, evaluation for Pyomo constraint
   """
   prod = getattr(m, prod_name)
   if t == 0:
@@ -200,6 +201,7 @@ def ramp_freq_rule(Bd, Bu, tao, t, m) -> bool:
     @ In, tao, int, number of time steps to look back
     @ In, t, int, time step indexer
     @ In, m, pyo.ConcreteModel, pyomo model
+    @ Out, rule, expression, evaluation for Pyomo constraint
   """
   if t == 0:
     return pyo.Constraint.Skip
@@ -220,12 +222,14 @@ def ramp_freq_bins_rule(Bd, Bu, Bn, t, m) -> bool:
     @ In, Bn, bool var, binary tracking no-ramp events
     @ In, t, int, time step indexer
     @ In, m, pyo.ConcreteModel, pyomo model
+    @ Out, rule, expression, evaluation for Pyomo constraint
   """
   return Bd[t] + Bu[t] + Bn[t] == 1
 
 def cashflow_rule(compute_cashflows, meta, m) -> float:
   """
     Objective function rule.
+    @ In, compute_cashflows, function, function to compute cashflows
     @ In, meta, dict, additional variable passthrough
     @ In, m, pyo.ConcreteModel, associated model
     @ Out, total, float, evaluation of cost
@@ -238,7 +242,6 @@ def cashflow_rule(compute_cashflows, meta, m) -> float:
 def conservation_rule(res, m, t) -> bool:
   """
     Constructs conservation constraints.
-    @ In, initial_storage, dict, initial storage levels at t==0 (not t+offset==0)
     @ In, res, str, name of resource
     @ In, m, pyo.ConcreteModel, associated model
     @ In, t, int, index of time variable

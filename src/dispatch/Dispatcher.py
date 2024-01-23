@@ -4,7 +4,7 @@
 """
   Base class for dispatchers.
 """
-from ravenframework.utils import InputData, InputTypes
+from ravenframework.utils import InputData
 from ravenframework.BaseClasses import MessageUser, InputDataUser
 
 class DispatchError(Exception):

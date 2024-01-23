@@ -149,6 +149,15 @@ class Pyomo(Dispatcher):
         raise ValueError(f"Tolerance setting not available for solver '{self._solver}'.")
 
 
+  def get_solver(self):
+    """
+      Retrieves the solver information (if applicable)
+      @ In, None
+      @ Out, solver, str, name of solver used
+    """
+    return self._solver
+
+
   def dispatch(self, case, components, sources, meta):
     """
       Performs dispatch.
@@ -204,9 +213,9 @@ class Pyomo(Dispatcher):
       @ Out, subdisp, dict, results of window dispatch.
     """
     start = time_mod.time()
-    subdisp = self.dispatch_window(specific_time, start_index, case, components, resources, initial_levels, meta)
+    subdisp = self._dispatch_window(specific_time, start_index, case, components, resources, initial_levels, meta)
 
-    if self.needs_convergence(components):
+    if self._needs_convergence(components):
       conv_counter = 0
       converged = False
       previous = None
@@ -214,23 +223,38 @@ class Pyomo(Dispatcher):
       while not converged and conv_counter < self._picard_limit:
         conv_counter += 1
         print(f'DEBUGG iteratively solving window, iteration {conv_counter}/{self._picard_limit} ...')
-        subdisp = self.dispatch_window(specific_time, start_index, case, components, sources, resources, initial_levels, meta)
-        converged = self.check_converged(subdisp, previous, components)
+        subdisp = self._dispatch_window(specific_time, start_index, case, components, resources, initial_levels, meta)
+        converged = self._check_if_converged(subdisp, previous, components)
         previous = subdisp
 
       if conv_counter >= self._picard_limit and not converged:
         raise DispatchError(f"Convergence not reached after {self._picard_limit} iterations.")
 
-    else:
-      # No convergence process needed
-      pass
-
     end = time_mod.time()
     solve_time = end - start
     return subdisp, solve_time
+  
+
+  def _dispatch_window(self, time, time_offset, case, components, resources, initial_storage, meta):
+    """
+      Dispatches one part of a rolling window.
+      @ In, time, np.array, value of time to evaluate
+      @ In, time_offset, int, offset of the time index in the greater history
+      @ In, case, HERON Case, Case that this dispatch is part of
+      @ In, components, list, HERON components available to the dispatch
+      @ In, sources, list, HERON source (placeholders) for signals
+      @ In, resources, list, sorted list of all resources in problem
+      @ In, initial_storage, dict, initial storage levels if any
+      @ In, meta, dict, additional variables passed through
+      @ Out, result, dict, results of window dispatch
+    """
+    model = PyomoModelHandler(time, time_offset, case, components, resources, initial_storage, meta)
+    model.populate_model()
+    result = self._solve_dispatch(model, meta)
+    return result
 
 
-  def check_converged(self, new, old, components, tol=1e-4):
+  def _check_if_converged(self, new, old, components, tol=1e-4):
     """
       Checks convergence of consecutive dispatch solves
       @ In, new, dict, results of dispatch # TODO should this be the model rather than dict?
@@ -261,7 +285,7 @@ class Pyomo(Dispatcher):
     return True
 
 
-  def needs_convergence(self, components):
+  def _needs_convergence(self, components):
     """
       Determines whether the current setup needs convergence to solve.
       @ In, components, list, HERON component list
@@ -270,36 +294,12 @@ class Pyomo(Dispatcher):
     return any(comp.get_interaction().is_governed() for comp in components)
 
 
-  def get_solver(self):
-    """
-      Retrieves the solver information (if applicable)
-      @ In, None
-      @ Out, solver, str, name of solver used
-    """
-    return self._solver
-
-
-  def dispatch_window(self, time, time_offset, case, components, resources, initial_storage, meta):
-    """
-      Dispatches one part of a rolling window.
-      @ In, time, np.array, value of time to evaluate
-      @ In, time_offset, int, offset of the time index in the greater history
-      @ In, case, HERON Case, Case that this dispatch is part of
-      @ In, components, list, HERON components available to the dispatch
-      @ In, sources, list, HERON source (placeholders) for signals
-      @ In, resources, list, sorted list of all resources in problem
-      @ In, initial_storage, dict, initial storage levels if any
-      @ In, meta, dict, additional variables passed through
-      @ Out, result, dict, results of window dispatch
-    """
-    model = PyomoModelHandler(time, time_offset, case, components, resources, initial_storage, meta)
-    model.populate_model()
-    result = self._solve_dispatch(model, meta)
-    return result
-
-
   def _solve_dispatch(self, m, meta):
     """
+      Solves the dispatch problem.
+      @ In, m, PyomoModelHandler, model object to solve
+      @ In, meta, dict, additional variables passed through
+      @ Out, result, dict, results of solved dispatch
     """
     # start a solution search
     done_and_checked = False
@@ -311,19 +311,16 @@ class Pyomo(Dispatcher):
     while not done_and_checked:
       attempts += 1
       print(f'DEBUGG solve attempt {attempts} ...:')
-      # solve
       soln = pyo.SolverFactory(self._solver).solve(m.model, options=self.solve_options)
+      
       # check solve status
       if soln.solver.status == SolverStatus.ok and soln.solver.termination_condition == TerminationCondition.optimal:
         print('DEBUGG ... solve was successful!')
       else:
-        print(f"""DEBUGG ... solve was unsuccessful!
-          DEBUGG ... status: {soln.solver.status}
-          DEBUGG ... termination: {soln.solver.termination_condition}""")
         putils.debug_pyomo_print(m.model)
         print('Resource Map:')
         pprint.pprint(m.model.resource_index_map)
-        raise RuntimeError(
+        raise DispatchError(
           f"Solve was unsuccessful! Status: {soln.solver.status} Termination: {soln.solver.termination_condition}"
         )
 
@@ -337,14 +334,15 @@ class Pyomo(Dispatcher):
           print(f"DEBUGG ... ... Time {e['time_index']} ({e['time']}) \n" +
                 f"Component \"{e['component'].name}\" Resource \"{e['resource']}\": {e['msg']}")
           m._create_production_limit(e)
-        # go back and solve again
-        # raise NotImplementedError('Validation failed, but idk how to handle that yet')
+        # TODO go back and solve again
+        # raise DispatchError('Validation failed, but idk how to handle that yet')
       else:
         print('DEBUGG Solve successful and no validation concerns raised.')
         done_and_checked = True
 
+      # In the words of Charles Bukowski, "Don't Try [too many times]"
       if attempts > 100:
-        raise RuntimeError('Exceeded validation attempt limit!')
+        raise DispatchError('Exceeded validation attempt limit!')
 
     if self.debug_mode:
       soln.write()

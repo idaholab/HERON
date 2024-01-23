@@ -55,45 +55,6 @@ def get_all_resources(components):
     res.update(comp.get_resources())
   return res
 
-def get_prod_bounds(m, comp, meta):
-  """
-    Determines the production limits of the given component
-    @ In, comp, HERON component, component to get bounds of
-    @ In, meta, dict, additional state information
-    @ Out, lower, dict, lower production limit (might be negative for consumption)
-    @ Out, upper, dict, upper production limit (might be 0 for consumption)
-  """
-  raise NotImplementedError
-  # cap_res = comp.get_capacity_var()       # name of resource that defines capacity
-  # r = m.resource_index_map[comp][cap_res]
-  # maxs = []
-  # mins = []
-  # for t, time in enumerate(m.Times):
-  #   meta['HERON']['time_index'] = t + m.time_offset
-  #   cap = comp.get_capacity(meta)[0][cap_res]
-  #   low = comp.get_minimum(meta)[0][cap_res]
-  #   maxs.append(cap)
-  #   if (comp.is_dispatchable() == 'fixed') or (low == cap):
-  #     low = cap
-  #     # initialize values to avoid boundary errors
-  #     var = getattr(m, prod_name)
-  #     values = var.get_values()
-  #     for k in values:
-  #       values[k] = cap
-  #     var.set_values(values)
-  #   mins.append(low)
-  # maximum = comp.get_capacity(None, None, None, None)[0][cap_res]
-  # # TODO minimum!
-  # # producing or consuming the defining resource?
-  # # -> put these in dictionaries so we can "get" limits or return None
-  # if maximum > 0:
-  #   lower = {r: 0}
-  #   upper = {r: maximum}
-  # else:
-  #   lower = {r: maximum}
-  #   upper = {r: 0}
-  # return lower, upper
-
 
 def get_initial_storage_levels(components: list, meta: dict, start_index: int) -> dict:
   """

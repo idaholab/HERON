@@ -18,7 +18,8 @@ class SyntheticHistory(ValuedParam):
   @classmethod
   def get_input_specs(cls):
     """
-      Template for parameters that can take a scalar, an ARMA history, or a function
+      Template for parameters that can take a synthetic history generated from RAVEN-trained ARMA
+      or SyntheticHistory reduced order model.
       @ In, None
       @ Out, spec, InputData, value-based spec
     """

@@ -16,7 +16,8 @@ class Parametric(ValuedParam):
   @classmethod
   def get_input_specs(cls):
     """
-      Template for parameters that can take a scalar, an ARMA history, or a function
+      Template for parameters that can take a value determined by the outer workflow, constant
+      in the inner workflow.
       @ In, None
       @ Out, spec, InputData, value-based spec
     """

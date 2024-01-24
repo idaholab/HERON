@@ -1,0 +1,124 @@
+<HERON>
+  <TestInfo>
+    <name>Cashflows</name>
+    <author>sotogj</author>
+    <created>2024-01-15</created>
+    <description>
+      Tests usage of uncertainty quantification in HERON. Based on the existing
+      tests/integration_tests/mechanics/cashflows regression test. Small difference in that the
+      "source" "capex" cashflow is linked to a variable rather than function call. Uncertainty is
+      introduced in two places: the source capex price is sampled from a Normal distribution and
+      the sink sales price from a Weibull distribution. Values in the gold file should be close to
+      those in the cashflows regression test with a non-zero variance.
+    </description>
+    <classesTested>HERON</classesTested>
+  </TestInfo>
+
+    <Case name="uncertainty">
+      <mode>sweep</mode>
+      <num_arma_samples>3</num_arma_samples>
+      <time_discretization>
+        <time_variable>Time</time_variable>
+        <end_time>2</end_time>
+        <num_steps>21</num_steps>
+      </time_discretization>
+      <economics>
+        <ProjectTime>20</ProjectTime>
+        <DiscountRate>0.08</DiscountRate>
+        <tax>0.25</tax>
+        <inflation>0.00</inflation>
+        <verbosity>50</verbosity>
+      </economics>
+      <dispatcher>
+        <pyomo/>
+      </dispatcher>
+    </Case>
+
+    <Components>
+      <Component name="source">
+        <produces resource="a" dispatch="fixed">
+          <capacity resource="a">
+            <sweep_values>1, 2</sweep_values>
+          </capacity>
+        </produces>
+        <economics>
+          <lifetime>30</lifetime>
+          <CashFlow name="capex" type="one-time" taxable="False" inflation="none" mult_target="False">
+            <driver>
+              <variable>source_capacity</variable>
+            </driver>
+            <reference_price>
+              <uncertainty>
+                <Normal name="capex_dist">
+                  <mean>10000</mean>
+                  <sigma>2</sigma>
+                </Normal>
+              </uncertainty>
+              <multiplier>-1</multiplier>
+            </reference_price>
+            <reference_driver>
+              <fixed_value>10.0</fixed_value>
+            </reference_driver>
+            <scaling_factor_x>
+              <fixed_value>0.999</fixed_value>
+            </scaling_factor_x>
+          </CashFlow>
+          <CashFlow name="FOM" type="repeating" period='year' taxable="False" inflation="none" mult_target="False">
+            <driver>
+              <variable>source_capacity</variable>
+            </driver>
+            <reference_price>
+              <fixed_value>100.0</fixed_value>
+              <multiplier>-1</multiplier>
+            </reference_price>
+            <reference_driver>
+              <fixed_value>10.0</fixed_value>
+            </reference_driver>
+            <scaling_factor_x>
+              <fixed_value>0.999</fixed_value>
+            </scaling_factor_x>
+          </CashFlow>
+          <CashFlow name="VOM" type="repeating" taxable="True" inflation="none" mult_target="False">
+            <driver>
+              <activity>a</activity>
+            </driver>
+            <reference_price>
+              <fixed_value>-1</fixed_value>
+            </reference_price>
+          </CashFlow>
+        </economics>
+      </Component>
+
+      <Component name="sink">
+        <demands resource="a" dispatch="independent">
+          <capacity>
+            <fixed_value>-2</fixed_value>
+          </capacity>
+        </demands>
+        <economics>
+          <lifetime>30</lifetime>
+          <CashFlow name="sales" type="repeating" taxable="False" inflation="none" mult_target="False">
+            <driver>
+              <activity>a</activity>
+            </driver>
+            <reference_price>
+              <uncertainty>
+                <Normal name="price_dist">
+                  <mean>10</mean>
+                  <sigma>0.05</sigma>
+                </Normal>
+              </uncertainty>
+              <multiplier>-3.14</multiplier>
+            </reference_price>
+          </CashFlow>
+        </economics>
+      </Component>
+    </Components>
+
+    <DataGenerators>
+      <ARMA name='flex' variable="Signal">%BASE_WORKING_DIR%/../../../TSA/Sine30yr/arma_30yr.pk</ARMA>
+    </DataGenerators>
+</HERON>
+
+
+

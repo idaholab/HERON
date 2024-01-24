@@ -1,8 +1,48 @@
+# Copyright 2020, Battelle Energy Alliance, LLC
+# ALL RIGHTS RESERVED
 """
+Pyomo Utilities for Model Dispatch.
 """
+import platform
 import numpy as np
 import pyomo.environ as pyo
-from pprint import pprint
+from pyomo.common.errors import ApplicationError
+
+def check_solver_availability(requested_solver: str) -> str:
+  """
+    Check if any of the requested solvers are available. If not, display available options.
+    @ In, requested_solver, str, requested solver (e.g. 'cbc', 'glpk', 'ipopt')
+    @ Out, solver, str, name of solver that is available to use.
+  """
+  # Choose solver; CBC is a great choice unless we're on Windows
+  if platform.system() == 'Windows':
+    platform_solvers = ['glpk', 'cbc', 'ipopt']
+  else:
+    platform_solvers = ['cbc', 'glpk', 'ipopt']
+
+  solvers_to_check = platform_solvers if requested_solver is None else [requested_solver]
+  for solver in solvers_to_check:
+    if is_solver_available(solver):
+      # Early return if everything is a-ok
+      return solver
+
+  # Otherwise raise an error
+  all_options = pyo.SolverFactory._cls.keys()
+  available_solvers = [op for op in all_options if not op.startswith('_') and is_solver_available(op)]
+  raise RuntimeError(
+    f'Requested solver "{requested_solver}" not found. Available options may include: {available_solvers}.'
+  )
+
+def is_solver_available(solver: str) -> bool:
+  """
+    Check if specified soler is available on the system.
+    @ In, solver, str, name of solver to check.
+    @ Out, is_available, bool, True if solver is available.
+  """
+  try:
+    return pyo.SolverFactory(solver).available()
+  except (ApplicationError, NameError, ImportError):
+    return False
 
 def get_all_resources(components):
   """
@@ -15,47 +55,30 @@ def get_all_resources(components):
     res.update(comp.get_resources())
   return res
 
-def get_prod_bounds(m, comp, meta):
+
+def get_initial_storage_levels(components: list, meta: dict, start_index: int) -> dict:
   """
-    Determines the production limits of the given component
-    @ In, comp, HERON component, component to get bounds of
-    @ In, meta, dict, additional state information
-    @ Out, lower, dict, lower production limit (might be negative for consumption)
-    @ Out, upper, dict, upper production limit (might be 0 for consumption)
+      Return initial storage levels for 'Storage' component types.
+      @ In, components, list, HERON components available to the dispatch.
+      @ In, meta, dict, additional variables passed through.
+      @ In, start_index, int, index of the start of the window.
+      @ Out, initial_levels, dict, initial storage levels for 'Storage' component types.
   """
-  raise NotImplementedError
-  # cap_res = comp.get_capacity_var()       # name of resource that defines capacity
-  # r = m.resource_index_map[comp][cap_res]
-  # maxs = []
-  # mins = []
-  # for t, time in enumerate(m.Times):
-  #   meta['HERON']['time_index'] = t + m.time_offset
-  #   cap = comp.get_capacity(meta)[0][cap_res]
-  #   low = comp.get_minimum(meta)[0][cap_res]
-  #   maxs.append(cap)
-  #   if (comp.is_dispatchable() == 'fixed') or (low == cap):
-  #     low = cap
-  #     # initialize values to avoid boundary errors
-  #     var = getattr(m, prod_name)
-  #     values = var.get_values()
-  #     for k in values:
-  #       values[k] = cap
-  #     var.set_values(values)
-  #   mins.append(low)
-  # maximum = comp.get_capacity(None, None, None, None)[0][cap_res]
-  # # TODO minimum!
-  # # producing or consuming the defining resource?
-  # # -> put these in dictionaries so we can "get" limits or return None
-  # if maximum > 0:
-  #   lower = {r: 0}
-  #   upper = {r: maximum}
-  # else:
-  #   lower = {r: maximum}
-  #   upper = {r: 0}
-  # return lower, upper
+  initial_levels = {}
+  for comp in components:
+    if comp.get_interaction().is_type('Storage'):
+      if start_index == 0:
+        initial_levels[comp] = comp.get_interaction().get_initial_level(meta)
+        # NOTE: There used to be an else conditional here that depended on the
+        # variable `subdisp` which was not defined yet. Leaving an unreachable
+        # branch of code, thus, I removed it. So currently, this function assumes
+        # start_index will always be zero, otherwise it will return an empty dict.
+        # Here was the line in case we need it in the future:
+        # else: initial_levels[comp] = subdisp[comp.name]['level'][comp.get_interaction().get_resource()][-1]
+  return initial_levels
+
 
 def get_transfer_coeffs(m, comp) -> dict:
-  # FIXME DEPRECATE
   """
     Obtains transfer function ratios (assuming Linear ValuedParams)
     Form: 1A + 3B -> 2C + 4D
@@ -122,8 +145,6 @@ def debug_pyomo_print(m) -> None:
     @ Out, None
   """
   print('/' + '='*80)
-  print('DEBUGG resource map:')
-  pprint(m.resource_index_map)
   print('DEBUGG model pieces:')
   print('  -> objective:')
   print('     ', m.obj.pprint())

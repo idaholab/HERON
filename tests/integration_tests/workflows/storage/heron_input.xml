@@ -26,7 +26,10 @@
       <verbosity>50</verbosity>
     </economics>
     <dispatcher>
-      <pyomo><debug_mode>True</debug_mode></pyomo>
+      <pyomo>
+        <debug_mode>True</debug_mode>
+        <solver>cbc</solver>
+      </pyomo>
     </dispatcher>
     <dispatch_vars>
       <variable name='NPP_bid_adjust'>

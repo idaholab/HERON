@@ -11,21 +11,40 @@ from . import putils
 from .DispatchState import PyomoState
 
 class PyomoModelHandler:
+  """
+    Class for constructing the pyomo model, populate with objective/constraints, and evaluate.
+  """
 
   _eps = 1e-9
 
   def __init__(self, time, time_offset, case, components, resources, initial_storage, meta) -> None:
+    """
+      Initializes a PyomoModelHandler instance.
+      @ In, time, np.array(float), time values to evaluate; may be length 1 or longer
+      @ In, time_offset, int, optional, increase time index tracker by this value if provided
+      @ In, case, HERON Case, case to evaluate
+      @ In, components, list, HERON components to evaluate
+      @ In, resources, list, HERON resources to evaluate
+      @ In, initial_storage, dict, initial storage levels
+      @ In, meta, dict, additional state information
+      @ Out, None
+    """
     self.time = time
     self.time_offset = time_offset
     self.case = case
     self.components = components
-    # self.sources = sources
     self.resources = resources
     self.initial_storage = initial_storage
     self.meta = meta
     self.model = self.build_model()
 
+
   def build_model(self):
+    """
+      Construct the skeleton of the pyomo model.
+      @ In, None
+      @ Out, model, pyo.ConcreteModel, model
+    """
     model = pyo.ConcreteModel()
     C = np.arange(0, len(self.components), dtype=int) # indexes component
     R = np.arange(0, len(self.resources), dtype=int) # indexes resources
@@ -35,7 +54,9 @@ class PyomoModelHandler:
     model.T = pyo.Set(initialize=T)
     model.Times = self.time
     model.time_offset = self.time_offset
-    model.resource_index_map = self.meta['HERON']['resource_indexer'] # maps the resource to its index WITHIN APPLICABLE components (sparse matrix) e.g. component: {resource: local index}, ... etc}
+    # maps the resource to its index WITHIN APPLICABLE components (sparse matrix)
+    # e.g. component: {resource: local index}, ... etc}
+    model.resource_index_map = self.meta['HERON']['resource_indexer']
     # properties
     model.Case = self.case
     model.Components = self.components
@@ -43,13 +64,25 @@ class PyomoModelHandler:
     model.Activity.initialize(model.Components, model.resource_index_map, model.Times, model)
     return model
 
+
   def populate_model(self):
+    """
+      Populate the pyomo model with generated objectives/contraints.
+      @ In, None
+      @ Out, None
+    """
     for comp in self.components:
       self._process_component(comp)
     self._create_conservation() # conservation of resources (e.g. production == consumption)
     self._create_objective() # objective function
 
+
   def _process_component(self, component):
+    """
+      Determine what kind of component this is and process it accordingly.
+      @ In, component, HERON Component, component to process
+      @ Out, None
+    """
     interaction = component.get_interaction()
     if interaction.is_governed():
       self._process_governed_component(component, interaction)
@@ -58,8 +91,13 @@ class PyomoModelHandler:
     else:
       self._create_production(component)
 
+
   def _process_governed_component(self, component, interaction):
     """
+      Process a component that is governed since it requires special attention.
+      @ In, component, HERON Component, component to process
+      @ In, interaction, HERON Interaction, interaction to process
+      @ Out, None
     """
     self.meta["request"] = {"component": component, "time": self.time}
     if interaction.is_type("Storage"):
@@ -68,32 +106,39 @@ class PyomoModelHandler:
       activity = interaction.get_strategy().evaluate(self.meta)[0]['level']
       self._create_production_param(component, activity)
 
-  def _process_storage_component(self, m, component, interaction):
+
+  def _process_storage_component(self, component, interaction):
+    """
+      Process a storage component.
+      @ In, component, HERON Component, component to process
+      @ In, interaction, HERON Interaction, interaction to process
+    """
     activity = interaction.get_strategy().evaluate(self.meta)[0]["level"]
-    self._create_production_param(m, component, activity, tag="level")
+    self._create_production_param(component, activity, tag="level")
     dt = self.model.Times[1] - self.model.Times[0]
     rte2 = component.get_sqrt_RTE()
-    deltas = self._calculate_deltas(activity, interaction.get_initial_level(self.meta))
+    deltas = np.zeros(len(activity))
+    deltas[1:] = activity[1:] - activity[:-1]
+    deltas[0] = activity[0] - interaction.get_initial_level(self.meta)
     charge = np.where(deltas > 0, -deltas / dt / rte2, 0)
     discharge = np.where(deltas < 0, -deltas / dt * rte2, 0)
-    self._create_production_param(m, component, charge, tag="charge")
-    self._create_production_param(m, component, discharge, tag="discharge")
+    self._create_production_param(component, charge, tag="charge")
+    self._create_production_param(component, discharge, tag="discharge")
 
- ### PYOMO Element Constructors
-  def _create_production_limit(self, m, validation):
+
+  def _create_production_limit(self, validation):
     """
       Creates pyomo production constraint given validation errors
-      @ In, m, pyo.ConcreteModel, associated model
       @ In, validation, dict, information from Validator about limit violation
       @ Out, None
     """
     # TODO could validator write a symbolic expression on request? That'd be sweet.
     comp = validation['component']
     resource = validation['resource']
-    r = m.resource_index_map[comp][resource]
+    r = self.model.resource_index_map[comp][resource]
     t = validation['time_index']
     limit = validation['limit']
-    limits = np.zeros(len(m.Times))
+    limits = np.zeros(len(self.model.Times))
     limits[t] = limit
     limit_type = validation['limit_type']
     prod_name = f'{comp.name}_production'
@@ -103,17 +148,16 @@ class PyomoModelHandler:
     name_template = f'{comp.name}_{resource}_{t}_vld_limit_constr_{{i}}'
     # make sure we get a unique name for this constraint
     name = name_template.format(i=counter)
-    while getattr(m, name, None) is not None:
+    while getattr(self.model, name, None) is not None:
       counter += 1
       name = name_template.format(i=counter)
-    setattr(m, name, constr)
+    setattr(self.model, name, constr)
     print(f'DEBUGG added validation constraint "{name}"')
 
 
-  def _create_production_param(self, m, comp, values, tag=None):
+  def _create_production_param(self, comp, values, tag=None):
     """
       Creates production pyomo fixed parameter object for a component
-      @ In, m, pyo.ConcreteModel, associated model
       @ In, comp, HERON Component, component to make production variables for
       @ In, values, np.array(float), values to set for param
       @ In, tag, str, optional, if not None then name will be component_[tag]
@@ -123,22 +167,20 @@ class PyomoModelHandler:
     if tag is None:
       tag = 'production'
     # create pyomo indexer for this component's resources
-    res_indexer = pyo.Set(initialize=range(len(m.resource_index_map[comp])))
-    setattr(m, f'{name}_res_index_map', res_indexer)
+    res_indexer = pyo.Set(initialize=range(len(self.model.resource_index_map[comp])))
+    setattr(self.model, f'{name}_res_index_map', res_indexer)
     prod_name = f'{name}_{tag}'
-    init = (((0, t), values[t]) for t in m.T)
-    prod = pyo.Param(res_indexer, m.T, initialize=dict(init))
-    setattr(m, prod_name, prod)
+    init = (((0, t), values[t]) for t in self.model.T)
+    prod = pyo.Param(res_indexer, self.model.T, initialize=dict(init))
+    setattr(self.model, prod_name, prod)
     return prod_name
 
 
   def _create_production(self, comp):
     """
       Creates all pyomo variable objects for a non-storage component
-      @ In, m, pyo.ConcreteModel, associated model
       @ In, comp, HERON Component, component to make production variables for
-      @ In, meta, dict, dictionary of state variables
-      @ Out, None
+      @ Out, prod_name, str, name of the production variable
     """
     prod_name = self._create_production_variable(comp)
     ## if you cannot set limits directly in the production variable, set separate contraint:
@@ -159,7 +201,6 @@ class PyomoModelHandler:
   def _create_production_variable(self, comp, tag=None, add_bounds=True, **kwargs):
     """
       Creates production pyomo variable object for a component
-      @ In, m, pyo.ConcreteModel, associated model
       @ In, comp, HERON Component, component to make production variables for
       @ In, tag, str, optional, if not None then name will be component_[tag]; otherwise "production"
       @ In, add_bounds, bool, optional, if True then determine and set bounds for variable
@@ -206,19 +247,17 @@ class PyomoModelHandler:
     return prod_name
 
 
-  def _create_ramp_limit(self, m, comp, prod_name, meta):
+  def _create_ramp_limit(self, comp, prod_name):
     """
       Creates ramping limitations for a producing component
-      @ In, m, pyo.ConcreteModel, associated model
       @ In, comp, HERON Component, component to make ramping limits for
       @ In, prod_name, str, name of production variable
-      @ In, meta, dict, dictionary of state variables
       @ Out, None
     """
     # ramping is defined in terms of the capacity variable
     cap_res = comp.get_capacity_var()       # name of resource that defines capacity
-    cap = comp.get_capacity(meta)[0][cap_res]
-    r = m.resource_index_map[comp][cap_res] # production index of the governing resource
+    cap = comp.get_capacity(self.meta)[0][cap_res]
+    r = self.model.resource_index_map[comp][cap_res] # production index of the governing resource
     # NOTE: this includes the built capacity * capacity factor, if any, which assumes
     # the ramp rate depends on the available capacity, not the built capacity.
     limit_delta = comp.ramp_limit * cap # NOTE: if cap is negative, then this is negative.
@@ -229,75 +268,71 @@ class PyomoModelHandler:
     # if we're limiting ramp frequency, make vars and rules for that
     if comp.ramp_freq:
       # create binaries for tracking ramping
-      up = pyo.Var(m.T, initialize=0, domain=pyo.Binary)
-      down = pyo.Var(m.T, initialize=0, domain=pyo.Binary)
-      steady = pyo.Var(m.T, initialize=1, domain=pyo.Binary)
-      setattr(m, f'{comp.name}_up_ramp_tracker', up)
-      setattr(m, f'{comp.name}_down_ramp_tracker', down)
-      setattr(m, f'{comp.name}_steady_ramp_tracker', steady)
+      up = pyo.Var(self.model.T, initialize=0, domain=pyo.Binary)
+      down = pyo.Var(self.model.T, initialize=0, domain=pyo.Binary)
+      steady = pyo.Var(self.model.T, initialize=1, domain=pyo.Binary)
+      setattr(self.model, f'{comp.name}_up_ramp_tracker', up)
+      setattr(self.model, f'{comp.name}_down_ramp_tracker', down)
+      setattr(self.model, f'{comp.name}_steady_ramp_tracker', steady)
       ramp_trackers = (down, up, steady)
     else:
       ramp_trackers = None
     # limit production changes when ramping down
     ramp_rule_down = lambda mod, t: prl.ramp_rule_down(prod_name, r, limit_delta, neg_cap, t, mod, bins=ramp_trackers)
-    constr = pyo.Constraint(m.T, rule=ramp_rule_down)
-    setattr(m, f'{comp.name}_ramp_down_constr', constr)
+    constr = pyo.Constraint(self.model.T, rule=ramp_rule_down)
+    setattr(self.model, f'{comp.name}_ramp_down_constr', constr)
     # limit production changes when ramping up
     ramp_rule_up = lambda mod, t: prl.ramp_rule_up(prod_name, r, limit_delta, neg_cap, t, mod, bins=ramp_trackers)
-    constr = pyo.Constraint(m.T, rule=ramp_rule_up)
-    setattr(m, f'{comp.name}_ramp_up_constr', constr)
+    constr = pyo.Constraint(self.model.T, rule=ramp_rule_up)
+    setattr(self.model, f'{comp.name}_ramp_up_constr', constr)
     # if ramping frequency limit, impose binary constraints
     if comp.ramp_freq:
       # binaries rule, for exclusive choice up/down/steady
       binaries_rule = lambda mod, t: prl.ramp_freq_bins_rule(down, up, steady, t, mod)
-      constr = pyo.Constraint(m.T, rule=binaries_rule)
-      setattr(m, f'{comp.name}_ramp_freq_binaries', constr)
+      constr = pyo.Constraint(self.model.T, rule=binaries_rule)
+      setattr(self.model, f'{comp.name}_ramp_freq_binaries', constr)
       # limit frequency of ramping
       # TODO calculate "tao" window using ramp freq and dt
       # -> for now, just use the integer for number of windows
-      freq_rule = lambda mod, t: prl.ramp_freq_rule(down, up, comp.ramp_freq, t, m)
-      constr = pyo.Constraint(m.T, rule=freq_rule)
-      setattr(m, f'{comp.name}_ramp_freq_constr', constr)
+      freq_rule = lambda mod, t: prl.ramp_freq_rule(down, up, comp.ramp_freq, t, mod)
+      constr = pyo.Constraint(self.model.T, rule=freq_rule)
+      setattr(self.model, f'{comp.name}_ramp_freq_constr', constr)
 
 
-  def _create_capacity_constraints(self, m, comp, prod_name, meta):
+  def _create_capacity_constraints(self, comp, prod_name):
     """
       Creates pyomo capacity constraints
-      @ In, m, pyo.ConcreteModel, associated model
       @ In, comp, HERON Component, component to make variables for
       @ In, prod_name, str, name of production variable
-      @ In, meta, dict, additional state information
       @ Out, None
     """
     cap_res = comp.get_capacity_var()       # name of resource that defines capacity
-    r = m.resource_index_map[comp][cap_res] # production index of the governing resource
-    caps, mins = self._find_production_limits(m, comp, meta)
+    r = self.model.resource_index_map[comp][cap_res] # production index of the governing resource
+    caps, mins = self._find_production_limits(comp)
     # capacity
     max_rule = lambda mod, t: prl.capacity_rule(prod_name, r, caps, mod, t)
-    constr = pyo.Constraint(m.T, rule=max_rule)
-    setattr(m, f'{comp.name}_{cap_res}_capacity_constr', constr)
+    constr = pyo.Constraint(self.model.T, rule=max_rule)
+    setattr(self.model, f'{comp.name}_{cap_res}_capacity_constr', constr)
     # minimum
     min_rule = lambda mod, t: prl.min_prod_rule(prod_name, r, caps, mins, mod, t)
-    constr = pyo.Constraint(m.T, rule=min_rule)
+    constr = pyo.Constraint(self.model.T, rule=min_rule)
     # set initial conditions
-    for t, time in enumerate(m.Times):
+    for t, time in enumerate(self.model.Times):
       cap = caps[t]
       if cap == mins[t]:
         # initialize values so there's no boundary errors
-        var = getattr(m, prod_name)
+        var = getattr(self.model, prod_name)
         values = var.get_values()
         for k in values:
           values[k] = cap
         var.set_values(values)
-    setattr(m, f'{comp.name}_{cap_res}_minprod_constr', constr)
+    setattr(self.model, f'{comp.name}_{cap_res}_minprod_constr', constr)
 
 
   def _find_production_limits(self, comp):
     """
       Determines the capacity limits of a unit's operation, in time.
-      @ In, m, pyo.ConcreteModel, associated model
       @ In, comp, HERON Component, component to make variables for
-      @ In, meta, dict, additional state information
       @ Out, caps, array, max production values by time
       @ Out, mins, array, min production values by time
     """
@@ -324,35 +359,33 @@ class PyomoModelHandler:
   def _create_transfer(self, comp, prod_name):
     """
       Creates pyomo transfer function constraints
-      @ In, m, pyo.ConcreteModel, associated model
       @ In, comp, HERON Component, component to make variables for
-      @ In, prod_name, str, production variable name
+      @ In, prod_name, str, name of production variable
       @ Out, None
     """
-    rule_name = f'{comp.name}_transfer_func'
-    transfer = comp.get_interaction().get_transfer()
-    if transfer is None:
-      return
-    coeffs = transfer.get_coefficients()
-    # dict of form {(r1, r2): {(o1, o2): n}}
-    #   where:
-    #   r1, r2 are resource names
-    #   o1, o2 are polynomial orders (may not be integers?)
-    #   n is the float polynomial coefficient for the term
-    rule = lambda mod, t: prl.transfer_rule(coeffs, self.model.resource_index_map[comp], prod_name, mod, t)
-    constr = pyo.Constraint(self.model.T, rule=rule)
-    setattr(self.model, rule_name, constr)
+    name = comp.name
+    # transfer functions
+    # e.g. 2A + 3B -> 1C + 2E
+    # get linear coefficients
+    # TODO this could also take a transfer function from an external Python function assuming
+    #    we're careful about how the expression-vs-float gets used
+    #    and figure out how to handle multiple ins, multiple outs
+    ratios = putils.get_transfer_coeffs(self.model, comp)
+    ref_r, ref_name, _ = ratios.pop('__reference', (None, None, None))
+    for resource, ratio in ratios.items():
+      r = self.model.resource_index_map[comp][resource]
+      rule_name = f'{name}_{resource}_{ref_name}_transfer'
+      rule = lambda mod, t: prl.transfer_rule(ratio, r, ref_r, prod_name, mod, t)
+      constr = pyo.Constraint(self.model.T, rule=rule)
+      setattr(self.model, rule_name, constr)
 
 
   def _create_storage(self, comp):
     """
       Creates storage pyomo variable objects for a storage component
       Similar to create_production, but for storages
-      @ In, m, pyo.ConcreteModel, associated model
       @ In, comp, HERON Component, component to make production variables for
-      @ In, initial_storage, dict, initial storage levels
-      @ In, meta, dict, additional state information
-      @ Out, level_name, str, name of storage level variable
+      @ Out, None
     """
     prefix = comp.name
     # what resource index? Isn't it always 0? # assumption
@@ -400,10 +433,7 @@ class PyomoModelHandler:
   def _create_conservation(self):
     """
       Creates pyomo conservation constraints
-      @ In, m, pyo.ConcreteModel, associated model
-      @ In, resources, list, list of resources in problem
-      @ In, initial_storage, dict, initial storage levels
-      @ In, meta, dict, dictionary of state variables
+      @ In, None
       @ Out, None
     """
     for resource in self.resources:
@@ -415,8 +445,7 @@ class PyomoModelHandler:
   def _create_objective(self):
     """
       Creates pyomo objective function
-      @ In, meta, dict, additional variables to pass through
-      @ In, m, pyo.ConcreteModel, associated model
+      @ In, None
       @ Out, None
     """
     # cashflow eval
@@ -526,10 +555,3 @@ class PyomoModelHandler:
     total = (meta['HERON']['Case'].npv_target - non_multiplied) / multiplied
     total *= -1
     return total
-
-
-
-
-
-
-

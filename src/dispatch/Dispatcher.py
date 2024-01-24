@@ -4,8 +4,15 @@
 """
   Base class for dispatchers.
 """
-from ravenframework.utils import InputData, InputTypes
+from ravenframework.utils import InputData
 from ravenframework.BaseClasses import MessageUser, InputDataUser
+
+class DispatchError(Exception):
+    """
+      Custom exception for dispatch errors.
+    """
+    pass
+
 
 class Dispatcher(MessageUser, InputDataUser):
   """
@@ -122,108 +129,3 @@ class Dispatcher(MessageUser, InputDataUser):
       # no validator, nothing needs to be changed
       return {}
 
-  # ---------------------------------------------
-  # UTILITY METHODS
-  def _compute_cashflows(self, components, activity, times, meta, state_args=None, time_offset=0):
-    """
-      Method to compute CashFlow evaluations given components and their activity.
-      @ In, components, list, HERON components whose cashflows should be evaluated
-      @ In, activity, DispatchState instance, activity by component/resources/time
-      @ In, times, np.array(float), time values to evaluate; may be length 1 or longer
-      @ In, meta, dict, additional info to be passed through to functional evaluations
-      @ In, state_args, dict, optional, additional arguments to pass while getting activity state
-      @ In, time_offset, int, optional, increase time index tracker by this value if provided
-      @ Out, total, float, total cashflows for given components
-    """
-    if state_args is None:
-      state_args = {}
-
-    if meta['HERON']['Case'].use_levelized_inner:
-      total = self._compute_levelized_cashflows(components, activity, times, meta, state_args, time_offset)
-      return total
-
-    total = 0
-    specific_meta = dict(meta) # TODO what level of copying do we need here?
-    resource_indexer = meta['HERON']['resource_indexer']
-
-    #print('DEBUGG computing cashflows!')
-    for comp in components:
-      #print(f'DEBUGG ... comp {comp.name}')
-      specific_meta['HERON']['component'] = comp
-      comp_subtotal = 0
-      for t, time in enumerate(times):
-        #print(f'DEBUGG ... ... time {t}')
-        # NOTE care here to assure that pyomo-indexed variables work here too
-        specific_activity = {}
-        for tracker in comp.get_tracking_vars():
-          specific_activity[tracker] = {}
-          for resource in resource_indexer[comp]:
-            specific_activity[tracker][resource] = activity.get_activity(comp, tracker, resource, time, **state_args)
-        specific_meta['HERON']['time_index'] = t + time_offset
-        specific_meta['HERON']['time_value'] = time
-        cfs = comp.get_state_cost(specific_activity, specific_meta, marginal=True)
-        time_subtotal = sum(cfs.values())
-        comp_subtotal += time_subtotal
-      total += comp_subtotal
-    return total
-
-  def _compute_levelized_cashflows(self, components, activity, times, meta, state_args=None, time_offset=0):
-    """
-      Method to compute CashFlow evaluations given components and their activity.
-      @ In, components, list, HERON components whose cashflows should be evaluated
-      @ In, activity, DispatchState instance, activity by component/resources/time
-      @ In, times, np.array(float), time values to evaluate; may be length 1 or longer
-      @ In, meta, dict, additional info to be passed through to functional evaluations
-      @ In, state_args, dict, optional, additional arguments to pass while getting activity state
-      @ In, time_offset, int, optional, increase time index tracker by this value if provided
-      @ Out, total, float, total cashflows for given components
-    """
-    total = 0
-    specific_meta = dict(meta) # TODO what level of copying do we need here?
-    resource_indexer = meta['HERON']['resource_indexer']
-
-    # How does this work?
-    #   The general equation looks like:
-    #
-    #     SUM(Non-Multiplied Terms) + x * SUM(Multiplied Terms) = Target
-    #
-    #   and we are solving for `x`. Target is 0 by default. Terms here are marginal cashflows.
-    #   Summations here occur over: components, time steps, tracking variables, and resources.
-    #   Typically, there is only 1 multiplied term/cash flow.
-
-    multiplied = 0
-    non_multiplied = 0
-
-    for comp in components:
-      specific_meta['HERON']['component'] = comp
-      multiplied_comp = 0
-      non_multiplied_comp = 0
-      for t, time in enumerate(times):
-        # NOTE care here to assure that pyomo-indexed variables work here too
-        specific_activity = {}
-        for tracker in comp.get_tracking_vars():
-          specific_activity[tracker] = {}
-          for resource in resource_indexer[comp]:
-            specific_activity[tracker][resource] = activity.get_activity(comp, tracker, resource, time, **state_args)
-        specific_meta['HERON']['time_index'] = t + time_offset
-        specific_meta['HERON']['time_value'] = time
-        cfs = comp.get_state_cost(specific_activity, specific_meta, marginal=True)
-
-        # there is an assumption here that if a component has a levelized cost, marginal cashflow
-        # then it is the only marginal cashflow
-        if comp.levelized_meta:
-          for cf in comp.levelized_meta.keys():
-            lcf = cfs.pop(cf) # this should be ok as long as HERON init checks are successful
-            multiplied_comp += lcf
-        else:
-          time_subtotal = sum(cfs.values())
-          non_multiplied_comp += time_subtotal
-
-      multiplied     += multiplied_comp
-      non_multiplied += non_multiplied_comp
-
-    # at this point, there should be a not None NPV Target
-    multiplied += self._eps
-    total = (meta['HERON']['Case'].npv_target - non_multiplied) / multiplied
-    total *= -1
-    return total

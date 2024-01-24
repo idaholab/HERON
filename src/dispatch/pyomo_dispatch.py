@@ -310,6 +310,7 @@ class Pyomo(Dispatcher):
 
     while not done_and_checked:
       attempts += 1
+      print(f'DEBUGG using solver: {self._solver}')
       print(f'DEBUGG solve attempt {attempts} ...:')
       soln = pyo.SolverFactory(self._solver).solve(m.model, options=self.solve_options)
 

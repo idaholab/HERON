@@ -370,6 +370,7 @@ class PyomoModelHandler:
     # TODO this could also take a transfer function from an external Python function assuming
     #    we're careful about how the expression-vs-float gets used
     #    and figure out how to handle multiple ins, multiple outs
+    # XXX revert this to coefficients!
     ratios = putils.get_transfer_coeffs(self.model, comp)
     ref_r, ref_name, _ = ratios.pop('__reference', (None, None, None))
     for resource, ratio in ratios.items():

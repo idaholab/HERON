@@ -180,7 +180,7 @@ class PyomoModelHandler:
     """
       Creates all pyomo variable objects for a non-storage component
       @ In, comp, HERON Component, component to make production variables for
-      @ Out, None
+      @ Out, prod_name, str, name of the production variable
     """
     prod_name = self._create_production_variable(comp)
     ## if you cannot set limits directly in the production variable, set separate contraint:

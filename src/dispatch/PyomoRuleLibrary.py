@@ -100,6 +100,7 @@ def prod_limit_rule(prod_name, r, limits, kind, t, m) -> bool:
     @ In, kind, str, either 'upper' or 'lower' for limiting production
     @ In, t, int, time index for production rule (NOTE not pyomo index, rather fixed index)
     @ In, m, pyo.ConcreteModel, associated model
+    @ Out, rule, bool, pyomo expression contraint for production limits
   """
   prod = getattr(m, prod_name)
   if kind == 'lower':

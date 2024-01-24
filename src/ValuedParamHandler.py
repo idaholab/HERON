@@ -129,6 +129,14 @@ class ValuedParamHandler(MessageUser):
     """
     self._vp.crosscheck(interaction)
 
+  def set_signs(self, var_map: dict, to_set: list=None) -> None:
+    """
+      Set the signs of the parameters for this VP based on provided conventions.
+      @ In, var_map, dict, lists of variables under 'positive' or 'negative' keys
+      @ Out, None
+    """
+    self._vp.set_signs(var_map, to_set=to_set)
+
   def get_source(self):
     """
       Access the source type and name of the VP

@@ -33,6 +33,7 @@ def factory(xml, method='sweep'):
   """
   comp = Component()
   comp.read_input(xml, method)
+  comp.finalize_init()
   return comp
 
 class Component(Base, CashFlowUser):
@@ -129,6 +130,14 @@ class Component(Base, CashFlowUser):
     if econ_node is None:
       self.raiseAnError(IOError, f'<economics> node missing from component "{self.name}"!')
     CashFlowUser.read_input(self, econ_node)
+
+  def finalize_init(self):
+    """
+      Finalizes the initialization of the component, and checks input settings.
+      @ In, None
+      @ Out, None
+    """
+    self.get_interaction().finalize_init()
 
   def get_crossrefs(self):
     """
@@ -282,60 +291,61 @@ class Component(Base, CashFlowUser):
     """
     return self.get_interaction().set_capacity(cap)
 
-  def produce(self, request, meta, raven_variables, dispatch, t, level=None):
-    """
-      Enacts the transfer function for this component to act based on a request.
-      FIXME was used for "generic" dispatcher, does it still apply?
-      @ In, request, dict, mapping of requested resource usage to amount requested (negative is
-                           consume, positive is produce)
-      @ In, meta, dict, metadata information for current status in run
-      @ In, raven_variables, dict, variables from RAVEN TODO part of meta!
-      @ In, dispatch, DispatchState, expression of the current activity levels in the system
-      @ In, t, int, index of "time" at which this production should be performed
-      @ In, level, float, for storages indicates the amount currently stored
-      @ Out, balance, dict, full dict of resources used and produced for request
-      @ Out, meta, dict, updated metadata dictionary
-    """
-    #balance = defaultdict(float)
-    interaction = self.get_interaction()
-    balance, meta = interaction.produce(request, meta, raven_variables, dispatch, t, level)
-    #for resource, quantity in int_balance.items():
-    #  balance[resource] += quantity
-    return balance, meta
+  # FIXME can this be removed?
+  # def produce(self, request, meta, raven_variables, dispatch, t, level=None):
+  #   """
+  #     Enacts the transfer function for this component to act based on a request.
+  #     FIXME was used for "generic" dispatcher, does it still apply?
+  #     @ In, request, dict, mapping of requested resource usage to amount requested (negative is
+  #                          consume, positive is produce)
+  #     @ In, meta, dict, metadata information for current status in run
+  #     @ In, raven_variables, dict, variables from RAVEN TODO part of meta!
+  #     @ In, dispatch, DispatchState, expression of the current activity levels in the system
+  #     @ In, t, int, index of "time" at which this production should be performed
+  #     @ In, level, float, for storages indicates the amount currently stored
+  #     @ Out, balance, dict, full dict of resources used and produced for request
+  #     @ Out, meta, dict, updated metadata dictionary
+  #   """
+  #   #balance = defaultdict(float)
+  #   interaction = self.get_interaction()
+  #   balance, meta = interaction.produce(request, meta, raven_variables, dispatch, t, level)
+  #   #for resource, quantity in int_balance.items():
+  #   #  balance[resource] += quantity
+  #   return balance, meta
 
-  def produce_max(self, meta, raven_variables, dispatch, t):
-    """
-      Determines the maximum production possible for this component.
-      @ In, meta, dict, metadata information for current status in run
-      @ In, raven_variables, dict, variables from RAVEN TODO part of meta!
-      @ In, dispatch, DispatchState, expression of the current activity levels in the system
-      @ In, t, int, index of "time" at which this production should be performed
-      @ Out, balance, dict, full dict of resources used and produced for request
-      @ Out, meta, dict, updated metadata dictionary
-    """
-    #balance = defaultdict(float)
-    interaction = self.get_interaction()
-    balance, meta = interaction.produce_max(meta, raven_variables, dispatch, t)
-    #for resource, quantity in int_balance.items():
-    #  balance[resource] += quantity
-    return balance, meta
+  # def produce_max(self, meta, raven_variables, dispatch, t):
+  #   """
+  #     Determines the maximum production possible for this component.
+  #     @ In, meta, dict, metadata information for current status in run
+  #     @ In, raven_variables, dict, variables from RAVEN TODO part of meta!
+  #     @ In, dispatch, DispatchState, expression of the current activity levels in the system
+  #     @ In, t, int, index of "time" at which this production should be performed
+  #     @ Out, balance, dict, full dict of resources used and produced for request
+  #     @ Out, meta, dict, updated metadata dictionary
+  #   """
+  #   #balance = defaultdict(float)
+  #   interaction = self.get_interaction()
+  #   balance, meta = interaction.produce_max(meta, raven_variables, dispatch, t)
+  #   #for resource, quantity in int_balance.items():
+  #   #  balance[resource] += quantity
+  #   return balance, meta
 
-  def produce_min(self, meta, raven_variables, dispatch, t):
-    """
-      Determines the minimum production possible for this component.
-      @ In, meta, dict, metadata information for current status in run
-      @ In, raven_variables, dict, variables from RAVEN TODO part of meta!
-      @ In, dispatch, DispatchState, expression of the current activity levels in the system
-      @ In, t, int, index of "time" at which this production should be performed
-      @ Out, balance, dict, full dict of resources used and produced for request
-      @ Out, meta, dict, updated metadata dictionary
-    """
-    #balance = defaultdict(float)
-    interaction = self.get_interaction()
-    balance, meta = interaction.produce_min(meta, raven_variables, dispatch, t)
-    #for resource, quantity in int_balance.items():
-    #  balance[resource] += quantity
-    return balance, meta
+  # def produce_min(self, meta, raven_variables, dispatch, t):
+  #   """
+  #     Determines the minimum production possible for this component.
+  #     @ In, meta, dict, metadata information for current status in run
+  #     @ In, raven_variables, dict, variables from RAVEN TODO part of meta!
+  #     @ In, dispatch, DispatchState, expression of the current activity levels in the system
+  #     @ In, t, int, index of "time" at which this production should be performed
+  #     @ Out, balance, dict, full dict of resources used and produced for request
+  #     @ Out, meta, dict, updated metadata dictionary
+  #   """
+  #   #balance = defaultdict(float)
+  #   interaction = self.get_interaction()
+  #   balance, meta = interaction.produce_min(meta, raven_variables, dispatch, t)
+  #   #for resource, quantity in int_balance.items():
+  #   #  balance[resource] += quantity
+  #   return balance, meta
 
   @property
   def ramp_limit(self):
@@ -511,6 +521,37 @@ class Interaction(Base):
     self._signals.update(signal)
     self._crossrefs[name] = vp
     setattr(self, name, vp)
+
+  def finalize_init(self):
+    """
+      Post-input reading final initialization.
+      @ In, None
+      @ Out, None
+    """
+    # fix up signs: send sign map to valued params
+    var_map = self.map_vp_signs()
+    self.set_vp_signs(var_map)
+
+  def map_vp_signs(self):
+    """
+      Collect the signs of VPs based on the input/output of this component
+      @ In, None
+      @ Out, var_map, dict, map of variables to their correct sign
+    """
+    var_map = {'negative': set(), 'positive': set()}
+    return var_map
+
+  def set_vp_signs(self, var_map: dict):
+    """
+      Set the signs of VPs based on the input/output of this component
+      @ In, var_map, dict, map of variables to their correct sign
+      @ Out, None
+    """
+    # this list is bespoke
+    # TODO is there an automated way to come up with valued params that need editing?
+    self._capacity.set_signs(var_map, to_set=[self.get_capacity_var])
+    if self._minimum is not None:
+      self._minimum.set_signs(var_map)
 
   def get_capacity(self, meta, raw=False):
     """
@@ -805,6 +846,29 @@ class Producer(Interaction):
     if self.ramp_limit is not None and not 0 < self.ramp_limit <= 1:
       self.raiseAnError(IOError, f'Ramp limit must be (0, 1] but got "{self.ramp_limit}"')
 
+  def map_vp_signs(self):
+    """
+      Collect the signs of VPs based on the input/output of this component
+      @ In, None
+      @ Out, var_map, dict, map of variables to their correct sign
+    """
+    var_map = super().map_vp_signs()
+    # FIXME speed this up when we show it works
+    for consumed in self.get_inputs():
+      var_map['negative'].add(consumed)
+    for produced in self.get_outputs():
+      var_map['produced'].add(produced)
+    return var_map
+
+  def set_vp_signs(self, var_map: dict):
+    """
+      Set the signs of VPs based on the input/output of this component
+      @ In, var_map, dict, map of variables to their correct sign
+      @ Out, None
+    """
+    super().set_vp_signs(var_map)
+    self._transfer.set_signs(var_map)
+    self.ramp_limit.set_signs(var_map)
 
   def get_inputs(self):
     """
@@ -825,7 +889,7 @@ class Producer(Interaction):
     outputs = set(np.atleast_1d(self._produces))
     return outputs
 
-  def print_me(self, tabs=0, tab='  '):
+  def print_me(self, tabs: int=0, tab: str='  ') -> None:
     """
       Prints info about self
       @ In, tabs, int, optional, number of tabs to insert before prints
@@ -839,45 +903,46 @@ class Producer(Interaction):
     self.raiseADebug(pre+'  transfer:', self._transfer)
     self.raiseADebug(pre+'  capacity:', self._capacity)
 
-  def transfer(self, request, meta, raven_vars, dispatch, t):
-    """
-      Use the transfer function to make a balance of activities that should occur
-      @ In, request, dict, requested action {resource: amount}
-      @ In, meta, dict, additional variables to pass through
-      @ In, raven_vars, dict, TODO part of meta! consolidate!
-      @ In, dispatch, dict, TODO part of meta! consolidate!
-      @ In, t, int, TODO part of meta! consolidate!
-      @ Out, balance, dict, results of requested action
-      @ Out, meta, dict, additional variable passthrough
-    """
-    assert len(request) == 1
-    balance = defaultdict(float)
-    # in the rare case that the transfer function is simple ...
-    resources_in = list(self.get_inputs())
-    resources_out = list(self.get_outputs())
-    inputs = meta
-    inputs['request'] = request
-    inputs['t'] = t
-    inputs['dispatch'] = dispatch
-    balance, meta = self._transfer.evaluate(inputs)
-    self.check_expected_present(balance, self.get_resources(), f'TRANSFER FUNCTION {self._transfer}')
-    # OLD if transfer evaluation is a float (float, arma), then it signifies a conversion rate
-    ## note that we've checked in the input reading for this singular relationship
+  # TODO can this be removed?
+  # def transfer(self, request, meta, raven_vars, dispatch, t):
+  #   """
+  #     Use the transfer function to make a balance of activities that should occur
+  #     @ In, request, dict, requested action {resource: amount}
+  #     @ In, meta, dict, additional variables to pass through
+  #     @ In, raven_vars, dict, TODO part of meta! consolidate!
+  #     @ In, dispatch, dict, TODO part of meta! consolidate!
+  #     @ In, t, int, TODO part of meta! consolidate!
+  #     @ Out, balance, dict, results of requested action
+  #     @ Out, meta, dict, additional variable passthrough
+  #   """
+  #   assert len(request) == 1
+  #   balance = defaultdict(float)
+  #   # in the rare case that the transfer function is simple ...
+  #   resources_in = list(self.get_inputs())
+  #   resources_out = list(self.get_outputs())
+  #   inputs = meta
+  #   inputs['request'] = request
+  #   inputs['t'] = t
+  #   inputs['dispatch'] = dispatch
+  #   balance, meta = self._transfer.evaluate(inputs)
+  #   self.check_expected_present(balance, self.get_resources(), f'TRANSFER FUNCTION {self._transfer}')
+  #   # OLD if transfer evaluation is a float (float, arma), then it signifies a conversion rate
+  #   ## note that we've checked in the input reading for this singular relationship
 
-    if False: #len(balance) == 1:
-      requested, rate = list(balance.items())[0] # requested resource and the transfer rate (amount of product per consumed)
-      amount = list(requested.values())[0]       # amount of requested resource
-      if requested in resources_in:
-        balance[resources_out[0]] = -1.0 * rate * amount # NOTE: amount should be negative, but output should be positive
-      else:
-        balance[inputs[0]] = -1.0 / rate * amount  # NOTE: amount should be positive, but input should be negative
-    # check that all values got filled -> TODO remove this for opt performance
-    missing = set(resources_in + resources_out) - set(balance.keys())
-    if missing:
-      self.raiseAnError(RuntimeError, 'While evaluating transfer function, not all variables requested were provided!' +\
-                        f'  Missing: {missing}' +\
-                        f'  Transfer function: {self._transfer}')
-    return balance, meta
+  #   if False: #len(balance) == 1:
+  #     requested, rate = list(balance.items())[0] # requested resource and the transfer rate (amount of product per consumed)
+  #     amount = list(requested.values())[0]       # amount of requested resource
+  #     if requested in resources_in:
+  #       balance[resources_out[0]] = -1.0 * rate * amount # NOTE: amount should be negative, but output should be positive
+  #     else:
+  #       balance[inputs[0]] = -1.0 / rate * amount  # NOTE: amount should be positive, but input should be negative
+  #   # check that all values got filled -> TODO remove this for opt performance
+  #   missing = set(resources_in + resources_out) - set(balance.keys())
+  #   if missing:
+  #     self.raiseAnError(RuntimeError, 'While evaluating transfer function, not all variables requested were provided!' +\
+  #                       f'  Missing: {missing}' +\
+  #                       f'  Transfer function: {self._transfer}')
+  #   return balance, meta
 
 
 
@@ -964,6 +1029,28 @@ class Storage(Interaction):
       self._initial_stored = vp
     # the capacity is limited by the stored resource.
     self._capacity_var = self._stores
+
+  def map_vp_signs(self):
+    """
+      Collect the signs of VPs based on the input/output of this component
+      @ In, None
+      @ Out, var_map, dict, map of variables to their correct sign
+    """
+    var_map = super().map_vp_signs()
+    for stores in self.get_ouputs():
+      var_map['positive'].add(stores)
+    return var_map
+
+  def set_vp_signs(self, var_map: dict):
+    """
+      Set the signs of VPs based on the input/output of this component
+      @ In, var_map, dict, map of variables to their correct sign
+      @ Out, None
+    """
+    super().set_vp_signs(var_map)
+    self._rate.set_signs(var_map)
+    self._initial_stored.set_signs(var_map)
+    # self._strategy?
 
   def get_inputs(self):
     """
@@ -1124,7 +1211,6 @@ class Demand(Interaction):
     """
     Interaction.__init__(self, **kwargs)
     self._demands = None  # the resource demanded by this interaction
-    self._penalty = None  # how to penalize for not meeting demand NOT IMPLEMENTED
     self._tracking_vars = ['production']
 
   def read_input(self, specs, mode, comp_name):
@@ -1139,9 +1225,17 @@ class Demand(Interaction):
     # must set demands first, so that "capacity" can access it
     self._demands = specs.parameterValues['resource']
     Interaction.read_input(self, specs, mode, comp_name)
-    for item in specs.subparts:
-      if item.getName() == 'penalty':
-        self._set_valued_param('_rate', comp_name, item, mode)
+
+  def map_vp_signs(self):
+    """
+      Collect the signs of VPs based on the input/output of this component
+      @ In, None
+      @ Out, var_map, dict, map of variables to their correct sign
+    """
+    var_map = super().map_vp_signs()
+    for demand in self.get_inputs():
+      var_map['negative'].add(demand)
+    return var_map
 
   def get_inputs(self):
     """

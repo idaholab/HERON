@@ -106,6 +106,15 @@ class ValuedParam(MessageUser):
     """
     self._target_obj = obj
 
+  def set_signs(self, var_map: dict, to_set: list) -> None:
+    """
+      Sets the signs of elements of this ValuedParam based on keywords.
+      @ In, var_map, dict, maps of positive and negative signed keywords
+      @ In, to_set, list, list of variables to set signs for
+      @ Out, None
+    """
+    # nothing to do by default
+
   def evaluate(self, inputs, target_var=None, aliases=None):
     """
       Evaluate this ValuedParam, wherever it gets its data from

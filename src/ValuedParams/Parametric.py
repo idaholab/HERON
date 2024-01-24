@@ -55,6 +55,24 @@ class Parametric(ValuedParam):
     self._debug_value = spec.parameterValues.get('debug_value', None)
     return []
 
+  def set_signs(self, var_map: dict, to_set: list) -> None:
+    """
+      Sets the signs of stored values for this element according to the map given
+      @ In, var_map, dict, mapping of negative and positive vars
+      @ In, to_set, list, variable names to set
+      @ Out, None
+    """
+    if len(to_set) > 0:
+      raise RuntimeError(f'Received multipe "to_set" values ({to_set}) in setting signs for {self.__class__.__name__}!')
+    res = to_set[0]
+    if res in var_map['positive']:
+      sgn = 1
+    elif res in var_map['negative']:
+      sgn = -1
+    # this works for lists of values; override for floats
+    for v, value in enumerate(self._parametric):
+      self._parametric[v] = sgn * value
+
   def get_value(self, debug=False):
     """
       Get the value for this parametric source.
@@ -90,6 +108,7 @@ class Parametric(ValuedParam):
 ######
 # dummy classes, just for changing descriptions, but they act the same as parameteric
 class FixedValue(Parametric):
+  """ For inputs that have a singular fixed value. """
   @classmethod
   def get_input_specs(cls):
     """
@@ -104,7 +123,24 @@ class FixedValue(Parametric):
                        and act as a constant in the inner workflow."""
     return spec
 
+  def set_signs(self, var_map: dict, to_set: list) -> None:
+    """
+      Sets the signs of stored values for this element according to the map given
+      @ In, var_map, dict, mapping of negative and positive vars
+      @ In, to_set, list, variable names to set
+      @ Out, None
+    """
+    if len(to_set) > 0:
+      raise RuntimeError(f'Received multipe "to_set" values ({to_set}) in setting signs for {self.__class__.__name__}!')
+    res = to_set[0]
+    if res in var_map['positive']:
+      sgn = 1
+    elif res in var_map['negative']:
+      sgn = -1
+    self._parametric = sgn * self._parametric
+
 class OptBounds(Parametric):
+  """ For inputs that are optimized between lower, upper bounds. """
   @classmethod
   def get_input_specs(cls):
     """
@@ -120,6 +156,7 @@ class OptBounds(Parametric):
     return spec
 
 class SweepValues(Parametric):
+  """ For inputs that are parametrically evaluated at several points. """
   @classmethod
   def get_input_specs(cls):
     """

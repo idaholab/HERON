@@ -22,9 +22,6 @@ class Linear(Polynomial):
       @ In, None
       @ Out, spec, InputData, value-based spec
     """
-    # TODO should this be reconciled with Polynomial?
-    # Pro: maintainability
-    # Con: degraded user experience
     spec = InputData.parameterInputFactory('linear', contentType=InputTypes.StringType,
         descr=r"""indicates this value should be interpreted as a ratio based on an input value.""")
     rate = InputData.parameterInputFactory('rate', contentType=InputTypes.FloatType,
@@ -55,7 +52,8 @@ class Linear(Polynomial):
     for rate_node in spec.findAll('rate'):
       resource = rate_node.parameterValues['resource']
       # linear coefficients are all order 1, no cross-variable multipyling
-      self._coefficients[tuple([resource])][ONE_TUP] = rate_node.value
+      # coefficient signs come from activity, not coeffs, so fix that up too
+      self._coefficients[tuple([resource])][ONE_TUP] = abs(rate_node.value)
     return []
 
   def evaluate(self, inputs, target_var=None, aliases=None):

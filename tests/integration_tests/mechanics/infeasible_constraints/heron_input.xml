@@ -1,0 +1,72 @@
+<HERON>
+  <TestInfo>
+    <name>InfeasibleConstraints</name>
+    <author>dylanjm</author>
+    <created>2024-01-25</created>
+    <description>
+      Tests HERON violating contraints and the resulting constraints_violations.log file.
+    </description>
+    <classesTested>HERON</classesTested>
+  </TestInfo>
+
+  <Case name="Sweep_Runs">
+    <mode>sweep</mode>
+    <num_arma_samples>2</num_arma_samples>
+    <time_discretization>
+      <time_variable>Time</time_variable>
+      <end_time>2</end_time>
+      <num_steps>21</num_steps>
+    </time_discretization>
+    <economics>
+      <ProjectTime>3</ProjectTime>
+      <DiscountRate>0.08</DiscountRate>
+      <tax>0.0</tax>
+      <inflation>0.0</inflation>
+    </economics>
+    <dispatcher><pyomo/></dispatcher>
+  </Case>
+
+  <Components>
+    <Component name="Generator">
+      <produces resource="electricity" dispatch="fixed">
+        <capacity resource="electricity">
+          <sweep_values>1095,1098</sweep_values>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>27</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="Electric_Grid_1">
+      <demands resource="electricity" dispatch="fixed">
+        <capacity>
+          <fixed_value>-2e4</fixed_value>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>3</lifetime>
+        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <fixed_value>10.0</fixed_value>
+          </reference_price>
+          <reference_driver>
+            <fixed_value>1</fixed_value>
+          </reference_driver>
+          <scaling_factor_x>
+            <fixed_value>1</fixed_value>
+          </scaling_factor_x>
+        </CashFlow>
+      </economics>
+    </Component>
+  </Components>
+
+  <DataGenerators>
+    <ARMA name='Speed' variable="Signal">%BASE_WORKING_DIR%/../../../TSA/Sine/arma.pk</ARMA>
+  </DataGenerators>
+
+</HERON>

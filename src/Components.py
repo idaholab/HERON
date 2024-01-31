@@ -291,62 +291,6 @@ class Component(Base, CashFlowUser):
     """
     return self.get_interaction().set_capacity(cap)
 
-  # FIXME can this be removed?
-  # def produce(self, request, meta, raven_variables, dispatch, t, level=None):
-  #   """
-  #     Enacts the transfer function for this component to act based on a request.
-  #     FIXME was used for "generic" dispatcher, does it still apply?
-  #     @ In, request, dict, mapping of requested resource usage to amount requested (negative is
-  #                          consume, positive is produce)
-  #     @ In, meta, dict, metadata information for current status in run
-  #     @ In, raven_variables, dict, variables from RAVEN TODO part of meta!
-  #     @ In, dispatch, DispatchState, expression of the current activity levels in the system
-  #     @ In, t, int, index of "time" at which this production should be performed
-  #     @ In, level, float, for storages indicates the amount currently stored
-  #     @ Out, balance, dict, full dict of resources used and produced for request
-  #     @ Out, meta, dict, updated metadata dictionary
-  #   """
-  #   #balance = defaultdict(float)
-  #   interaction = self.get_interaction()
-  #   balance, meta = interaction.produce(request, meta, raven_variables, dispatch, t, level)
-  #   #for resource, quantity in int_balance.items():
-  #   #  balance[resource] += quantity
-  #   return balance, meta
-
-  # def produce_max(self, meta, raven_variables, dispatch, t):
-  #   """
-  #     Determines the maximum production possible for this component.
-  #     @ In, meta, dict, metadata information for current status in run
-  #     @ In, raven_variables, dict, variables from RAVEN TODO part of meta!
-  #     @ In, dispatch, DispatchState, expression of the current activity levels in the system
-  #     @ In, t, int, index of "time" at which this production should be performed
-  #     @ Out, balance, dict, full dict of resources used and produced for request
-  #     @ Out, meta, dict, updated metadata dictionary
-  #   """
-  #   #balance = defaultdict(float)
-  #   interaction = self.get_interaction()
-  #   balance, meta = interaction.produce_max(meta, raven_variables, dispatch, t)
-  #   #for resource, quantity in int_balance.items():
-  #   #  balance[resource] += quantity
-  #   return balance, meta
-
-  # def produce_min(self, meta, raven_variables, dispatch, t):
-  #   """
-  #     Determines the minimum production possible for this component.
-  #     @ In, meta, dict, metadata information for current status in run
-  #     @ In, raven_variables, dict, variables from RAVEN TODO part of meta!
-  #     @ In, dispatch, DispatchState, expression of the current activity levels in the system
-  #     @ In, t, int, index of "time" at which this production should be performed
-  #     @ Out, balance, dict, full dict of resources used and produced for request
-  #     @ Out, meta, dict, updated metadata dictionary
-  #   """
-  #   #balance = defaultdict(float)
-  #   interaction = self.get_interaction()
-  #   balance, meta = interaction.produce_min(meta, raven_variables, dispatch, t)
-  #   #for resource, quantity in int_balance.items():
-  #   #  balance[resource] += quantity
-  #   return balance, meta
-
   @property
   def ramp_limit(self):
     """
@@ -903,47 +847,6 @@ class Producer(Interaction):
     self.raiseADebug(pre+'  transfer:', self._transfer)
     self.raiseADebug(pre+'  capacity:', self._capacity)
 
-  # TODO can this be removed?
-  # def transfer(self, request, meta, raven_vars, dispatch, t):
-  #   """
-  #     Use the transfer function to make a balance of activities that should occur
-  #     @ In, request, dict, requested action {resource: amount}
-  #     @ In, meta, dict, additional variables to pass through
-  #     @ In, raven_vars, dict, TODO part of meta! consolidate!
-  #     @ In, dispatch, dict, TODO part of meta! consolidate!
-  #     @ In, t, int, TODO part of meta! consolidate!
-  #     @ Out, balance, dict, results of requested action
-  #     @ Out, meta, dict, additional variable passthrough
-  #   """
-  #   assert len(request) == 1
-  #   balance = defaultdict(float)
-  #   # in the rare case that the transfer function is simple ...
-  #   resources_in = list(self.get_inputs())
-  #   resources_out = list(self.get_outputs())
-  #   inputs = meta
-  #   inputs['request'] = request
-  #   inputs['t'] = t
-  #   inputs['dispatch'] = dispatch
-  #   balance, meta = self._transfer.evaluate(inputs)
-  #   self.check_expected_present(balance, self.get_resources(), f'TRANSFER FUNCTION {self._transfer}')
-  #   # OLD if transfer evaluation is a float (float, arma), then it signifies a conversion rate
-  #   ## note that we've checked in the input reading for this singular relationship
-
-  #   if False: #len(balance) == 1:
-  #     requested, rate = list(balance.items())[0] # requested resource and the transfer rate (amount of product per consumed)
-  #     amount = list(requested.values())[0]       # amount of requested resource
-  #     if requested in resources_in:
-  #       balance[resources_out[0]] = -1.0 * rate * amount # NOTE: amount should be negative, but output should be positive
-  #     else:
-  #       balance[inputs[0]] = -1.0 / rate * amount  # NOTE: amount should be positive, but input should be negative
-  #   # check that all values got filled -> TODO remove this for opt performance
-  #   missing = set(resources_in + resources_out) - set(balance.keys())
-  #   if missing:
-  #     self.raiseAnError(RuntimeError, 'While evaluating transfer function, not all variables requested were provided!' +\
-  #                       f'  Missing: {missing}' +\
-  #                       f'  Transfer function: {self._transfer}')
-  #   return balance, meta
-
 
 
 class Storage(Interaction):
@@ -1247,7 +1150,7 @@ class Demand(Interaction):
     inputs.update(np.atleast_1d(self._demands))
     return inputs
 
-  def print_me(self, tabs=0, tab='  '):
+  def print_me(self, tabs: int=0, tab: str='  ') -> None:
     """
       Prints info about self
       @ In, tabs, int, optional, number of tabs to insert before prints
@@ -1257,5 +1160,4 @@ class Demand(Interaction):
     pre = tab*tabs
     self.raiseADebug(pre+'Demand/Load:')
     self.raiseADebug(pre+'  demands:', self._demands)
-    self.raiseADebug(pre+'  penalty:', self._penalty)
     self.raiseADebug(pre+'  capacity:', self._capacity)

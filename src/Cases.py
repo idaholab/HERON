@@ -145,7 +145,7 @@ class Case(Base):
 
     #== Workflow ==#
     workflow_options = InputTypes.makeEnumType('WorkflowOptions', 'WorkflowOptionsType',
-                                               ['standard', 'MOPED', 'combined', 'DISPATCHES'])
+                                               ['standard', 'MOPED', 'combined', 'DISPATCHES','ABCE'])
 
     desc_workflow_options = r"""determines the desired workflow(s) for the HERON analysis. \default{standard}.
                             If ``standard'' runs HERON as usual (writes outer/inner for RAVEN workflow).
@@ -275,6 +275,9 @@ class Case(Base):
     econ.addSub(InputData.parameterInputFactory('verbosity', contentType=InputTypes.IntegerType,
                                                 descr=r"""the level of output to print from the CashFlow calculations.
                                                 Passed to the CashFlow module."""))
+
+    policies = InputData.parameterInputFactory('policies', ordered=False,
+                                                descr=r"""node containing general economic policy setting in which to perform ABCE analysis.""")
     # additing economic metrics (or indicators in TEAL terms) to the global settings
     desc_econ_metrics = r"""additional economic metric(s) which will be calculated for each
                                                 RAVEN Inner run, regardless of whether opt or sweep mode was specified.
@@ -290,6 +293,36 @@ class Case(Base):
                             the NPV target is 0 which results in the break-even cost. \default{0}""")
       econ_metrics.addSub(metric)
     econ.addSub(econ_metrics)
+    ctax = InputData.parameterInputFactory('CTAX', ordered=False,
+                                          descr=r"""node containing carbon tax setting in which to perform ABCE analysis.""")
+    ctax.addSub(InputData.parameterInputFactory('enabled', contentType=InputTypes.BoolType, descr=r"""enable carbon tax"""))
+
+    ctax.addSub(InputData.parameterInputFactory('qty', contentType=InputTypes.FloatType, descr=r"""carbon tax rate"""))
+
+    policies.addSub(ctax)
+
+    ptc = InputData.parameterInputFactory('PTC', ordered=False, descr=r"""node containing production tax credit setting in which to perform ABCE analysis.""")
+
+    ptc.addSub(InputData.parameterInputFactory('enabled', contentType=InputTypes.BoolType, descr=r"""enable production tax credit"""))
+
+    ptc.addSub(InputData.parameterInputFactory('qty', contentType=InputTypes.FloatType, descr=r"""production tax credit rate"""))
+
+    unit_type = InputData.parameterInputFactory('unit_type', contentType=InputTypes.StringListType, descr=r"""unit type for production tax credit rate""")
+
+    eligibility = InputData.parameterInputFactory('eligibility', ordered=False, descr=r"""node containing eligibility setting in which to perform ABCE analysis.""")
+    eligibility.addSub(unit_type)
+
+    ptc.addSub(eligibility)
+
+    ptc.addSub(InputData.parameterInputFactory('eligible', contentType=InputTypes.StringListType, descr=r"""eligible technologies"""))
+
+    policies.addSub(ptc)
+
+    econ.addSub(policies)
+
+    econ.addSub(InputData.parameterInputFactory('allowed_xtr_types', contentType=InputTypes.StringListType, descr=r"""allowed construction types"""))
+    # is this actually CashFlow verbosity or is it really HERON verbosity?
+
     input_specs.addSub(econ)
 
     #==== Dispatcher ====#
@@ -556,6 +589,26 @@ class Case(Base):
         self._time_discretization = self._read_time_discr(item)
       elif item.getName() == 'economics':
         self._global_econ, self._econ_metrics = self._read_global_econ_settings(item)
+        for sub in item.subparts:
+          if sub.subparts:
+            self._global_econ[sub.getName()] = {}
+            for subsub in sub.subparts:
+              if subsub.subparts:
+                self._global_econ[sub.getName()][subsub.getName()] = {}
+                for subsubsub in subsub.subparts:
+                  if subsubsub.subparts:
+                    self._global_econ[sub.getName()][subsub.getName()][subsubsub.getName()] = {}
+                    for subsubsubsub in subsubsub.subparts:
+                      self._global_econ[sub.getName()][subsub.getName()][subsubsub.getName()][subsubsubsub.getName()] = subsubsubsub.value
+                  else:
+                    self._global_econ[sub.getName()][subsub.getName()][subsubsub.getName()] = subsubsub.value
+              else:
+                self._global_econ[sub.getName()][subsub.getName()] = subsub.value
+          else:
+            self._global_econ[sub.getName()] = sub.value
+          if self.debug['enabled'] and sub.getName() == "ProjectTime":
+            self._global_econ[sub.getName()] = self.debug['macro_steps']
+
       elif item.getName() == 'dispatcher':
         # instantiate a dispatcher object.
         inp = item.subparts[0]
@@ -584,14 +637,14 @@ class Case(Base):
       elif item.getName() == 'result_statistics':
         new_result_statistics = self._read_result_statistics(item)
         self._result_statistics.update(new_result_statistics)
-
     # checks
     if self._mode is None:
       self.raiseAnError('No <mode> node was provided in the <Case> node!')
     if self.dispatcher is None:
       self.raiseAnError('No <dispatch> node was provided in the <Case> node!')
-    if self._time_discretization is None:
-      self.raiseAnError('<time_discretization> node was not provided in the <Case> node!')
+    if self._workflow !='ABCE':
+      if self._time_discretization is None:
+        self.raiseAnError('<time_discretization> node was not provided in the <Case> node!')
     # check that opt metric is part of econ metrics for output
     if self.get_mode() == 'opt':
       opt_metric, _ = self.get_opt_metric()
@@ -611,9 +664,9 @@ class Case(Base):
                            f'Number requested: {cores_requested} (inner: {self.innerParallel} * outer: {self.outerParallel}) ')
 
     # TODO what if time discretization not provided yet?
-    self.dispatcher.set_time_discr(self._time_discretization)
-    self.dispatcher.set_validator(self.validator)
-
+    if self._workflow !='ABCE':
+      self.dispatcher.set_time_discr(self._time_discretization)
+      self.dispatcher.set_validator(self.validator)
     self.raiseADebug(f'Successfully initialized Case {self.name}.')
 
   def _read_data_handling(self, node):

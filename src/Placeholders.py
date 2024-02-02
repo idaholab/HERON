@@ -8,6 +8,7 @@ import os
 import sys
 import abc
 import copy
+import yaml
 
 import HERON.src._utils as hutils
 from HERON.src.base import Base
@@ -479,31 +480,49 @@ class CSV(Placeholder):
       @ Out, None
     """
     self.raiseAMessage(f'Checking CSV at "{self._target_file}"')
-    structure = hutils.get_csv_structure(self._target_file, case.get_year_name(), case.get_time_name())
-    interpolated = 'macro' in structure
-    clustered = bool(structure['clusters'])
+    if case._workflow!="ABCE":
+      structure = hutils.get_csv_structure(self._target_file, case.get_year_name(), case.get_time_name())
+      interpolated = 'macro' in structure
+      clustered = bool(structure['clusters'])
+    else:
+      interpolated = False
+      clustered = False
+
     # segmented = bool(structure['segments']) # TODO
     self.raiseAMessage(
         f'For DataGenerator <{self._type}> "{self.name}", detected: {"" if interpolated else "NOT"} interpolated, ' +
         f'{"" if clustered else "NOT"} clustered.'
     )
-    # expect that project life == num macro years
-    project_life = hutils.get_project_lifetime(case, components) - 1 # one less for construction year
-    if interpolated:
-      # if interpolated, needs more checking
-      interp_years = structure['macro']['num']
-      if interp_years >= project_life:
-        self.raiseADebug(
-            f'"{self.name}" interpolates {interp_years} macro steps, and project life is {project_life}, so histories will be trunctated.'
-        )
-        self.limit_interp = project_life
+    if case._workflow!="ABCE":
+      # expect that project life == num macro years
+      project_life = hutils.get_project_lifetime(case, components) - 1 # one less for construction year
+      if interpolated:
+        # if interpolated, needs more checking
+        interp_years = structure['macro']['num']
+        if interp_years >= project_life:
+          self.raiseADebug(
+              f'"{self.name}" interpolates {interp_years} macro steps, and project life is {project_life}, so histories will be trunctated.'
+          )
+          self.limit_interp = project_life
+        else:
+          self.raiseAnError(
+              RuntimeError, f'"{self.name}" interpolates {interp_years} macro steps, but project life is {project_life}!'
+          )
       else:
-        self.raiseAnError(
-            RuntimeError, f'"{self.name}" interpolates {interp_years} macro steps, but project life is {project_life}!'
+        # if single year, we can use multiyear so np
+        self.raiseADebug(
+            f'"{self.name}" will be extended to project life ({project_life}) macro steps using <Multicycle>.'
         )
+        self.needs_multiyear = project_life
     else:
-      # if single year, we can use multiyear so np
-      self.raiseADebug(
-          f'"{self.name}" will be extended to project life ({project_life}) macro steps using <Multicycle>.'
-      )
-      self.needs_multiyear = project_life
+      print("ABCE workflow detected, skipping interpolation check.")
+      # if case.dispatcher._disp_settings['num_dispatch_years'] has value, use that
+      # else, use settings.yml
+
+      if 'num_dispatch_years' not in case.dispatcher._disp_settings:
+        settings_file = case.dispatcher._disp_settings['settings_file']
+        with open(settings_file) as f:
+          abce_settings = yaml.load(f, Loader=yaml.FullLoader)
+        self.needs_multiyear = abce_settings['dispatch']['num_dispatch_years']
+      else:
+        self.needs_multiyear = case.dispatcher._disp_settings['num_dispatch_years']

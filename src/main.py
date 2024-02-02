@@ -19,6 +19,7 @@ except ModuleNotFoundError:
 from HERON.src import input_loader
 from HERON.src.base import Base
 from HERON.src.Moped import MOPED
+from HERON.src.Abce import ABCE
 from HERON.src.Herd import HERD
 from HERON.src.NetworkPlot import NetworkPlot
 
@@ -53,6 +54,8 @@ class HERON(Base):
       @ Out, None
     """
     location, fname = os.path.split(name)
+    if location == '':
+      location = os.getcwd()
     self._input_dir = location
     self._input_name = fname
     inp = input_loader.load(name)
@@ -130,6 +133,25 @@ class HERON(Base):
     moped.setInitialParams(case, components, sources)
     moped.run()
 
+  def run_abce_workflow(self, case=None, components=None, sources=None, input_dir=None):
+    """
+      Runs MOPED workflow for generating pyomo problem and solves it
+      @ In, case, HERON case object with necessary run settings
+      @ Out, None
+    """
+    if case is None:
+      case = self._case
+    if components is None:
+      components = self._components
+    if sources is None:
+      sources = self._sources
+    if input_dir is None:
+      input_dir = self._input_dir
+    assert case is not None and components is not None and sources is not None and input_dir is not None
+    abce = ABCE(input_dir)
+    self.raiseAMessage("***** You are running ABCE workflow *****")
+    abce.write_workflows(case, components, sources, input_dir)
+
   def run_dispatches_workflow(self):
     """
       Runs DISPATCHES workflow for creating framework and running with IDAES
@@ -187,6 +209,8 @@ def main():
     sim.run_moped_workflow()
   elif sim._case._workflow == 'DISPATCHES':
     sim.run_dispatches_workflow()
+  elif sim._case._workflow == 'ABCE':
+    sim.run_abce_workflow()
 
 if __name__ == '__main__':
   main()

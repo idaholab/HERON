@@ -5,7 +5,6 @@
   Runs HERON.
 """
 import os
-from queue import Empty
 import sys
 import argparse
 

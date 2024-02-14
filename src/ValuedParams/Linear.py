@@ -5,6 +5,8 @@
   Values that are expressed as linear ratios of one another.
   Primarily intended for transfer functions.
 """
+import numpy as np
+
 from .ValuedParam import ValuedParam, InputData, InputTypes
 from .Polynomial import Polynomial
 
@@ -55,6 +57,25 @@ class Linear(Polynomial):
       # coefficient signs come from activity, not coeffs, so fix that up too
       self._coefficients[tuple([resource])][ONE_TUP] = abs(rate_node.value)
     return []
+
+  def set_signs(self, var_map: dict, to_set: list) -> None:
+    """
+      Sets the signs of stored values for this element according to the map given
+      @ In, var_map, dict, mapping of negative and positive vars
+      @ In, to_set, list, variable names to set
+      @ Out, None
+    """
+    aaaaa
+    for resources, orders_dict in self._coefficients.items():
+      res = resources[0]
+      val = orders_dict[ONE_TUP]
+      print(f'DEBUGG res: "{res}", val {val}')
+      if res in var_map['positive']:
+        sgn = 1
+      elif res in var_map['negative']:
+        sgn = -1
+      print(f'DEBUGG res: "{res}", val {val}, sgn: {sgn}')
+      orders_dict[ONE_TUP] = sgn * np.abs(val)
 
   def evaluate(self, inputs, target_var=None, aliases=None):
     """

@@ -5,6 +5,8 @@
   Values that are swept, optimized, or fixed in the "outer" workflow,
   so end up being constants in the "inner" workflow.
 """
+import numpy as np
+
 from .ValuedParam import ValuedParam, InputData, InputTypes
 
 # class for custom dynamically-evaluated quantities
@@ -70,9 +72,7 @@ class Parametric(ValuedParam):
       sgn = 1
     elif res in var_map['negative']:
       sgn = -1
-    # this works for lists of values; override for floats
-    for v, value in enumerate(self._parametric):
-      self._parametric[v] = sgn * value
+    self._parametric = sgn * np.abs(self._parametric)
 
   def get_value(self, debug=False):
     """
@@ -123,22 +123,6 @@ class FixedValue(Parametric):
     spec.description = r"""indicates this value should be fixed in the outer run,
                        and act as a constant in the inner workflow."""
     return spec
-
-  def set_signs(self, var_map: dict, to_set: list) -> None:
-    """
-      Sets the signs of stored values for this element according to the map given
-      @ In, var_map, dict, mapping of negative and positive vars
-      @ In, to_set, list, variable names to set
-      @ Out, None
-    """
-    if len(to_set) > 0:
-      raise RuntimeError(f'Received multipe "to_set" values ({to_set}) in setting signs for {self.__class__.__name__}!')
-    res = to_set[0]
-    if res in var_map['positive']:
-      sgn = 1
-    elif res in var_map['negative']:
-      sgn = -1
-    self._parametric = sgn * self._parametric
 
 class OptBounds(Parametric):
   """ For inputs that are optimized between lower, upper bounds. """

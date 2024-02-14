@@ -79,6 +79,7 @@ factory.registerType('activity', Activity)
 factory.registerType('uncertainty', RandomVariable)
 # ratios, transfers
 factory.registerType('linear', Linear)
+factory.registerType('ratio', Linear)
 factory.registerType('poly', Polynomial)
 # TODO add: ROM
 

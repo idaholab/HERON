@@ -5,6 +5,8 @@
   Values that are expressed as linear ratios of one another.
   Primarily intended for transfer functions.
 """
+import numpy as np
+
 from .TransferFunc import TransferFunc, InputData, InputTypes
 
 # class for custom dynamically-evaluated quantities
@@ -74,3 +76,19 @@ class Ratio(TransferFunc):
       @ Out, coeffs, dict, coefficient mapping
     """
     return self._coefficients
+
+  def set_io_signs(self, consumed, produced):
+    """
+      Fix up input/output signs, if interpretable
+      @ In, consumed, list, list of resources consumed in the transfer
+      @ In, produced, list, list of resources produced in the transfer
+      @ Out, None
+    """
+    for res, coef in self.get_coefficients().items():
+      if res in consumed:
+        self._coefficients[res] = - np.abs(coef)
+      elif res in produced:
+        self._coefficients[res] = np.abs(coef)
+      else:
+        # should not be able to get here after IO gets checked!
+        raise RuntimeError('While checking transfer coefficient, resource "{res}" was neither consumed nor produced!')

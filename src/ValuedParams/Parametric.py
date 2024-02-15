@@ -58,22 +58,6 @@ class Parametric(ValuedParam):
     self._debug_value = spec.parameterValues.get('debug_value', None)
     return []
 
-  def set_signs(self, var_map: dict, to_set: list) -> None:
-    """
-      Sets the signs of stored values for this element according to the map given
-      @ In, var_map, dict, mapping of negative and positive vars
-      @ In, to_set, list, variable names to set
-      @ Out, None
-    """
-    if len(to_set) > 0:
-      raise RuntimeError(f'Received multipe "to_set" values ({to_set}) in setting signs for {self.__class__.__name__}!')
-    res = to_set[0]
-    if res in var_map['positive']:
-      sgn = 1
-    elif res in var_map['negative']:
-      sgn = -1
-    self._parametric = sgn * np.abs(self._parametric)
-
   def get_value(self, debug=False):
     """
       Get the value for this parametric source.

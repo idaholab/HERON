@@ -444,13 +444,13 @@ class Interaction(Base):
       if len(resources) == 1:
         self._capacity_var = list(resources)[0]
       else:
-        self.raiseAnError(IOError, 'If multiple resources are active, "capacity" requires a "resource" specified!')
+        self.raiseAnError(IOError, f'Component "{comp_name}": If multiple resources are active, "capacity" requires a "resource" specified!')
     ## minimum: basically the same as capacity, functionally
     if self._minimum and self._minimum_var is None:
       if len(resources) == 1:
         self._minimum_var = list(resources)[0]
       else:
-        self.raiseAnError(IOError, 'If multiple resources are active, "minimum" requires a "resource" specified!')
+        self.raiseAnError(IOError, f'Component "{comp_name}": If multiple resources are active, "minimum" requires a "resource" specified!')
 
   def _set_valued_param(self, name, comp, spec, mode):
     """
@@ -473,30 +473,7 @@ class Interaction(Base):
       @ In, None
       @ Out, None
     """
-    # fix up signs: send sign map to valued params
-    var_map = self.map_vp_signs()
-    self.set_vp_signs(var_map)
-
-  def map_vp_signs(self):
-    """
-      Collect the signs of VPs based on the input/output of this component
-      @ In, None
-      @ Out, var_map, dict, map of variables to their correct sign
-    """
-    var_map = {'negative': set(), 'positive': set()}
-    return var_map
-
-  def set_vp_signs(self, var_map: dict):
-    """
-      Set the signs of VPs based on the input/output of this component
-      @ In, var_map, dict, map of variables to their correct sign
-      @ Out, None
-    """
-    # this list is bespoke
-    # TODO is there an automated way to come up with valued params that need editing?
-    self._capacity.set_signs(var_map, to_set=[self.get_capacity_var])
-    if self._minimum is not None:
-      self._minimum.set_signs(var_map)
+    # nothing to do in general
 
   def get_capacity(self, meta, raw=False):
     """
@@ -788,7 +765,8 @@ class Producer(Interaction):
         self.raiseAnError(IOError, 'Any component that consumes a resource must have a transfer function describing the production process!')
     ## transfer elements are all in IO list
     if self._transfer is not None:
-      self._transfer.check_io(self.get_inputs(), self.get_outputs())
+      self._transfer.check_io(self.get_inputs(), self.get_outputs(), comp_name)
+      self._transfer.set_io_signs(self.get_inputs(), self.get_outputs())
     ## ramp limit is (0, 1]
     if self.ramp_limit is not None and not 0 < self.ramp_limit <= 1:
       self.raiseAnError(IOError, f'Ramp limit must be (0, 1] but got "{self.ramp_limit}"')
@@ -810,30 +788,6 @@ class Producer(Interaction):
         self._transfer = tf_factory.returnInstance(sub.getName())
         self._transfer.read(comp, spec)
         found = True
-
-  def map_vp_signs(self):
-    """
-      Collect the signs of VPs based on the input/output of this component
-      @ In, None
-      @ Out, var_map, dict, map of variables to their correct sign
-    """
-    var_map = super().map_vp_signs()
-    # FIXME speed this up when we show it works
-    for consumed in self.get_inputs():
-      var_map['negative'].add(consumed)
-    for produced in self.get_outputs():
-      var_map['produced'].add(produced)
-    return var_map
-
-  def set_vp_signs(self, var_map: dict):
-    """
-      Set the signs of VPs based on the input/output of this component
-      @ In, var_map, dict, map of variables to their correct sign
-      @ Out, None
-    """
-    super().set_vp_signs(var_map)
-    self._transfer.set_signs(var_map)
-    self.ramp_limit.set_signs(var_map)
 
   def get_inputs(self):
     """
@@ -953,28 +907,6 @@ class Storage(Interaction):
       self._initial_stored = vp
     # the capacity is limited by the stored resource.
     self._capacity_var = self._stores
-
-  def map_vp_signs(self):
-    """
-      Collect the signs of VPs based on the input/output of this component
-      @ In, None
-      @ Out, var_map, dict, map of variables to their correct sign
-    """
-    var_map = super().map_vp_signs()
-    for stores in self.get_ouputs():
-      var_map['positive'].add(stores)
-    return var_map
-
-  def set_vp_signs(self, var_map: dict):
-    """
-      Set the signs of VPs based on the input/output of this component
-      @ In, var_map, dict, map of variables to their correct sign
-      @ Out, None
-    """
-    super().set_vp_signs(var_map)
-    self._rate.set_signs(var_map)
-    self._initial_stored.set_signs(var_map)
-    # self._strategy?
 
   def get_inputs(self):
     """
@@ -1149,17 +1081,6 @@ class Demand(Interaction):
     # must set demands first, so that "capacity" can access it
     self._demands = specs.parameterValues['resource']
     Interaction.read_input(self, specs, mode, comp_name)
-
-  def map_vp_signs(self):
-    """
-      Collect the signs of VPs based on the input/output of this component
-      @ In, None
-      @ Out, var_map, dict, map of variables to their correct sign
-    """
-    var_map = super().map_vp_signs()
-    for demand in self.get_inputs():
-      var_map['negative'].add(demand)
-    return var_map
 
   def get_inputs(self):
     """

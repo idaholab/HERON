@@ -27,7 +27,10 @@ class Polynomial(TransferFunc):
                   set equal to zero. For instance, the equation $ax^2 + bx + c = dy^2 + fy + g$ should be reformulated
                   as $ax^2 + bx + (c-g) - dy^2 - fy = 0$.""")
     coeff = InputData.parameterInputFactory('coeff', contentType=InputTypes.FloatType,
-        descr=r"""one coefficient for one poloynomial term of the specified \xmlAttr{resources}.""")
+        descr=r"""one coefficient for one poloynomial term of the specified \xmlAttr{resources}.
+                  Care should be taken to assure the sign of the coefficient is working as expected,
+                  as consumed resources have a negative sign while produced resources have a positive
+                  sign, and the full equation should have the form 0 = ... .""")
     coeff.addParam('resource', param_type=InputTypes.StringListType,
         descr=r"""indicates the resource(s) for which the polynomial coefficient is being provided in this node.
                   Note that the order of the resources matters for specifying the polynomial \xmlAttr{order}.""")
@@ -58,10 +61,21 @@ class Polynomial(TransferFunc):
       @ Out, None
     """
     super().read(comp_name, spec)
-    for coeff_node in spec.findAll('coeff'):
+    for coeff_node in spec.findFirst('poly').findAll('coeff'):
       resource = coeff_node.parameterValues['resource']
       order = coeff_node.parameterValues['order']
       self._coefficients[tuple(resource)][tuple(order)] = coeff_node.value
+
+  def get_resources(self):
+    """
+      Provides the resources used in this transfer function.
+      @ In, None
+      @ Out, resources, set, set of resources used
+    """
+    res_set = set()
+    for res_tup, ord_dict in self._coefficients.items():
+      res_set = res_set.union(set(res_tup))
+    return res_set
 
   def get_coefficients(self):
     """

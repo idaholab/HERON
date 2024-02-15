@@ -39,7 +39,6 @@ class TransferFunc(MessageUser):
     """
     super().__init__()
     self.type = self.__class__.__name__ # class type, for easy checking
-    self._comp = None        # component who uses this transfer function
 
   def __repr__(self) -> str:
     """
@@ -57,11 +56,12 @@ class TransferFunc(MessageUser):
       @ Out, needs, list, signals needed to evaluate this ValuedParam at runtime
     """
 
-  def check_io(self, inputs, outputs):
+  def check_io(self, inputs, outputs, comp_name):
     """
       Checks that the transfer function uses all and only the resources used by the component.
       @ In, inputs, list, list of input resources to check against.
       @ In, outputs, list, list of output resources to check against.
+      @ In, comp_name, str, name of component that this transfer function is describing
       @ Out, None
     """
     used = self.get_resources()
@@ -71,7 +71,10 @@ class TransferFunc(MessageUser):
     excess_outputs = outs - used
     unrecog = used - inps.union(outs)
     if excess_inputs or excess_outputs or unrecog:
-      msg = f'Transfer function for Component "{self._comp}" has a mismatch with consumed and produced!'
+      msg = f'Transfer function for Component "{comp_name}" has a mismatch with consumed and produced!'
+      msg += f'\n... All Consumed: {inps}'
+      msg += f'\n... All Produced: {outs}'
+      msg += f'\n... All in Transfer Function: {used}'
       if excess_inputs:
         msg += f'\n... Consumed but not used in transfer: {excess_inputs}'
       if excess_outputs:
@@ -79,3 +82,12 @@ class TransferFunc(MessageUser):
       if unrecog:
         msg += f'\n... In transfer but not consumed or produced: {unrecog}'
       self.raiseAnError(IOError, msg)
+
+  def set_io_signs(self, consumed, produced):
+    """
+      Fix up input/output signs, if interpretable
+      @ In, consumed, list, list of resources consumed in the transfer
+      @ In, produced, list, list of resources produced in the transfer
+      @ Out, None
+    """
+    # nothing to do by default

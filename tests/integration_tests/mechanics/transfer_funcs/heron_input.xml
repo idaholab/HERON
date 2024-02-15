@@ -48,7 +48,7 @@
       </economics>
     </Component>
 
-    <!-- <Component name="LaborSource">
+    <Component name="LaborSource">
       <produces resource="labor" dispatch="dependent">
         <capacity resource="labor">
           <fixed_value>500</fixed_value>
@@ -57,21 +57,21 @@
       <economics>
         <lifetime>2</lifetime>
       </economics>
-    </Component> -->
+    </Component>
 
-    <Component name="Linear">
+    <Component name="BalanceRatio">
       <produces resource="work" dispatch="independent">
         <consumes>funding</consumes>
         <capacity resource="funding">
           <fixed_value>-100</fixed_value>
         </capacity>
         <transfer>
-          <linear>
+          <ratio>
             <!-- 4f = 1.0w-->
             <!-- w ranges from 0 to 1000 for f in [0,1000]-->
             <rate resource="funding">4</rate>
             <rate resource="work">1</rate>
-          </linear>
+          </ratio>
         </transfer>
       </produces>
       <economics>
@@ -80,9 +80,10 @@
     </Component>
 
     <!-- 0.9f + 1.0l + 1e-6fl^2 + 0.02fl^0.5 = 1.0w-->
+    <!-- fix signs, -0.9f - 1.0l - 1e-6fl^2 + 0.02fl^0.5 - 1.0w = 0-->
     <!-- w ranges from 0 to 6000 for l in [0,500] and f in [0,1000]-->
-    <!-- <coeff resource="funding,labor" order="1,0.5">-0.2</coeff> -->
-    <!-- <Component name="Quadratic">
+    <!-- w(f=100, l=500) = 615 -->
+    <Component name="Quadratic">
       <produces resource="work" dispatch="independent">
         <consumes>funding, labor</consumes>
         <capacity resource="funding">
@@ -93,14 +94,14 @@
             <coeff resource="funding" order="1">-0.9</coeff>
             <coeff resource="labor" order="1">-1</coeff>
             <coeff resource="funding,labor" order="1,2">-1e-6</coeff>
-            <coeff resource="work" order="1">1</coeff>
+            <coeff resource="work" order="1">-1</coeff>
           </poly>
         </transfer>
       </produces>
       <economics>
         <lifetime>2</lifetime>
       </economics>
-    </Component> -->
+    </Component>
 
     <Component name="Milestones">
       <demands resource="work" dispatch="dependent">
@@ -140,6 +141,24 @@
       </economics>
     </Component>
 
+    <Component name="BusyWork">
+      <demands resource="labor" dispatch="dependent">
+        <capacity>
+          <fixed_value>-500</fixed_value>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>2</lifetime>
+        <CashFlow name="other_work" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>labor</activity>
+          </driver>
+          <reference_price>
+            <fixed_value>1</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
   </Components>
 
   <DataGenerators>

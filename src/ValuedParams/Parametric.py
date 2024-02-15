@@ -5,8 +5,6 @@
   Values that are swept, optimized, or fixed in the "outer" workflow,
   so end up being constants in the "inner" workflow.
 """
-import numpy as np
-
 from .ValuedParam import ValuedParam, InputData, InputTypes
 
 # class for custom dynamically-evaluated quantities

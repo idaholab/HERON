@@ -17,8 +17,6 @@ class TransferFuncFactory(EntityFactory):
       Fill input specs for the provided name and description.
       @ In, name, str, name of new spec
       @ In, descr, str, optional, description of spec
-      @ In, allowed, list, optional, string list of allowable types of ValuedParam. Overrides "kind".
-      @ In, kind, str, optional, kind of ValuedParam grouping (default)
       @ Out, spec, InputData, specification
     """
     add_descr = ''

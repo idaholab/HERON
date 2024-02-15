@@ -34,7 +34,7 @@ class TransferFunc(MessageUser):
   def __init__(self):
     """
       Constructor.
-      @ In, name, str, name of this valued param
+      @ In, None
       @ Out, None
     """
     super().__init__()

@@ -1,9 +1,9 @@
 # Copyright 2020, Battelle Energy Alliance, LLC
 # ALL RIGHTS RESERVED
 """
-  ValuedParams are the flexible input sources used in HERON. In some way
-  they represent placeholder values to be evaluated at run time from a variety of sources,
-  ranging from constants to synthetic histories to AI and others.
+  Transfer functions describe the balance between consumed and produced
+  resources for generating components. This module defines the templates
+  that can be used to describe transfer functions.
 """
 # only type references here, as needed
 from .TransferFunc import TransferFunc

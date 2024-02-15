@@ -12,6 +12,7 @@ from HERON.src.base import Base
 import xml.etree.ElementTree as ET
 from HERON.src.Economics import CashFlowUser
 from HERON.src.ValuedParams import factory as vp_factory
+from HERON.src.TransferFuncs import factory as tf_factory
 from HERON.src.ValuedParamHandler import ValuedParamHandler
 from HERON.src import _utils as hutils
 
@@ -453,10 +454,10 @@ class Interaction(Base):
 
   def _set_valued_param(self, name, comp, spec, mode):
     """
-      Sets up use of a ValuedParam for this interaction for the "name" attribute of this class.
+      sets up use of a valuedparam for this interaction for the "name" attribute of this class.
       @ In, name, str, name of member of this class
       @ In, comp, str, name of associated component
-      @ In, spec, InputParam, input specifications
+      @ In, spec, inputparam, input specifications
       @ In, mode, string, case mode to operate in (e.g. 'sweep' or 'opt')
       @ Out, None
     """
@@ -717,11 +718,10 @@ class Producer(Interaction):
         )
     )
     specs.addSub(
-        vp_factory.make_input_specs(
+        tf_factory.make_input_specs(
             'transfer',
-            kind='transfer',
-            descr=r"""describes how input resources yield output resources for this
-                  component's transfer function.""",
+            descr=r"""describes the balance between consumed and produced resources for this
+                  component.""",
             )
         )
     specs.addSub(
@@ -775,7 +775,7 @@ class Producer(Interaction):
       if item.getName() == 'consumes':
         self._consumes = item.value
       elif item.getName() == 'transfer':
-        self._set_valued_param('_transfer', comp_name, item, mode)
+        self._set_transfer_func('_transfer', comp_name, item)
       elif item.getName() == 'ramp_limit':
         self.ramp_limit = item.value
       elif item.getName() == 'ramp_freq':
@@ -786,9 +786,30 @@ class Producer(Interaction):
     if self._transfer is None:
       if self._consumes:
         self.raiseAnError(IOError, 'Any component that consumes a resource must have a transfer function describing the production process!')
+    ## transfer elements are all in IO list
+    if self._transfer is not None:
+      self._transfer.check_io(self.get_inputs(), self.get_outputs())
     ## ramp limit is (0, 1]
     if self.ramp_limit is not None and not 0 < self.ramp_limit <= 1:
       self.raiseAnError(IOError, f'Ramp limit must be (0, 1] but got "{self.ramp_limit}"')
+
+  def _set_transfer_func(self, name, comp, spec):
+    """
+      Sets up a Transfer Function
+      @ In, name, str, name of member of this class
+      @ In, comp, str, name of associated component
+      @ In, spec, inputparam, input specifications
+      @ Out, None
+    """
+    known = tf_factory.knownTypes()
+    found = False
+    for sub in spec.subparts:
+      if sub.getName() in known:
+        if found:
+          self.raiseAnError(IOError, f'Received multiple Transfer Functions for component "{name}"!')
+        self._transfer = tf_factory.returnInstance(sub.getName())
+        self._transfer.read(comp, spec)
+        found = True
 
   def map_vp_signs(self):
     """

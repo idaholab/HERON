@@ -9,9 +9,7 @@ from .SyntheticHistory import SyntheticHistory
 from .StaticHistory import StaticHistory
 from .ROM import ROM
 from .Function import Function
-from .Parametric import Parametric, FixedValue, OptBounds, SweepValues
-from .Linear import Linear
-from .Polynomial import Polynomial
+from .Parametric import FixedValue, OptBounds, SweepValues
 from .Variable import Variable
 from .Activity import Activity
 from .RandomVariable import RandomVariable
@@ -77,18 +75,9 @@ factory.registerType('ROM', ROM)
 factory.registerType('Function', Function)
 factory.registerType('activity', Activity)
 factory.registerType('uncertainty', RandomVariable)
-# ratios, transfers
-factory.registerType('linear', Linear)
-factory.registerType('ratio', Linear)
-factory.registerType('poly', Polynomial)
-# TODO add: ROM
-
-# TODO are transfer functions and valued evaluations really the same creature?
 
 # map of "kinds" of ValuedParams to the default acceptable ValuedParam types
 allowable = {}
-# transfer functions, such as producing components' transfer functions
-allowable['transfer'] = ['linear', 'poly', 'Function']
 # single evaluations, like cashflow prices and component capacities
 allowable['singular'] = [
   'fixed_value',

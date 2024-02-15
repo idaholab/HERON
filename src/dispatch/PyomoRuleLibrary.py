@@ -287,7 +287,21 @@ def min_prod_rule(prod_name, r, caps, minimums, m, t) -> bool:
   else:
     return prod[r, t] <= minimums[t]
 
-def transfer_rule(coeffs, r_map, prod_name, m, t) -> bool:
+def ratio_transfer_rule(ratio: float, r: int, ref_r: int,prod_name: str, m, t) -> bool:
+  """
+    Constructs transfer function constraints
+    @ In, ratio, float, balanced ratio of this resource to the reference resource
+    @ In, r, int, index for this resource in the activity map
+    @ In, ref_r, int, index of the reference resource in the activity map
+    @ In, prod_name, str, name of production variable
+    @ In, m, pyo.ConcreteModel, associated model
+    @ In, t, int, index of time variable
+    @ Out, transfer, bool, transfer ratio check
+  """
+  activity = getattr(m, prod_name)
+  return activity[r, t] == activity[ref_r, t] * ratio
+
+def poly_transfer_rule(coeffs, r_map, prod_name, m, t) -> bool:
   """
     Constructs transfer function constraints
     @ In, coeffs, dict, nested mapping of resources and polynomial orders to coefficients

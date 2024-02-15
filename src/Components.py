@@ -454,10 +454,10 @@ class Interaction(Base):
 
   def _set_valued_param(self, name, comp, spec, mode):
     """
-      sets up use of a valuedparam for this interaction for the "name" attribute of this class.
+      Sets up use of a ValuedParam for this interaction for the "name" attribute of this class.
       @ In, name, str, name of member of this class
       @ In, comp, str, name of associated component
-      @ In, spec, inputparam, input specifications
+      @ In, spec, InputParam, input specifications
       @ In, mode, string, case mode to operate in (e.g. 'sweep' or 'opt')
       @ Out, None
     """

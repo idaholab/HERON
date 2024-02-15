@@ -398,6 +398,10 @@ class PyomoModelHandler:
   def _create_transfer_poly(self, transfer, comp, prod_name):
     """
       Create a polynomial transfer function. This comes in the form of an equality expression.
+      @ In, transfer, TransferFunc, Ratio transfer function
+      @ In, comp, Component, component object for this transfer
+      @ In, prod_name, str, name of production element
+      @ Out, None
     """
     rule_name = f'{comp.name}_transfer_func'
     coeffs = transfer.get_coefficients()

@@ -363,22 +363,56 @@ class PyomoModelHandler:
       @ In, prod_name, str, name of production variable
       @ Out, None
     """
+    transfer = comp.get_interaction().get_transfer()
+    if transfer is None:
+      return
+    if transfer.type == 'Ratio':
+      self._create_transfer_ratio(transfer, comp, prod_name)
+    elif transfer.type == 'Polynomial':
+      self._create_transfer_poly(transfer, comp, prod_name)
+    else:
+      raise NotImplementedError(f'Transfer function type "{transfer.type}" not implemented for PyomoModelHandler!')
+
+  def _create_transfer_ratio(self, transfer, comp, prod_name):
+    """
+      Create a balance ratio-based transfer function.
+      This comes in the form of a balance expression (not an equality).
+      @ In, transfer, TransferFunc, Ratio transfer function
+      @ In, comp, Component, component object for this transfer
+      @ In, prod_name, str, name of production element
+      @ Out, None
+    """
     name = comp.name
-    # transfer functions
-    # e.g. 2A + 3B -> 1C + 2E
-    # get linear coefficients
-    # TODO this could also take a transfer function from an external Python function assuming
-    #    we're careful about how the expression-vs-float gets used
-    #    and figure out how to handle multiple ins, multiple outs
-    ratios = putils.get_transfer_coeffs(self.model, comp)
-    ref_r, ref_name, _ = ratios.pop('__reference', (None, None, None))
-    for resource, ratio in ratios.items():
+    coeffs = transfer.get_coefficients()
+    coeffs_iter = iter(coeffs.items())
+    first_name, first_coef = next(coeffs_iter)
+    first_r = self.model.resource_index_map[comp][first_name]
+    for resource, coef in coeffs_iter:
+      ratio = coef / first_coef
       r = self.model.resource_index_map[comp][resource]
-      rule_name = f'{name}_{resource}_{ref_name}_transfer'
-      rule = lambda mod, t: prl.transfer_rule(ratio, r, ref_r, prod_name, mod, t)
+      rule_name = f'{name}_{resource}_{first_name}_transfer'
+      rule = lambda mod, t: prl.ratio_transfer_rule(ratio, r, first_r, prod_name, mod, t)
       constr = pyo.Constraint(self.model.T, rule=rule)
       setattr(self.model, rule_name, constr)
 
+  def _create_transfer_poly(self, transfer, comp, prod_name):
+    """
+      Create a polynomial transfer function. This comes in the form of an equality expression.
+      @ In, transfer, TransferFunc, Ratio transfer function
+      @ In, comp, Component, component object for this transfer
+      @ In, prod_name, str, name of production element
+      @ Out, None
+    """
+    rule_name = f'{comp.name}_transfer_func'
+    coeffs = transfer.get_coefficients()
+    # dict of form {(r1, r2): {(o1, o2): n}}
+    #   where:
+    #   r1, r2 are resource names
+    #   o1, o2 are polynomial orders (may not be integers?)
+    #   n is the float polynomial coefficient for the term
+    rule = lambda mod, t: prl.poly_transfer_rule(coeffs, self.model.resource_index_map[comp], prod_name, mod, t)
+    constr = pyo.Constraint(self.model.T, rule=rule)
+    setattr(self.model, rule_name, constr)
 
   def _create_storage(self, comp):
     """
@@ -451,7 +485,6 @@ class PyomoModelHandler:
     # cashflow eval
     rule = lambda mod: prl.cashflow_rule(self._compute_cashflows, self.meta, mod)
     self.model.obj = pyo.Objective(rule=rule, sense=pyo.maximize)
-
 
   def _compute_cashflows(self, components, activity, times, meta, state_args=None, time_offset=0):
     """

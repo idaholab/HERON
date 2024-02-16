@@ -91,6 +91,7 @@ class Parametric(ValuedParam):
 ######
 # dummy classes, just for changing descriptions, but they act the same as parameteric
 class FixedValue(Parametric):
+  """ For inputs that have a singular fixed value. """
   @classmethod
   def get_input_specs(cls):
     """
@@ -106,6 +107,7 @@ class FixedValue(Parametric):
     return spec
 
 class OptBounds(Parametric):
+  """ For inputs that are optimized between lower, upper bounds. """
   @classmethod
   def get_input_specs(cls):
     """
@@ -121,6 +123,7 @@ class OptBounds(Parametric):
     return spec
 
 class SweepValues(Parametric):
+  """ For inputs that are parametrically evaluated at several points. """
   @classmethod
   def get_input_specs(cls):
     """

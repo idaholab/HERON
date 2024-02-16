@@ -1,0 +1,168 @@
+<HERON>
+  <TestInfo>
+    <name>TransferFuncs</name>
+    <author>talbpaul</author>
+    <created>2023-11-28</created>
+    <description>
+      Tests various transfer function forms. Make the Source large enough that all transformers play.
+    </description>
+    <classesTested>HERON</classesTested>
+  </TestInfo>
+
+  <Case name="Debug_Run">
+    <mode>sweep</mode>
+    <debug>
+      <inner_samples>1</inner_samples>
+      <macro_steps>1</macro_steps>
+    </debug>
+    <num_arma_samples>1</num_arma_samples>
+    <time_discretization>
+      <time_variable>Time</time_variable>
+      <end_time>2</end_time>
+      <num_steps>21</num_steps>
+    </time_discretization>
+    <economics>
+      <ProjectTime>3</ProjectTime>
+      <DiscountRate>0.08</DiscountRate>
+      <tax>0.3</tax>
+      <inflation>0.02</inflation>
+      <verbosity>50</verbosity>
+    </economics>
+    <dispatcher>
+      <pyomo>
+        <solver>ipopt</solver>
+        <debug_mode>True</debug_mode>
+      </pyomo>
+    </dispatcher>
+  </Case>
+
+  <Components>
+    <Component name="FundingSource">
+      <produces resource="funding" dispatch="fixed">
+        <capacity resource="funding">
+          <sweep_values debug_value="200">1, 1000</sweep_values>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>2</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="LaborSource">
+      <produces resource="labor" dispatch="dependent">
+        <capacity resource="labor">
+          <fixed_value>500</fixed_value>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>2</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="BalanceRatio">
+      <produces resource="work" dispatch="independent">
+        <consumes>funding</consumes>
+        <capacity resource="funding">
+          <fixed_value>-100</fixed_value>
+        </capacity>
+        <transfer>
+          <ratio>
+            <!-- 4f = 1.0w-->
+            <!-- w ranges from 0 to 1000 for f in [0,1000]-->
+            <rate resource="funding">4</rate>
+            <rate resource="work">1</rate>
+          </ratio>
+        </transfer>
+      </produces>
+      <economics>
+        <lifetime>2</lifetime>
+      </economics>
+    </Component>
+
+    <!-- 0.9f + 1.0l + 1e-6fl^2 + 0.02fl^0.5 = 1.0w-->
+    <!-- fix signs, -0.9f - 1.0l - 1e-6fl^2 + 0.02fl^0.5 - 1.0w = 0-->
+    <!-- w ranges from 0 to 6000 for l in [0,500] and f in [0,1000]-->
+    <!-- w(f=100, l=500) = 615 -->
+    <Component name="Quadratic">
+      <produces resource="work" dispatch="independent">
+        <consumes>funding, labor</consumes>
+        <capacity resource="funding">
+          <fixed_value>-100</fixed_value>
+        </capacity>
+        <transfer>
+          <poly>
+            <coeff resource="funding" order="1">-0.9</coeff>
+            <coeff resource="labor" order="1">-1</coeff>
+            <coeff resource="funding,labor" order="1,2">-1e-6</coeff>
+            <coeff resource="work" order="1">-1</coeff>
+          </poly>
+        </transfer>
+      </produces>
+      <economics>
+        <lifetime>2</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="Milestones">
+      <demands resource="work" dispatch="dependent">
+        <capacity>
+          <fixed_value>-6e3</fixed_value>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>3</lifetime>
+        <CashFlow name="proposals" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>work</activity>
+          </driver>
+          <reference_price>
+            <fixed_value>-1</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="Outsource">
+      <demands resource="funding" dispatch="dependent">
+        <capacity>
+          <fixed_value>-150</fixed_value>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>3</lifetime>
+        <CashFlow name="contracts" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>funding</activity>
+          </driver>
+          <reference_price>
+            <fixed_value>1</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="BusyWork">
+      <demands resource="labor" dispatch="dependent">
+        <capacity>
+          <fixed_value>-500</fixed_value>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>2</lifetime>
+        <CashFlow name="other_work" type="repeating" taxable='True' inflation='none' mult_target='False'>
+          <driver>
+            <activity>labor</activity>
+          </driver>
+          <reference_price>
+            <fixed_value>1</fixed_value>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+  </Components>
+
+  <DataGenerators>
+    <ARMA name='Price' variable="Signal">%BASE_WORKING_DIR%/../../../TSA/Sine/arma.pk</ARMA>
+  </DataGenerators>
+
+</HERON>

@@ -1,0 +1,15 @@
+[Tests]
+  [./DebugMode]
+    type = 'HeronIntegration'
+    input = heron_input.xml
+    needed_executable = 'ipopt'
+    [./dispatch_csv]
+      type = UnorderedCSV
+      output = 'Debug_Run_o/dispatch_print.csv'
+      gold_files = 'dispatch_print.csv'
+      rel_err = 1e-8
+    [../]
+  [../]
+[]
+
+

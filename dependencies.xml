@@ -1,6 +1,7 @@
 <dependencies>
   <main>
     <networkx/>
+    <pytest/>
     <dill>0.3.5</dill>
     <dispatches source='pip' optional='True'>1.1.0</dispatches>
     <pyomo source='forge'>6.4</pyomo>

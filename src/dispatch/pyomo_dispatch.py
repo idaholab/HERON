@@ -29,19 +29,16 @@ SOLVER_TOL_MAP = {
   'glpk': 'mipgap',
 }
 
+class DispatchError(Exception):
+    """
+      Custom exception for dispatch errors.
+    """
+    pass
+
 class Pyomo(Dispatcher):
   """
     Dispatches using rolling windows in Pyomo
   """
-  # naming_template = {
-  #   'comp prod': '{comp}|{res}|prod',
-  #   'comp transfer': '{comp}|{res}|trans',
-  #   'comp max': '{comp}|{res}|max',
-  #   'comp ramp up': '{comp}|{res}|rampup',
-  #   'comp ramp down': '{comp}|{res}|rampdown',
-  #   'conservation': '{res}|consv',
-  # }
-
   ### INITIALIZATION
   @classmethod
   def get_input_specs(cls):

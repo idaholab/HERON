@@ -287,16 +287,39 @@ def min_prod_rule(prod_name, r, caps, minimums, m, t) -> bool:
   else:
     return prod[r, t] <= minimums[t]
 
-def transfer_rule(ratio, r, ref_r, prod_name, m, t) -> bool:
+def ratio_transfer_rule(ratio: float, r: int, ref_r: int,prod_name: str, m, t) -> bool:
   """
     Constructs transfer function constraints
-    @ In, ratio, float, ratio for resource to nominal first resource
-    @ In, r, int, index of transfer resource
-    @ In, ref_r, int, index of reference resource
+    @ In, ratio, float, balanced ratio of this resource to the reference resource
+    @ In, r, int, index for this resource in the activity map
+    @ In, ref_r, int, index of the reference resource in the activity map
     @ In, prod_name, str, name of production variable
     @ In, m, pyo.ConcreteModel, associated model
     @ In, t, int, index of time variable
     @ Out, transfer, bool, transfer ratio check
   """
-  prod = getattr(m, prod_name)
-  return prod[r, t] == prod[ref_r, t] * ratio # TODO tolerance??
+  activity = getattr(m, prod_name)
+  return activity[r, t] == activity[ref_r, t] * ratio
+
+def poly_transfer_rule(coeffs, r_map, prod_name, m, t) -> bool:
+  """
+    Constructs transfer function constraints
+    @ In, coeffs, dict, nested mapping of resources and polynomial orders to coefficients
+          as {(r1, r2): {(o1, o2): n}}
+    @ In, r_map, dict, mapping of resources to activity indices for this component
+    @ In, prod_name, str, name of production variable
+    @ In, m, pyo.ConcreteModel, associated model
+    @ In, t, int, index of time variable
+    @ Out, transfer, bool, transfer ratio check
+  """
+  activity = getattr(m, prod_name)
+  eqn = 0
+  for resources, ord_dict in coeffs.items():
+    for orders, coeff in ord_dict.items():
+      term = coeff
+      for r, res in enumerate(resources):
+        map_index = r_map[res]
+        prod = activity[map_index, t]
+        term *= prod ** orders[r]
+      eqn += term
+  return eqn == 0

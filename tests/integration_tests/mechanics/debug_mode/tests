@@ -15,7 +15,7 @@
     [../]
     [./debug_plot]
       type = Exists
-      output = 'Debug_Run_o/dispatch_id0_y10_c0.png Debug_Run_o/dispatch_id0_y11_c0.png Debug_Run_o/dispatch_id1_y10_c0.png Debug_Run_o/dispatch_id1_y11_c0.png'
+      output = 'Debug_Run_o/dispatch_id0_y10_c0_f1.png Debug_Run_o/dispatch_id0_y11_c0_f1.png Debug_Run_o/dispatch_id1_y10_c0_f1.png Debug_Run_o/dispatch_id1_y11_c0_f1.png'
     [../]
     [./debug_plot]
       type = Exists

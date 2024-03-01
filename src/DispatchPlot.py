@@ -10,11 +10,8 @@ from collections import defaultdict
 import matplotlib as mpl
 mpl.use('Agg') # Prevents the script from blocking while plotting
 import matplotlib.pyplot as plt
-import matplotlib.colors as mc
-import colorsys
 
 from typing import List, Dict
-import random
 import numpy as np
 
 try:
@@ -122,7 +119,6 @@ class DispatchPlot(PlotPlugin):
       @ In, axes, List[List[matplotlib.Axes]], a list of axes across figures to plot each variable.
       @ In, df, pandas.DataFrame, a dataframe containing data to plot.
       @ In, grp_vars, Dict[str, List[str]], a dictionary mapping components to variables.
-      @ In, resources, List, list of resources that should be plotted on axes
       @ In, sid, int, the sample ID.
       @ In, mstep, int, the macro step.
       @ In, cid, int, the cluster ID.

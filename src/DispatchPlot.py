@@ -254,6 +254,7 @@ class DispatchPlot(PlotPlugin):
 
   def color_style(self, grp_vars):
     """
+      Set the coloring scheme for each of the variables that will be plotted.
       @ In, grp_vars, Dict[str, List[str]], a dictionary mapping components to variables.
       @ Out, comp_colors, Dict[Dict[str, Tuple[Float]]], contains rgb color code and hatching for components
     """

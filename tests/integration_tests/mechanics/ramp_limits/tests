@@ -10,7 +10,7 @@
     [../]
     [./debug_plot]
       type = Exists
-      output = 'Sweep_Runs_o/dispatch_id0_y0_c0.png Sweep_Runs_o/dispatch_id0_y0_c0_SIGNAL.png'
+      output = 'Sweep_Runs_o/dispatch_id0_y0_c0_f1.png Sweep_Runs_o/dispatch_id0_y0_c0_SIGNAL.png'
     [../]
     [./debug_plot]
       type = Exists

@@ -233,9 +233,9 @@ class Template(TemplateBase, Base):
     """
     if case.get_mode() == 'sweep' or case.debug['enabled']:
       template.remove(template.find('Optimizers'))
-      template.find('Samplers').remove(template.find(".//Grid[@name='grid']"))
+      template.find('Samplers').remove(template.find(".//Stratified[@name='LHS_samp']"))
     elif case.get_mode() == 'opt':
-      template.remove(template.find('Samplers'))
+      template.find('Samplers').remove(template.find(".//Grid[@name='grid']"))
 
   def _modify_outer_runinfo(self, template, case):
     """
@@ -505,6 +505,7 @@ class Template(TemplateBase, Base):
     else:
       text = 'Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:{}'
 
+    feature_list = ''
     for component in components:
       name = component.name
       attribs = {'variable': f'{name}_capacity', 'type':'input'}
@@ -613,7 +614,7 @@ class Template(TemplateBase, Base):
     if case.get_mode() == 'sweep' or case.debug['enabled']:
       samps_node = template.find('Samplers/Grid')
     else:
-      if case.get_strategy() == 'BayesianOptimizer':
+      if case.get_opt_strategy() == 'BayesianOptimizer':
         samps_node = template.find('Optimizers/BayesianOptimizer')
         # Need to add variables to sample for initialization
         initializer_node = template.find('Samplers/Stratified')
@@ -674,7 +675,7 @@ class Template(TemplateBase, Base):
           dist, xml = self._create_new_sweep_capacity(name, var_name, vals, sampler)
           dists_node.append(dist)
           # Bayesian Optimizer requires additional modification
-          if case.get_strategy() == 'BayesianOptimizer':
+          if case.get_opt_strategy() == 'BayesianOptimizer':
             xml.remove(xml.find('initial'))
             samps_node.append(xml)
             grid_node = xmlUtils.newNode('grid', text='0 1',
@@ -710,7 +711,7 @@ class Template(TemplateBase, Base):
       @ Out, None
     """
     # Setting base outer for opt based on optimizer used
-    strategy = case.get_strategy()
+    strategy = case.get_opt_strategy()
     if case.get_mode() == 'opt':
       # Strategy tells us which optimizer to use
       if strategy == 'BayesianOptimizer':

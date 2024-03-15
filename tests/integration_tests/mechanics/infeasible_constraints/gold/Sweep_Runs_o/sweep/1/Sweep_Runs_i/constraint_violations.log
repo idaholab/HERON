@@ -1,0 +1,87 @@
+WARNING:pyomo.core:Loading a SolverResults object with a warning status into model.name="unknown";
+  - termination condition: infeasible
+  - message from solver: <undefined>
+INFO:pyomo.util.infeasible:CONSTR electricity_conservation[0]: -18905.0 =/= 0.0
+  - EXPR: Generator_production[0,0] + Electric_Grid_1_production[0,0] =/= 0.0
+  - VAR Generator_production[0,0]: 1095.0
+  - VAR Electric_Grid_1_production[0,0]: -20000.0
+INFO:pyomo.util.infeasible:CONSTR electricity_conservation[1]: -18905.0 =/= 0.0
+  - EXPR: Generator_production[0,1] + Electric_Grid_1_production[0,1] =/= 0.0
+  - VAR Generator_production[0,1]: 1095.0
+  - VAR Electric_Grid_1_production[0,1]: -20000.0
+INFO:pyomo.util.infeasible:CONSTR electricity_conservation[2]: -18905.0 =/= 0.0
+  - EXPR: Generator_production[0,2] + Electric_Grid_1_production[0,2] =/= 0.0
+  - VAR Generator_production[0,2]: 1095.0
+  - VAR Electric_Grid_1_production[0,2]: -20000.0
+INFO:pyomo.util.infeasible:CONSTR electricity_conservation[3]: -18905.0 =/= 0.0
+  - EXPR: Generator_production[0,3] + Electric_Grid_1_production[0,3] =/= 0.0
+  - VAR Generator_production[0,3]: 1095.0
+  - VAR Electric_Grid_1_production[0,3]: -20000.0
+INFO:pyomo.util.infeasible:CONSTR electricity_conservation[4]: -18905.0 =/= 0.0
+  - EXPR: Generator_production[0,4] + Electric_Grid_1_production[0,4] =/= 0.0
+  - VAR Generator_production[0,4]: 1095.0
+  - VAR Electric_Grid_1_production[0,4]: -20000.0
+INFO:pyomo.util.infeasible:CONSTR electricity_conservation[5]: -18905.0 =/= 0.0
+  - EXPR: Generator_production[0,5] + Electric_Grid_1_production[0,5] =/= 0.0
+  - VAR Generator_production[0,5]: 1095.0
+  - VAR Electric_Grid_1_production[0,5]: -20000.0
+INFO:pyomo.util.infeasible:CONSTR electricity_conservation[6]: -18905.0 =/= 0.0
+  - EXPR: Generator_production[0,6] + Electric_Grid_1_production[0,6] =/= 0.0
+  - VAR Generator_production[0,6]: 1095.0
+  - VAR Electric_Grid_1_production[0,6]: -20000.0
+INFO:pyomo.util.infeasible:CONSTR electricity_conservation[7]: -18905.0 =/= 0.0
+  - EXPR: Generator_production[0,7] + Electric_Grid_1_production[0,7] =/= 0.0
+  - VAR Generator_production[0,7]: 1095.0
+  - VAR Electric_Grid_1_production[0,7]: -20000.0
+INFO:pyomo.util.infeasible:CONSTR electricity_conservation[8]: -18905.0 =/= 0.0
+  - EXPR: Generator_production[0,8] + Electric_Grid_1_production[0,8] =/= 0.0
+  - VAR Generator_production[0,8]: 1095.0
+  - VAR Electric_Grid_1_production[0,8]: -20000.0
+INFO:pyomo.util.infeasible:CONSTR electricity_conservation[9]: -18905.0 =/= 0.0
+  - EXPR: Generator_production[0,9] + Electric_Grid_1_production[0,9] =/= 0.0
+  - VAR Generator_production[0,9]: 1095.0
+  - VAR Electric_Grid_1_production[0,9]: -20000.0
+INFO:pyomo.util.infeasible:CONSTR electricity_conservation[10]: -18905.0 =/= 0.0
+  - EXPR: Generator_production[0,10] + Electric_Grid_1_production[0,10] =/= 0.0
+  - VAR Generator_production[0,10]: 1095.0
+  - VAR Electric_Grid_1_production[0,10]: -20000.0
+INFO:pyomo.util.infeasible:CONSTR electricity_conservation[11]: -18905.0 =/= 0.0
+  - EXPR: Generator_production[0,11] + Electric_Grid_1_production[0,11] =/= 0.0
+  - VAR Generator_production[0,11]: 1095.0
+  - VAR Electric_Grid_1_production[0,11]: -20000.0
+INFO:pyomo.util.infeasible:CONSTR electricity_conservation[12]: -18905.0 =/= 0.0
+  - EXPR: Generator_production[0,12] + Electric_Grid_1_production[0,12] =/= 0.0
+  - VAR Generator_production[0,12]: 1095.0
+  - VAR Electric_Grid_1_production[0,12]: -20000.0
+INFO:pyomo.util.infeasible:CONSTR electricity_conservation[13]: -18905.0 =/= 0.0
+  - EXPR: Generator_production[0,13] + Electric_Grid_1_production[0,13] =/= 0.0
+  - VAR Generator_production[0,13]: 1095.0
+  - VAR Electric_Grid_1_production[0,13]: -20000.0
+INFO:pyomo.util.infeasible:CONSTR electricity_conservation[14]: -18905.0 =/= 0.0
+  - EXPR: Generator_production[0,14] + Electric_Grid_1_production[0,14] =/= 0.0
+  - VAR Generator_production[0,14]: 1095.0
+  - VAR Electric_Grid_1_production[0,14]: -20000.0
+INFO:pyomo.util.infeasible:CONSTR electricity_conservation[15]: -18905.0 =/= 0.0
+  - EXPR: Generator_production[0,15] + Electric_Grid_1_production[0,15] =/= 0.0
+  - VAR Generator_production[0,15]: 1095.0
+  - VAR Electric_Grid_1_production[0,15]: -20000.0
+INFO:pyomo.util.infeasible:CONSTR electricity_conservation[16]: -18905.0 =/= 0.0
+  - EXPR: Generator_production[0,16] + Electric_Grid_1_production[0,16] =/= 0.0
+  - VAR Generator_production[0,16]: 1095.0
+  - VAR Electric_Grid_1_production[0,16]: -20000.0
+INFO:pyomo.util.infeasible:CONSTR electricity_conservation[17]: -18905.0 =/= 0.0
+  - EXPR: Generator_production[0,17] + Electric_Grid_1_production[0,17] =/= 0.0
+  - VAR Generator_production[0,17]: 1095.0
+  - VAR Electric_Grid_1_production[0,17]: -20000.0
+INFO:pyomo.util.infeasible:CONSTR electricity_conservation[18]: -18905.0 =/= 0.0
+  - EXPR: Generator_production[0,18] + Electric_Grid_1_production[0,18] =/= 0.0
+  - VAR Generator_production[0,18]: 1095.0
+  - VAR Electric_Grid_1_production[0,18]: -20000.0
+INFO:pyomo.util.infeasible:CONSTR electricity_conservation[19]: -18905.0 =/= 0.0
+  - EXPR: Generator_production[0,19] + Electric_Grid_1_production[0,19] =/= 0.0
+  - VAR Generator_production[0,19]: 1095.0
+  - VAR Electric_Grid_1_production[0,19]: -20000.0
+INFO:pyomo.util.infeasible:CONSTR electricity_conservation[20]: -18905.0 =/= 0.0
+  - EXPR: Generator_production[0,20] + Electric_Grid_1_production[0,20] =/= 0.0
+  - VAR Generator_production[0,20]: 1095.0
+  - VAR Electric_Grid_1_production[0,20]: -20000.0

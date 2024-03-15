@@ -7,9 +7,11 @@ import time as time_mod
 import pprint
 import numpy as np
 import pyutilib.subprocess.GlobalData
+import logging
 
 import pyomo.environ as pyo
 from pyomo.opt import SolverStatus, TerminationCondition
+from pyomo.util.infeasible import log_infeasible_constraints
 from ravenframework.utils import InputData, InputTypes
 
 from . import putils
@@ -318,8 +320,10 @@ class Pyomo(Dispatcher):
         putils.debug_pyomo_print(m.model)
         print('Resource Map:')
         pprint.pprint(m.model.resource_index_map)
+        log_infeasible_constraints(m.model, log_expression=True, log_variables=True)
+        logging.basicConfig(filename='constraint_violations.log', encoding='utf-8', level=logging.INFO)
         raise DispatchError(
-          f"Solve was unsuccessful! Status: {soln.solver.status} Termination: {soln.solver.termination_condition}"
+          f"Solve was unsuccessful, see log file for more details! Status: {soln.solver.status} Termination: {soln.solver.termination_condition}"
         )
 
       # try validating

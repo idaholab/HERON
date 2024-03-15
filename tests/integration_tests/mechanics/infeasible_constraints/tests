@@ -1,0 +1,13 @@
+[Tests]
+ [./InfeasibleConstraints]
+  type = HeronIntegration
+  input = heron_input.xml
+  expected_fail = true
+  # prereq = SineArma
+  [./logfile]
+    type = Text
+    output = 'Sweep_Runs_o/sweep/1/Sweep_Runs_i/contraint_violations.log'
+  [../]
+ [../]
+
+[]

@@ -44,7 +44,7 @@
 
   <Models>
     <Code name="raven" subType="RAVEN">
-      <executable></executable>
+      <executable>C:\Users\TALBPW\projects\raven\raven_framework</executable>
       <outputDatabase>disp_results</outputDatabase>
       <conversion>
         <input source="../write_inner.py" />
@@ -89,7 +89,8 @@
       <convergence>
         <persistence>1</persistence>
         <gradient>1e-2</gradient>
-        <objective>1e-2</objective>
+        <objective>1e-8</objective>
+        <acquisition>1e-2</acquisition>
       </convergence>
       <variable name="source_capacity">
         <distribution>source_capacity_dist</distribution>

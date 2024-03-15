@@ -233,6 +233,7 @@ class Template(TemplateBase, Base):
     """
     if case.get_mode() == 'sweep' or case.debug['enabled']:
       template.remove(template.find('Optimizers'))
+      template.find('Samplers').remove(template.find(".//Grid[@name='grid']"))
     elif case.get_mode() == 'opt':
       template.remove(template.find('Samplers'))
 
@@ -326,7 +327,7 @@ class Template(TemplateBase, Base):
       stats_list = self._build_result_statistic_names(case, components) #NOTE: this loops through metrics
       for stat_name in stats_list:
         if stat_name not in default_stats + default_stats_tot_act:
-            self._updateCommaSeperatedList(group_outer_results, stat_name, organize_economics=has_mult_metrics)
+          self._updateCommaSeperatedList(group_outer_results, stat_name, organize_economics=has_mult_metrics)
     # sweep mode has default variable names
     elif case.get_mode() == 'sweep':
       # loop through all economic metrics (e.g., NPV, IRR) and apply required sweep defaults to each
@@ -509,6 +510,17 @@ class Template(TemplateBase, Base):
       attribs = {'variable': f'{name}_capacity', 'type':'input'}
       new = xmlUtils.newNode('alias', text=text.format(name + '_capacity'), attrib=attribs)
       raven.append(new)
+      interaction = component.get_interaction()
+      cap = interaction.get_capacity(None, raw=True)
+      if cap.is_parametric() and isinstance(cap.get_value(debug=case.debug['enabled']) , list):
+        feature_list += name + '_capacity' + ','
+    feature_list = feature_list[0:-1]
+    if case.get_mode() == 'opt':
+      gpr = template.find('Models').find('ROM')
+      gpr.find('Features').text = feature_list
+      gpr.find('Target').text = self._build_opt_metric_out_name(case)
+    else:
+      template.find('Models').remove(template.find(".//ROM[@name='gpROM']"))
 
     # Now we check for any non-component dispatch variables and assign aliases
     for name in case.dispatch_vars.keys():
@@ -601,7 +613,12 @@ class Template(TemplateBase, Base):
     if case.get_mode() == 'sweep' or case.debug['enabled']:
       samps_node = template.find('Samplers/Grid')
     else:
-      samps_node = template.find('Optimizers/GradientDescent')
+      if case.get_strategy() == 'BayesianOptimizer':
+        samps_node = template.find('Optimizers/BayesianOptimizer')
+        # Need to add variables to sample for initialization
+        initializer_node = template.find('Samplers/Stratified')
+      else:
+        samps_node = template.find('Optimizers/GradientDescent')
     if case.debug['enabled']:
       samps_node.tag = 'MonteCarlo'
       samps_node.attrib['name'] = 'mc'
@@ -656,7 +673,17 @@ class Template(TemplateBase, Base):
           # make new Distribution, Sampler.Grid.variable
           dist, xml = self._create_new_sweep_capacity(name, var_name, vals, sampler)
           dists_node.append(dist)
-          samps_node.append(xml)
+          # Bayesian Optimizer requires additional modification
+          if case.get_strategy() == 'BayesianOptimizer':
+            xml.remove(xml.find('initial'))
+            samps_node.append(xml)
+            grid_node = xmlUtils.newNode('grid', text='0 1',
+                                          attrib={'construction':"equal", 'steps':"10", 'type':"CDF"})
+            lhs_var = copy.deepcopy(xml)
+            lhs_var.append(grid_node)
+            initializer_node.append(lhs_var)
+          else:
+            samps_node.append(xml)
           # NOTE assumption (input checked): only one interaction per component
         # if not being swept, then it's just a fixed value.
         else:
@@ -682,13 +709,58 @@ class Template(TemplateBase, Base):
       @ In, case, HERON Case, defining Case instance
       @ Out, None
     """
-
+    # Setting base outer for opt based on optimizer used
+    strategy = case.get_strategy()
+    if case.get_mode() == 'opt':
+      # Strategy tells us which optimizer to use
+      if strategy == 'BayesianOptimizer':
+        opt_node = template.find('Optimizers').find(".//BayesianOptimizer[@name='cap_opt']")
+        template.find('Optimizers').remove(template.find(".//GradientDescent[@name='cap_opt']"))
+      # Its either BO or GD
+      else:
+        opt_node = template.find('Optimizers').find(".//GradientDescent[@name='cap_opt']")
+        template.remove(template.find('Samplers'))
+        template.find('Models').remove(template.find(".//ROM[@name='gpROM']"))
+        template.find('Optimizers').remove(template.find(".//BayesianOptimizer[@name='cap_opt']"))
     # only modify if optimization_settings is in Case
     if (case.get_mode() == 'opt') and (case.get_optimization_settings() is not None) and (not case.debug['enabled']):  # TODO there should be a better way to handle the debug case
       optimization_settings = case.get_optimization_settings()
-      # TODO will the optimizer always be GradientDescent?
-      opt_node = template.find('Optimizers').find(".//GradientDescent[@name='cap_opt']")
+      # Strategy tells us which optimizer to use
+      if strategy == 'BayesianOptimizer':
+        # Setting kernel for GPR model
+        if 'kernel' in optimization_settings.keys():
+          gpr_node = template.find('Models').find(".//ROM[@name='gpROM']")
+          gpr_node.find('custom_kernel').text = optimization_settings['kernel']
+        # Selecting Acquisition function
+        acquisition_node = opt_node.find('Acquisition')
+        # if optimization_settings['acquisition'] is not None:
+        if 'acquisition' in optimization_settings.keys():
+          for function in ['ExpectedImprovement', 'ProbabilityOfImprovement', 'LowerConfidenceBound']:
+            # Remove acquisition functions not in use
+            if function != optimization_settings['acquisition']:
+              acquisition_node.remove(acquisition_node.find(function))
+        else:
+          acquisition_node.remove(acquisition_node.find('ProbabilityOfImprovement'))
+          acquisition_node.remove(acquisition_node.find('LowerConfidenceBound'))
+        # Initial sample size for BO
+        latin_node = template.find('Samplers').find(".//Stratified[@name='LHS_samp']")
+        if 'initialCount' in optimization_settings.keys():
+          for variable in latin_node.findall('variable'):
+            variable.find('grid').set('steps', str(optimization_settings['initialCount']))
+        else:
+          var_dim = len(latin_node.findall('variable'))
+          for variable in latin_node.findall('variable'):
+            variable.find('grid').set('steps', str(2*var_dim))
+        # Model selection
+        if 'modelSelection' in optimization_settings.keys():
+          model_node = opt_node.find('ModelSelection')
+          model_settings = optimization_settings['modelSelection']
+          model_node.find('Duration').text = str(model_settings['duration'])
+          model_node.find('Method').text = model_settings['method']
       new_opt_objective = self._build_opt_metric_out_name(case)
+      # setting job limit to optimizer
+      if 'limit' in optimization_settings.keys():
+        opt_node.find('samplerInit').find('limit').text = str(optimization_settings['limit'])
       # swap out objective if necessary
       opt_node_objective = opt_node.find('objective')
       if (new_opt_objective != 'missing') and (new_opt_objective != opt_node_objective.text):
@@ -1190,7 +1262,6 @@ class Template(TemplateBase, Base):
 
     var_groups.append(group_UQ)
 
-
   def _modify_inner_debug(self, template, case, components, sources):
     """
       Modify template to work in a debug mode.
@@ -1395,19 +1466,6 @@ class Template(TemplateBase, Base):
             for resource in resource_list:
               sweep_stats_tot_activity = self.namingTemplates['tot_activity'].format(stats=sp, component=component.name, tracker=tracker, resource=resource)
               sweep_stats_tot_act.append(sweep_stats_tot_activity)
-
-
-
-
-
-
-
-
-
-
-
-
-
       for sweep_name in sweep_default + sweep_stats_tot_act:
         if sweep_name not in default_stats + default_stats_tot_act:
           self._updateCommaSeperatedList(group_final_return, sweep_name, organize_economics=has_mult_metrics)

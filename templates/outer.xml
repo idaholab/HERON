@@ -63,6 +63,17 @@
       </conversion>
       <alias variable='denoises' type='input'>Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:denoises</alias>
     </Code>
+    <ROM name="gpROM" subType="GaussianProcessRegressor">
+      <Features></Features>
+      <Target></Target>
+      <alpha>1e-8</alpha>
+      <n_restarts_optimizer>5</n_restarts_optimizer>
+      <normalize_y>True</normalize_y>
+      <kernel>Custom</kernel>
+      <custom_kernel>(Constant*Matern)</custom_kernel>
+      <anisotropic>True</anisotropic>
+      <multioutput>False</multioutput>
+    </ROM>
   </Models>
 
   <Distributions>
@@ -72,6 +83,9 @@
     <Grid name='grid'>
       <constant name='denoises'>1</constant>
     </Grid>
+    <Stratified name="LHS_samp">
+      <samplerInit/>
+    </Stratified>
   </Samplers>
 
   <Optimizers>
@@ -103,6 +117,45 @@
         <objective>1e-8</objective>
       </convergence>
     </GradientDescent>
+    <BayesianOptimizer name="cap_opt">
+      <objective>mean_NPV</objective>
+      <constant name='denoises'>1</constant>
+      <TargetEvaluation class="DataObjects" type="PointSet">opt_eval</TargetEvaluation>
+      <samplerInit>
+        <limit>100</limit>
+        <type>max</type>
+        <writeSteps>every</writeSteps>
+      </samplerInit>
+      <Sampler class="Samplers" type="Stratified">LHS_samp</Sampler>
+      <ROM class="Models" type="ROM">gpROM</ROM>
+      <ModelSelection>
+        <Duration>1</Duration>
+        <Method>Internal</Method>
+      </ModelSelection>
+      <convergence>
+        <acquisition>1e-5</acquisition>
+        <persistence>4</persistence>
+      </convergence>
+      <Acquisition>
+        <ExpectedImprovement>
+          <optimizationMethod>differentialEvolution</optimizationMethod>
+          <seedingCount>30</seedingCount>
+        </ExpectedImprovement>
+        <ProbabilityOfImprovement>
+          <optimizationMethod>differentialEvolution</optimizationMethod>
+          <seedingCount>30</seedingCount>
+          <epsilon>1</epsilon>
+          <rho>20</rho>
+          <transient>Constant</transient>
+        </ProbabilityOfImprovement>
+        <LowerConfidenceBound>
+          <optimizationMethod>differentialEvolution</optimizationMethod>
+          <seedingCount>30</seedingCount>
+          <pi>0.98</pi>
+          <transient>Constant</transient>
+        </LowerConfidenceBound>
+      </Acquisition>
+    </BayesianOptimizer>
   </Optimizers>
 
   <Files>

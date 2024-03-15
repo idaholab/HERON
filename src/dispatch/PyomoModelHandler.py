@@ -246,6 +246,26 @@ class PyomoModelHandler:
     setattr(self.model, prod_name, prod)
     return prod_name
 
+  def _create_initial_level(self, comp, tag=None, **kwargs):
+    """
+      Creates initial storage level pyomo variable object for a storing component
+      @ In, comp, HERON Component, component to make level variable for
+      @ In, tag, str, optional, if not None then name will be component_[tag]; otherwise "init_level"
+      @ In, kwargs, dict, optional, passalong kwargs to pyomo variable
+      @ Out, init_name, str, name of production variable
+    """
+    if tag is None:
+      tag = 'init_level'
+    name = comp.name
+    init_name = f'{name}_{tag}'
+    caps, mins = self._find_production_limits(comp)
+    # TODO assuming that level is always positive ...
+    bounds = (mins[0], caps[0])
+    initial = 0.5*(bounds[1] + bounds[0])
+    init = pyo.Var(initialize=initial, bounds=bounds, **kwargs)
+    setattr(self.model, init_name, init)
+    return init_name
+
 
   def _create_ramp_limit(self, comp, prod_name):
     """
@@ -438,6 +458,10 @@ class PyomoModelHandler:
     setattr(self.model, level_rule_name, pyo.Constraint(self.model.T, rule=rule))
     # periodic boundary condition for storage level
     if comp.get_interaction().apply_periodic_level:
+      # replace the initial level with an optimization variable
+      init_name = self._create_initial_level(comp, within=pyo.NonNegativeReals)
+      self.initial_storage[comp] = getattr(self.model, init_name)
+      # set up the periodic conditions
       periodic_rule_name = prefix + '_level_periodic_constr'
       rule = lambda mod, t: prl.periodic_level_rule(comp, level_name, self.initial_storage, r, mod, t)
       setattr(self.model, periodic_rule_name, pyo.Constraint(self.model.T, rule=rule))

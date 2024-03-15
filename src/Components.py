@@ -848,8 +848,9 @@ class Storage(Interaction):
     specs.addSub(sub)
     # periodic level boundary condition
     descr=r"""indicates whether the level of the storage should be required to return to its initial level
-              within each modeling window. If True, this reduces the flexibility of the storage, but if False,
-              can result in breaking conservation of resources. \default{True}. """
+              at the end of each modeling window. If True, replaces the \xmlNode{initial_stored} with an optimization
+              variable. If False, this increases the flexibility of the storage at the cost of potentially
+              violating conservation of resources. \default{True}. """
     sub = InputData.parameterInputFactory('periodic_level', contentType=InputTypes.BoolType, descr=descr)
     specs.addSub(sub)
     # control strategy

@@ -441,12 +441,6 @@ class PyomoModelHandler:
       initial = self.initial_storage[comp]
     rule = lambda mod, t: prl.level_rule(comp, level_name, charge_name, discharge_name, initial, r, mod, t)
     setattr(self.model, level_rule_name, pyo.Constraint(self.model.T, rule=rule))
-    # periodic boundary condition for storage level
-    # if comp.get_interaction().apply_periodic_level:
-    #   # use the end level variable as the initial level variable
-    #   level_var = getattr(self.model, level_name)
-    #   self.initial_storage[comp] = level_var[(r, self.model.T[-1])]
-      # TODO offer a way to override initial storage?
 
     # (4) a binary variable to track whether we're charging or discharging, to prevent BOTH happening
     # -> 0 is charging, 1 is discharging

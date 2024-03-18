@@ -32,7 +32,7 @@
         <rolling_window_length>8</rolling_window_length>
         <debug_mode>True</debug_mode>
         <solver>cbc</solver>
-        <tol>1e-3</tol>
+        <tol>1e-6</tol>
       </pyomo>
     </dispatcher>
   </Case>
@@ -54,9 +54,6 @@
         <capacity resource="steam">
           <fixed_value>100</fixed_value>
         </capacity>
-        <initial_stored>
-          <fixed_value>0.01</fixed_value>
-        </initial_stored>
         <!-- NOTE: periodic level boundary condition is True by default -->
       </stores>
       <economics>

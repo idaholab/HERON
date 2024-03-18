@@ -11,8 +11,18 @@ else
 fi
 HERON_DIR=$(cd $HERON_DIRNAME; pwd)
 
+if command -v python; then
+    #python exists
+    WORKING_PYTHON_COMMAND=python
+elif command -v python3; then
+    #python3 exists
+    WORKING_PYTHON_COMMAND=python3
+else
+    echo ERROR Neither python nor python3 are available
+fi
+
 # identify RAVEN location
-RAVEN_DIR=$(python $HERON_DIRNAME/src/_utils.py get_raven_loc)
+RAVEN_DIR=$($WORKING_PYTHON_COMMAND $HERON_DIRNAME/src/_utils.py get_raven_loc)
 echo " ... RAVEN located at \"${RAVEN_DIR}\""
 # activate conda environment
 echo " ... Activating CONDA environment ..."

@@ -3,3 +3,4 @@
 
 from HERON.src import DispatchPlot
 from HERON.src import DispatchManager
+from HERON.src import CapacityPlot

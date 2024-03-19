@@ -1,4 +1,4 @@
-<Simulation verbosity="all">
+<Simulatio verbosity="all">
   <RunInfo>
     <JobName>Opt_LC_Price_o</JobName>
     <WorkingDir>Opt_LC_Price_o</WorkingDir>
@@ -44,7 +44,7 @@
 
   <Models>
     <Code name="raven" subType="RAVEN">
-      <executable>C:\Users\TALBPW\projects\raven\raven_framework</executable>
+      <executable></executable>
       <outputDatabase>disp_results</outputDatabase>
       <conversion>
         <input source="../write_inner.py" />

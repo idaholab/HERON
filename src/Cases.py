@@ -95,7 +95,7 @@ class Case(Base):
   # the keys of the meta dictionary are the names used in XML input
   economic_metrics_input_names = list(em_name for em_name,_ in economic_metrics_meta.items())
 
-  #### INITIALIZATION ####
+  #### INPUT SPECIFICATION ####
   @classmethod
   def get_input_specs(cls):
     """
@@ -162,6 +162,114 @@ class Case(Base):
 
     #==== Debug ====#
     # debug mode, for checking dispatch and etc.
+    debug = cls._specs_debug()
+    input_specs.addSub(debug)
+
+    #==== Parallel and Run Info ====#
+    parallel = cls._specs_parallel()
+    input_specs.addSub(parallel)
+
+    #==== Data Handling ====#
+    data_handling = InputData.parameterInputFactory('data_handling', descr=r"""Provides options for data handling within HERON operations.""")
+    inner_outer_data = InputTypes.makeEnumType('InnerOuterData', 'InnerOuterDataType', ['csv', 'netcdf'])
+    data_handling.addSub(InputData.parameterInputFactory('inner_to_outer', contentType=inner_outer_data,
+        descr=r"""which type of data format to transfer results from inner (stochastic dispatch optimization) runs to
+                  the outer (capacity and meta-variable optimization) run. CSV is generally slower and not recommended,
+                  but may be useful for debugging. NetCDF is more generally more efficient. \default{netcdf}"""))
+    input_specs.addSub(data_handling)
+
+    #==== Number of ARMA Samples ====#
+    input_specs.addSub(InputData.parameterInputFactory('num_arma_samples', contentType=InputTypes.IntegerType,
+                                                       descr=r"""provides the number of synthetic histories that should
+                                                       be considered per system configuration in order to obtain a
+                                                       reasonable representation of the economic metric. Sometimes
+                                                       referred to as ``inner samples'' or ``denoisings''."""))
+
+    #==== Time Discretization ====#
+    time_discr = cls._specs_time_discr()
+    input_specs.addSub(time_discr)
+
+    #==== Economics Global Settings ====#
+    # this is information sent to TEAL
+    econ = cls._specs_econ()
+    input_specs.addSub(econ)
+
+    #==== Dispatcher ====#
+    dispatch = InputData.parameterInputFactory('dispatcher', ordered=False,
+                                               descr=r"""This node defines the dispatch strategy and options to use in
+                                               the ``inner'' run.""")
+    for d in known_dispatchers:
+      vld_spec = get_dispatcher(d).get_input_specs()
+      dispatch.addSub(vld_spec)
+    input_specs.addSub(dispatch)
+
+    #==== Validator ====#
+    validator = InputData.parameterInputFactory('validator', ordered=False,
+                                                descr=r"""This node defines the dispatch validation strategy and options
+                                                to use in the ``inner'' run.""")
+    for d in known_validators:
+      vld_spec = get_validator(d).get_input_specs()
+      validator.addSub(vld_spec)
+    input_specs.addSub(validator)
+
+    #==== Optimization Settings ====#
+    optimizer = cls._specs_optimizer()
+    input_specs.addSub(optimizer)
+
+    # Add magic variables that will be passed to the outer and inner.
+    dispatch_vars = InputData.parameterInputFactory(
+        'dispatch_vars',
+        descr=r"This node defines a set containing additional variables"
+        "to sample that are not associated with a specific component."
+    )
+    value_param = vp_factory.make_input_specs(
+        'variable',
+        descr=r"This node defines the single additional dispatch variable used in the case."
+    )
+    value_param.addParam(
+        'name',
+        param_type=InputTypes.StringType,
+        descr=r"The unique name of the dispatch variable."
+    )
+    dispatch_vars.addSub(value_param)
+    input_specs.addSub(dispatch_vars)
+
+    #==== Result Statistics ====#
+    result_stats = InputData.parameterInputFactory('result_statistics',
+                                                   descr=r"""This node defines the additional statistics
+                                                   to be returned with the results. The statistics
+                                                   \texttt{expectedValue} (prefix ``mean''),
+                                                   \texttt{sigma} (prefix ``std''), and \texttt{median}
+                                                   (prefix ``med'') are always returned with the results.
+                                                   Each subnode is the RAVEN-style name of the desired
+                                                   return statistic.""")
+    for stat, stat_info in cls.stats_metrics_meta.items():
+      if stat not in ['expectedValue', 'sigma', 'median']:
+        statistic = InputData.parameterInputFactory(stat, strictMode=True,
+                                                    descr=rf"""{stat} uses the prefix ``{stat_info['prefix']}'' in the result output.""")
+        if stat == 'percentile':
+          statistic.addParam('percent', param_type=InputTypes.StringType,
+                            descr=r"""requested percentile (a floating point value between 0.0 and 100.0).
+                            When no percent is given, returns both 5th and 95th percentiles.""")
+        elif stat in ['sortinoRatio', 'gainLossRatio']:
+          statistic.addParam('threshold', param_type=InputTypes.StringType,
+                            descr=r"""requested threshold (``median" or ``zero").""", default='``median"')
+        elif stat in ['expectedShortfall', 'valueAtRisk']:
+          statistic.addParam('threshold', param_type=InputTypes.StringType,
+                            descr=r"""requested threshold (a floating point value between 0.0 and 1.0).""",
+                            default='``0.05"')
+        result_stats.addSub(statistic)
+    input_specs.addSub(result_stats)
+
+    return input_specs
+
+  @classmethod
+  def _specs_debug(cls):
+    """
+      Collects input specifications specifically for the debug options.
+      @ In, None
+      @ Out, specs, InputData, specs
+    """
     debug = InputData.parameterInputFactory('debug', descr=r"""Including this node enables a reduced-size
         run with increased outputs for checking how the sampling, dispatching, and cashflow mechanics
         are working for a particular input. Various options for modifying how the debug mode operates
@@ -181,9 +289,15 @@ class Case(Base):
         descr=r"""provides a cashflow plot after running through \xmlNode{inner_samples} and
               \xmlNode{macro_steps} provided. To prevent plotting output during debug mode set to "False".
               \default{True}"""))
-    input_specs.addSub(debug)
+    return debug
 
-    #==== Parallel and Run Info ====#
+  @classmethod
+  def _specs_parallel(cls):
+    """
+      Collects input specifications specifically for the parallel options.
+      @ In, None
+      @ Out, specs, InputData, specs
+    """
     parallel = InputData.parameterInputFactory('parallel', descr=r"""Describes how to parallelize this run. If not present defaults to no parallelization (1 outer, 1 inner)""")
     parallel.addSub(InputData.parameterInputFactory('outer', contentType=InputTypes.IntegerType,
         descr=r"""the number of parallel runs to use for the outer optimization run. The product of this
@@ -206,26 +320,15 @@ class Case(Base):
                    descr=r"""The shell command used to run remote commands"""))
     runinfo.addSub(InputData.parameterInputFactory('memory', contentType=InputTypes.StringType,descr=r"""The amount of memory needed per core (example 4gb)"""))
     parallel.addSub(runinfo)
-    # TODO HPC?
-    input_specs.addSub(parallel)
+    return parallel
 
-    #==== Data Handling ====#
-    data_handling = InputData.parameterInputFactory('data_handling', descr=r"""Provides options for data handling within HERON operations.""")
-    inner_outer_data = InputTypes.makeEnumType('InnerOuterData', 'InnerOuterDataType', ['csv', 'netcdf'])
-    data_handling.addSub(InputData.parameterInputFactory('inner_to_outer', contentType=inner_outer_data,
-        descr=r"""which type of data format to transfer results from inner (stochastic dispatch optimization) runs to
-                  the outer (capacity and meta-variable optimization) run. CSV is generally slower and not recommended,
-                  but may be useful for debugging. NetCDF is more generally more efficient. \default{netcdf}"""))
-    input_specs.addSub(data_handling)
-
-    #==== Number of ARMA Samples ====#
-    input_specs.addSub(InputData.parameterInputFactory('num_arma_samples', contentType=InputTypes.IntegerType,
-                                                       descr=r"""provides the number of synthetic histories that should
-                                                       be considered per system configuration in order to obtain a
-                                                       reasonable representation of the economic metric. Sometimes
-                                                       referred to as ``inner samples'' or ``denoisings''."""))
-
-    #==== Time Discretization ====#
+  @classmethod
+  def _specs_time_discr(cls):
+    """
+      Collects input specifications specifically for the time discretization options.
+      @ In, None
+      @ Out, specs, InputData, specs
+    """
     time_discr = InputData.parameterInputFactory('time_discretization',
                                                  descr=r"""node that defines how within-cycle time discretization should
                                                  be handled for solving the dispatch.""")
@@ -251,10 +354,15 @@ class Case(Base):
                                                       \xmlNode{num_timesteps} must be defined. Note that if an integer
                                                       number of intervals do not fit between \xmlNode{start_time} and
                                                       \xmlNode{end_time}, an error will be raised."""))
-    input_specs.addSub(time_discr)
+    return time_discr
 
-    #==== Economics Global Settings ====#
-    # this is information sent to TEAL
+  @classmethod
+  def _specs_econ(cls):
+    """
+      Collects input specifications specifically for the econ options.
+      @ In, None
+      @ Out, specs, InputData, specs
+    """
     econ = InputData.parameterInputFactory('economics', ordered=False,
                                            descr= r"""node containing general economic setting in which to perform
                                            HERON analysis.""")
@@ -290,27 +398,15 @@ class Case(Base):
                             the NPV target is 0 which results in the break-even cost. \default{0}""")
       econ_metrics.addSub(metric)
     econ.addSub(econ_metrics)
-    input_specs.addSub(econ)
+    return econ
 
-    #==== Dispatcher ====#
-    dispatch = InputData.parameterInputFactory('dispatcher', ordered=False,
-                                               descr=r"""This node defines the dispatch strategy and options to use in
-                                               the ``inner'' run.""")
-    for d in known_dispatchers:
-      vld_spec = get_dispatcher(d).get_input_specs()
-      dispatch.addSub(vld_spec)
-    input_specs.addSub(dispatch)
-
-    #==== Validator ====#
-    validator = InputData.parameterInputFactory('validator', ordered=False,
-                                                descr=r"""This node defines the dispatch validation strategy and options
-                                                to use in the ``inner'' run.""")
-    for d in known_validators:
-      vld_spec = get_validator(d).get_input_specs()
-      validator.addSub(vld_spec)
-    input_specs.addSub(validator)
-
-    #==== Optimization Settings ====#
+  @classmethod
+  def _specs_optimizer(cls):
+    """
+      Collects input specifications specifically for the optimizer options.
+      @ In, None
+      @ Out, specs, InputData, specs
+    """
     optimizer = InputData.parameterInputFactory('optimization_settings',
                                                 descr=r"""This node defines the settings to be used for the optimizer in
                                                 the ``outer'' run.""")
@@ -383,12 +479,64 @@ class Case(Base):
                                                descr=desc_type_options)
     optimizer.addSub(type_sub)
 
+    #== Optimization Algorithm ==#
+    strategy_options = InputTypes.makeEnumType("algorithm", "algorithmType", ['BayesianOpt','GradientDescent'])
+    strategy_sub = InputData.parameterInputFactory('algorithm', contentType=strategy_options,
+                                                   descr=r"""Determines what RAVEN optimization algorithm solves the standard HERON TEA.
+                                                   default is BayesianOpt.""", default='BayesianOpt')
+    optimizer.addSub(strategy_sub)
+
     #== Persistence ==#
     persistenceSub = InputData.parameterInputFactory('persistence',contentType=InputTypes.IntegerType,
                                                       descr=r"""provides the number of consecutive times convergence should be reached before a trajectory
                                                       is considered fully converged. This helps in preventing early false convergence.""" )
     optimizer.addSub(persistenceSub)
-    input_specs.addSub(optimizer)
+
+    #== Optimizer Job Limit ==#
+    limit_sub = InputData.parameterInputFactory('limit', contentType=InputTypes.IntegerType,
+                                                descr=r"""Determines the maximum number of jobs that can submit
+                                                for a HERON run. If the optimizer does not converge before this number
+                                                of runs, the simulation will terminate. This is helpful to prevent
+                                                timeouts.""")
+    optimizer.addSub(limit_sub)
+
+    #== Kernel for BO ==#
+    kernelSub = InputData.parameterInputFactory('kernel', contentType=InputTypes.StringType,
+                                                descr=r"""Defines custom kernel expression for GPR used in
+                                                Bayesian Optimization. If Gradient Descent is used, then this
+                                                node is ignored. Default is Constant*Matern""")
+    optimizer.addSub(kernelSub)
+
+    #== Acquisition Function ==#
+    acquisitionSub = InputData.parameterInputFactory('acquisition', contentType=InputTypes.makeEnumType("acquisition", "acquisitionType",
+                                                      ['ExpectedImprovement', 'ProbabilityOfImprovement','LowerConfidenceBound']),
+                                                      descr=r"""Node for selecting which acquisition function to use for the
+                                                      Bayesian Optimizer. If Gradient Descent is used then this node is ignored.
+                                                      Default is ExpectedImprovement.""")
+    optimizer.addSub(acquisitionSub)
+
+    #== Initial Sample Size ==#
+    initialCountSub = InputData.parameterInputFactory('initialCount', contentType=InputTypes.IntegerType,
+                                                       descr=r"""Determines number of initial samples for Bayesian Optimization
+                                                       and number of trajectories for Gradient Descent.""")
+    optimizer.addSub(initialCountSub)
+
+    #== Model Selection ==#
+    modelSelection = InputData.parameterInputFactory('modelSelection',
+                                                     descr=r"""Parent node for selecting details about how to
+                                                     update the GPR during optimization for BO.""")
+    modelDuration = InputData.parameterInputFactory('duration', contentType=InputTypes.IntegerType,
+                                                     descr=r"""Number of iterations between hyperparameter
+                                                     selections. Default is 1""")
+    modelMethod = InputData.parameterInputFactory('method', contentType=InputTypes.makeEnumType("acquisition", "acquisitionType",
+                                                  ['Internal','External','Average']),
+                                                   descr=r"""Determines method for selecting hyperparameters.
+                                                   Internal uses the optimizer within RAVEN to maximize LML. External
+                                                   uses Scikit-Learn's selection. Averaging samples several models
+                                                   with MC and then takes a weighted sum. Default is Internal.""")
+    modelSelection.addSub(modelDuration)
+    modelSelection.addSub(modelMethod)
+    optimizer.addSub(modelSelection)
 
     #== Convergence Sub Node ==#
     convergence = InputData.parameterInputFactory('convergence',
@@ -407,53 +555,9 @@ class Case(Base):
 
     optimizer.addSub(convergence)
 
-    # Add magic variables that will be passed to the outer and inner.
-    dispatch_vars = InputData.parameterInputFactory(
-        'dispatch_vars',
-        descr=r"This node defines a set containing additional variables"
-        "to sample that are not associated with a specific component."
-    )
-    value_param = vp_factory.make_input_specs(
-        'variable',
-        descr=r"This node defines the single additional dispatch variable used in the case."
-    )
-    value_param.addParam(
-        'name',
-        param_type=InputTypes.StringType,
-        descr=r"The unique name of the dispatch variable."
-    )
-    dispatch_vars.addSub(value_param)
-    input_specs.addSub(dispatch_vars)
+    return optimizer
 
-    #==== Result Statistics ====#
-    result_stats = InputData.parameterInputFactory('result_statistics',
-                                                   descr=r"""This node defines the additional statistics
-                                                   to be returned with the results. The statistics
-                                                   \texttt{expectedValue} (prefix ``mean''),
-                                                   \texttt{sigma} (prefix ``std''), and \texttt{median}
-                                                   (prefix ``med'') are always returned with the results.
-                                                   Each subnode is the RAVEN-style name of the desired
-                                                   return statistic.""")
-    for stat, stat_info in cls.stats_metrics_meta.items():
-      if stat not in ['expectedValue', 'sigma', 'median']:
-        statistic = InputData.parameterInputFactory(stat, strictMode=True,
-                                                    descr=rf"""{stat} uses the prefix ``{stat_info['prefix']}'' in the result output.""")
-        if stat == 'percentile':
-          statistic.addParam('percent', param_type=InputTypes.StringType,
-                            descr=r"""requested percentile (a floating point value between 0.0 and 100.0).
-                            When no percent is given, returns both 5th and 95th percentiles.""")
-        elif stat in ['sortinoRatio', 'gainLossRatio']:
-          statistic.addParam('threshold', param_type=InputTypes.StringType,
-                            descr=r"""requested threshold (``median" or ``zero").""", default='``median"')
-        elif stat in ['expectedShortfall', 'valueAtRisk']:
-          statistic.addParam('threshold', param_type=InputTypes.StringType,
-                            descr=r"""requested threshold (a floating point value between 0.0 and 1.0).""",
-                            default='``0.05"')
-        result_stats.addSub(statistic)
-    input_specs.addSub(result_stats)
-
-    return input_specs
-
+  #### INITIALIZATION ####
   def __init__(self, run_dir, **kwargs):
     """
       Constructor
@@ -507,6 +611,7 @@ class Case(Base):
     self._time_discretization = None   # (start, end, number) for constructing time discretization, same as argument to np.linspace
     self._Resample_T = None            # user-set increments for resources
     self._optimization_settings = None # optimization settings dictionary for outer optimization loop
+    self._optimization_strategy = 'BayesianOpt' # RAVEN optimization algorithm to use for standard HERON workflow
     self._workflow = 'standard'        # setting for how to run HERON, default is through raven workflow
     self._result_statistics = {        # desired result statistics (keys) dictionary with attributes (values)
         'sigma': None,                 # user can specify additional result statistics
@@ -734,8 +839,11 @@ class Case(Base):
 
     for sub in node.subparts:
       sub_name = sub.getName()
+      # optimization algorithm
+      if sub_name == 'algorithm':
+        self._optimization_strategy = sub.value
       # add metric information to opt_settings dictionary
-      if sub_name == 'stats_metric':
+      elif sub_name == 'stats_metric':
         opt_settings[sub_name] = {}
         stats_metric_name = sub.value
         opt_settings[sub_name]['name'] = stats_metric_name
@@ -755,9 +863,13 @@ class Case(Base):
             opt_settings[sub_name]['threshold'] = sub.parameterValues['threshold']
           except KeyError:
             opt_settings[sub_name]['threshold'] = 0.05
-      elif sub_name == 'convergence':
+      elif sub_name in ['convergence', 'modelSelection']:
         opt_settings[sub_name] = {}
         for ssub in sub.subparts:
+          if ssub.getName() == 'objective' and self._optimization_strategy == 'BayesianOpt':
+            # "objective" means something special to BO
+            opt_settings[sub_name]['acquisition'] = ssub.value
+            continue
           opt_settings[sub_name][ssub.getName()] = ssub.value
       else:
         # add other information to opt_settings dictionary (type is only information implemented)
@@ -1122,6 +1234,14 @@ class Case(Base):
       @ Out, dispatch_var, ValuedParamHandler, a ValuedParam object.
     """
     return self.dispatch_vars[name]
+
+  def get_opt_strategy(self):
+    """
+      Accessor
+      @ In, None
+      @ Out, opt_strategy, str, name of optimization algorithm/strategy
+    """
+    return self._optimization_strategy
 
   @property
   def npv_target(self):

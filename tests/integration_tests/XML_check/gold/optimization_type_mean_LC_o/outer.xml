@@ -1,4 +1,4 @@
-<Simulatio verbosity="all">
+<Simulation verbosity="all">
   <RunInfo>
     <JobName>Opt_LC_Price_o</JobName>
     <WorkingDir>Opt_LC_Price_o</WorkingDir>

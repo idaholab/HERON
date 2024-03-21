@@ -843,13 +843,15 @@ class Storage(Interaction):
     # specs.addSub(ValuedParam.get_input_specs('rate'))
     # initial stored
     descr=r"""indicates what percent of the storage unit is full at the start of each optimization sequence,
-              from 0 to 1. \default{0.0}. """
+              from 0 to 1. Overwritten if using periodic level conditions, in which case the initial level is
+              solved as part of the optimization, but the initial and final levels must match. \default{0.0}. """
     sub = vp_factory.make_input_specs('initial_stored', descr=descr)
     specs.addSub(sub)
     # periodic level boundary condition
     descr=r"""indicates whether the level of the storage should be required to return to its initial level
-              within each modeling window. If True, this reduces the flexibility of the storage, but if False,
-              can result in breaking conservation of resources. \default{True}. """
+              at the end of each modeling window. If True, replaces the \xmlNode{initial_stored} with an optimization
+              variable. If False, this increases the flexibility of the storage at the cost of potentially
+              violating conservation of resources. \default{True}. """
     sub = InputData.parameterInputFactory('periodic_level', contentType=InputTypes.BoolType, descr=descr)
     specs.addSub(sub)
     # control strategy

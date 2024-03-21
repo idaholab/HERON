@@ -46,6 +46,7 @@ def make_concrete_model():
     @ In, None
     @ Out, m, pyo.ConcreteModel, instance of the model to solve
   """
+  global storage_initial
   m = pyo.ConcreteModel()
   # indices
   C = np.arange(0, len(components), dtype=int) # indexes component
@@ -83,6 +84,9 @@ def make_concrete_model():
   # elec_sink
   m.elec_sink_index_map = pyo.Set(initialize=range(len(m.resource_index_map['elec_sink'])))
   m.elec_sink_production = pyo.Var(m.elec_sink_index_map, m.T, initialize=0, bounds=(-sink_limit, 0))
+  #*******************
+  # apply a periodic condition
+  storage_initial = m.steam_storage_level[(0, m.T[-1])]
   #*******************
   #  set up lower, upper bounds
   # -> for now we just do this manually

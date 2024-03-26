@@ -50,7 +50,7 @@
       </demands>
       <economics>
         <lifetime>3</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' >
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>
@@ -76,7 +76,7 @@
       </demands>
       <economics>
         <lifetime>3</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' >
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>

@@ -51,7 +51,7 @@
       </demands>
       <economics>
         <lifetime>30</lifetime>
-        <CashFlow name="sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+        <CashFlow name="sales" type="repeating" taxable='True' inflation='none' >
           <driver>
             <activity>widgets</activity>
           </driver>

@@ -70,7 +70,7 @@
 
       <economics>
         <lifetime>20</lifetime>
-        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
           <driver>
             <variable>pem_capacity</variable> <!-- kW -->
           </driver>
@@ -79,7 +79,7 @@
           </reference_price>
           <depreciate>7</depreciate>
         </CashFlow>
-        <CashFlow name="fixed_OM" type="repeating" period="year" taxable="True" inflation="none" mult_target="False">
+        <CashFlow name="fixed_OM" type="repeating" period="year" taxable="True" inflation="none">
           <driver>
             <variable>pem_capacity</variable>
           </driver>
@@ -87,7 +87,7 @@
             <fixed_value>-47.9</fixed_value> <!-- $/kW -->
           </reference_price>
         </CashFlow>
-        <CashFlow name="var_OM" type="repeating" period="hour" taxable='True' inflation='none' mult_target='False'>
+        <CashFlow name="var_OM" type="repeating" period="hour" taxable='True' inflation='none'>
           <driver>
             <activity>hydrogen</activity>
           </driver>
@@ -109,7 +109,7 @@
 
       <economics>
         <lifetime>20</lifetime>
-        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
           <driver>
             <variable>h2tank_capacity</variable>
           </driver>
@@ -142,7 +142,7 @@
 
       <economics>
         <lifetime>20</lifetime>
-        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
           <driver>
             <variable>h2turbine_capacity</variable>
           </driver>
@@ -152,7 +152,7 @@
           <depreciate>7</depreciate>
         </CashFlow>
 
-        <CashFlow name="fixed_OM" type="repeating" period="year" taxable="True" inflation="none" mult_target="False">
+        <CashFlow name="fixed_OM" type="repeating" period="year" taxable="True" inflation="none">
           <driver>
             <variable>h2turbine_capacity</variable>
           </driver>
@@ -161,7 +161,7 @@
           </reference_price>
         </CashFlow>
 
-        <CashFlow name="var_OM" type="repeating" period="hour" taxable='True' inflation='none' mult_target='False'>
+        <CashFlow name="var_OM" type="repeating" period="hour" taxable='True' inflation='none'>
           <driver>
             <activity>electricity</activity>
           </driver>
@@ -182,7 +182,7 @@
 
       <economics>
         <lifetime>20</lifetime>
-        <CashFlow name="import_electricity" type="repeating" taxable='True' inflation='none' mult_target='False'>
+        <CashFlow name="import_electricity" type="repeating" taxable='True' inflation='none'>
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>
@@ -206,7 +206,7 @@
 
       <economics>
         <lifetime>20</lifetime>
-        <CashFlow name="import_hydrogen" type="repeating" taxable='True' inflation='none' mult_target='False'>
+        <CashFlow name="import_hydrogen" type="repeating" taxable='True' inflation='none'>
           <driver>
             <activity>hydrogen</activity>
             <multiplier>-1</multiplier>
@@ -228,7 +228,7 @@
 
       <economics>
         <lifetime>20</lifetime>
-        <CashFlow name="electricity_revenue" type="repeating" period="hour" taxable='True' inflation='none' mult_target='False'>
+        <CashFlow name="electricity_revenue" type="repeating" period="hour" taxable='True' inflation='none'>
           <driver>
             <activity>electricity</activity>
           </driver>
@@ -251,7 +251,7 @@
 
       <economics>
         <lifetime>20</lifetime>
-        <CashFlow name="h2_revenue" type="repeating" period="hour" taxable='True' inflation='none' mult_target='False'>
+        <CashFlow name="h2_revenue" type="repeating" period="hour" taxable='True' inflation='none'>
           <driver>
             <activity>hydrogen</activity>
             <multiplier>1</multiplier>

@@ -64,7 +64,7 @@
         </demands>
         <economics>
           <lifetime>1</lifetime>
-          <CashFlow name="e_sales" type="repeating" taxable="False" inflation="none" mult_target="False">
+          <CashFlow name="e_sales" type="repeating" taxable="False" inflation="none">
             <driver>
               <Function method="electric_source">transfers</Function>
             </driver>
@@ -89,7 +89,7 @@
         </demands>
         <economics>
           <lifetime>3</lifetime>
-          <CashFlow name="e_sales" type="repeating" taxable="False" inflation="none" mult_target="False">
+          <CashFlow name="e_sales" type="repeating" taxable="False" inflation="none">
             <driver>
               <Function method="electric_source">transfers</Function>
             </driver>

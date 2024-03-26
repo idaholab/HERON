@@ -464,6 +464,11 @@ class DispatchRunner:
         cf_taxable = heron_cf.is_taxable()
         cf_inflation = heron_cf.is_inflation()
         cf_mult_target = heron_cf.is_mult_target()
+
+        # skip NPV-exempt cashflows
+        # This means that the user has specified this cashflow should not be included in the NPV calculation.
+        if heron_cf.is_npv_exempt():
+          continue
         # the way to build it slightly changes depending on the CashFlow type
         if cf_type == 'repeating':
           teal_cf = TEAL.src.CashFlows.Recurring()
@@ -568,6 +573,8 @@ class DispatchRunner:
       final_cashflows = final_comp.getCashflows()
       for f, heron_cf in enumerate(comp.get_cashflows()):
         # get the corresponding TEAL.CashFlow
+        if heron_cf.is_npv_exempt():
+          continue # Skip adding this cashflow to the final cashflows
         teal_cf = teal_comp.getCashflows()[f]
         final_cf = final_cashflows[f]
         # sanity continued

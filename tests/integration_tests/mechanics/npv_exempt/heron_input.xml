@@ -4,7 +4,15 @@
     <author>dylanjm</author>
     <created>2024-03-26</created>
     <description>
-      Tests NPV exempt Cashflows
+      Tests NPV exempt Cashflows. This is a recreation of the Cashflows test from 
+      the HERON test suite. The only difference is the Variable Operating and Maitenance
+      Costs (VOM) cashflow is now NPV exempt. The Excel File 'analytic.xlsx' shows 
+      the expected results. When the NPV exemption is turned on, the mean NPV for 
+      both sweep values (1, 2) should be: $5,373.37 and $10,748.27 respectively.
+      When NPV exemption is turned off (i.e. the Cashflows test) the results for 
+      both sweep values should be $5,218.73 and $10,439.00 respectively. We can see
+      that having the VOM cashflow NPV exempt increases the mean NPV in both cases
+      since VOM is a cost and is left out of the NPV calculation.                                        
     </description>
     <classesTested>HERON</classesTested>
   </TestInfo>
@@ -105,6 +113,3 @@
       <ARMA name='flex' variable="Signal">%BASE_WORKING_DIR%/../../../TSA/Sine30yr/arma_30yr.pk</ARMA>
     </DataGenerators>
 </HERON>
-
-
-

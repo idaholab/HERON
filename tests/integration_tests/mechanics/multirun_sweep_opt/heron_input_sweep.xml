@@ -38,7 +38,7 @@
         </produces>
         <economics>
           <lifetime>10</lifetime>
-          <CashFlow name="capex" type="one-time" taxable="False" inflation="none" mult_target="False">
+          <CashFlow name="capex" type="one-time" taxable="False" inflation="none">
             <driver>
               <Function method="capacity">functions</Function>
             </driver>
@@ -54,7 +54,7 @@
             </scaling_factor_x>
             <depreciate>5</depreciate>
           </CashFlow>
-          <CashFlow name="FOM" type="repeating" period='year' taxable="False" inflation="none" mult_target="False">
+          <CashFlow name="FOM" type="repeating" period='year' taxable="False" inflation="none">
             <driver>
               <Function method="capacity">functions</Function>
             </driver>
@@ -69,7 +69,7 @@
               <fixed_value>0.999</fixed_value>
             </scaling_factor_x>
           </CashFlow>
-          <CashFlow name="VOM" type="repeating" taxable="False" inflation="none" mult_target="False">
+          <CashFlow name="VOM" type="repeating" taxable="False" inflation="none">
             <driver>
               <activity>a</activity>
             </driver>
@@ -88,7 +88,7 @@
         </demands>
         <economics>
           <lifetime>30</lifetime>
-          <CashFlow name="sales" type="repeating" taxable="False" inflation="none" mult_target="False">
+          <CashFlow name="sales" type="repeating" taxable="False" inflation="none">
             <driver>
               <activity>a</activity>
             </driver>

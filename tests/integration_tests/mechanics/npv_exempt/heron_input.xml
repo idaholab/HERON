@@ -1,10 +1,18 @@
 <HERON>
   <TestInfo>
     <name>Cashflows</name>
-    <author>talbpaul</author>
-    <created>2020-10-16</created>
+    <author>dylanjm</author>
+    <created>2024-03-26</created>
     <description>
-      Tests various kinds of cashflows
+      Tests NPV exempt Cashflows. This is a recreation of the Cashflows test from 
+      the HERON test suite. The only difference is the Variable Operating and Maitenance
+      Costs (VOM) cashflow is now NPV exempt. The Excel File 'analytic.xlsx' shows 
+      the expected results. When the NPV exemption is turned on, the mean NPV for 
+      both sweep values (1, 2) should be: $5,373.37 and $10,748.27 respectively.
+      When NPV exemption is turned off (i.e. the Cashflows test) the results for 
+      both sweep values should be $5,218.73 and $10,439.00 respectively. We can see
+      that having the VOM cashflow NPV exempt increases the mean NPV in both cases
+      since VOM is a cost and is left out of the NPV calculation.                                        
     </description>
     <classesTested>HERON</classesTested>
   </TestInfo>
@@ -40,7 +48,7 @@
           <lifetime>30</lifetime>
           <CashFlow name="capex" type="one-time" taxable="False" inflation="none">
             <driver>
-              <Function method="capacity">functions</Function>
+              <variable>source_capacity</variable>
             </driver>
             <reference_price>
               <fixed_value>10000.0</fixed_value>
@@ -56,7 +64,7 @@
           </CashFlow>
           <CashFlow name="FOM" type="repeating" period='year' taxable="False" inflation="none">
             <driver>
-              <Function method="capacity">functions</Function>
+              <variable>source_capacity</variable>
             </driver>
             <reference_price>
               <fixed_value>100.0</fixed_value>
@@ -69,7 +77,7 @@
               <fixed_value>0.999</fixed_value>
             </scaling_factor_x>
           </CashFlow>
-          <CashFlow name="VOM" type="repeating" taxable="True" inflation="none">
+          <CashFlow name="VOM" type="repeating" taxable="True" inflation="none" npv_exempt="True">
             <driver>
               <activity>a</activity>
             </driver>
@@ -103,9 +111,5 @@
 
     <DataGenerators>
       <ARMA name='flex' variable="Signal">%BASE_WORKING_DIR%/../../../TSA/Sine30yr/arma_30yr.pk</ARMA>
-      <Function name="functions">functions.py</Function>
     </DataGenerators>
 </HERON>
-
-
-

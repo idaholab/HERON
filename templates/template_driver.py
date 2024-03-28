@@ -1660,6 +1660,9 @@ class Template(TemplateBase, Base):
     for comp in components:
       comp_name = comp.name
       for cashflow in comp.get_cashflows():
+        # User has specified to leave this cashflow out of the NPV calculation. Skip it.
+        if cashflow.is_npv_exempt():
+          continue
         cf_name = cashflow.name
         name = f'{comp_name}_{cf_name}_CashFlow'
         cfs.append(name)

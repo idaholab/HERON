@@ -51,7 +51,7 @@
       </produces>
       <economics>
         <lifetime>27</lifetime>
-        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
           <driver>
             <variable>steamer_capacity</variable>
           </driver>
@@ -88,7 +88,7 @@
       </demands>
       <economics>
         <lifetime>30</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' >
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>
@@ -108,7 +108,7 @@
       </demands>
       <economics>
         <lifetime>30</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' >
           <driver>
             <Function method="electric_consume">transfers</Function>
             <multiplier>-1</multiplier>

@@ -111,7 +111,7 @@
       </demands>
       <economics>
         <lifetime>3</lifetime>
-        <CashFlow name="proposals" type="repeating" taxable='True' inflation='none' mult_target='False'>
+        <CashFlow name="proposals" type="repeating" taxable='True' inflation='none' >
           <driver>
             <activity>work</activity>
           </driver>
@@ -130,7 +130,7 @@
       </demands>
       <economics>
         <lifetime>3</lifetime>
-        <CashFlow name="contracts" type="repeating" taxable='True' inflation='none' mult_target='False'>
+        <CashFlow name="contracts" type="repeating" taxable='True' inflation='none' >
           <driver>
             <activity>funding</activity>
           </driver>
@@ -149,7 +149,7 @@
       </demands>
       <economics>
         <lifetime>2</lifetime>
-        <CashFlow name="other_work" type="repeating" taxable='True' inflation='none' mult_target='False'>
+        <CashFlow name="other_work" type="repeating" taxable='True' inflation='none' >
           <driver>
             <activity>labor</activity>
           </driver>

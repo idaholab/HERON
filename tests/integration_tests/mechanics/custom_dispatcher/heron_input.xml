@@ -69,7 +69,7 @@
       </demands>
       <economics>
         <lifetime>10</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' >
           <driver>
             <Function method="electric_consume">transfers</Function>
           </driver>
@@ -88,7 +88,7 @@
       </demands>
       <economics>
         <lifetime>30</lifetime>
-        <CashFlow name="w_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+        <CashFlow name="w_sales" type="repeating" taxable='True' inflation='none' >
           <driver>
             <Function method="water_consume">transfers</Function>
           </driver>

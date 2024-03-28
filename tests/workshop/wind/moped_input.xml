@@ -51,7 +51,7 @@
     <economics>
       <lifetime>5</lifetime>
       <!-- construction cost -->
-      <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+      <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
         <driver>
           <fixed_value>5</fixed_value> <!-- CHANGE ME TOO -->
         </driver>
@@ -77,7 +77,7 @@
     <economics>
       <lifetime>10</lifetime>
       <!-- construction cost -->
-      <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+      <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
         <driver>
           <variable>npp_capacity</variable>
         </driver>
@@ -86,7 +86,7 @@
           <fixed_value>-3e8</fixed_value>
         </reference_price>
       </CashFlow>
-      <CashFlow name="var_OM" type="repeating" taxable='True' inflation='none' mult_target='False'>
+      <CashFlow name="var_OM" type="repeating" taxable='True' inflation='none'>
         <driver>
           <activity>electricity</activity>
           <multiplier>-1</multiplier>
@@ -109,7 +109,7 @@
     </demands>
     <economics>
       <lifetime>1</lifetime>
-      <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+      <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none'>
         <driver>
           <activity>electricity</activity>
           <multiplier>-1</multiplier>
@@ -130,7 +130,7 @@
     </produces>
     <economics>
       <lifetime>1</lifetime>
-      <CashFlow name="import" type="repeating" taxable='True' inflation='none' mult_target='False'>
+      <CashFlow name="import" type="repeating" taxable='True' inflation='none'>
         <driver>
           <activity>electricity</activity>
           <multiplier>-1</multiplier>
@@ -152,7 +152,7 @@
     </demands>
     <economics>
       <lifetime>1</lifetime>
-      <CashFlow name="export" type="repeating" taxable='True' inflation='none' mult_target='False'>
+      <CashFlow name="export" type="repeating" taxable='True' inflation='none'>
         <driver>
           <activity>electricity</activity>
         </driver>

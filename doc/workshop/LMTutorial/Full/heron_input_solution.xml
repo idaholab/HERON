@@ -45,7 +45,7 @@
       </produces>
       <economics>
         <lifetime>5</lifetime>
-        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
           <driver>
             <variable>npp_capacity</variable>
           </driver>
@@ -85,7 +85,7 @@
       </produces>
       <economics>
         <lifetime>5</lifetime>
-        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
           <driver>
             <variable>wind_capacity</variable>
           </driver>
@@ -93,7 +93,7 @@
             <fixed_value>-1_300_000.00</fixed_value> <!-- Try a different value -->
           </reference_price>
         </CashFlow>
-        <CashFlow name="fixed_OM" type="repeating" period="year" taxable="True" inflation="none" mult_target="False">
+        <CashFlow name="fixed_OM" type="repeating" period="year" taxable="True" inflation="none">
           <driver>
             <variable>wind_capacity</variable>
           </driver>
@@ -120,7 +120,7 @@
       </produces>
       <economics>
         <lifetime>5</lifetime>
-        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
           <driver>
             <variable>HTSE_capacity</variable>
           </driver>
@@ -128,7 +128,7 @@
             <fixed_value>-2_840_000.00</fixed_value> <!-- Try a different value -->
           </reference_price>
         </CashFlow>
-        <CashFlow name="fixed_OM" type="repeating" period="year" taxable="True" inflation="none" mult_target="False">
+        <CashFlow name="fixed_OM" type="repeating" period="year" taxable="True" inflation="none">
           <driver>
             <variable>HTSE_capacity</variable>
           </driver>
@@ -150,7 +150,7 @@
       </stores>
       <economics>
         <lifetime>5</lifetime>
-        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" mult_target="False">
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
           <driver>
             <variable>H2_storage_capacity</variable>
           </driver>
@@ -170,7 +170,7 @@
       </demands>
       <economics>
         <lifetime>5</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none'>
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>
@@ -190,7 +190,7 @@
       </demands>
       <economics>
         <lifetime>5</lifetime>
-        <CashFlow name="H2_sales" type="repeating" taxable="True" inflation="none" mult_target="False">
+        <CashFlow name="H2_sales" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>H2</activity>
             <multiplier>-1</multiplier>

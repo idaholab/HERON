@@ -36,10 +36,9 @@
       <opt_metric>NPV</opt_metric>
       <stats_metric>valueAtRisk</stats_metric>
       <type>min</type>
-      <persistence>4</persistence>
+      <persistence>2</persistence>
       <convergence>
-        <gradient>1e-4</gradient>
-        <objective>1e-6</objective>
+        <objective>1e-2</objective>
       </convergence>
     </optimization_settings>
     <data_handling>

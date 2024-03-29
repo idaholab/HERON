@@ -70,6 +70,20 @@ class Placeholder(Base):
       # magic word for "relative to FARM root"
       farm_path = hutils.get_farm_loc()
       self._target_file = os.path.abspath(self._source.replace('%FARM%', farm_path))
+    elif self._source.startswith('%HERON_DATA%'):
+      #magic word to try and find HERON data files
+      #note that this first checks for a HERON_DATA environment variable
+      heron_data = os.environ.get("HERON_DATA")
+      if heron_data is None:
+        heron_path = hutils.get_heron_loc()
+        possible_path = os.path.join(heron_path,"data")
+        if os.path.exists(possible_path):
+          heron_data = possible_path
+        else:
+          self.raiseAnError(IOError,"ERROR trying to find %HERON_DATA% and not found at", possible_path, "and no HERON_DATA environmental variable found")
+      elif not os.path.exists(heron_data):
+        self.raiseAnError(IOError, "ERROR path", heron_data, "found in HERON_DATA environment variable does not seem to exist")
+      self._target_file = os.path.abspath(self._source.replace('%HERON_DATA%', heron_data))
     else:
       # check absolute path
       rel_interp = os.path.abspath(os.path.join(self._workingDir, self._source))

@@ -614,7 +614,7 @@ class Template(TemplateBase, Base):
     if case.get_mode() == 'sweep' or case.debug['enabled']:
       samps_node = template.find('Samplers/Grid')
     else:
-      if case.get_opt_strategy() == 'BayesianOptimizer':
+      if case.get_opt_strategy() == 'BayesianOpt':
         samps_node = template.find('Optimizers/BayesianOptimizer')
         # Need to add variables to sample for initialization
         initializer_node = template.find('Samplers/Stratified')
@@ -675,7 +675,7 @@ class Template(TemplateBase, Base):
           dist, xml = self._create_new_sweep_capacity(name, var_name, vals, sampler)
           dists_node.append(dist)
           # Bayesian Optimizer requires additional modification
-          if case.get_opt_strategy() == 'BayesianOptimizer':
+          if case.get_opt_strategy() == 'BayesianOpt':
             xml.remove(xml.find('initial'))
             samps_node.append(xml)
             grid_node = xmlUtils.newNode('grid', text='0 1',
@@ -714,7 +714,7 @@ class Template(TemplateBase, Base):
     strategy = case.get_opt_strategy()
     if case.get_mode() == 'opt':
       # Strategy tells us which optimizer to use
-      if strategy == 'BayesianOptimizer':
+      if strategy == 'BayesianOpt':
         opt_node = template.find('Optimizers').find(".//BayesianOptimizer[@name='cap_opt']")
         template.find('Optimizers').remove(template.find(".//GradientDescent[@name='cap_opt']"))
       # Its either BO or GD
@@ -727,7 +727,7 @@ class Template(TemplateBase, Base):
     if (case.get_mode() == 'opt') and (case.get_optimization_settings() is not None) and (not case.debug['enabled']):  # TODO there should be a better way to handle the debug case
       optimization_settings = case.get_optimization_settings()
       # Strategy tells us which optimizer to use
-      if strategy == 'BayesianOptimizer':
+      if strategy == 'BayesianOpt':
         # Setting kernel for GPR model
         if 'kernel' in optimization_settings.keys():
           gpr_node = template.find('Models').find(".//ROM[@name='gpROM']")

@@ -15,12 +15,6 @@
 
   <Case name="Opt_Runs">
     <mode>opt</mode>
-    <optimization_settings>
-      <convergence>
-        <gradient>1e-4</gradient>
-        <objective>1e-6</objective>
-      </convergence>
-    </optimization_settings>
     <num_arma_samples>2</num_arma_samples>
     <time_discretization>
       <time_variable>Time</time_variable>
@@ -43,6 +37,10 @@
       <stats_metric>valueAtRisk</stats_metric>
       <type>min</type>
       <persistence>4</persistence>
+      <convergence>
+        <gradient>1e-4</gradient>
+        <objective>1e-6</objective>
+      </convergence>
     </optimization_settings>
     <data_handling>
       <inner_to_outer>csv</inner_to_outer>

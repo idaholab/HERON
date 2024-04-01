@@ -1,1 +1,2 @@
 renamed:    tests/integration_tests/TSA/Sine/arma.pk -> data/TSA/Sine/arma.pk
+renamed:    tests/integration_tests/TSA/NYISO/nyiso_arma_2yr.pk -> data/TSA/NYISO/nyiso_arma_2yr.pk

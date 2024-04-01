@@ -87,7 +87,7 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='signal' variable="WIND">%BASE_WORKING_DIR%/../../../TSA/NYISO/nyiso_arma_2yr.pk</ARMA>
+    <ARMA name='signal' variable="WIND">%HERON_DATA%/TSA/NYISO/nyiso_arma_2yr.pk</ARMA>
   </DataGenerators>
 
 </HERON>

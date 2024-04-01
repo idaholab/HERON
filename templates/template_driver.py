@@ -675,7 +675,7 @@ class Template(TemplateBase, Base):
           dist, xml = self._create_new_sweep_capacity(name, var_name, vals, sampler)
           dists_node.append(dist)
           # Bayesian Optimizer requires additional modification
-          if case.get_opt_strategy() == 'BayesianOpt':
+          if case.get_opt_strategy() == 'BayesianOpt' and case.get_mode() == 'opt':
             xml.remove(xml.find('initial'))
             samps_node.append(xml)
             grid_node = xmlUtils.newNode('grid', text='0 1',

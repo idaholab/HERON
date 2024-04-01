@@ -72,7 +72,7 @@
 
   <DataGenerators>
     <ARMA name='placeholder' variable="Signal">%HERON_DATA%/TSA/Sine/arma.pk</ARMA>
-    <ROM name="myROM">%BASE_WORKING_DIR%/../../../ROM/linear_rom.pk</ROM>
+    <ROM name="myROM">%HERON_DATA%/ROM/linear_rom.pk</ROM>
   </DataGenerators>
 
 </HERON>

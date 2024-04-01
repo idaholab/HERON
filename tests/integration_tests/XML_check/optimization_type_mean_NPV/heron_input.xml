@@ -121,7 +121,7 @@
 
   <DataGenerators>
     <!-- <ARMA name='Price' variable="Signal">%HERON_DATA%/TSA/Sine/arma.pk</ARMA> -->
-    <Function name="transfers">%BASE_WORKING_DIR%/../../transfers.py</Function>
+    <Function name="transfers">%HERON_DATA%/XML_check/transfers.py</Function>
   </DataGenerators>
 
 </HERON>

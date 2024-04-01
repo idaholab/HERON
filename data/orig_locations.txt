@@ -5,3 +5,5 @@ renamed:    tests/integration_tests/ARMA/Sine/arma.pk -> data/ARMA/Sine/arma.pk
 renamed:    tests/integration_tests/ROM/linear_rom.pk -> data/ROM/linear_rom.pk
 renamed:    tests/integration_tests/TSA/Sine_Hour/arma.pk -> data/TSA/Sine_Hour/arma.pk
 renamed:    tests/integration_tests/XML_check/transfers.py -> data/XML_check/transfers.py
+renamed:    tests/integration_tests/mechanics/static_history/Static.csv -> data/mechanics/static_history/Static.csv
+renamed:    tests/integration_tests/mechanics/static_history/Static.csv -> data/mechanics/static_history/Static.csv

@@ -519,7 +519,9 @@ class Template(TemplateBase, Base):
     if case.get_mode() == 'opt':
       gpr = template.find('Models').find('ROM')
       gpr.find('Features').text = feature_list
-      gpr.find('Target').text = self._build_opt_metric_out_name(case)
+      new_opt_metric = self._build_opt_metric_out_name(case)
+      if new_opt_metric != 'missing':
+        gpr.find('Target').text = self._build_opt_metric_out_name(case)
     else:
       template.find('Models').remove(template.find(".//ROM[@name='gpROM']"))
 
@@ -794,6 +796,12 @@ class Template(TemplateBase, Base):
           convergence.append(ET.Element(k))
           node = convergence.find(k)
         node.text = v
+    elif (case.get_mode() == 'opt') and (case.get_optimization_settings() is None):
+      if strategy == 'BayesianOpt':
+        # using 'ExpectedImprovement' as default aquisition
+        acquisition_node = opt_node.find('Acquisition')
+        acquisition_node.remove(acquisition_node.find('ProbabilityOfImprovement'))
+        acquisition_node.remove(acquisition_node.find('LowerConfidenceBound'))
 
   def _modify_outer_steps(self, template, case, components, sources):
     """
@@ -1311,7 +1319,7 @@ class Template(TemplateBase, Base):
       # add optimization objective name to VariableGroups 'GRO_final_return' if not already there
       group = template.find('VariableGroups').find(".//Group[@name='GRO_final_return']")
       if group.text is None:
-        self._updateCommaSeperatedList(group, new_objective, postion=0)
+        self._updateCommaSeperatedList(group, new_objective, position=0)
       elif (new_objective != 'missing') and (new_objective not in group.text):
         self._updateCommaSeperatedList(group, new_objective, position=0)
       # add optimization objective to PostProcessor list if not already there

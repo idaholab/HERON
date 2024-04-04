@@ -34,6 +34,9 @@
     <optimization_settings>
       <opt_metric target="0">LC</opt_metric>
       <stats_metric>expectedValue</stats_metric>
+      <algorithm>
+        <GradientDescent/>
+      </algorithm>
       <convergence>
         <gradient>1e-2</gradient>
         <objective>1e-2</objective>

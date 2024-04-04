@@ -730,17 +730,17 @@ class Template(TemplateBase, Base):
       optimization_settings = case.get_optimization_settings()
       # Strategy tells us which optimizer to use
       if strategy == 'BayesianOpt':
+        BOsettings = optimization_settings['algorithm'][strategy] if 'algorithm' in list(optimization_settings) else None
         # Setting kernel for GPR model
-        if 'kernel' in optimization_settings.keys():
+        if BOsettings and 'kernel' in BOsettings.keys():
           gpr_node = template.find('Models').find(".//ROM[@name='gpROM']")
-          gpr_node.find('custom_kernel').text = optimization_settings['kernel']
+          gpr_node.find('custom_kernel').text = BOsettings['kernel']
         # Selecting Acquisition function
         acquisition_node = opt_node.find('Acquisition')
-        # if optimization_settings['acquisition'] is not None:
-        if 'acquisition' in optimization_settings.keys():
+        if BOsettings and 'acquisition' in BOsettings.keys():
           for function in ['ExpectedImprovement', 'ProbabilityOfImprovement', 'LowerConfidenceBound']:
             # Remove acquisition functions not in use
-            if function != optimization_settings['acquisition']:
+            if function != BOsettings['acquisition']:
               acquisition_node.remove(acquisition_node.find(function))
         else:
           acquisition_node.remove(acquisition_node.find('ProbabilityOfImprovement'))
@@ -755,11 +755,16 @@ class Template(TemplateBase, Base):
           for variable in latin_node.findall('variable'):
             variable.find('grid').set('steps', str(2*var_dim))
         # Model selection
-        if 'modelSelection' in optimization_settings.keys():
+        if BOsettings and 'modelSelection' in BOsettings.keys():
           model_node = opt_node.find('ModelSelection')
-          model_settings = optimization_settings['modelSelection']
+          model_settings = BOsettings['modelSelection']
           model_node.find('Duration').text = str(model_settings['duration'])
           model_node.find('Method').text = model_settings['method']
+      elif strategy == 'GradientDescent':
+        GDsettings = optimization_settings['algorithm'][strategy]
+        for setting, value in GDsettings.items():
+          if setting in ['growthFactor', 'shrinkFactor', 'initialStepScale']:
+            opt_node.find(f'.//stepSize/GradientHistory/{setting}').text = str(value)
       new_opt_objective = self._build_opt_metric_out_name(case)
       # setting job limit to optimizer
       if 'limit' in optimization_settings.keys():
@@ -796,6 +801,7 @@ class Template(TemplateBase, Base):
           convergence.append(ET.Element(k))
           node = convergence.find(k)
         node.text = v
+    # if there is NO optimization_settings node in Case, we still need to fix up some BayesianOpt stuff...
     elif (case.get_mode() == 'opt') and (case.get_optimization_settings() is None):
       if strategy == 'BayesianOpt':
         # using 'ExpectedImprovement' as default aquisition

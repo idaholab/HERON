@@ -480,11 +480,74 @@ class Case(Base):
     optimizer.addSub(type_sub)
 
     #== Optimization Algorithm ==#
-    strategy_options = InputTypes.makeEnumType("algorithm", "algorithmType", ['BayesianOpt','GradientDescent'])
-    strategy_sub = InputData.parameterInputFactory('algorithm', contentType=strategy_options,
-                                                   descr=r"""Determines what RAVEN optimization algorithm solves the standard HERON TEA.
-                                                   default is BayesianOpt.""", default='BayesianOpt')
+    strategy_sub = InputData.parameterInputFactory('algorithm', ordered=False,
+                                                   descr= r"""node detailing which RAVEN optimization
+                                                   algorithm will solve the standard HERON TEA.""",
+                                                   default='BayesianOpt')
+    #====== GradientDescent =======#
+    gradient_descent = InputData.parameterInputFactory('GradientDescent', ordered=False,
+                                                        descr= r"""Gradient Descent algorithm for solving
+                                                        the outer optimization with RAVEN. Settings
+                                                        specific to the GradientDescent algorithm can
+                                                        be added within""")
+    #======== step size factors for GD ========#
+    growthFactor = InputData.parameterInputFactory('growthFactor', contentType=InputTypes.FloatType,
+                                                descr=r"""Defines growth factor used for increasing
+                                                exploration of Gradient Descent algorithm when
+                                                current gradient is not favorable.""", default='2.0')
+    shrinkFactor = InputData.parameterInputFactory('shrinkFactor', contentType=InputTypes.FloatType,
+                                                descr=r"""Defines shrink factor used for decreasing
+                                                exploration of Gradient Descent algorithm when
+                                                current gradient is favorable.""", default='1.5')
+    initStepScale = InputData.parameterInputFactory('initialStepScale', contentType=InputTypes.FloatType,
+                                                descr=r"""Defines initial step scale in GradientDescent
+                                                algorithm.""", default='0.2')
+    gradient_descent.addSub(growthFactor)
+    gradient_descent.addSub(shrinkFactor)
+    gradient_descent.addSub(initStepScale)
+    strategy_sub.addSub(gradient_descent)
+
+    #====== BayesianOpt =======#
+    bayesian_opt = InputData.parameterInputFactory('BayesianOpt', ordered=False,
+                                                        descr= r"""Bayesian Optimization algorithm for solving
+                                                        the outer optimization with RAVEN. Settings
+                                                        specific to the BayesianOpt algorithm can
+                                                        be added within""")
+    #======== Kernel for BO========#
+    kernelSub = InputData.parameterInputFactory('kernel', contentType=InputTypes.StringType,
+                                                descr=r"""Defines custom kernel expression for GPR used in
+                                                Bayesian Optimization. If Gradient Descent is used, then this
+                                                node is ignored.""",
+                                                default='Constant*Matern')
+    bayesian_opt.addSub(kernelSub)
+
+    #======== Acquisition Function ========#
+    acquisitionSub = InputData.parameterInputFactory('acquisition', contentType=InputTypes.makeEnumType("acquisition", "acquisitionType",
+                                                      ['ExpectedImprovement', 'ProbabilityOfImprovement','LowerConfidenceBound']),
+                                                      descr=r"""Node for selecting which acquisition function to use for the
+                                                      Bayesian Optimizer.""", default='ExpectedImprovement')
+    bayesian_opt.addSub(acquisitionSub)
+
+    #======== Model Selection ========#
+    modelSelection = InputData.parameterInputFactory('modelSelection',
+                                                     descr=r"""Parent node for selecting details about how to
+                                                     update the GPR during optimization for BO.""")
+    modelDuration = InputData.parameterInputFactory('duration', contentType=InputTypes.IntegerType,
+                                                     descr=r"""Number of iterations between hyperparameter
+                                                     selections.""", default='1')
+    modelMethod = InputData.parameterInputFactory('method', contentType=InputTypes.makeEnumType("acquisition", "acquisitionType",
+                                                  ['Internal','External','Average']),
+                                                   descr=r"""Determines method for selecting hyperparameters.
+                                                   Internal uses the optimizer within RAVEN to maximize LML. External
+                                                   uses Scikit-Learn's selection. Averaging samples several models
+                                                   with MC and then takes a weighted sum.""",
+                                                   default='Internal')
+    modelSelection.addSub(modelDuration)
+    modelSelection.addSub(modelMethod)
+    bayesian_opt.addSub(modelSelection)
+    strategy_sub.addSub(bayesian_opt)
     optimizer.addSub(strategy_sub)
+
 
     #== Persistence ==#
     persistenceSub = InputData.parameterInputFactory('persistence',contentType=InputTypes.IntegerType,
@@ -500,43 +563,14 @@ class Case(Base):
                                                 timeouts.""")
     optimizer.addSub(limit_sub)
 
-    #== Kernel for BO ==#
-    kernelSub = InputData.parameterInputFactory('kernel', contentType=InputTypes.StringType,
-                                                descr=r"""Defines custom kernel expression for GPR used in
-                                                Bayesian Optimization. If Gradient Descent is used, then this
-                                                node is ignored. Default is Constant*Matern""")
-    optimizer.addSub(kernelSub)
-
-    #== Acquisition Function ==#
-    acquisitionSub = InputData.parameterInputFactory('acquisition', contentType=InputTypes.makeEnumType("acquisition", "acquisitionType",
-                                                      ['ExpectedImprovement', 'ProbabilityOfImprovement','LowerConfidenceBound']),
-                                                      descr=r"""Node for selecting which acquisition function to use for the
-                                                      Bayesian Optimizer. If Gradient Descent is used then this node is ignored.
-                                                      Default is ExpectedImprovement.""")
-    optimizer.addSub(acquisitionSub)
-
     #== Initial Sample Size ==#
     initialCountSub = InputData.parameterInputFactory('initialCount', contentType=InputTypes.IntegerType,
                                                        descr=r"""Determines number of initial samples for Bayesian Optimization
                                                        and number of trajectories for Gradient Descent.""")
     optimizer.addSub(initialCountSub)
 
-    #== Model Selection ==#
-    modelSelection = InputData.parameterInputFactory('modelSelection',
-                                                     descr=r"""Parent node for selecting details about how to
-                                                     update the GPR during optimization for BO.""")
-    modelDuration = InputData.parameterInputFactory('duration', contentType=InputTypes.IntegerType,
-                                                     descr=r"""Number of iterations between hyperparameter
-                                                     selections. Default is 1""")
-    modelMethod = InputData.parameterInputFactory('method', contentType=InputTypes.makeEnumType("acquisition", "acquisitionType",
-                                                  ['Internal','External','Average']),
-                                                   descr=r"""Determines method for selecting hyperparameters.
-                                                   Internal uses the optimizer within RAVEN to maximize LML. External
-                                                   uses Scikit-Learn's selection. Averaging samples several models
-                                                   with MC and then takes a weighted sum. Default is Internal.""")
-    modelSelection.addSub(modelDuration)
-    modelSelection.addSub(modelMethod)
-    optimizer.addSub(modelSelection)
+
+    # optimizer.addSub(modelSelection)
 
     #== Convergence Sub Node ==#
     convergence = InputData.parameterInputFactory('convergence',
@@ -828,7 +862,7 @@ class Case(Base):
     """
     opt_settings = {}
 
-    # check first for an opt metric, if not there, default to NPV
+    # 1. check first for an opt metric, if not there, default to NPV
     if node.findFirst('opt_metric') is None:
       opt_settings['opt_metric'] = self._default_econ_metric
     elif node.findFirst('opt_metric').value == 'LC':
@@ -837,13 +871,39 @@ class Case(Base):
       except KeyError:
         opt_settings['npv_target'] = 0
 
-    for sub in node.subparts:
+    # 2. check next for algorithm/strategy, need to handle this before "<convergence>"
+    subparts = node.subparts
+    algo_head_node = node.findFirst('algorithm')
+
+    if algo_head_node is not None:
+      opt_settings['algorithm'] = {}
+      if algo_head_node.subparts:
+        algo = algo_head_node.subparts[0]
+        algo_dict = {}
+        # handling case where user submits multiple algorithms, only take the first provided
+        #   when 0 algorithms provided, resorts to defaults. wrong names handled by InputData
+        if len(algo_head_node.subparts) > 1:
+          self.raiseAWarning('Multiple optimization algorithms found, only first algorithm ' +
+                            f'provided--{algo.getName()}--will be used.')
+        # handle extra settings to override in the outer.xml
+        for sub_algo in algo.subparts:
+          sub_name = sub_algo.getName()
+          if sub_name == 'modelSelection':
+            algo_dict[sub_name] = {}
+            for ssub in sub_algo.subparts:
+              algo_dict[sub_name][ssub.getName()] = ssub.value
+          else:
+            algo_dict[sub_name] = sub_algo.value
+        # save back to optimization_settings
+        opt_settings['algorithm'][algo.getName()] = algo_dict
+        self._optimization_strategy = algo.getName()
+        subparts.remove(algo_head_node)
+
+    # 3. handle rest of the inputs in the optimization_settings node
+    for sub in subparts:
       sub_name = sub.getName()
-      # optimization algorithm
-      if sub_name == 'algorithm':
-        self._optimization_strategy = sub.value
       # add metric information to opt_settings dictionary
-      elif sub_name == 'stats_metric':
+      if sub_name == 'stats_metric':
         opt_settings[sub_name] = {}
         stats_metric_name = sub.value
         opt_settings[sub_name]['name'] = stats_metric_name
@@ -863,7 +923,7 @@ class Case(Base):
             opt_settings[sub_name]['threshold'] = sub.parameterValues['threshold']
           except KeyError:
             opt_settings[sub_name]['threshold'] = 0.05
-      elif sub_name in ['convergence', 'modelSelection']:
+      elif sub_name  == 'convergence':
         opt_settings[sub_name] = {}
         for ssub in sub.subparts:
           if ssub.getName() == 'objective' and self._optimization_strategy == 'BayesianOpt':

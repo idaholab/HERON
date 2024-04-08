@@ -1,27 +1,27 @@
 <HERON>
   <TestInfo>
-    <name>storage</name>
+    <name>PyomoOptions</name>
     <author>talbpaul</author>
     <created>2020-09-28</created>
     <description>
       Tests including a storage unit as part of a flexible analysis case. Extends from
       workflows/storage case. Note with the shorter rolling window, the optimizer cannot
       make as optimal decisions as with the full window, resulting in differences especially
-      in the 100 steam production case.
+      in the 100 steam production case. Note also the discontinuous treatment of the periodic
+      initial/final storage level. See accompanying analytic spreadsheet.
     </description>
     <classesTested>HERON</classesTested>
   </TestInfo>
 
   <Case name="Sweep_Runs">
     <mode>sweep</mode>
-    <num_arma_samples>3</num_arma_samples>
     <time_discretization>
       <time_variable>Time</time_variable>
       <end_time>2</end_time>
       <num_steps>21</num_steps>
     </time_discretization>
     <economics>
-      <ProjectTime>3</ProjectTime>
+      <ProjectTime>2</ProjectTime>
       <DiscountRate>0.08</DiscountRate>
       <tax>0.0</tax>
       <inflation>0.0</inflation>
@@ -41,11 +41,11 @@
     <Component name="steamer">
       <produces resource="steam" dispatch="fixed">
         <capacity resource="steam">
-          <sweep_values>1, 100</sweep_values>
+          <sweep_values debug_value="100">1, 100</sweep_values>
         </capacity>
       </produces>
       <economics>
-        <lifetime>27</lifetime>
+        <lifetime>5</lifetime>
       </economics>
     </Component>
 
@@ -57,7 +57,7 @@
         <!-- NOTE: periodic level boundary condition is True by default -->
       </stores>
       <economics>
-        <lifetime>10</lifetime>
+        <lifetime>3</lifetime>
       </economics>
     </Component>
 
@@ -65,7 +65,7 @@
       <produces resource="electricity" dispatch="independent">
         <consumes>steam</consumes>
         <capacity resource="steam">
-          <fixed_value>-99</fixed_value>
+          <fixed_value>-90</fixed_value>
         </capacity>
         <transfer>
           <linear>
@@ -75,11 +75,11 @@
         </transfer>
       </produces>
       <economics>
-        <lifetime>27</lifetime>
+        <lifetime>3</lifetime>
       </economics>
     </Component>
 
-    <Component name="electr_market">
+    <Component name="market_linear">
       <demands resource="electricity" dispatch="dependent">
         <capacity>
           <fixed_value>-2</fixed_value>
@@ -93,27 +93,27 @@
             <multiplier>-1</multiplier>
           </driver>
           <reference_price>
-            <fixed_value>0.5</fixed_value>
+            <CSV variable="linear">prices</CSV>
           </reference_price>
         </CashFlow>
       </economics>
     </Component>
 
-    <Component name="electr_flex">
+    <Component name="market_spike">
       <demands resource="electricity" dispatch="dependent">
         <capacity>
-          <fixed_value>-1e200</fixed_value>
+          <fixed_value>-40</fixed_value>
         </capacity>
       </demands>
       <economics>
-        <lifetime>30</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' >
+        <lifetime>3</lifetime>
+        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none'>
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>
           </driver>
           <reference_price>
-            <Function method="flex_price">transfers</Function>
+            <CSV variable="spike">prices</CSV>
           </reference_price>
         </CashFlow>
       </economics>
@@ -129,12 +129,14 @@
       <economics>
         <lifetime>1</lifetime>
         <CashFlow name="steam_sink" type="repeating" taxable='True' inflation='none' >
+        <lifetime>3</lifetime>
+        <CashFlow name="steam_sink" type="repeating" taxable='True' inflation='none'>
           <driver>
             <activity>steam</activity>
             <multiplier>-1</multiplier>
           </driver>
           <reference_price>
-            <fixed_value>-0.01</fixed_value>
+            <fixed_value>0.01</fixed_value>
           </reference_price>
         </CashFlow>
       </economics>
@@ -143,8 +145,7 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='Price' variable="Signal">%BASE_WORKING_DIR%/../../../TSA/Sine/arma.pk</ARMA>
-    <Function name="transfers">transfers.py</Function>
+    <CSV name='prices' variable="spike,linear">2year_21step.csv</CSV>
   </DataGenerators>
 
 </HERON>

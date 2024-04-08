@@ -166,6 +166,7 @@ class ARMA(Placeholder):
               The RAVEN ARMA ROM should be trained and serialized before using it in HERON. The text
               of this node indicates the location of the serialized ROM. This location is usually relative
               with respect to the HERON XML input file; however, a full absolute path can be used,
+              or the path can be prepended with ``\%HERON_DATA\%'' to be relative to the HERON data directory (``HERON/data'' in the git repository, but the location of ``\%HERON_DATA\%'' can be overridden by exporting a ``HERON_DATA'' environmental variable),
               or the path can be prepended with ``\%HERON\%'' to be relative to the installation
               directory of HERON.""")
     specs.addParam('name', param_type=InputTypes.StringType, required=True,
@@ -261,6 +262,7 @@ class Function(Placeholder):
               Python functions have access to the variables within the dispatcher. The text
               of this node indicates the location of the python file. This location is usually relative
               with respect to the HERON XML input file; however, a full absolute path can be used,
+               or the path can be prepended with ``\%HERON_DATA\%'' to be relative to the HERON data directory (``HERON/data'' in the git repository, but the location of ``\%HERON_DATA\%'' can be overridden by exporting a ``HERON_DATA'' environmental variable),
               or the path can be prepended with ``\%HERON\%'' to be relative to the installation
               directory of HERON.""")
     specs.addParam('name', param_type=InputTypes.StringType, required=True,

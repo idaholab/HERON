@@ -127,8 +127,6 @@
         </capacity>
       </demands>
       <economics>
-        <lifetime>1</lifetime>
-        <CashFlow name="steam_sink" type="repeating" taxable='True' inflation='none' >
         <lifetime>3</lifetime>
         <CashFlow name="steam_sink" type="repeating" taxable='True' inflation='none'>
           <driver>

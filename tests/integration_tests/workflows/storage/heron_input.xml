@@ -87,8 +87,6 @@
         </capacity>
       </demands>
       <economics>
-        <lifetime>30</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' >
         <lifetime>3</lifetime>
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none'>
           <driver>
@@ -109,8 +107,6 @@
         </capacity>
       </demands>
       <economics>
-        <lifetime>30</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' >
         <lifetime>3</lifetime>
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none'>
           <driver>

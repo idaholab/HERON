@@ -144,7 +144,7 @@
   </Components>
 
   <DataGenerators>
-    <CSV name='prices' variable="spike,linear">2year_21step.csv</CSV>
+    <CSV name='prices' variable="spike,linear">%HERON_DATA%/CSV/2year_21step.csv</CSV>
   </DataGenerators>
 
 </HERON>

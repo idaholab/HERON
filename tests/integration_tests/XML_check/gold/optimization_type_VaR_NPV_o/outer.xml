@@ -113,7 +113,7 @@
   <Files>
     <Input name="inner_workflow" type="raven">../inner.xml</Input>
     <Input name="heron_lib">../heron.lib</Input>
-    <Input name="transfers">../%BASE_WORKING_DIR%/../../transfers.py</Input>
+    <Input name="transfers">../%HERON_DATA%/XML_check/transfers.py</Input>
   </Files>
 
   <OutStreams>

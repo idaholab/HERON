@@ -161,7 +161,7 @@
 
 
   <DataGenerators>
-    <CSV name='synth' variable="Signal">%BASE_WORKING_DIR%/../../../mechanics/capacity_factors/Static.csv</CSV>
+    <CSV name='synth' variable="Signal">%HERON_DATA%/mechanics/capacity_factors/Static.csv</CSV>
   </DataGenerators>
 
 </HERON>

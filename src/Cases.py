@@ -492,16 +492,33 @@ class Case(Base):
                                                         be added within""")
     #======== step size factors for GD ========#
     growthFactor = InputData.parameterInputFactory('growthFactor', contentType=InputTypes.FloatType,
-                                                descr=r"""Defines growth factor used for increasing
-                                                exploration of Gradient Descent algorithm when
-                                                current gradient is not favorable.""", default='2.0')
+                                                descr=r"""specifies the rate at which the step size should
+                                                grow if the gradient continues in same direction through
+                                                multiple iterative steps. For example, a growth factor
+                                                of 2 means that if the gradient is identical twice, the
+                                                step size is doubled..""", default='2.0')
     shrinkFactor = InputData.parameterInputFactory('shrinkFactor', contentType=InputTypes.FloatType,
-                                                descr=r"""Defines shrink factor used for decreasing
-                                                exploration of Gradient Descent algorithm when
-                                                current gradient is favorable.""", default='1.5')
+                                                descr=r"""specifies the rate at which the step size
+                                                should shrink if the gradient changes direction through multiple
+                                                iterative steps. For example, a shrink factor of 2 means
+                                                that if the gradient completely flips direction, the step size is
+                                                halved. Note that for stochastic surfaces or low-order gradient
+                                                approximations such as SPSA, a small value for the shrink factor
+                                                is recommended. If an optimization path appears to be converging
+                                                early, increasing the shrink factor might improve the
+                                                search.""", default='1.5')
     initStepScale = InputData.parameterInputFactory('initialStepScale', contentType=InputTypes.FloatType,
-                                                descr=r"""Defines initial step scale in GradientDescent
-                                                algorithm.""", default='0.2')
+                                                descr=r"""specifies the scale of the initial step in the optimization,
+                                                in percent of the size of the problem. The size of the problem
+                                                is defined as the hyperdiagonal of the input space, composed of the
+                                                input variables. A value of 1 indicates the first step can reach
+                                                from the lowest value of all inputs to the highest point of all
+                                                inputs, which is too large for all problems with more than one
+                                                optimization variable. In general this should be smaller as the number
+                                                of optimization variables increases, but large enough that the first
+                                                step is meaningful for the problem. This scaling factor should always
+                                                be less than $1/\sqrt{N}$, where $N$ is the number of optimization
+                                                variables.""", default='0.2')
     gradient_descent.addSub(growthFactor)
     gradient_descent.addSub(shrinkFactor)
     gradient_descent.addSub(initStepScale)

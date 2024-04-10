@@ -434,13 +434,13 @@ class PyomoModelHandler:
     discharge_name = self._create_production_variable(comp, tag='discharge', add_bounds=False, within=pyo.NonNegativeReals)
     # balance level, charge/discharge
     level_rule_name = prefix + '_level_constr'
-    rule = lambda mod, t: prl.level_rule(comp, level_name, charge_name, discharge_name, self.initial_storage, r, mod, t)
-    setattr(self.model, level_rule_name, pyo.Constraint(self.model.T, rule=rule))
-    # periodic boundary condition for storage level
     if comp.get_interaction().apply_periodic_level:
-      periodic_rule_name = prefix + '_level_periodic_constr'
-      rule = lambda mod, t: prl.periodic_level_rule(comp, level_name, self.initial_storage, r, mod, t)
-      setattr(self.model, periodic_rule_name, pyo.Constraint(self.model.T, rule=rule))
+      level_var = getattr(self.model, level_name)
+      initial = level_var[(r, self.model.T[-1])]
+    else:
+      initial = self.initial_storage[comp]
+    rule = lambda mod, t: prl.level_rule(comp, level_name, charge_name, discharge_name, initial, r, mod, t)
+    setattr(self.model, level_rule_name, pyo.Constraint(self.model.T, rule=rule))
 
     # (4) a binary variable to track whether we're charging or discharging, to prevent BOTH happening
     # -> 0 is charging, 1 is discharging

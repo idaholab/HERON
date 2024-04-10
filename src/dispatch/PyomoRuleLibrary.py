@@ -45,7 +45,7 @@ def level_rule(comp, level_name, charge_name, discharge_name, initial_storage, r
     @ In, level_name, str, name of level-tracking variable
     @ In, charge_name, str, name of charging variable
     @ In, discharge_name, str, name of discharging variable
-    @ In, initial_storage, dict, initial storage levels by component
+    @ In, initial_storage, float or var, initial storage level
     @ In, r, int, index of stored resource (is this always 0?)
     @ In, m, pyo.ConcreteModel, associated model
     @ In, t, int, time index for capacity rule
@@ -58,7 +58,7 @@ def level_rule(comp, level_name, charge_name, discharge_name, initial_storage, r
     previous = level_var[r, t-1]
     dt = m.Times[t] - m.Times[t-1]
   else:
-    previous = initial_storage[comp]
+    previous = initial_storage
     dt = m.Times[1] - m.Times[0]
   rte2 = comp.get_sqrt_RTE() # square root of the round-trip efficiency
   production = - rte2 * charge_var[r, t] - discharge_var[r, t] / rte2

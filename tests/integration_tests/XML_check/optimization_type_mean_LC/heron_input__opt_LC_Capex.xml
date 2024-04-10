@@ -124,6 +124,6 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='flex' variable="Signal">%BASE_WORKING_DIR%/../../../TSA/Sine/arma.pk</ARMA>
+    <ARMA name='flex' variable="Signal">%HERON_DATA%/TSA/Sine/arma.pk</ARMA>
   </DataGenerators>
 </HERON>

@@ -545,6 +545,13 @@ class Case(Base):
                                                       Bayesian Optimizer.""", default='ExpectedImprovement')
     bayesian_opt.addSub(acquisitionSub)
 
+    #======== Kernel for BO========#
+    seedSub = InputData.parameterInputFactory('initialSeed', contentType=InputTypes.IntegerType,
+                                                descr=r"""The initial seed for random number generator used
+                                                for sampling the model within the Bayesian Optimizer.""",
+                                                default='RAVEN-determined')
+    bayesian_opt.addSub(seedSub)
+
     #======== Model Selection ========#
     modelSelection = InputData.parameterInputFactory('modelSelection',
                                                      descr=r"""Parent node for selecting details about how to

@@ -32,7 +32,11 @@
       <pyomo/>
     </dispatcher>
     <optimization_settings>
-      <algorithm>BayesianOpt</algorithm>
+      <algorithm>
+        <BayesianOpt>
+          <acquisition>LowerConfidenceBound</acquisition>
+        </BayesianOpt>
+      </algorithm>
       <opt_metric>NPV</opt_metric>
       <stats_metric>valueAtRisk</stats_metric>
       <type>min</type>

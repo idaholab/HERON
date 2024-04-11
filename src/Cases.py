@@ -546,8 +546,8 @@ class Case(Base):
     bayesian_opt.addSub(acquisitionSub)
 
     #======== Kernel for BO========#
-    seedSub = InputData.parameterInputFactory('initialSeed', contentType=InputTypes.IntegerType,
-                                                descr=r"""The initial seed for random number generator used
+    seedSub = InputData.parameterInputFactory('seed', contentType=InputTypes.IntegerType,
+                                                descr=r"""The seed for random number generator used
                                                 for sampling the model within the Bayesian Optimizer.""",
                                                 default='RAVEN-determined')
     bayesian_opt.addSub(seedSub)
@@ -592,9 +592,6 @@ class Case(Base):
                                                        descr=r"""Determines number of initial samples for Bayesian Optimization
                                                        and number of trajectories for Gradient Descent.""")
     optimizer.addSub(initialCountSub)
-
-
-    # optimizer.addSub(modelSelection)
 
     #== Convergence Sub Node ==#
     convergence = InputData.parameterInputFactory('convergence',

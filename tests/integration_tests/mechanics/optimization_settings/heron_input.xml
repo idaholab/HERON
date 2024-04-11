@@ -35,7 +35,7 @@
       <algorithm>
         <BayesianOpt>
           <acquisition>LowerConfidenceBound</acquisition>
-          <initialSeed>180</initialSeed>
+          <seed>180</seed>
         </BayesianOpt>
       </algorithm>
       <opt_metric>NPV</opt_metric>

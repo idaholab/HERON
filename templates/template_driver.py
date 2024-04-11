@@ -761,8 +761,8 @@ class Template(TemplateBase, Base):
           model_node.find('Duration').text = str(model_settings['duration'])
           model_node.find('Method').text = model_settings['method']
         # setting initial seed if requested
-        if BOsettings and 'initialSeed' in BOsettings.keys():
-          seed_node = xmlUtils.newNode('initialSeed', text=BOsettings['initialSeed'])
+        if BOsettings and 'seed' in BOsettings.keys():
+          seed_node = xmlUtils.newNode('initialSeed', text=BOsettings['seed'])
           opt_node.find(".//samplerInit").append(seed_node)
       elif strategy == 'GradientDescent':
         GDsettings = optimization_settings['algorithm'][strategy]

@@ -65,7 +65,7 @@
     </Code>
     <ROM name="gpROM" subType="GaussianProcessRegressor">
       <Features></Features>
-      <Target></Target>
+      <Target>mean_NPV</Target>
       <alpha>1e-8</alpha>
       <n_restarts_optimizer>5</n_restarts_optimizer>
       <normalize_y>True</normalize_y>

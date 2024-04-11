@@ -519,7 +519,9 @@ class Template(TemplateBase, Base):
     if case.get_mode() == 'opt':
       gpr = template.find('Models').find('ROM')
       gpr.find('Features').text = feature_list
-      gpr.find('Target').text = self._build_opt_metric_out_name(case)
+      new_opt_metric = self._build_opt_metric_out_name(case)
+      if new_opt_metric != 'missing':
+        gpr.find('Target').text = self._build_opt_metric_out_name(case)
     else:
       template.find('Models').remove(template.find(".//ROM[@name='gpROM']"))
 
@@ -614,7 +616,7 @@ class Template(TemplateBase, Base):
     if case.get_mode() == 'sweep' or case.debug['enabled']:
       samps_node = template.find('Samplers/Grid')
     else:
-      if case.get_opt_strategy() == 'BayesianOptimizer':
+      if case.get_opt_strategy() == 'BayesianOpt':
         samps_node = template.find('Optimizers/BayesianOptimizer')
         # Need to add variables to sample for initialization
         initializer_node = template.find('Samplers/Stratified')
@@ -675,7 +677,7 @@ class Template(TemplateBase, Base):
           dist, xml = self._create_new_sweep_capacity(name, var_name, vals, sampler)
           dists_node.append(dist)
           # Bayesian Optimizer requires additional modification
-          if case.get_opt_strategy() == 'BayesianOptimizer':
+          if case.get_opt_strategy() == 'BayesianOpt' and case.get_mode() == 'opt':
             xml.remove(xml.find('initial'))
             samps_node.append(xml)
             grid_node = xmlUtils.newNode('grid', text='0 1',
@@ -714,7 +716,7 @@ class Template(TemplateBase, Base):
     strategy = case.get_opt_strategy()
     if case.get_mode() == 'opt':
       # Strategy tells us which optimizer to use
-      if strategy == 'BayesianOptimizer':
+      if strategy == 'BayesianOpt':
         opt_node = template.find('Optimizers').find(".//BayesianOptimizer[@name='cap_opt']")
         template.find('Optimizers').remove(template.find(".//GradientDescent[@name='cap_opt']"))
       # Its either BO or GD
@@ -727,18 +729,18 @@ class Template(TemplateBase, Base):
     if (case.get_mode() == 'opt') and (case.get_optimization_settings() is not None) and (not case.debug['enabled']):  # TODO there should be a better way to handle the debug case
       optimization_settings = case.get_optimization_settings()
       # Strategy tells us which optimizer to use
-      if strategy == 'BayesianOptimizer':
+      if strategy == 'BayesianOpt':
+        BOsettings = optimization_settings['algorithm'][strategy] if 'algorithm' in list(optimization_settings) else None
         # Setting kernel for GPR model
-        if 'kernel' in optimization_settings.keys():
+        if BOsettings and 'kernel' in BOsettings.keys():
           gpr_node = template.find('Models').find(".//ROM[@name='gpROM']")
-          gpr_node.find('custom_kernel').text = optimization_settings['kernel']
+          gpr_node.find('custom_kernel').text = BOsettings['kernel']
         # Selecting Acquisition function
         acquisition_node = opt_node.find('Acquisition')
-        # if optimization_settings['acquisition'] is not None:
-        if 'acquisition' in optimization_settings.keys():
+        if BOsettings and 'acquisition' in BOsettings.keys():
           for function in ['ExpectedImprovement', 'ProbabilityOfImprovement', 'LowerConfidenceBound']:
             # Remove acquisition functions not in use
-            if function != optimization_settings['acquisition']:
+            if function != BOsettings['acquisition']:
               acquisition_node.remove(acquisition_node.find(function))
         else:
           acquisition_node.remove(acquisition_node.find('ProbabilityOfImprovement'))
@@ -753,11 +755,20 @@ class Template(TemplateBase, Base):
           for variable in latin_node.findall('variable'):
             variable.find('grid').set('steps', str(2*var_dim))
         # Model selection
-        if 'modelSelection' in optimization_settings.keys():
+        if BOsettings and 'modelSelection' in BOsettings.keys():
           model_node = opt_node.find('ModelSelection')
-          model_settings = optimization_settings['modelSelection']
+          model_settings = BOsettings['modelSelection']
           model_node.find('Duration').text = str(model_settings['duration'])
           model_node.find('Method').text = model_settings['method']
+        # setting initial seed if requested
+        if BOsettings and 'seed' in BOsettings.keys():
+          seed_node = xmlUtils.newNode('initialSeed', text=BOsettings['seed'])
+          opt_node.find(".//samplerInit").append(seed_node)
+      elif strategy == 'GradientDescent':
+        GDsettings = optimization_settings['algorithm'][strategy]
+        for setting, value in GDsettings.items():
+          if setting in ['growthFactor', 'shrinkFactor', 'initialStepScale']:
+            opt_node.find(f'.//stepSize/GradientHistory/{setting}').text = str(value)
       new_opt_objective = self._build_opt_metric_out_name(case)
       # setting job limit to optimizer
       if 'limit' in optimization_settings.keys():
@@ -794,6 +805,13 @@ class Template(TemplateBase, Base):
           convergence.append(ET.Element(k))
           node = convergence.find(k)
         node.text = v
+    # if there is NO optimization_settings node in Case, we still need to fix up some BayesianOpt stuff...
+    elif (case.get_mode() == 'opt') and (case.get_optimization_settings() is None):
+      if strategy == 'BayesianOpt':
+        # using 'ExpectedImprovement' as default aquisition
+        acquisition_node = opt_node.find('Acquisition')
+        acquisition_node.remove(acquisition_node.find('ProbabilityOfImprovement'))
+        acquisition_node.remove(acquisition_node.find('LowerConfidenceBound'))
 
   def _modify_outer_steps(self, template, case, components, sources):
     """
@@ -1311,7 +1329,7 @@ class Template(TemplateBase, Base):
       # add optimization objective name to VariableGroups 'GRO_final_return' if not already there
       group = template.find('VariableGroups').find(".//Group[@name='GRO_final_return']")
       if group.text is None:
-        self._updateCommaSeperatedList(group, new_objective, postion=0)
+        self._updateCommaSeperatedList(group, new_objective, position=0)
       elif (new_objective != 'missing') and (new_objective not in group.text):
         self._updateCommaSeperatedList(group, new_objective, position=0)
       # add optimization objective to PostProcessor list if not already there

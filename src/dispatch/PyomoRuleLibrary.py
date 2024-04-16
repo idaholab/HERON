@@ -140,7 +140,7 @@ def ramp_rule_down(prod_name, r, limit, neg_cap, t, m, bins=None) -> bool:
       # dq is negative, - limit is negative
       return delta >= - limit
   else:
-    eps = 1e-6 # aux parameter to force binaries to behave, TODO needed?
+    eps = 1e-6*limit # aux parameter to force binaries to behave
     down = bins[0][t]
     up = bins[1][t]
     # NOTE we're following the convention that "less negative" is ramping "down"
@@ -181,7 +181,7 @@ def ramp_rule_up(prod_name, r, limit, neg_cap, t, m, bins=None) -> bool:
       return delta <= limit
   else:
     # special treatment if we have frequency-limiting binaries available
-    eps = 1e-6 # aux parameter to force binaries to behave, TODO needed?
+    eps = 1e-6*limit # aux parameter to force binaries to behave
     down = bins[0][t]
     up = bins[1][t]
     # NOTE we're following the convention that "more negative" is ramping "up"

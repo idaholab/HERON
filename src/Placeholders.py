@@ -76,13 +76,22 @@ class Placeholder(Base):
       heron_data = os.environ.get("HERON_DATA")
       if heron_data is None:
         heron_path = hutils.get_heron_loc()
-        possible_path = os.path.join(heron_path,"data")
-        if os.path.exists(possible_path):
-          heron_data = possible_path
+        # Look in a few places for the data directory. The first location that exists is used.
+        # The first option is within the HERON root directory. This should exist for a source
+        # code installation of HERON. The second location is where the data directory is
+        # expected to be in a standalone installation of FORCE.
+        possible_paths = ["data", "../../examples/data"]
+        for path in possible_paths:
+          path = os.path.join(heron_path, path)
+          if os.path.exists(path):
+            heron_data = path
+            break
         else:
-          self.raiseAnError(IOError,"ERROR trying to find %HERON_DATA% and not found at", possible_path, "and no HERON_DATA environmental variable found")
+          checked_paths = [os.path.join(heron_path, path) for path in possible_paths]
+          self.raiseAnError(IOError,"ERROR trying to find %HERON_DATA% and not found at any of [", ", ".join(checked_paths), "] and no HERON_DATA environmental variable found")
       elif not os.path.exists(heron_data):
         self.raiseAnError(IOError, "ERROR path", heron_data, "found in HERON_DATA environment variable does not seem to exist")
+      self.raiseADebug("HERON_DATA found at", os.path.abspath(heron_data))
       self._target_file = os.path.abspath(self._source.replace('%HERON_DATA%', heron_data))
     else:
       # check absolute path

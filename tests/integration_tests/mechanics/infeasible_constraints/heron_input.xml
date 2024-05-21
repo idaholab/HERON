@@ -30,7 +30,7 @@
     <Component name="Generator">
       <produces resource="electricity" dispatch="fixed">
         <capacity resource="electricity">
-          <sweep_values>1095,1098</sweep_values>
+          <sweep_values>1095,1098</sweep_values>  <!-- Here we are purposely under-specifying capacity to force a failure -->
         </capacity>
       </produces>
       <economics>
@@ -41,7 +41,7 @@
     <Component name="Electric_Grid_1">
       <demands resource="electricity" dispatch="fixed">
         <capacity>
-          <fixed_value>-2e4</fixed_value>
+          <fixed_value>-2e4</fixed_value> <!-- Dispatch is fixed at 2000, meaning we should fall short by 5, 3 units respectively and that should show up in the contraint log" -->
         </capacity>
       </demands>
       <economics>
@@ -66,7 +66,7 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='Speed' variable="Signal">%BASE_WORKING_DIR%/../../../TSA/Sine/arma.pk</ARMA>
+    <ARMA name='Speed' variable="Signal">%HERON_DATA%/TSA/Sine/arma.pk</ARMA>
   </DataGenerators>
 
 </HERON>

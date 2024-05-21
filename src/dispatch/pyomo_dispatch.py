@@ -3,6 +3,7 @@
 """
   pyomo-based dispatch strategy
 """
+import os
 import time as time_mod
 import pprint
 import numpy as np
@@ -321,9 +322,10 @@ class Pyomo(Dispatcher):
         print('Resource Map:')
         pprint.pprint(m.model.resource_index_map)
         log_infeasible_constraints(m.model, log_expression=True, log_variables=True)
-        logging.basicConfig(filename='constraint_violations.log', encoding='utf-8', level=logging.INFO)
+        log_name = 'constraint_violations.log'
+        logging.basicConfig(filename=log_name, encoding='utf-8', level=logging.INFO)
         raise DispatchError(
-          f"Solve was unsuccessful, see log file for more details! Status: {soln.solver.status} Termination: {soln.solver.termination_condition}"
+          f'Solve was unsuccessful, see log file located at: "{os.getcwd()}/{log_name}" for more details! Status: {soln.solver.status} Termination: {soln.solver.termination_condition}'
         )
 
       # try validating

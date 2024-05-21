@@ -386,11 +386,8 @@ class Interaction(Base):
     capfactor = vp_factory.make_input_specs('capacity_factor', descr=descr, allowed=['ARMA', 'CSV'])
     specs.addSub(capfactor)
 
-    descr = r"""provides the minimum value at which this component can act, in units of the indicated resource. """
+    descr = r"""provides the minimum value at which this component can act, as a percentage of the installed capacity. """
     minn = vp_factory.make_input_specs('minimum', descr=descr)
-    minn.addParam('resource', param_type=InputTypes.StringType,
-        descr=r"""indicates the resource that defines the minimum activity level for this component,
-              as with the component's capacity.""")
     specs.addSub(minn)
 
     return specs
@@ -409,7 +406,6 @@ class Interaction(Base):
     self._crossrefs = defaultdict(dict) # crossrefs objects needed (e.g. armas, etc), as {attr: {tag, name, obj})
     self._dispatchable = None           # independent, dependent, or fixed?
     self._minimum = None                # lowest interaction level, if dispatchable
-    self._minimum_var = None            # limiting variable for minimum
     self.ramp_limit = None              # limiting change of production in a time step
     self.ramp_freq = None               # time steps required between production ramping events
     self._function_method_map = {}      # maps things that call functions to the method within the function that needs calling
@@ -435,8 +431,6 @@ class Interaction(Base):
         self._set_valued_param(name, comp_name, item, mode)
         if name == '_capacity':
           self._capacity_var = item.parameterValues.get('resource', None)
-        elif item.getName() == 'minimum':
-          self._minimum_var = item.parameterValues.get('resource', None)
     # finalize some values
     resources = set(list(self.get_inputs()) + list(self.get_outputs()))
     ## capacity: if "variable" is None and only one resource in interactions, then that must be it
@@ -445,12 +439,6 @@ class Interaction(Base):
         self._capacity_var = list(resources)[0]
       else:
         self.raiseAnError(IOError, f'Component "{comp_name}": If multiple resources are active, "capacity" requires a "resource" specified!')
-    ## minimum: basically the same as capacity, functionally
-    if self._minimum and self._minimum_var is None:
-      if len(resources) == 1:
-        self._minimum_var = list(resources)[0]
-      else:
-        self.raiseAnError(IOError, f'Component "{comp_name}": If multiple resources are active, "minimum" requires a "resource" specified!')
 
   def _set_valued_param(self, name, comp, spec, mode):
     """
@@ -523,11 +511,21 @@ class Interaction(Base):
     """
     if raw:
       return self._minimum
-    meta['request'] = {self._minimum_var: None}
+    cap_var = self.get_capacity_var()
     if self._minimum is None:
-      evaluated = {self._capacity_var: 0.0}
+      evaluated = {cap_var: 0.0}
     else:
-      evaluated, meta = self._minimum.evaluate(meta, target_var=self._minimum_var)
+      meta['request'] = {cap_var: None}
+      evaluated, meta = self._minimum.evaluate(meta, target_var=cap_var)
+      # check that min value is acceptable [0,1]
+      # TODO it would be better to be able to check this before run-time, but we don't have a method
+      #   in place to check e.g. ARMA,
+      value = evaluated[cap_var]
+      if not (0 <= value <= 1):
+        self.raiseAnError(ValueError, f'While calculating minimum operating level for component "{self.tag}", ' +
+            f'an invalid percent was provided/calculated ({value}). Minimums should be between 0 and 1, inclusive.')
+      # convert percentage to real value
+      evaluated[cap_var] = self.get_capacity(meta)[0][cap_var] * value
     return evaluated, meta
 
   def get_sqrt_RTE(self):

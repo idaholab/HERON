@@ -4,13 +4,17 @@
     <author>E. Worsham</author>
     <created>2020-10-15</created>
     <description>
-      Tests having a minimum level for a demand component.
+      Tests having a minimum level for a demand component. A couple generating components
+      with no economics have two sinks to send to. The grid sink has a minimum load, but
+      is less profitable, while the general sink is more profitable. The dispatch should
+      show the grid sink taking the minimum value and the general sink taking the rest.
     </description>
     <classesTested>HERON</classesTested>
   </TestInfo>
 
     <Case name="Sizing">
       <mode>sweep</mode>
+      <debug/>
       <num_arma_samples>3</num_arma_samples>
       <time_discretization>
         <time_variable>Time</time_variable>
@@ -58,25 +62,25 @@
             <fixed_value>-2500</fixed_value>
           </capacity>
           <minimum>
-            <ARMA variable="Signal">flex</ARMA>
-            <multiplier>-100</multiplier>
+            <fixed_value>0.1</fixed_value>
+            <!-- <ARMA variable="Signal">flex</ARMA> -->
           </minimum>
         </demands>
         <economics>
           <lifetime>1</lifetime>
           <CashFlow name="e_sales" type="repeating" taxable="False" inflation="none">
             <driver>
-              <Function method="electric_source">transfers</Function>
+              <activity>electricity</activity>
             </driver>
             <reference_price>
-              <fixed_value>1.0</fixed_value>
+              <fixed_value>-1.0</fixed_value>
             </reference_price>
-            <reference_driver>
+            <!-- <reference_driver>
               <fixed_value>1</fixed_value>
             </reference_driver>
             <scaling_factor_x>
               <fixed_value>1</fixed_value>
-            </scaling_factor_x>
+            </scaling_factor_x> -->
           </CashFlow>
         </economics>
       </Component>
@@ -91,10 +95,10 @@
           <lifetime>3</lifetime>
           <CashFlow name="e_sales" type="repeating" taxable="False" inflation="none">
             <driver>
-              <Function method="electric_source">transfers</Function>
+              <activity>electricity</activity>
             </driver>
             <reference_price>
-              <fixed_value>10.0</fixed_value>
+              <fixed_value>-10.0</fixed_value>
             </reference_price>
           </CashFlow>
         </economics>
@@ -103,7 +107,6 @@
 
     <DataGenerators>
       <ARMA name='flex' variable="Signal">%HERON_DATA%/TSA/Sine/arma.pk</ARMA>
-      <Function name="transfers">transfers.py</Function>
     </DataGenerators>
 </HERON>
 

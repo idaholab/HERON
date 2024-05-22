@@ -28,3 +28,7 @@ The following are a selection of technical reports, conference proceedings, and 
 
 ### See More
 - [Integrated Energy Systems](https://ies.inl.gov/SitePages/Home.aspx)
+
+## Citing HERON
+HERON is included in the U.S. Department of Energy [CODE database](https://www.osti.gov/doecode/biblio/45038), which includes citation guidelines for several citation styles.
+DOI:10.11578/dc.20200929.2

@@ -563,6 +563,13 @@ class Template(TemplateBase, Base):
       self._remove_by_name(OSs, ['opt_soln'])
     elif case.get_mode() == 'opt':
       self._remove_by_name(OSs, ['sweep'])
+      # add capacity plot
+      if case.debug['enabled'] == False:
+        out_capacity_plot = ET.SubElement(OSs, 'Plot', attrib={'name': 'capacity_plot', 'subType': 'HERON.CapacityPlot'})
+        out_capacity_plot_source = ET.SubElement(out_capacity_plot, 'source')
+        out_capacity_plot_source.text = 'opt_soln'
+        out_capacity_plot_var = ET.SubElement(out_capacity_plot, 'vars')
+        out_capacity_plot_var.text = 'GRO_capacities, mean_NPV'
       # update plot 'opt_path' if necessary
       new_opt_objective = self._build_opt_metric_out_name(case)
       opt_path_plot_vars = OSs.find(".//Plot[@name='opt_path']").find('vars')
@@ -828,6 +835,9 @@ class Template(TemplateBase, Base):
       self._remove_by_name(steps, ['optimize', 'plot'])
     elif case.get_mode() == 'opt':
       self._remove_by_name(steps, ['sweep'])
+      if case.debug['enabled'] == False:
+        io_step = steps.find('IOStep')
+        io_step.append(self._assemblerNode('Output', 'OutStreams', 'Plot', 'capacity_plot'))
     if case.debug['enabled']:
       # repurpose the sweep multirun
       sweep = steps.findall('MultiRun')[0]

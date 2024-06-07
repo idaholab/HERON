@@ -1,0 +1,152 @@
+<Simulation verbosity="all">
+  <RunInfo>
+    <JobName>Opt_Runs_o</JobName>
+    <WorkingDir>Opt_Runs_o</WorkingDir>
+    <Sequence>optimize, plot</Sequence>
+    <batchSize>1</batchSize>
+  </RunInfo>
+
+  <Steps>
+    <MultiRun name="optimize">
+      <Input class="Files" type="">transfers</Input>
+      <Input class="Files" type="raven">inner_workflow</Input>
+      <Input class="Files" type="">heron_lib</Input>
+      <Model class="Models" type="Code">raven</Model>
+      <Optimizer class="Optimizers" type="BayesianOptimizer">cap_opt</Optimizer>
+      <Output class="DataObjects" type="PointSet">opt_eval</Output>
+      <SolutionExport class="DataObjects" type="PointSet">opt_soln</SolutionExport>
+      <Output class="OutStreams" type="Print">opt_soln</Output>
+    </MultiRun>
+    <IOStep name="plot">
+      <Input class="DataObjects" type="PointSet">opt_soln</Input>
+      <Output class="OutStreams" type="Plot">opt_path</Output>
+      <Output class="OutStreams" type="Print">opt_soln</Output>
+    </IOStep>
+  </Steps>
+
+  <VariableGroups>
+    <Group name="GRO_capacities">steamer_capacity, generator_capacity, electr_market_capacity, electr_flex_capacity</Group>
+    <Group name="GRO_outer_results">mean_NPV, std_NPV, med_NPV, mean_TotalActivity__steamer__production__steam, mean_TotalActivity__generator__production__electricity, mean_TotalActivity__generator__production__steam, mean_TotalActivity__electr_market__production__electricity, mean_TotalActivity__electr_flex__production__electricity, std_TotalActivity__steamer__production__steam, std_TotalActivity__generator__production__electricity, std_TotalActivity__generator__production__steam, std_TotalActivity__electr_market__production__electricity, std_TotalActivity__electr_flex__production__electricity, med_TotalActivity__steamer__production__steam, med_TotalActivity__generator__production__electricity, med_TotalActivity__generator__production__steam, med_TotalActivity__electr_market__production__electricity, med_TotalActivity__electr_flex__production__electricity</Group>
+    <Group name="GRO_outer_debug_dispatch" />
+    <Group name="GRO_outer_debug_synthetics" />
+    <Group name="GRO_outer_debug_cashflows" />
+  </VariableGroups>
+
+  <DataObjects>
+    <PointSet name="opt_eval">
+      <Input>GRO_capacities</Input>
+      <Output>GRO_outer_results</Output>
+    </PointSet>
+    <PointSet name="opt_soln">
+      <Input>trajID</Input>
+      <Output>iteration, accepted, GRO_capacities, GRO_outer_results</Output>
+    </PointSet>
+  </DataObjects>
+
+  <Models>
+    <Code name="raven" subType="RAVEN">
+      <executable></executable>
+      <outputExportOutStreams>disp_results</outputExportOutStreams>
+      <conversion>
+        <input source="../write_inner.py" />
+      </conversion>
+      <alias variable="denoises" type="input">Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:denoises</alias>
+      <alias variable="steamer_capacity" type="input">Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:steamer_capacity</alias>
+      <alias variable="generator_capacity" type="input">Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:generator_capacity</alias>
+      <alias variable="electr_market_capacity" type="input">Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:electr_market_capacity</alias>
+      <alias variable="electr_flex_capacity" type="input">Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:electr_flex_capacity</alias>
+    </Code>
+    <ROM name="gpROM" subType="GaussianProcessRegressor">
+      <Features>steamer_capacity,electr_flex_capacity</Features>
+      <Target>mean_NPV</Target>
+      <alpha>1e-8</alpha>
+      <n_restarts_optimizer>5</n_restarts_optimizer>
+      <normalize_y>True</normalize_y>
+      <kernel>Custom</kernel>
+      <custom_kernel>(Constant*Matern)</custom_kernel>
+      <anisotropic>True</anisotropic>
+      <multioutput>False</multioutput>
+    </ROM>
+  </Models>
+
+  <Distributions>
+    <Uniform name="steamer_capacity_dist">
+      <lowerBound>1.0</lowerBound>
+      <upperBound>10.0</upperBound>
+    </Uniform>
+    <Uniform name="electr_flex_capacity_dist">
+      <lowerBound>-2050.0</lowerBound>
+      <upperBound>-2000.0</upperBound>
+    </Uniform>
+  </Distributions>
+
+  <Samplers>
+    <Stratified name="LHS_samp">
+      <samplerInit />
+      <variable name="steamer_capacity">
+        <distribution>steamer_capacity_dist</distribution>
+        <grid construction="equal" steps="4" type="CDF">0 1</grid>
+      </variable>
+      <variable name="electr_flex_capacity">
+        <distribution>electr_flex_capacity_dist</distribution>
+        <grid construction="equal" steps="4" type="CDF">0 1</grid>
+      </variable>
+    </Stratified>
+  </Samplers>
+
+  <Optimizers>
+    <BayesianOptimizer name="cap_opt">
+      <objective>mean_NPV</objective>
+      <constant name="denoises">3</constant>
+      <TargetEvaluation class="DataObjects" type="PointSet">opt_eval</TargetEvaluation>
+      <samplerInit>
+        <limit>100</limit>
+        <type>max</type>
+        <writeSteps>every</writeSteps>
+      </samplerInit>
+      <Sampler class="Samplers" type="Stratified">LHS_samp</Sampler>
+      <ROM class="Models" type="ROM">gpROM</ROM>
+      <ModelSelection>
+        <Duration>1</Duration>
+        <Method>Internal</Method>
+      </ModelSelection>
+      <convergence>
+        <acquisition>1e-8</acquisition>
+        <persistence>5</persistence>
+        <gradient>1e-4</gradient>
+      </convergence>
+      <Acquisition>
+        <ExpectedImprovement>
+          <optimizationMethod>differentialEvolution</optimizationMethod>
+          <seedingCount>30</seedingCount>
+        </ExpectedImprovement>
+      </Acquisition>
+      <variable name="steamer_capacity">
+        <distribution>steamer_capacity_dist</distribution>
+      </variable>
+      <constant name="generator_capacity">-100.0</constant>
+      <constant name="electr_market_capacity">-2.0</constant>
+      <variable name="electr_flex_capacity">
+        <distribution>electr_flex_capacity_dist</distribution>
+      </variable>
+    </BayesianOptimizer>
+  </Optimizers>
+
+  <Files>
+    <Input name="inner_workflow" type="raven">../inner.xml</Input>
+    <Input name="heron_lib">../heron.lib</Input>
+    <Input name="transfers">../%HERON_DATA%/XML_check/transfers.py</Input>
+  </Files>
+
+  <OutStreams>
+    <Print name="opt_soln">
+      <type>csv</type>
+      <source>opt_soln</source>
+      <clusterLabel>trajID</clusterLabel>
+    </Print>
+    <Plot name="opt_path" subType="OptPath">
+      <source>opt_soln</source>
+      <vars>GRO_capacities, mean_NPV</vars>
+    </Plot>
+  </OutStreams>
+</Simulation>

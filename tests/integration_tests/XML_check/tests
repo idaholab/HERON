@@ -39,4 +39,17 @@
   [../]
  [../]
 
+ [./XML_check_opt_type_BO_mean_NPV]
+  type = HeronIntegration
+  kind = heron_only
+  input = optimization_type_BO_mean_NPV/heron_input.xml
+  [./xml_check]
+    type = XML
+    unordered = true
+    output = optimization_type_BO_mean_NPV/outer.xml
+    gold_files = optimization_type_BO_mean_NPV_o/outer.xml
+    ignored_nodes = Models|Code@name:raven|executable
+  [../]
+ [../]
+
 []

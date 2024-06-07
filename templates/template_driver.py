@@ -828,6 +828,12 @@ class Template(TemplateBase, Base):
       self._remove_by_name(steps, ['optimize', 'plot'])
     elif case.get_mode() == 'opt':
       self._remove_by_name(steps, ['sweep'])
+      optimizer = template.find("Steps/MultiRun[@name='optimize']/Optimizer[@class='Optimizers']")
+      if case.get_opt_strategy() == 'BayesianOpt':
+        optimizer.attrib['type'] = 'BayesianOptimizer'
+      else:
+        optimizer.attrib['type'] = case.get_opt_strategy()
+
     if case.debug['enabled']:
       # repurpose the sweep multirun
       sweep = steps.findall('MultiRun')[0]

@@ -24,6 +24,7 @@ class Function(ValuedParam):
         in the \xmlNode{DataGenerators} node.""")
     spec.addParam('method', param_type=InputTypes.StringType,
         descr=r"""the name of the \xmlNode{DataGenerator} from which this value should be taken.""")
+    # TODO add generic spec that is read in as-is
     return spec
 
   def __init__(self):

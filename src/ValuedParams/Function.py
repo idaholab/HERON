@@ -24,7 +24,6 @@ class Function(ValuedParam):
         in the \xmlNode{DataGenerators} node.""")
     spec.addParam('method', param_type=InputTypes.StringType,
         descr=r"""the name of the \xmlNode{DataGenerator} from which this value should be taken.""")
-    # TODO add generic spec that is read in as-is
     return spec
 
   def __init__(self):
@@ -54,17 +53,20 @@ class Function(ValuedParam):
     self._method_name = spec.parameterValues['method']
     return [self._method_name]
 
-  def evaluate(self, inputs, target_var=None, aliases=None):
+  def evaluate(self, inputs, target_var=None, aliases=None, custom_input=None):
     """
       Evaluate this ValuedParam, wherever it gets its data from
       @ In, inputs, dict, stuff from RAVEN, particularly including the keys 'meta' and 'raven_vars'
       @ In, target_var, str, optional, requested outgoing variable name if not None
       @ In, aliases, dict, optional, alternate variable names for searching in variables
+      @ In, custom_input, list, optional, additional input nodes from user input
       @ Out, data, dict, dictionary of resulting evaluation as {vars: vals}
       @ Out, meta, dict, dictionary of meta (possibly changed during evaluation)
     """
     if aliases is None:
       aliases = {}
+    if custom_input is not None:
+      inputs['HERON']['custom_input'] = custom_input
     # TODO how to handle aliases for functions?
     # the "request" is what we're asking for from the function, the first argument given.
     # -> note it can be None if the function is not a transfer-type function

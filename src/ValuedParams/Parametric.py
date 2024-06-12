@@ -76,12 +76,13 @@ class Parametric(ValuedParam):
     """
     self._parametric = value
 
-  def evaluate(self, inputs, target_var=None, aliases=None):
+  def evaluate(self, inputs, target_var=None, aliases=None, custom_input=None):
     """
       Evaluate this ValuedParam, wherever it gets its data from
       @ In, inputs, dict, stuff from RAVEN, particularly including the keys 'meta' and 'raven_vars'
       @ In, target_var, str, optional, requested outgoing variable name if not None
       @ In, aliases, dict, optional, alternate variable names for searching in variables
+      @ In, custom_input, list, optional, additional input nodes from user input
       @ Out, value, dict, dictionary of resulting evaluation as {vars: vals}
       @ Out, meta, dict, dictionary of meta (possibly changed during evaluation)
     """

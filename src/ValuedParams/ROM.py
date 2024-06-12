@@ -98,12 +98,13 @@ class ROM(ValuedParam):
     self._inputs[name] = {'vp': vp, 'signals': [signal]}
     return signal
 
-  def evaluate(self, inputs, target_var=None, aliases=None):
+  def evaluate(self, inputs, target_var=None, aliases=None, custom_input=None):
     """
       Evaluate this ValuedParam, wherever it gets its data from
       @ In, inputs, dict, run information from RAVEN, including meta and other run info
       @ In, target_var, str, optional, requested outgoing variable name if not None
       @ In, aliases, dict, optional, alternate variable names for searching in variables
+      @ In, custom_input, list, optional, additional input nodes from user input
       @ Out, value, dict, dictionary of resulting evaluation as {vars: vals}
       @ Out, inputs, dict, possibly-modified dictionary of run information
     """

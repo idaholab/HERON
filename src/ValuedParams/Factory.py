@@ -51,7 +51,7 @@ class ValuedParamFactory(EntityFactory):
     for typ, klass in self._registeredTypes.items():
       if typ in allowed:
         spec.addSub(klass.get_input_specs())
-        # addons
+    # addons
     spec.addSub(
       InputData.parameterInputFactory(
         'multiplier',
@@ -59,6 +59,12 @@ class ValuedParamFactory(EntityFactory):
         descr=r"""Multiplies any value obtained by this parameter by the given value. \default{1}"""
       )
     )
+    addl_spec = InputData.parameterInputFactory(
+      'AdditionalInfo',
+      descr=r"""Additional arbitrary input information. TODO more info."""
+    )
+    addl_spec.setStrictMode(False)
+    spec.addSub(addl_spec)
     return spec
 
 factory = ValuedParamFactory('ValuedParam')

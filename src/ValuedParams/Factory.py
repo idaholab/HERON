@@ -61,7 +61,12 @@ class ValuedParamFactory(EntityFactory):
     )
     addl_spec = InputData.parameterInputFactory(
       'AdditionalInfo',
-      descr=r"""Additional arbitrary input information. TODO more info."""
+      descr=r"""Additional arbitrary input information. For custom-defined parameters, such as \xmlNode{Function},
+            the additional information will be passed as part of the `texttt{meta[``HERON''][``custom_input'']}
+            passed to the user-supplied custom evaluation definition.
+            In the case of the \xmlNode{Function}, this is passed to the method in the Python module indicated by
+            the user, and will be unique for each use of the \xmlNode{Function} in the HERON input. Note that
+            the custom input nodes are not checked in any way by the input parsing."""
     )
     addl_spec.setStrictMode(False)
     spec.addSub(addl_spec)

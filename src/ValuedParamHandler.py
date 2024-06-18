@@ -26,32 +26,7 @@ class ValuedParamHandler(MessageUser):
     with a variety of sources (fixed values, parametric values, data histories, function
     evaluations, etc).
   """
-  @classmethod
-  def get_input_specs(cls, name, descr=""):
-    """
-      Template for parameters that can take a scalar, an ARMA history, or a function
-      @ In, name, string, name for spec (tag)
-      @ In, descr, string, base description for item (this will add to it)
-      @ Out, spec, InputData, value-based spec
-    """
-    spec = InputData.parameterInputFactory(name,
-        descr=descr + r"""This value can be taken from any \emph{one} of the sources described below.""")
-    # VP sources
-    for vp_type in VPFactory.knownTypes():
-      spec.addSub(vp_type.get_input_specs())
-    # addons
-    spec.addSub(InputData.parameterInputFactory('multiplier', contentType=InputTypes.FloatType,
-        descr=r"""Multiplies any value obtained by this parameter by the given value. \default{1}"""))
-    # for when the result obtained needs to grow from year to year
-    # TODO
-    # growth = InputData.parameterInputFactory('growth', contentType=InputTypes.FloatType,
-    #     descr=r"""if this node is given, the value will be adjusted from cycle to cycle by the provided amount.""")
-    # growth_mode = InputTypes.makeEnumType('growthType', 'growthType', ['linear', 'exponential'])
-    # growth.addParam('mode', param_type=growth_mode, required=True,
-    #     descr=r"""determines whether the growth factor should be taken as linear or exponential (compounding).""")
-    # spec.addSub(growth)
-    return spec
-
+  # NOTE: the inputSpec is defined in the ValuedParams Factory module.
   def __init__(self, name):
     """
       Constructor.
@@ -59,11 +34,12 @@ class ValuedParamHandler(MessageUser):
       @ Out, None
     """
     super().__init__()
-    self.name = name         # member whom this ValuedParam provides values, e.g. Component.economics.alpha
-    self._vp = None          # ValuedParam instance
-    self._multiplier = None  # scalar multiplier for evaluation values
-    self._growth_val = None  # used to grow the value year-by-year
-    self._growth_mode = None # mode for growth (e.g. exponenetial, linear)
+    self.name = name           # member whom this ValuedParam provides values, e.g. Component.economics.alpha
+    self._vp = None            # ValuedParam instance
+    self._multiplier = None    # scalar multiplier for evaluation values
+    self._growth_val = None    # used to grow the value year-by-year
+    self._growth_mode = None   # mode for growth (e.g. exponenetial, linear)
+    self._custom_input = None  # additional info from input to pass through
 
   def __repr__(self):
     """
@@ -116,6 +92,8 @@ class ValuedParamHandler(MessageUser):
       # elif sub.getName() == 'growth':
       #   self._growth_val = sub.value
       #   self._growth_mode = sub.parameterValues['mode']
+      elif sub.getName() == 'AdditionalInfo':
+        self._custom_input = sub.additionalInput
     if not found:
       self.raiseAnError(IOError, f'Component "{comp_name}" node <{spec.getName()}> expected a ValuedParam ' +
                        f'to define its value source, but none was found! Options include: {knownVPs}')
@@ -203,14 +181,14 @@ class ValuedParamHandler(MessageUser):
     """
     self._vp.set_object(obj)
 
-  def evaluate(self, *args, util_factor=False, **kwargs):
+  def evaluate(self, *args, **kwargs):
     """
       Evaluate the ValuedParam, wherever it gets its data from
       @ In, args, list, positional arguments for ValuedParam
       @ In, kwargs, dict, keyword arguements for ValuedParam
       @ Out, evaluate, object, stuff from ValuedParam evaluation
     """
-    data, meta = self._vp.evaluate(*args, **kwargs)
+    data, meta = self._vp.evaluate(*args, custom_input=self._custom_input, **kwargs)
     if self._multiplier is not None:
       for key in data:
         data[key] *= self._multiplier

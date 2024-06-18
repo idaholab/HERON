@@ -51,7 +51,7 @@ class ValuedParamFactory(EntityFactory):
     for typ, klass in self._registeredTypes.items():
       if typ in allowed:
         spec.addSub(klass.get_input_specs())
-        # addons
+    # addons
     spec.addSub(
       InputData.parameterInputFactory(
         'multiplier',
@@ -59,6 +59,17 @@ class ValuedParamFactory(EntityFactory):
         descr=r"""Multiplies any value obtained by this parameter by the given value. \default{1}"""
       )
     )
+    addl_spec = InputData.parameterInputFactory(
+      'AdditionalInfo',
+      descr=r"""Additional arbitrary input information. For custom-defined parameters, such as \xmlNode{Function},
+            the additional information will be passed as part of the `texttt{meta[``HERON''][``custom_input'']}
+            passed to the user-supplied custom evaluation definition.
+            In the case of the \xmlNode{Function}, this is passed to the method in the Python module indicated by
+            the user, and will be unique for each use of the \xmlNode{Function} in the HERON input. Note that
+            the custom input nodes are not checked in any way by the input parsing."""
+    )
+    addl_spec.setStrictMode(False)
+    spec.addSub(addl_spec)
     return spec
 
 factory = ValuedParamFactory('ValuedParam')

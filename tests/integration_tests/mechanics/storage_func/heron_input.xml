@@ -113,6 +113,14 @@
           </driver>
           <reference_price>
             <Function method="flex_price">transfers</Function>
+            <AdditionalInfo>
+              <General>
+                <TheAnswer>42</TheAnswer>
+                <TheQuestion>unknown</TheQuestion>
+              </General>
+              <scalar>-2</scalar>
+              <loc>-0.5</loc>
+            </AdditionalInfo>
           </reference_price>
         </CashFlow>
       </economics>

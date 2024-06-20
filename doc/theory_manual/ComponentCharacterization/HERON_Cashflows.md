@@ -60,7 +60,7 @@ $$ F_y = \frac{\lambda_{p,y}^F}{(1+r)^y}\hat{F} $$
 
 These get applied to the summed yearly cashflows. Note that cashflows are typically a function of dispatch or capacity in HERON:
 
-$$F_y = f(\bm{c}, {}^s\bm{D}^\star)$$
+$$F_y = f(\mathbf{c}, {}^s\mathbf{D}^\star)$$
 
 ## **Types of Cash Flows**
 

@@ -19,14 +19,14 @@ where $\mathcal{S}$ is the statistical metric and $\mathbb{O}$ is a set of econo
 ### *Sweep Mode*
 
 If selecting sweep mode, the outer level runs a parametric sweep over a list of capacity values $c$ as:
-$$ \underset{\bm{c}}{\text{sweep}} \ \ \mathcal{S}( \mathbb{O} )$$
+$$ \underset{\mathbf{c}}{\text{sweep}} \ \ \mathcal{S}( \mathbb{O} )$$
 
 Multiple statistics can be reported back per iteration within the parametric sweep, shown here for $K$ different statistics (e.g., expected value, minimum, 95% percentile):
-$$ \underset{\bm{c}}{\text{sweep}} \ \ \Big[\mathcal{S}_0( \mathbb{O} ), \ \mathcal{S}_1( \mathbb{O} ), \ ..., \ \mathcal{S}_K( \mathbb{O} ) \Big]$$
+$$ \underset{\mathbf{c}}{\text{sweep}} \ \ \Big[\mathcal{S}_0( \mathbb{O} ), \ \mathcal{S}_1( \mathbb{O} ), \ ..., \ \mathcal{S}_K( \mathbb{O} ) \Big]$$
 
 Additionally, and only in sweep mode, HERON can report back multiple economic metrics, shown below for $M$ different metrics:
 
-$$ \underset{\bm{c}}{\text{sweep}} \ \ \begin{bmatrix} \mathcal{S}_0( \mathbb{O}_0 ), \ \mathcal{S}_1( \mathbb{O}_0 ), \ ..., \ \mathcal{S}_K( \mathbb{O}_0 ) \\ \vdots \\ \mathcal{S}_0( \mathbb{O}_M ), \ \mathcal{S}_1( \mathbb{O}_M ), \ ..., \ \mathcal{S}_K( \mathbb{O}_M ) \end{bmatrix} $$
+$$ \underset{\mathbf{c}}{\text{sweep}} \ \ \begin{bmatrix} \mathcal{S}_0( \mathbb{O}_0 ), \ \mathcal{S}_1( \mathbb{O}_0 ), \ ..., \ \mathcal{S}_K( \mathbb{O}_0 ) \\ \vdots \\ \mathcal{S}_0( \mathbb{O}_M ), \ \mathcal{S}_1( \mathbb{O}_M ), \ ..., \ \mathcal{S}_K( \mathbb{O}_M ) \end{bmatrix} $$
 
 NOTE: multiple metrics is not available when selecting levelized cost. Selection for other metrics is limited to NPV, IRR, and PI.
 
@@ -39,25 +39,25 @@ If selecting opt mode, the outer level uses an optimizer algorithm to determine 
 
 Regardless of optimization method, the overall problem is stated as
 
-$$ \underset{\bm{c}}{\text{opt}} \ \ \mathcal{S}( \mathbb{O}_m )$$
+$$ \underset{\mathbf{c}}{\text{opt}} \ \ \mathcal{S}( \mathbb{O}_m )$$
 
 where:
 
-- $\bm{c}$ : component (e.g., nuclear, wind turbines) capacities
+- $\mathbf{c}$ : component (e.g., nuclear, wind turbines) capacities
 - $\mathcal{S}$ : statistical operator (e.g., expected value, value at risk)
 - $\mathbb{O}_m$ : a set of economic metrics from individual inner realizations
 - $m$ : subscript for some economic metric (e.g., net present value, levelized cost)
-- $\bm{c}^\star$ : optimal set of capacities for the given objective
+- $\mathbf{c}^\star$ : optimal set of capacities for the given objective
 
 Depending on the statistical metric (and even moreso the economic metric), the direction of optimization changes. For example if the economic metric is the net present value, if the statistical metric is expected value then we would want to maximize:
-$$ \underset{\bm{c}}{\text{max}} \ \ \mathbb{E}( \mathbb{O}_{NPV} )$$
+$$ \underset{\mathbf{c}}{\text{max}} \ \ \mathbb{E}( \mathbb{O}_{NPV} )$$
 
 If the statistic is the value-at-risk of the distribution at a given probability level, we'd want to minimize:
-$$ \underset{\bm{c}}{\text{min}} \ \ \mathbb{V}_{0.05}( \mathbb{O}_{NPV} )$$
+$$ \underset{\mathbf{c}}{\text{min}} \ \ \mathbb{V}_{0.05}( \mathbb{O}_{NPV} )$$
 
 The optimal set of capacities for the given objective is
 
-$$ \bm{c}^\star = \argmax_{\bm{c}} \ \mathcal{S}( \mathbb{O}_{NPV} )$$
+$$ \mathbf{c}^\star = \argmax_{\mathbf{c}} \ \mathcal{S}( \mathbb{O}_{NPV} )$$
 
 ## Inner Level
 

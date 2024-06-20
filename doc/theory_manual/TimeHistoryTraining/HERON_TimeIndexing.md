@@ -19,13 +19,13 @@ $$\{\ \cup \ \mathbb{N}_u \ | u \in \mathbb{U}_Y \}=\mathbb{N}_Y$$
 
 We can collect the number of segments each cluster represents as a multiplicity vector:
 
-$$\bm{m} = [\ \ \text{len}(\mathbb{N}_u) \ | \ u \in \mathbb{U}_Y \ ]$$
+$$\mathbf{m} = [\ \ \text{len}(\mathbb{N}_u) \ | \ u \in \mathbb{U}_Y \ ]$$
 
 The stochastic profiles which will be returned from the trained model will then have a shape of $Y \times U \times T$ and is given as
-$$ {}^s\bm{W} $$
+$$ {}^s\mathbf{W} $$
 
 for a given evaluation $s$ of some stochastic profile generator. The value of the synthetic signal at some timestep $t$ of cluster $u$ during year $y$ is indexed as
-$$ {}^s\bm{W}_{y,u,t} $$
+$$ {}^s\mathbf{W}_{y,u,t} $$
 
 This stochastic profile could have an additional dimension if multiple signals are produced in one profile.
 

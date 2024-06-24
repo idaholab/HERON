@@ -48,11 +48,11 @@ For the different component types, the dispatch activity is tracked via the foll
 
 The capacities are applied as a global upper bound on the dispatch when defined as flexible:
 
-$$ m_p \leq D_{p,x,y,u,t} \leq f_{p,y,u,t} c_p \ \forall \ \begin{cases} p \in \mathbb{P}^\prime \\ x\in \mathbb{X} \\ y\in \mathbb{Y} \\u\in \mathbb{U}_Y \\t\in \mathbb{T} \end{cases}  $$
+$$ m_p \leq D_{p,x,y,u,t} \leq f_{p,y,u,t} c_p \ \forall \ \begin{cases} p \in \mathbb{P}^\prime \\ x\in \mathbb{X} \\ y\in \mathbb{Y} \\ u\in \mathbb{U}_Y \\ t\in \mathbb{T} \end{cases}  $$
 
 The minimum $m_p$ defaults to 0 unless specified; the capacity factor $f_{p,y,u,t}$ defaults to 1. In the default case, the bounds on dispatch are:
 
-$$ 0 \leq D_{p,x,y,u,t} \leq c_p \ \forall \ \begin{cases} p \in \mathbb{P}^\prime \\ x\in \mathbb{X} \\ y\in \mathbb{Y} \\u\in \mathbb{U}_Y \\t\in \mathbb{T} \end{cases}  $$
+$$ 0 \leq D_{p,x,y,u,t} \leq c_p \ \forall \ \begin{cases} p \in \mathbb{P}^\prime \\ x\in \mathbb{X} \\ y\in \mathbb{Y} \\ u\in \mathbb{U}{}_Y \\ t\in \mathbb{T} \end{cases}  $$
 
 Otherwise the components will just dispatch at a fixed level based on their capacity. We can also define the specific collection of dispatch actions taken within a specific scenario (i.e., for a given stochastic profile) as
 
@@ -66,6 +66,6 @@ where we're not exactly indexing per scenario, it's more of a response of the di
 
 The optimal dispatch is defined as one which maximizes an inner objective function as shown below:
 
-$${}^s\mathbf{D}^\star_{p,x,\hat{y},\hat{u},t} = \argmax_D \ \sum_{P,X,T_{U}} {}^s\hat{F}_{hourly} \Big|_{\hat{u},\hat{y}}$$
+$${}^s\mathbf{D}^\star_{p,x,\hat{y},\hat{u},t} = \underset{D}{\text{arg max}} \ \sum_{P,X,T_{U}} {}^s\hat{F}_{hourly} \Big|_{\hat{u},\hat{y}}$$
 
 Here, the objective is to maximize the sum of all *hourly* cashflows for all components, all resources, and all times per segment **for each** cluster/segment, **for each** year, **for each** scenario.

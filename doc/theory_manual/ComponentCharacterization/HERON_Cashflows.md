@@ -119,28 +119,28 @@ $$R_p \in \{3,5,7,10,15\}. $$
 
 According to MACRS, we would have a depreciation rate $\beta_{p,y}$ per year. For example, for $R_p=3$ the rates would be
 
-$$ \beta_{p,y}\Big|_{{}_{R_p=3}} =
+$$\beta_{p,y}\Big|_{R_p=3} =
 \begin{cases}
-33.33\hspace{0.5cm} \text{if } y = nL_p + 1 \ \forall \ n \in \mathbb{N}_p\\
-44.45\hspace{0.5cm} \text{if } y = nL_p + 2 \ \forall \ n \in \mathbb{N}_p\\
-14.81\hspace{0.5cm} \text{if } y = nL_p + 3 \ \forall \ n \in \mathbb{N}_p\\
-7.41\hspace{0.7cm} \text{if } y = nL_p + 4\ \forall \ n \in \mathbb{N}_p\\
-0\hspace{0.75cm} \text{elsewhere }
+33.33\hspace{0.5cm} \ \ \text{if } y = nL_p + 1 \ \forall \ n \in \mathbb{N}_p\\
+44.45\hspace{0.5cm} \ \ \text{if } y = nL_p + 2 \ \forall \ n \in \mathbb{N}_p\\
+14.81\hspace{0.5cm} \ \ \text{if } y = nL_p + 3 \ \forall \ n \in \mathbb{N}_p\\
+7.41\hspace{0.7cm} \ \ \text{if } y = nL_p + 4\ \forall \ n \in \mathbb{N}_p\\
+0\hspace{0.75cm} \ \ \text{elsewhere }
 \end{cases}$$
 
 Note that no depreciation is applied during the construction year $y=0$. Users can alternatively apply custom depreciation rate schedules. To model a depreciation asset, TEAL applies two additional cash flows to the one-time CAPEX. First is a positive cash flow representing the tax credit that helps recuperate the depreciation. It is untaxed, but inflation *is* applied:
 
-$$B^+_{p,y} = \beta_{p,y}\nu^B_{p,y}A_{p,0}.  $$
+$$B_{p,y}^+ = \beta_{p,y}\nu^B_{p,y}A_{p,0}.$$
 
 Note that within $A_{p,0}$ is the term $\epsilon_{p,y}^A$ which applies the capital cost ONLY on the first year of construction (and subsequent reconstructions). In TEAL, the driver of the cash flow is the entire first year cash flow. Since $R_p \leq L_p$ only a singular capital cost is applied per component lifetime. For a more complete definition, we would repeat the depreciation process again per lifetime (this is accounted for in the definition of $\beta$).
 
 A second, negative cash flow is also applied to represent the depreciation of the asset's value. This is similar to the first positive cash flow but it is taxed:
 
-$$B^-_{p,y} = \beta_{p,y}\lambda^B_{p,y}A_{p,0}.  $$
+$$B_{p,y}^- = \beta_{p,y}\lambda^B_{p,y}A_{p,0}.$$
 
 If we collect all like terms, the actual CAPEX cash flow will look like:
 
-$$ \begin{align*} \sum_{j=\{A,B\},\ k=\{+,-\}} F_j^k = -\lambda^A_{p,y}A_{p,y} + B^+_{p,y} - B^-_{p,y} &= -\lambda^A_{p,y}A_y + \beta_{p,y}\nu^B_{p,y}A_{p,0} - \beta_{p,y}\lambda^B_{p,y}A_{p,0} \\
+$$\begin{align*} \sum_{j=\{A,B\},\ k=\{+,-\}} F_j^k = -\lambda_{p,y}A_{p,y}^A + B_{p,y}^+ - B_{p,y}^- &= -\lambda_{p,y}^A A_y + \beta_{p,y}\nu^B_{p,y}A_{p,0} - \beta_{p,y}\lambda^B_{p,y}A_{p,0} \\
 &= -\lambda^A_{p,y}A_y + \beta_{p,y}(\nu^B_{p,y} - \lambda^B_{p,y})A_{p,0} \\
 &= -\lambda^A_{p,y}A_y + \beta_{p,y}\nu^B_{p,y}(1 - \tau^B_{p,y})A_{p,0}
 \end{align*}$$
@@ -152,15 +152,15 @@ If levelized cost of capital is selected, we should also collect the amortizatio
 
 There are fixed yearly expenditures that are typically just indexed by component for all years after first "construction" year:
 
-$$ \hat{F}^{yearly}_{p,y} \equiv \Gamma_{p,y>0} =  \alpha^{\Gamma}_p \left(\frac{c_p}{c_p^{\Gamma\prime}} \right)^{\chi_p^\Gamma} $$
+$$\hat{F}_{p,y}^\text{yearly} \equiv \Gamma_{p,y>0} = \alpha_p^\Gamma \left(\frac{c_p}{c_p^{\Gamma\prime}} \right)^{\chi_p^\Gamma}$$
 
 or
 
-$$ \Gamma_{p,y} = \epsilon_y \alpha^{\Gamma}_p \left(\frac{c_p}{c_p^{\Gamma\prime}} \right)^{\chi_p^\Gamma} = \epsilon_y\alpha^{\Gamma}_p \left(\frac{c_p}{c_p^{\Gamma\prime}} \right)^{\chi_p^\Gamma}  $$
+$$\Gamma_{p,y} = \epsilon_y \alpha^{\Gamma}_p \left(\frac{c_p}{c_p^{\Gamma\prime}} \right)^{\chi_p^\Gamma} = \epsilon_y\alpha^{\Gamma}_p \left(\frac{c_p}{c_p^{\Gamma\prime}} \right)^{\chi_p^\Gamma}  $$
 
 where we define a parameter to zero-out terms in year 0
 
-$$ \epsilon_{y} =
+$$\epsilon_{y} =
 \begin{cases}
 0\hspace{0.5cm} \text{if } y = 0 \ \forall \ y \in \mathbb{Y}\\
 1\hspace{0.5cm} \text{elsewhere }

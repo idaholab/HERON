@@ -60,12 +60,16 @@ $${}^s\mathbf{D} \equiv \mathbf{D}(s)$$
 
 or perhaps more explicitly,
 
-$${}^s\mathbf{D} \equiv \mathbf{D}({}^s\mathbf{W})$$
+```math
+{}^s\mathbf{D} \equiv \mathbf{D}({}^s\mathbf{W})
+```
 
 where we're not exactly indexing per scenario, it's more of a response of the dispatch to a given scenario $s$ and denote it as shown above.
 
 The optimal dispatch is defined as one which maximizes an inner objective function as shown below:
 
-$${}^s\mathbf{D}^\star_{p,x,\hat{y},\hat{u},t} = \underset{D}{\text{arg max}} \ \sum_{P,X,T_{U}} {}^s\hat{F}_{hourly} \Big|_{\hat{u},\hat{y}}$$
+```math
+{}^s\mathbf{D}^\star_{p,x,\hat{y},\hat{u},t} = \underset{D}{\text{arg max}} \ \sum_{P,X,T_{U}} {}^s\hat{F}_{hourly} \Big|_{\hat{u},\hat{y}}
+```
 
 Here, the objective is to maximize the sum of all *hourly* cashflows for all components, all resources, and all times per segment **for each** cluster/segment, **for each** year, **for each** scenario.

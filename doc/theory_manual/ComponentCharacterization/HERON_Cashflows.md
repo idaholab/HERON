@@ -152,18 +152,20 @@ If levelized cost of capital is selected, we should also collect the amortizatio
 
 There are fixed yearly expenditures that are typically just indexed by component for all years after first "construction" year:
 
-$$\hat{F}_{p,y}^\text{yearly} \equiv \Gamma_{p,y>0} = \alpha_p^\Gamma \left(\frac{c_p}{c_p^{\Gamma\prime}} \right)^{\chi_p^\Gamma}$$
+```math
+\hat{F}_{p,y}^\text{yearly} \equiv \Gamma_{p,y>0} = \alpha_p^\Gamma \left(\frac{c_p}{c_p^{\Gamma\prime}} \right)^{\chi_p^\Gamma}
+```
 
 or
 
-$$\Gamma_{p,y} = \epsilon_y \alpha^{\Gamma}_p \left(\frac{c_p}{c_p^{\Gamma\prime}} \right)^{\chi_p^\Gamma} = \epsilon_y\alpha^{\Gamma}_p \left(\frac{c_p}{c_p^{\Gamma\prime}} \right)^{\chi_p^\Gamma}  $$
+$$\Gamma_{p,y} = \epsilon_y \alpha_p^{\Gamma} \left(\frac{c_p}{c_p^{\Gamma\prime}} \right)^{\chi_p^\Gamma} = \epsilon_y\alpha^{\Gamma}_p \left(\frac{c_p}{c_p^{\Gamma\prime}} \right)^{\chi_p^\Gamma}  $$
 
 where we define a parameter to zero-out terms in year 0
 
 $$\epsilon_{y} =
 \begin{cases}
-0\hspace{0.5cm} \text{if } y = 0 \ \forall \ y \in \mathbb{Y}\\
-1\hspace{0.5cm} \text{elsewhere }
+0\hspace{0.5cm} \ \text{if } y = 0 \ \forall \ y \in \mathbb{Y}\\
+1\hspace{0.5cm} \ \text{elsewhere }
 \end{cases}$$
 
 These could potentially have different costs per year (e.g., $\alpha^{\Gamma}_{p,y}$). But for now only indexed by component and driven by the component capacity.
@@ -175,15 +177,16 @@ $$ \Gamma_{p,y}^+,  \Gamma_{p,y}^-$$
 ### *Recurring Hourly*
 
 The final type of cashflows, which is the most complex, is the hourly recurring cashflows. In reality, the "yearly" and "hourly" cash flows should be classified as pertaining to some macro step size (years) and a pivot parameter (at a smaller resolution, could be 15-min). When HERON runs dispatch optimization and collects all chosen dispatch strategies, it sends to TEAL a yearly sum of these cashflows. For our definition, we retain the subscript $y$ for the generic cashflow $F$ but write it as
-
-$$ \hat{F}^{hourly}_{p,y} \equiv H_{p,y>0}= \sum\limits^X_{x=0} \sum\limits^U_{u=0} m_{y,u}\sum\limits^T_{t=0} \alpha_{p,x,y,u,t}^H \left(\frac{D_{p,x,y,u,t}}{D^{H\prime}_{p,x,y,u,t}} \right)^{\chi_{p,x,y,u,t}^H}$$
+```math
+\hat{F}_{p,y}^{hourly} \equiv H_{p,y>0} = \sum\limits_{x=0}^X \sum\limits_{u=0}^U m_{y,u} \sum\limits_{t=0}^T \alpha_{p,x,y,u,t}^H \left( \frac{D_{p,x,y,u,t}}{D_{p,x,y,u,t}^{H \prime}} \right)^{\chi_{p,x,y,u,t}^H}
+```
 
 where $m_{y,u}$ is the multiplicity per cluster. This is an all-encompassing generic definition for an hourly cashflow. Note that the cashflow driver is no longer capacity, rather the dispatch (or production) of a given resource per component and time. Time is indexed further by year, cluster, and hour. Because it looks complex to explicitly specify all five indeces, we could instead use a notation
 
-$$ i \equiv \{p,x,y,u,t\}$$
+$$i \equiv \{p,x,y,u,t\}$$
 
 and the $\epsilon_y$ parameter from the recurring yearly cash flow so that
 
-$$ H_{p,y}= \epsilon_y  \sum\limits^X_{x=0} \sum\limits^U_{u=0} m_{y,u}\sum\limits^T_{t=0} \alpha_{i}^H \left(\frac{D_{i}}{D^{H\prime}_{i}} \right)^{\chi_{i}^H}$$
+$$H_{p,y} = \epsilon_y \sum\limits_{x=0}^X \sum\limits_{u=0}^U m_{y,u} \sum\limits_{t=0}^T \alpha_{i}^H \left( \frac{D_{i}}{D_{i}^{H\prime}} \right)^{\chi_{i}^H}$$
 
 as a shorthand to demonstrate that we're indexing by all five indeces $\{p,x,y,u,t\}$. Note also that for every cluster, we are multiplying by its associated multiplicity: the amount of segments each cluster is meant to represent. This multiplicity may vary by year and cluster, but note that the number of clusters $U$ will not.

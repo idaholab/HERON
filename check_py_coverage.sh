@@ -55,22 +55,19 @@ DISPLAY_VAR=`(echo $DISPLAY)`
 # reset it
 export DISPLAY=
 
+export COVERAGE_RCFILE="$SRC_DIR/../tests/.coveragerc"
 SOURCE_DIRS=($SRC_DIR,$SRC_DIR/../templates/)
 OMIT_FILES=($SRC_DIR/dispatch/twin_pyomo_test.py,$SRC_DIR/dispatch/twin_pyomo_test_rte.py,$SRC_DIR/dispatch/twin_pyomo_limited_ramp.py)
-EXTRA="--rcfile=$SRC_DIR/../tests/.coveragerc --source=${SOURCE_DIRS[@]} --omit=${OMIT_FILES[@]} --parallel-mode "
+EXTRA="--source=${SOURCE_DIRS[@]} --omit=${OMIT_FILES[@]} --parallel-mode "
 export COVERAGE_FILE=`pwd`/.coverage
 
-coverage erase --rcfile="$SRC_DIR/../tests/.coveragerc"
-($SRC_DIR/../../../run_tests "$@" --re=HERON --python-command="coverage run $EXTRA " || echo run_test done but some tests failed)
+coverage erase
+($SRC_DIR/../../../run_tests "$@" --re=HERON --python-command="coverage run $EXTRA " || echo run_tests done but some tests failed)
 
 #get DISPLAY BACK
 DISPLAY=$DISPLAY_VAR
 
-## Go to the final directory and generate the html documents
-cd $SCRIPT_DIR/tests/
-pwd
-rm -f .cov_dirs
-for FILE in `find . -name '.coverage.*'`; do dirname $FILE; done | sort | uniq > .cov_dirs
-coverage combine `cat .cov_dirs`
+## Prepare data and generate the html documents
+coverage combine
 coverage html
 

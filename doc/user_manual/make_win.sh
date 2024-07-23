@@ -19,20 +19,6 @@ gen_files () {
   cd ../
   cp -f build/HERON_user_manual.pdf pdf/
 
-
-  # git log -1 --format="%H %an %aD" .. > ../version.tex
-  # python ../../scripts/library_handler.py manual > libraries.tex
-  # bash.exe ./create_command.sh
-  # bash.exe ./create_pip_commands.sh
-	# for file in "${files[@]}"
-	# do
-	# 	# Generate files.
-  #       pdflatex -interaction=nonstopmode $file.tex
-  #       bibtex $file
-	# pdflatex -interaction=nonstopmode $file.tex
-	# pdflatex -interaction=nonstopmode $file.tex
-
-	# done
 }
 
 clean_files

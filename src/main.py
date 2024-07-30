@@ -167,7 +167,7 @@ def main():
   parser = argparse.ArgumentParser(description='Holistic Energy Resource Optimization Network (HERON)')
   parser.add_argument('xml_input_file', nargs='?', default="", help='HERON XML input file')
   parser.add_argument('--definition', action="store_true", dest="definition", help='HERON input file definition compatible with the NEAMS Workbench')
-  parser.add_argument('--python_command_for_raven', dest='python_cmd_raven', help='Custom python command for running RAVEN on outer and inner')
+  parser.add_argument('--python_command_for_raven', dest='python_cmd_raven', help='Custom python command for running RAVEN inner')
   args = parser.parse_args()
 
   sim = HERON()

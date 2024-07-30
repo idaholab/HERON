@@ -672,6 +672,8 @@ class Case(Base):
         'sigma': None,                 # user can specify additional result statistics
         'expectedValue': None,
         'median': None}
+    
+    self._python_command_for_raven = None # python command to use for raven executable
 
     # clean up location
     self.run_dir = os.path.abspath(os.path.expanduser(self.run_dir))
@@ -1323,6 +1325,23 @@ class Case(Base):
       @ Out, opt_strategy, str, name of optimization algorithm/strategy
     """
     return self._optimization_strategy
+  
+  def get_py_cmd_for_raven(self):
+    """
+      Accessor
+      @ In, None
+      @ Out, py_cmd_for_raven, str, custom python command for running raven (if set)
+    """
+    return self._python_command_for_raven
+  
+  def set_py_cmd_for_raven(self, py_cmd):
+    """
+      Mutator
+      @ In, py_cmd, str, custom python command for running raven
+      @ Out, None
+    """
+    self._python_command_for_raven = py_cmd
+    return
 
   @property
   def npv_target(self):

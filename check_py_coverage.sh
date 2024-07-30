@@ -57,12 +57,12 @@ export DISPLAY=
 
 export COVERAGE_RCFILE="$SRC_DIR/../tests/.coveragerc"
 SOURCE_DIRS=($SRC_DIR,$SRC_DIR/../templates/)
-OMIT_FILES=($SRC_DIR/dispatch/twin_pyomo_test.py,$SRC_DIR/dispatch/twin_pyomo_test_rte.py,$SRC_DIR/dispatch/twin_pyomo_limited_ramp.py)
+OMIT_FILES=($SRC_DIR/dispatch/twin_pyomo_test.py,$SRC_DIR/dispatch/twin_pyomo_test_rte.py,$SRC_DIR/dispatch/twin_pyomo_limited_ramp.py,$SRC_DIR/ArmaBypass.py)
 EXTRA="--source=${SOURCE_DIRS[@]} --omit=${OMIT_FILES[@]} --parallel-mode "
 export COVERAGE_FILE=`pwd`/.coverage
 
 coverage erase
-($SRC_DIR/../../../run_tests "$@" --re=HERON --python-command="coverage run $EXTRA " || echo run_tests done but some tests failed)
+($SRC_DIR/../../../run_tests "$@" --re=HERON/tests --python-command="coverage run $EXTRA " || echo run_tests done but some tests failed)
 
 #get DISPLAY BACK
 DISPLAY=$DISPLAY_VAR

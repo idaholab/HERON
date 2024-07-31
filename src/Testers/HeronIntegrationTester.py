@@ -94,7 +94,7 @@ class HeronIntegration(RavenTester):
     if platform.system() == 'Windows':
       cmd += ' bash.exe '
     python = self._get_python_command()
-    # python-command is only for running HERON; python_command_for_raven is for running RAVEN on outer and inner
+    # python-command is for running HERON; python_command_for_raven is for running RAVEN inner
     cmd += f' {self.heron_driver} --python-command="{python}" --python_command_for_raven="{python}" {heron_inp}'
     return cmd, heron_inp
 

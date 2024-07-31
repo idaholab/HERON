@@ -672,7 +672,7 @@ class Case(Base):
         'sigma': None,                 # user can specify additional result statistics
         'expectedValue': None,
         'median': None}
-    
+
     self._python_command_for_raven = None # python command to use for raven executable
 
     # clean up location
@@ -1325,7 +1325,7 @@ class Case(Base):
       @ Out, opt_strategy, str, name of optimization algorithm/strategy
     """
     return self._optimization_strategy
-  
+
   def get_py_cmd_for_raven(self):
     """
       Accessor
@@ -1333,7 +1333,7 @@ class Case(Base):
       @ Out, py_cmd_for_raven, str, custom python command for running raven (if set)
     """
     return self._python_command_for_raven
-  
+
   def set_py_cmd_for_raven(self, py_cmd):
     """
       Mutator

@@ -33,7 +33,6 @@ source $RAVEN_DIR/scripts/establish_conda_env.sh --quiet
 declare -a ARGS
 while test $# -gt 0
 do
-  # right now we don't have any keyword arguments for this script, but leave this for now
   case "$1" in
     --python-command=*)
       PYTHON_COMMAND="${1#*=}"

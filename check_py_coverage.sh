@@ -1,7 +1,8 @@
 #!/bin/bash
 SCRIPT_DIRNAME=`dirname $0`
 SCRIPT_DIR=`(cd $SCRIPT_DIRNAME; pwd)`
-source $SCRIPT_DIR/../../scripts/establish_conda_env.sh --quiet --load
+RAVEN_DIR=`python -c 'from src._utils import get_raven_loc; print(get_raven_loc())'`
+source $RAVEN_DIR/scripts/establish_conda_env.sh --quiet --load
 RAVEN_LIBS_PATH=`conda env list | awk -v rln="$RAVEN_LIBS_NAME" '$0 ~ rln {print $NF}'`
 BUILD_DIR=${BUILD_DIR:=$RAVEN_LIBS_PATH/build}
 INSTALL_DIR=${INSTALL_DIR:=$RAVEN_LIBS_PATH}
@@ -62,7 +63,7 @@ EXTRA="--source=${SOURCE_DIRS[@]} --omit=${OMIT_FILES[@]} --parallel-mode "
 export COVERAGE_FILE=`pwd`/.coverage
 
 coverage erase
-($SRC_DIR/../../../run_tests "$@" --re=HERON/tests --python-command="coverage run $EXTRA " || echo run_tests done but some tests failed)
+($RAVEN_DIR/run_tests "$@" --re=HERON/tests --python-command="coverage run $EXTRA " || echo run_tests done but some tests failed)
 
 #get DISPLAY BACK
 DISPLAY=$DISPLAY_VAR

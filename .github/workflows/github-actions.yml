@@ -17,7 +17,16 @@ jobs:
       - run: WD=`(cd ../../.. && pwd)` && export RAVEN_LIBS_NAME="raven_libs_"`basename $WD` && ../raven/scripts/establish_conda_env.sh --install
       - run: cd ../raven && ./build_raven
       - run: ../raven/run_tests --library-report
-      - run: ../raven/run_tests -j4 --plugins --re=HERON
+      - run: > # The overhead time added by checking coverage is currently about 19% for a single run_tests. Reducing the frequency of coverage checks may be preferable if this increases.
+          ./check_py_coverage.sh -j4 &&
+          COV_PCT=`coverage report --format=total` &&
+          echo "::notice title=Coverage Summary::Code coverage for this repository is now $COV_PCT%. See 'coverage_results' in Artifacts for details."
+      - name: Archive coverage results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage_results
+          path: tests/coverage_html_report
   Test-HERON-Windows:
     runs-on: [self-hosted, windows]
     steps:
@@ -33,4 +42,4 @@ jobs:
       - run: $Env:RAVEN_LIBS_NAME =  "raven_libraries_"+(Get-Location).Path.Split("\")[-4]; bash ../raven/scripts/establish_conda_env.sh --install --conda-defs $HOME/Miniconda3/etc/profile.d/conda.sh
       - run: cd ../raven; bash ./build_raven
       - run: bash ../raven/run_tests --library-report
-      - run: bash ../raven/run_tests -j4 --plugins --re=HERON
+      - run: bash ../raven/run_tests -j4 --plugins --re=HERON/tests

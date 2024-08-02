@@ -93,7 +93,9 @@ class HeronIntegration(RavenTester):
     # Windows is a little different with bash scripts
     if platform.system() == 'Windows':
       cmd += ' bash.exe '
-    cmd += f' {self.heron_driver} {heron_inp}'
+    python = self._get_python_command()
+    # python-command is for running HERON; python_command_for_raven is for running RAVEN inner
+    cmd += f' {self.heron_driver} --python-command="{python}" --python_command_for_raven="{python}" {heron_inp}'
     return cmd, heron_inp
 
   def get_raven_command(self, cmd, heron_inp):

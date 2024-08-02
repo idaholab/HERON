@@ -99,16 +99,20 @@ class HERON(Base):
       img_path = os.path.join(self._input_dir, 'network.png')
       graph.save(img_path)
 
-  def create_raven_workflow(self, case=None):
+  def create_raven_workflow(self, case=None, python_cmd_raven=None):
     """
       Loads, modifies, and writes a RAVEN template workflow based on the Case.
       @ In, case, Cases.Case, optional, case to run (defaults to self._case)
+      @ In, python_cmd_raven, string, optional, custom python command to use for running RAVEN
+          Driving use case is specifying that RAVEN be run with code coverage
       @ Out, None
     """
     if case is None:
       case = self._case
     # let the case do the work
     assert case is not None
+    if python_cmd_raven:
+      case.set_py_cmd_for_raven(python_cmd_raven)
     case.write_workflows(self._components, self._sources, self._input_dir)
 
   def run_moped_workflow(self, case=None, components=None, sources=None):
@@ -163,6 +167,7 @@ def main():
   parser = argparse.ArgumentParser(description='Holistic Energy Resource Optimization Network (HERON)')
   parser.add_argument('xml_input_file', nargs='?', default="", help='HERON XML input file')
   parser.add_argument('--definition', action="store_true", dest="definition", help='HERON input file definition compatible with the NEAMS Workbench')
+  parser.add_argument('--python_command_for_raven', dest='python_cmd_raven', help='Custom python command for running RAVEN inner')
   args = parser.parse_args()
 
   sim = HERON()
@@ -181,7 +186,10 @@ def main():
   sim.plot_resource_graph()
 
   if sim._case._workflow == 'standard':
-    sim.create_raven_workflow()
+    if args.python_cmd_raven is not None:
+      sim.create_raven_workflow(python_cmd_raven=args.python_cmd_raven)
+    else:
+      sim.create_raven_workflow()
   elif sim._case._workflow == 'MOPED':
     sim.run_moped_workflow()
   elif sim._case._workflow == 'DISPATCHES':

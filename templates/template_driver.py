@@ -480,6 +480,11 @@ class Template(TemplateBase, Base):
       raven_exec.text = "raven_framework"
     else:
       raise RuntimeError("raven_framework not in PATH and not at "+raven_exec_guess)
+    # custom python command for running raven (for example, "coverage run")
+    if case.get_py_cmd_for_raven() is not None:
+      attribs = {'type': 'prepend', 'arg': case.get_py_cmd_for_raven()}
+      new = xmlUtils.newNode('clargs', attrib=attribs)
+      raven.append(new)
     # conversion script
     conv = raven.find('conversion').find('input')
     conv.attrib['source'] = '../write_inner.py'

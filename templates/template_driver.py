@@ -521,7 +521,7 @@ class Template(TemplateBase, Base):
       if cap.is_parametric() and isinstance(cap.get_value(debug=case.debug['enabled']) , list):
         feature_list += name + '_capacity' + ','
     feature_list = feature_list[0:-1]
-    if case.get_mode() == 'opt':
+    if case.get_mode() == 'opt' and (not case.debug['enabled']):
       gpr = template.find('Models').find('ROM')
       gpr.find('Features').text = feature_list
       new_opt_metric = self._build_opt_metric_out_name(case)
@@ -730,8 +730,11 @@ class Template(TemplateBase, Base):
         template.remove(template.find('Samplers'))
         template.find('Models').remove(template.find(".//ROM[@name='gpROM']"))
         template.find('Optimizers').remove(template.find(".//BayesianOptimizer[@name='cap_opt']"))
+    # if running in debug, none of these nodes should be here, skip
+    if case.debug['enabled']:
+      return
     # only modify if optimization_settings is in Case
-    if (case.get_mode() == 'opt') and (case.get_optimization_settings() is not None) and (not case.debug['enabled']):  # TODO there should be a better way to handle the debug case
+    if (case.get_mode() == 'opt') and (case.get_optimization_settings() is not None):  # TODO there should be a better way to handle the debug case
       optimization_settings = case.get_optimization_settings()
       # Strategy tells us which optimizer to use
       if strategy == 'BayesianOpt':

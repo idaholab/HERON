@@ -501,8 +501,8 @@ class Template(TemplateBase, Base):
       text = 'Samplers|CustomSampler@name:mc_arma_dispatch|constant@name:{}'
       # Remove anything having to do with 'denoises', it's no longer needed.
       raven.remove(raven.find(".//alias[@variable='denoises']"))
-      denoises_parent = template.find(".//constant[@name='denoises']/..")
-      denoises_parent.remove(denoises_parent.find(".//constant[@name='denoises']"))
+      for denoises_parent in template.findall(".//constant[@name='denoises']/.."):
+        denoises_parent.remove(denoises_parent.find(".//constant[@name='denoises']"))
       # Remove any GRO_final_return vars that compute Sigma or Var (e.g. var_NPV)
       final_return_vars = template.find('.//VariableGroups/Group[@name="GRO_outer_results"]')
       new_final_return_vars = [var for var in final_return_vars.text.split(", ") if "std" not in var and "var" not in var]
@@ -521,7 +521,7 @@ class Template(TemplateBase, Base):
       if cap.is_parametric() and isinstance(cap.get_value(debug=case.debug['enabled']) , list):
         feature_list += name + '_capacity' + ','
     feature_list = feature_list[0:-1]
-    if case.get_mode() == 'opt':
+    if case.get_mode() == 'opt' and (not case.debug['enabled']):
       gpr = template.find('Models').find('ROM')
       gpr.find('Features').text = feature_list
       new_opt_metric = self._build_opt_metric_out_name(case)
@@ -682,7 +682,7 @@ class Template(TemplateBase, Base):
           dist, xml = self._create_new_sweep_capacity(name, var_name, vals, sampler)
           dists_node.append(dist)
           # Bayesian Optimizer requires additional modification
-          if case.get_opt_strategy() == 'BayesianOpt' and case.get_mode() == 'opt':
+          if case.get_opt_strategy() == 'BayesianOpt' and case.get_mode() == 'opt' and (not case.debug['enabled']):
             xml.remove(xml.find('initial'))
             samps_node.append(xml)
             grid_node = xmlUtils.newNode('grid', text='0 1',
@@ -719,7 +719,7 @@ class Template(TemplateBase, Base):
     """
     # Setting base outer for opt based on optimizer used
     strategy = case.get_opt_strategy()
-    if case.get_mode() == 'opt':
+    if case.get_mode() == 'opt'and (not case.debug['enabled']):
       # Strategy tells us which optimizer to use
       if strategy == 'BayesianOpt':
         opt_node = template.find('Optimizers').find(".//BayesianOptimizer[@name='cap_opt']")
@@ -730,8 +730,11 @@ class Template(TemplateBase, Base):
         template.remove(template.find('Samplers'))
         template.find('Models').remove(template.find(".//ROM[@name='gpROM']"))
         template.find('Optimizers').remove(template.find(".//BayesianOptimizer[@name='cap_opt']"))
+    # if running in debug, none of these nodes should be here, skip
+    if case.debug['enabled']:
+      return
     # only modify if optimization_settings is in Case
-    if (case.get_mode() == 'opt') and (case.get_optimization_settings() is not None) and (not case.debug['enabled']):  # TODO there should be a better way to handle the debug case
+    if (case.get_mode() == 'opt') and (case.get_optimization_settings() is not None):  # TODO there should be a better way to handle the debug case
       optimization_settings = case.get_optimization_settings()
       # Strategy tells us which optimizer to use
       if strategy == 'BayesianOpt':

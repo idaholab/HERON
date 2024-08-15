@@ -501,8 +501,8 @@ class Template(TemplateBase, Base):
       text = 'Samplers|CustomSampler@name:mc_arma_dispatch|constant@name:{}'
       # Remove anything having to do with 'denoises', it's no longer needed.
       raven.remove(raven.find(".//alias[@variable='denoises']"))
-      denoises_parent = template.find(".//constant[@name='denoises']/..")
-      denoises_parent.remove(denoises_parent.find(".//constant[@name='denoises']"))
+      for denoises_parent in template.findall(".//constant[@name='denoises']/.."):
+        denoises_parent.remove(denoises_parent.find(".//constant[@name='denoises']"))
       # Remove any GRO_final_return vars that compute Sigma or Var (e.g. var_NPV)
       final_return_vars = template.find('.//VariableGroups/Group[@name="GRO_outer_results"]')
       new_final_return_vars = [var for var in final_return_vars.text.split(", ") if "std" not in var and "var" not in var]

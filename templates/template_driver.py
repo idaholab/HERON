@@ -682,7 +682,7 @@ class Template(TemplateBase, Base):
           dist, xml = self._create_new_sweep_capacity(name, var_name, vals, sampler)
           dists_node.append(dist)
           # Bayesian Optimizer requires additional modification
-          if case.get_opt_strategy() == 'BayesianOpt' and case.get_mode() == 'opt':
+          if case.get_opt_strategy() == 'BayesianOpt' and case.get_mode() == 'opt' and (not case.debug['enabled']):
             xml.remove(xml.find('initial'))
             samps_node.append(xml)
             grid_node = xmlUtils.newNode('grid', text='0 1',
@@ -719,7 +719,7 @@ class Template(TemplateBase, Base):
     """
     # Setting base outer for opt based on optimizer used
     strategy = case.get_opt_strategy()
-    if case.get_mode() == 'opt':
+    if case.get_mode() == 'opt'and (not case.debug['enabled']):
       # Strategy tells us which optimizer to use
       if strategy == 'BayesianOpt':
         opt_node = template.find('Optimizers').find(".//BayesianOptimizer[@name='cap_opt']")

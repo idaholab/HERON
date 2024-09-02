@@ -72,3 +72,4 @@ DISPLAY=$DISPLAY_VAR
 coverage combine
 coverage html
 
+echo "Coverage for this repository is now `coverage report --format=total`%."

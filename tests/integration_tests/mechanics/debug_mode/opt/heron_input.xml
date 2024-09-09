@@ -11,7 +11,7 @@
   </TestInfo>
 
   <Case name="Debug_Run">
-    <mode>sweep</mode>
+    <mode>opt</mode>
     <debug>
       <inner_samples>2</inner_samples>
       <macro_steps>2</macro_steps>
@@ -39,7 +39,7 @@
     <Component name="steamer">
       <produces resource="steam" dispatch="fixed">
         <capacity resource="steam">
-          <sweep_values debug_value="3.14">1, 100</sweep_values>
+          <opt_bounds debug_value="3.14">1, 100</opt_bounds>
         </capacity>
       </produces>
       <economics>
@@ -107,7 +107,7 @@
 
   <DataGenerators>
     <ARMA name='Price' variable="Signal">%HERON_DATA%/TSA/Sine/arma.pk</ARMA>
-    <Function name="transfers">transfers.py</Function>
+    <Function name="transfers">../transfers.py</Function>
   </DataGenerators>
 
 </HERON>

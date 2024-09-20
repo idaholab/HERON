@@ -18,8 +18,10 @@ jobs:
       - run: cd ../raven && ./build_raven
       - run: ../raven/run_tests --library-report
       - run: > # The overhead time added by checking coverage is currently about 19% for a single run_tests. Reducing the frequency of coverage checks may be preferable if this increases.
-          CPC_OUT=`./check_py_coverage.sh -j4` &&
-          echo "::notice title=Coverage Summary::$CPC_OUT See 'coverage_results' in Artifacts for details."
+          ./check_py_coverage.sh -j4 &&
+          DATA_FILE=`pwd`/.coverage && COV_RCFILE=`pwd`/tests/.coveragerc &&
+          COV_RPT=`report_py_coverage.sh --data-file=$DATA_FILE --coverage-rc-file=$COV_RCFILE` &&
+          echo "::notice title=Coverage Summary::$COV_RPT For details, download 'coverage_results' from Artifacts, extract all files, and open 'index.html'."
       - name: Archive coverage results
         uses: actions/upload-artifact@v4
         if: always()

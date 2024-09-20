@@ -72,4 +72,5 @@ DISPLAY=$DISPLAY_VAR
 coverage combine
 coverage html
 
-echo "Coverage for this repository is now `coverage report --format=total`%."
+# See report_py_coverage.sh file for explanation of script separation
+($SCRIPT_DIR/report_py_coverage.sh --data-file=$COVERAGE_FILE --coverage-rc-file=$COVERAGE_RCFILE)

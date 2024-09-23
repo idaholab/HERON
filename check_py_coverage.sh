@@ -73,4 +73,4 @@ coverage combine
 coverage html
 
 # See report_py_coverage.sh file for explanation of script separation
-($SCRIPT_DIR/report_py_coverage.sh --data-file=$COVERAGE_FILE --coverage-rc-file=$COVERAGE_RCFILE)
+(bash $SCRIPT_DIR/report_py_coverage.sh --data-file=$COVERAGE_FILE --coverage-rc-file=$COVERAGE_RCFILE)

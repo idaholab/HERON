@@ -17,10 +17,13 @@ jobs:
       - run: WD=`(cd ../../.. && pwd)` && export RAVEN_LIBS_NAME="raven_libs_"`basename $WD` && ../raven/scripts/establish_conda_env.sh --install
       - run: cd ../raven && ./build_raven
       - run: ../raven/run_tests --library-report
-      - run: > # The overhead time added by checking coverage is currently about 19% for a single run_tests. Reducing the frequency of coverage checks may be preferable if this increases.
+      # The overhead time added by checking coverage is currently about 19% for a single run_tests.
+      # Reducing the frequency of coverage checks may be preferable if this increases.
+      # report_py_coverage is being called twice, once within check_py_coverage to print to the terminal and once here to get data for the annotation
+      - run: >
           ./check_py_coverage.sh -j4 &&
           DATA_FILE=`pwd`/.coverage && COV_RCFILE=`pwd`/tests/.coveragerc &&
-          COV_RPT=`report_py_coverage.sh --data-file=$DATA_FILE --coverage-rc-file=$COV_RCFILE` &&
+          COV_RPT=`bash report_py_coverage.sh --data-file=$DATA_FILE --coverage-rc-file=$COV_RCFILE` &&
           echo "::notice title=Coverage Summary::$COV_RPT For details, download 'coverage_results' from Artifacts, extract all files, and open 'index.html'."
       - name: Archive coverage results
         uses: actions/upload-artifact@v4

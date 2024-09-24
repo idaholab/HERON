@@ -1,0 +1,20 @@
+[Tests]
+  [./RampFreq]
+    type = 'HeronIntegration'
+    input = heron_input.xml
+    [./dispatch_csv]
+      type = OrderedCSV
+      output = 'Sweep_Runs_o/dispatch_print.csv'
+      zero_threshold = 1e-4 # GLPK on Windows
+      rel_err = 1e-6
+    [../]
+    [./debug_plot]
+      type = Exists
+      output = 'Sweep_Runs_o/dispatch_id0_y0_c0_f1.png Sweep_Runs_o/dispatch_id0_y0_c0_SIGNAL.png'
+    [../]
+    [./debug_plot]
+      type = Exists
+      output = 'network.png'
+    [../]
+  [../]
+[]

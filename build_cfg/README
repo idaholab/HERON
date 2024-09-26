@@ -1,0 +1,8 @@
+To build this, use the build module in python:
+
+
+python3 -m ensurepip
+python3 -m pip install --upgrade build
+python3 -m build
+
+This will create packages in the dist directory.

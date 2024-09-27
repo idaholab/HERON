@@ -7,13 +7,10 @@
 #   "coverage report --format=total" directly in the yaml does not work
 
 SCRIPT_DIRNAME=`dirname $0`
-cd $SCRIPT_DIRNAME
+HERON_DIR=`(cd $SCRIPT_DIRNAME/..; pwd)`
+cd $HERON_DIR
 
-if ! which coverage > /dev/null 2>&1
-then
-  echo "Could not find coverage module"
-  exit 1
-fi
+bash coverage_scripts/initialize_coverage.sh
 
 # read command-line arguments
 ARGS=()

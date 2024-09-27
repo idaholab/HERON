@@ -21,9 +21,9 @@ jobs:
       # Reducing the frequency of coverage checks may be preferable if this increases.
       # report_py_coverage is being called twice, once within check_py_coverage to print to the terminal and once here to get data for the annotation
       - run: >
-          ./check_py_coverage.sh -j4 &&
-          DATA_FILE=`pwd`/.coverage && COV_RCFILE=`pwd`/tests/.coveragerc &&
-          COV_RPT=`bash report_py_coverage.sh --data-file=$DATA_FILE --coverage-rc-file=$COV_RCFILE` &&
+          ./coverage_scripts/check_py_coverage.sh -j4 &&
+          DATA_FILE=`pwd`/.coverage && COV_RCFILE=`pwd`/coverage_scripts/.coveragerc &&
+          COV_RPT=`bash coverage_scripts/report_py_coverage.sh --data-file=$DATA_FILE --coverage-rc-file=$COV_RCFILE` &&
           echo "::notice title=Coverage Summary::$COV_RPT For details, download 'coverage_results' from Artifacts, extract all files, and open 'index.html'."
       - name: Archive coverage results
         uses: actions/upload-artifact@v4

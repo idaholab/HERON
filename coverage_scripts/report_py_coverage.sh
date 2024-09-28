@@ -10,7 +10,7 @@ SCRIPT_DIRNAME=`dirname $0`
 HERON_DIR=`(cd $SCRIPT_DIRNAME/..; pwd)`
 cd $HERON_DIR
 
-bash coverage_scripts/initialize_coverage.sh
+source coverage_scripts/initialize_coverage.sh
 
 # read command-line arguments
 ARGS=()

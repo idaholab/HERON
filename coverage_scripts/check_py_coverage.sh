@@ -4,7 +4,7 @@ HERON_DIR=`(cd $SCRIPT_DIRNAME/..; pwd)`
 cd $HERON_DIR
 RAVEN_DIR=`python -c 'from src._utils import get_raven_loc; print(get_raven_loc())'`
 
-bash $HERON_DIR/coverage_scripts/initialize_coverage.sh
+source $HERON_DIR/coverage_scripts/initialize_coverage.sh
 
 #coverage help run
 SRC_DIR=`(cd src && pwd)`

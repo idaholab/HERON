@@ -27,7 +27,7 @@ update_python_path ()
 }
 
 update_python_path
-PATH=$INSTALL_DIR/bin:$PATH
+export PATH=$INSTALL_DIR/bin:$PATH
 
 if which coverage
 then

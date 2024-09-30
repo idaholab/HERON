@@ -12,11 +12,16 @@ from HERON.src.base import Base
 import xml.etree.ElementTree as ET
 from HERON.src.Economics import CashFlowUser
 from HERON.src.ValuedParams import factory as vp_factory
-from HERON.src.TransferFuncs import factory as tf_factory
+
 from HERON.src.ValuedParamHandler import ValuedParamHandler
 from HERON.src import _utils as hutils
 
 from DOVE.src.Components import Component as DoveComponent
+from DOVE.src.TransferFuncs import factory as tf_factory
+from DOVE.src.Interactions import Interaction as DoveInteraction
+from DOVE.src.Interactions import Producer as DoveProducer
+from DOVE.src.Interactions import Demand as DoveDemand
+from DOVE.src.Interactions import Storage as DoveStorage
 
 try:
   import ravenframework
@@ -31,6 +36,14 @@ class HeronComponent(DoveComponent):
     Represents a unit in the grid analysis. Each component has a single "interaction" that
     describes what it can do (produce, store, demand)
   """
+    def __repr__(self):
+    """
+      String representation.
+      @ In, None
+      @ Out, __repr__, string representation
+    """
+    return f'<HERON Component "{self.name}">'
+
   @classmethod
   def get_input_specs(cls):
     """
@@ -38,51 +51,8 @@ class HeronComponent(DoveComponent):
       @ In, None
       @ Out, input_specs, InputData, specs
     """
-    input_specs = super().get_input_specs()
-    for sub in input_specs.subs:
-      if sub.getSub("capacity"):
-        print("INSIDE CAPACITY")
-        sub.popSub("capacity")
-        cap = vp_factory.make_input_specs(
-          'capacity', 
-          descr=r"""the maximum value at which this component can act, in units 
-                    corresponding to the indicated resource. """
-        )
-        
-        cap.addParam(
-          'resource', 
-          param_type=InputTypes.StringType,
-          descr=r"""indicates the resource that defines the capacity of this 
-                    component's operation. For example, if a component consumes 
-                    steam and electricity to produce hydrogen, the capacity of the 
-                    component can be defined by the maximum steam consumable, 
-                    maximum electricity consumable, or maximum hydrogen producable. 
-                    Any choice should be nominally equivalent, but determines the 
-                    units of the value of this node."""
-        )
-        sub.addSub(cap)
-      
-      if sub.getSub("capacity_factor"):
-        print("INSIDE CAP FAC")
-        sub.popSub("capacity_factor")
-        descr = r"""the actual value at which this component can act, as a unitless fraction of total rated capacity.
-            Note that these factors are applied within the dispatch optimization; we assume that the capacity factor
-            is not a variable in the outer optimization."""
-        capfactor = vp_factory.make_input_specs('capacity_factor', descr=descr, allowed=['ARMA', 'CSV'])
-        sub.addSub(capfactor)
-      
-      if sub.getSub("minimum"):
-        print("INSIDE MINN")
-        sub.popSub("minimum")
-        descr = r"""provides the minimum value at which this component can act, in units of the indicated resource. """
-        minn = vp_factory.make_input_specs('minimum', descr=descr)
-        minn.addParam('resource', param_type=InputTypes.StringType,
-                      descr=r"""indicates the resource that defines the minimum activity level for this component,
-                                as with the component's capacity.""")
-        sub.addSub(minn)
 
       if sub.getSub("initial_stored"):
-        print("INSIDE INITIAL STORED")
         sub.popSub("initial_stored")
         descr=r"""indicates what percent of the storage unit is full at the start of each optimization sequence,
                   from 0 to 1. Overwritten if using periodic level conditions, in which case the initial level is
@@ -91,13 +61,11 @@ class HeronComponent(DoveComponent):
         sub.addSub(initial_stored)
 
       if sub.getSub("strategy"):
-        print("INSIDE STRATEGY")
         sub.popSub("strategy")
         descr=r"""control strategy for operating the storage. If not specified, uses a perfect foresight strategy. """
         sub.addSub(vp_factory.make_input_specs('strategy', allowed=['Function'], descr=descr))
       
       if sub.getName() == "economics":
-        print("INSIDE ECONOMICS")
         for econ_sub in sub.subs:
           if econ_sub.getName() == "CashFlow":
             if econ_sub.getSub("driver"):
@@ -152,13 +120,6 @@ class HeronComponent(DoveComponent):
     self._demands = []
     self.levelized_meta = {}
 
-  def __repr__(self):
-    """
-      String representation.
-      @ In, None
-      @ Out, __repr__, string representation
-    """
-    return f'<HERON Component "{self.name}">'
 
   # def read_input(self, xml, mode):
   #   """
@@ -202,208 +163,7 @@ class HeronComponent(DoveComponent):
   #     self.raiseAnError(IOError, f'<economics> node missing from component "{self.name}"!')
   #   CashFlowUser.read_input(self, econ_node)
 
-  # def finalize_init(self):
-  #   """
-  #     Finalizes the initialization of the component, and checks input settings.
-  #     @ In, None
-  #     @ Out, None
-  #   """
-  #   self.get_interaction().finalize_init()
-
-  # def get_crossrefs(self):
-  #   """
-  #     Collect the required value entities needed for this component to function.
-  #     @ In, None
-  #     @ Out, crossrefs, dict, mapping of dictionaries with information about the entities required.
-  #   """
-  #   inter = self.get_interaction()
-  #   crossrefs = {inter: inter.get_crossrefs()}
-  #   crossrefs.update(self._economics.get_crossrefs())
-  #   return crossrefs
-
-  # def set_crossrefs(self, refs):
-  #   """
-  #     Connect cross-reference material from other entities to the ValuedParams in this component.
-  #     @ In, refs, dict, dictionary of entity information
-  #     @ Out, None
-  #   """
-  #   try_match = self.get_interaction()
-  #   for interaction in list(refs.keys()):
-  #     # find associated interaction
-  #     if try_match == interaction:
-  #       try_match.set_crossrefs(refs.pop(interaction))
-  #       break
-  #   # send what's left to the economics
-  #   self._economics.set_crossrefs(refs)
-  #   # if anything left, there's an issue
-  #   assert not refs
-
-  # def get_interaction(self):
-  #   """
-  #     Return the interactions this component uses.
-  #     TODO could this just return the only non-empty one, since there can only be one?
-  #     @ In, None
-  #     @ Out, interactions, list, list of Interaction instances
-  #   """
-  #   try:
-  #     return (self._produces + self._stores + self._demands)[0]
-  #   except IndexError: # there are no interactions!
-  #     return None
-
-  # def get_sqrt_RTE(self):
-  #   """
-  #     Provide the square root of the round-trip efficiency for this component.
-  #     Note we use the square root due to splitting loss across the input and output.
-  #     @ In, None
-  #     @ Out, RTE, float, round-trip efficiency as a multiplier
-  #   """
-  #   return self.get_interaction().get_sqrt_RTE()
-
-  # def print_me(self, tabs=0, tab='  '):
-  #   """
-  #     Prints info about self
-  #     @ In, tabs, int, optional, number of tabs to insert before prints
-  #     @ In, tab, str, optional, characters to use to denote hierarchy
-  #     @ Out, None
-  #   """
-  #   pre = tab*tabs
-  #   self.raiseADebug(pre+'Component:')
-  #   self.raiseADebug(pre+'  name:', self.name)
-  #   self.get_interaction().print_me(tabs=tabs+1, tab=tab)
-
-  # def get_inputs(self):
-  #   """
-  #     returns list of all resources consumed here
-  #     @ In, None
-  #     @ Out, inputs, set, set of input resources as strings (resources that are taken/consumed/stored)
-  #   """
-  #   inputs = set()
-  #   # simply combine the inputs for the interaction
-  #   inputs.update(self.get_interaction().get_inputs())
-  #   return inputs
-
-  # def get_outputs(self):
-  #   """
-  #     returns list of all resources producable here
-  #     @ In, None
-  #     @ Out, outputs, set, set of output resources as strings (resources that are produced/provided)
-  #   """
-  #   outputs = set()
-  #   outputs.update(self.get_interaction().get_outputs())
-  #   return outputs
-
-  # def get_resources(self):
-  #   """
-  #     Provides the full set of resources used by this component.
-  #     @ In, None
-  #     @ Out, res, set, set(str) of resource names
-  #   """
-  #   res = set()
-  #   res.update(self.get_inputs())
-  #   res.update(self.get_outputs())
-  #   return res
-
-  # def get_capacity(self, meta, raw=False):
-  #   """
-  #     returns the capacity of the interaction of this component
-  #     @ In, meta, dict, arbitrary metadata from EGRET
-  #     @ In, raw, bool, optional, if True then return the ValuedParam instance for capacity, instead of the evaluation
-  #     @ Out, capacity, float (or ValuedParam), the capacity of this component's interaction
-  #   """
-  #   return self.get_interaction().get_capacity(meta, raw=raw)
-
-  # def get_minimum(self, meta, raw=False):
-  #   """
-  #     returns the minimum of the interaction of this component
-  #     @ In, meta, dict, arbitrary metadata from EGRET
-  #     @ In, raw, bool, optional, if True then return the ValuedParam instance for capacity, instead of the evaluation
-  #     @ Out, capacity, float (or ValuedParam), the capacity of this component's interaction
-  #   """
-  #   return self.get_interaction().get_minimum(meta, raw=raw)
-
-  # def get_capacity_var(self):
-  #   """
-  #     Returns the variable that is used to define this component's capacity.
-  #     @ In, None
-  #     @ Out, var, str, name of capacity resource
-  #   """
-  #   return self.get_interaction().get_capacity_var()
-
-  # def get_tracking_vars(self):
-  #   """
-  #     Provides the variables used by this component to track dispatch
-  #     @ In, None
-  #     @ Out, get_tracking_vars, list, variable name list
-  #   """
-  #   return self.get_interaction().get_tracking_vars()
-
-  # def is_dispatchable(self):
-  #   """
-  #     Returns the dispatchability indicator of this component.
-  #     TODO Note that despite the name, this is NOT boolean, but a string indicator.
-  #     @ In, None
-  #     @ Out, dispatchable, str, dispatchability (e.g. independent, dependent, fixed)
-  #   """
-  #   return self.get_interaction().is_dispatchable()
-
-  # def is_governed(self):
-  #   """
-  #     Determines if this component is optimizable or governed by some function.
-  #     @ In, None
-  #     @ Out, is_governed, bool, whether this component is governed.
-  #   """
-  #   return self.get_interaction().is_governed()
-
-  # def set_capacity(self, cap):
-  #   """
-  #     Set the float value of the capacity of this component's interaction
-  #     @ In, cap, float, value
-  #     @ Out, None
-  #   """
-  #   return self.get_interaction().set_capacity(cap)
-
-  # @property
-  # def ramp_limit(self):
-  #   """
-  #     Accessor for ramp limits on interactions.
-  #     @ In, None
-  #     @ Out, limit, float, limit
-  #   """
-  #   return self.get_interaction().ramp_limit
-
-  # @property
-  # def ramp_freq(self):
-  #   """
-  #     Accessor for ramp frequency limits on interactions.
-  #     @ In, None
-  #     @ Out, limit, float, limit
-  #   """
-  #   return self.get_interaction().ramp_freq
-
-  # def get_capacity_param(self):
-  #   """
-  #     Provides direct access to the ValuedParam for the capacity of this component.
-  #     @ In, None
-  #     @ Out, cap, ValuedParam, capacity valued param
-  #   """
-  #   intr = self.get_interaction()
-  #   return intr.get_capacity(None, None, None, None, raw=True)
-
-  # def set_levelized_cost_meta(self, cashflows):
-  #   """
-  #     Create a dictionary for determining correct resource to use per cashflow if using levelized
-  #     inner objective (only an option when selecting LC as an econ metric)
-  #     @ In, cashflows, list, list of Interaction instances
-  #     @ Out, None
-  #   """
-  #   for cf in cashflows:
-  #     tracker = cf.get_driver()._vp.get_tracking_var()
-  #     resource = cf.get_driver()._vp.get_resource()
-  #     self.levelized_meta[cf.name] = {tracker:resource}
-
-
-
-class Interaction(Base):
+class HeronInteraction(DoveInteraction):
   """
     Base class for component interactions (e.g. Producer, Storage, Demand)
   """
@@ -416,49 +176,46 @@ class Interaction(Base):
       @ In, None
       @ Out, input_specs, InputData, specs
     """
-    if cls.tag == 'produces':
-      desc = r"""indicates that this component produces one or more resources by consuming other resources."""
-      resource_desc = r"""the resource produced by this component's activity."""
-    elif cls.tag == 'stores':
-      desc = r"""indicates that this component stores one resource, potentially absorbing or providing that resource."""
-      resource_desc = r"""the resource stored by this component."""
-    elif cls.tag == "demands":
-      desc = r"""indicates that this component exclusively consumes a resource."""
-      resource_desc = r"""the resource consumed by this component."""
-    specs = InputData.parameterInputFactory(cls.tag, ordered=False, descr=desc)
-    specs.addParam('resource', param_type=InputTypes.StringListType, required=True,
-        descr=resource_desc)
-    dispatch_opts = InputTypes.makeEnumType('dispatch_opts', 'dispatch_opts', ['fixed', 'independent', 'dependent'])
-    specs.addParam('dispatch', param_type=dispatch_opts,
-        descr=r"""describes the way this component should be dispatched, or its flexibility.
-              \texttt{fixed} indicates the component always fully dispatched at its maximum level.
-              \texttt{independent} indicates the component is fully dispatchable by the dispatch optimization algorithm.
-              \texttt{dependent} indicates that while this component is not directly controllable by the dispatch
-              algorithm, it can however be flexibly dispatched in response to other units changing dispatch level.
-              For example, when attempting to increase profitability, the \texttt{fixed} components are not adjustable,
-              but the \texttt{independent} components can be adjusted to attempt to improve the economic metric.
-              In response to the \texttt{independent} component adjustment, the \texttt{dependent} components
-              may respond to balance the resource usage from the changing behavior of other components.""")
+    input_specs = super().get_input_specs()
+    for sub in input_specs.subs:
+      if sub.getSub("capacity"):
+        sub.popSub("capacity")
+        cap = vp_factory.make_input_specs(
+          'capacity',
+          descr=r"""the maximum value at which this component can act, in units
+                    corresponding to the indicated resource. """
+        )
 
-    descr = r"""the maximum value at which this component can act, in units corresponding to the indicated resource. """
-    cap = vp_factory.make_input_specs('capacity', descr=descr)
-    cap.addParam('resource', param_type=InputTypes.StringType,
-        descr=r"""indicates the resource that defines the capacity of this component's operation. For example,
-              if a component consumes steam and electricity to produce hydrogen, the capacity of the component
-              can be defined by the maximum steam consumable, maximum electricity consumable, or maximum
-              hydrogen producable. Any choice should be nominally equivalent, but determines the units
-              of the value of this node.""")
-    specs.addSub(cap)
+        cap.addParam(
+          'resource',
+          param_type=InputTypes.StringType,
+          descr=r"""indicates the resource that defines the capacity of this
+                    component's operation. For example, if a component consumes
+                    steam and electricity to produce hydrogen, the capacity of the
+                    component can be defined by the maximum steam consumable,
+                    maximum electricity consumable, or maximum hydrogen producable.
+                    Any choice should be nominally equivalent, but determines the
+                    units of the value of this node."""
+        )
+        sub.addSub(cap)
 
-    descr = r"""the actual value at which this component can act, as a unitless fraction of total rated capacity.
-            Note that these factors are applied within the dispatch optimization; we assume that the capacity factor
-            is not a variable in the outer optimization."""
-    capfactor = vp_factory.make_input_specs('capacity_factor', descr=descr, allowed=['ARMA', 'CSV'])
-    specs.addSub(capfactor)
+      if sub.getSub("capacity_factor"):
+        sub.popSub("capacity_factor")
+        descr = r"""the actual value at which this component can act, as a unitless
+                    fraction of total rated capacity. Note that these factors are
+                    applied within the dispatch optimization; we assume that the
+                    capacity factor is not a variable in the outer optimization."""
+        capfactor = vp_factory.make_input_specs('capacity_factor', descr=descr, allowed=['ARMA', 'CSV'])
+        sub.addSub(capfactor)
 
-    descr = r"""provides the minimum value at which this component can act, as a percentage of the installed capacity. """
-    minn = vp_factory.make_input_specs('minimum', descr=descr)
-    specs.addSub(minn)
+      if sub.getSub("minimum"):
+        sub.popSub("minimum")
+        descr = r"""provides the minimum value at which this component can act, in units of the indicated resource. """
+        minn = vp_factory.make_input_specs('minimum', descr=descr)
+        minn.addParam('resource', param_type=InputTypes.StringType,
+                      descr=r"""indicates the resource that defines the minimum activity level for this component,
+                                as with the component's capacity.""")
+        sub.addSub(minn)
 
     return specs
 

@@ -14,14 +14,15 @@ import numpy as np
 
 from HERON.src.base import Base
 
-from HERON.src.dispatch.Factory import known as known_dispatchers
-from HERON.src.dispatch.Factory import get_class as get_dispatcher
-
 from HERON.src.ValuedParams import factory as vp_factory
 from HERON.src.ValuedParamHandler import ValuedParamHandler
 
 from HERON.src.validators.Factory import known as known_validators
 from HERON.src.validators.Factory import get_class as get_validator
+
+from DOVE.src.Dispatch.Factory import known as known_dispatchers
+from DOVE.src.Dispatch.Factory import get_class as get_dispatcher
+
 
 from collections import OrderedDict
 

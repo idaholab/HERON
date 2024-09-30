@@ -16,7 +16,7 @@ from HERON.src.TransferFuncs import factory as tf_factory
 from HERON.src.ValuedParamHandler import ValuedParamHandler
 from HERON.src import _utils as hutils
 
-from DOVE.src.Components import Component
+from DOVE.src.Components import Component as DoveComponent
 
 try:
   import ravenframework
@@ -25,21 +25,8 @@ except ModuleNotFoundError:
   sys.path.append(framework_path)
 from ravenframework.utils import InputData, xmlUtils, InputTypes
 
-# TODO can we use EntityFactory from RAVEN?
-def factory(xml, method='sweep'):
-  """
-    Tool for constructing compnents without the input_loader
-    TODO can this be set up so the input_loader calls it instead of the methods directly?
-    @ In, xml, ET.Element, node from which to read component settings
-    @ In, method, string, optional, operational mode for case
-    @ Out, comp, Component instance, component constructed
-  """
-  comp = Component()
-  comp.read_input(xml, method)
-  comp.finalize_init()
-  return comp
 
-class Component(Base, CashFlowUser):
+class HeronComponent(DoveComponent):
   """
     Represents a unit in the grid analysis. Each component has a single "interaction" that
     describes what it can do (produce, store, demand)
@@ -51,23 +38,103 @@ class Component(Base, CashFlowUser):
       @ In, None
       @ Out, input_specs, InputData, specs
     """
-    input_specs = InputData.parameterInputFactory('Component', ordered=False, baseNode=None,
-        descr=r"""defines a component as an element of the grid system. Components are defined by the action they
-              perform such as \xmlNode{produces} or \xmlNode{consumes}; see details below.""")
-    input_specs.addParam('name', param_type=InputTypes.StringType, required=True,
-        descr=r"""identifier for the component. This identifier will be used to generate variables
-              and relate signals to this component throughout the HERON analysis.""")
-    # production
-    ## this unit may be able to make stuff, possibly from other stuff
-    input_specs.addSub(Producer.get_input_specs())
-    # storage
-    ## this unit may be able to store stuff
-    input_specs.addSub(Storage.get_input_specs())
-    # demands
-    ## this unit may have a certain demand that must be met
-    input_specs.addSub(Demand.get_input_specs())
-    # this unit probably has some economics
-    input_specs = CashFlowUser.get_input_specs(input_specs)
+    input_specs = super().get_input_specs()
+    for sub in input_specs.subs:
+      if sub.getSub("capacity"):
+        print("INSIDE CAPACITY")
+        sub.popSub("capacity")
+        cap = vp_factory.make_input_specs(
+          'capacity', 
+          descr=r"""the maximum value at which this component can act, in units 
+                    corresponding to the indicated resource. """
+        )
+        
+        cap.addParam(
+          'resource', 
+          param_type=InputTypes.StringType,
+          descr=r"""indicates the resource that defines the capacity of this 
+                    component's operation. For example, if a component consumes 
+                    steam and electricity to produce hydrogen, the capacity of the 
+                    component can be defined by the maximum steam consumable, 
+                    maximum electricity consumable, or maximum hydrogen producable. 
+                    Any choice should be nominally equivalent, but determines the 
+                    units of the value of this node."""
+        )
+        sub.addSub(cap)
+      
+      if sub.getSub("capacity_factor"):
+        print("INSIDE CAP FAC")
+        sub.popSub("capacity_factor")
+        descr = r"""the actual value at which this component can act, as a unitless fraction of total rated capacity.
+            Note that these factors are applied within the dispatch optimization; we assume that the capacity factor
+            is not a variable in the outer optimization."""
+        capfactor = vp_factory.make_input_specs('capacity_factor', descr=descr, allowed=['ARMA', 'CSV'])
+        sub.addSub(capfactor)
+      
+      if sub.getSub("minimum"):
+        print("INSIDE MINN")
+        sub.popSub("minimum")
+        descr = r"""provides the minimum value at which this component can act, in units of the indicated resource. """
+        minn = vp_factory.make_input_specs('minimum', descr=descr)
+        minn.addParam('resource', param_type=InputTypes.StringType,
+                      descr=r"""indicates the resource that defines the minimum activity level for this component,
+                                as with the component's capacity.""")
+        sub.addSub(minn)
+
+      if sub.getSub("initial_stored"):
+        print("INSIDE INITIAL STORED")
+        sub.popSub("initial_stored")
+        descr=r"""indicates what percent of the storage unit is full at the start of each optimization sequence,
+                  from 0 to 1. Overwritten if using periodic level conditions, in which case the initial level is
+                  solved as part of the optimization, but the initial and final levels must match. \default{0.0}. """
+        initial_stored = vp_factory.make_input_specs('initial_stored', descr=descr)
+        sub.addSub(initial_stored)
+
+      if sub.getSub("strategy"):
+        print("INSIDE STRATEGY")
+        sub.popSub("strategy")
+        descr=r"""control strategy for operating the storage. If not specified, uses a perfect foresight strategy. """
+        sub.addSub(vp_factory.make_input_specs('strategy', allowed=['Function'], descr=descr))
+      
+      if sub.getName() == "economics":
+        print("INSIDE ECONOMICS")
+        for econ_sub in sub.subs:
+          if econ_sub.getName() == "CashFlow":
+            if econ_sub.getSub("driver"):
+              econ_sub.popSub("driver")
+              descr = r"""indicates the main driver for this CashFlow, such as the number of units sold
+                          or the size of the constructed unit. Corresponds to $D$ in the CashFlow equation."""
+              driver = vp_factory.make_input_specs('driver', descr=descr, kind='post-dispatch')
+              econ_sub.addSub(driver)
+
+            if econ_sub.getSub("reference_price"):
+              econ_sub.popSub("reference_price")
+              descr = r"""indicates the cash value of the reference number of units sold.
+                          corresponds to $\alpha$ in the CashFlow equation. If \xmlNode{reference_driver}
+                          is 1, then this is the price-per-unit for the CashFlow."""
+              reference_price = vp_factory.make_input_specs('reference_price', descr=descr, kind='post-dispatch')
+              levelized_cost = InputData.parameterInputFactory(
+                'levelized_cost', strictMode=True,
+                descr=r"""indicates whether HERON and TEAL are meant to solve for the levelized price related to this cashflow."""
+              )
+              reference_price.addSub(levelized_cost)
+              econ_sub.addSub(reference_price)
+
+            if econ_sub.getSub("reference_driver"):
+              econ_sub.popSub("reference_driver")
+              descr = r"""determines the number of units sold to which the \xmlNode{reference_price}
+                          refers. Corresponds to $\prime D$ in the CashFlow equation. """
+              reference_driver = vp_factory.make_input_specs('reference_driver', descr=descr, kind='post-dispatch')
+              econ_sub.addSub(reference_driver)
+            
+            if econ_sub.getSub("scaling_factor_x"):
+              econ_sub.popSub("scaling_factor_x")
+              descr = r"""determines the scaling factor for this CashFlow. Corresponds to $x$ in the CashFlow
+                          equation. If $x$ is less than one, the per-unit price decreases as the units sold increases
+                          above the \xmlNode{reference_driver}, and vice versa."""
+              x = vp_factory.make_input_specs('scaling_factor_x', descr=descr, kind='post-dispatch')
+              econ_sub.addSub(x)
+
     return input_specs
 
   def __init__(self, **kwargs):
@@ -76,8 +143,9 @@ class Component(Base, CashFlowUser):
       @ In, kwargs, dict, optional, arguments to pass to other constructors
       @ Out, None
     """
-    Base.__init__(self, **kwargs)
-    CashFlowUser.__init__(self)
+    super().__init__(**kwargs)
+    # Base.__init__(self, **kwargs)
+    # CashFlowUser.__init__(self)
     self.name = None
     self._produces = []
     self._stores = []
@@ -92,246 +160,246 @@ class Component(Base, CashFlowUser):
     """
     return f'<HERON Component "{self.name}">'
 
-  def read_input(self, xml, mode):
-    """
-      Sets settings from input file
-      @ In, xml, xml.etree.ElementTree.Element, input from user
-      @ In, mode, string, case mode to operate in (e.g. 'sweep' or 'opt')
-      @ Out, None
-    """
-    # get specs for allowable inputs
-    specs = self.get_input_specs()()
-    specs.parseNode(xml)
-    self.name = specs.parameterValues['name']
-    self.raiseADebug(f'Loading component "{self.name}"')
-    for item in specs.subparts:
-      if self.get_interaction() and item.getName() in ['produces', 'stores', 'demands']:
-        self.raiseAnError(NotImplementedError, f'Currently each Component can only have one interaction (produces, stores, demands)! Check Component "{self.name}"')
-      # read in producers
-      if item.getName() == 'produces':
-        prod = Producer(messageHandler=self.messageHandler)
-        try:
-          prod.read_input(item, mode, self.name)
-        except IOError as e:
-          self.raiseAWarning(f'Errors while reading component "{self.name}"!')
-          raise e
-        self._produces.append(prod)
-      # read in storages
-      elif item.getName() == 'stores':
-        store = Storage(messageHandler=self.messageHandler)
-        store.read_input(item, mode, self.name)
-        self._stores.append(store)
-      # read in demands
-      elif item.getName() == 'demands':
-        demand = Demand(messageHandler=self.messageHandler)
-        demand.read_input(item, mode, self.name)
-        self._demands.append(demand)
-      # read in economics
-      elif item.getName() == 'economics':
-        econ_node = item # need to read AFTER the interactions!
-    # after looping over nodes, finish up
-    if econ_node is None:
-      self.raiseAnError(IOError, f'<economics> node missing from component "{self.name}"!')
-    CashFlowUser.read_input(self, econ_node)
+  # def read_input(self, xml, mode):
+  #   """
+  #     Sets settings from input file
+  #     @ In, xml, xml.etree.ElementTree.Element, input from user
+  #     @ In, mode, string, case mode to operate in (e.g. 'sweep' or 'opt')
+  #     @ Out, None
+  #   """
+  #   # get specs for allowable inputs
+  #   specs = self.get_input_specs()()
+  #   specs.parseNode(xml)
+  #   self.name = specs.parameterValues['name']
+  #   self.raiseADebug(f'Loading component "{self.name}"')
+  #   for item in specs.subparts:
+  #     if self.get_interaction() and item.getName() in ['produces', 'stores', 'demands']:
+  #       self.raiseAnError(NotImplementedError, f'Currently each Component can only have one interaction (produces, stores, demands)! Check Component "{self.name}"')
+  #     # read in producers
+  #     if item.getName() == 'produces':
+  #       prod = Producer(messageHandler=self.messageHandler)
+  #       try:
+  #         prod.read_input(item, mode, self.name)
+  #       except IOError as e:
+  #         self.raiseAWarning(f'Errors while reading component "{self.name}"!')
+  #         raise e
+  #       self._produces.append(prod)
+  #     # read in storages
+  #     elif item.getName() == 'stores':
+  #       store = Storage(messageHandler=self.messageHandler)
+  #       store.read_input(item, mode, self.name)
+  #       self._stores.append(store)
+  #     # read in demands
+  #     elif item.getName() == 'demands':
+  #       demand = Demand(messageHandler=self.messageHandler)
+  #       demand.read_input(item, mode, self.name)
+  #       self._demands.append(demand)
+  #     # read in economics
+  #     elif item.getName() == 'economics':
+  #       econ_node = item # need to read AFTER the interactions!
+  #   # after looping over nodes, finish up
+  #   if econ_node is None:
+  #     self.raiseAnError(IOError, f'<economics> node missing from component "{self.name}"!')
+  #   CashFlowUser.read_input(self, econ_node)
 
-  def finalize_init(self):
-    """
-      Finalizes the initialization of the component, and checks input settings.
-      @ In, None
-      @ Out, None
-    """
-    self.get_interaction().finalize_init()
+  # def finalize_init(self):
+  #   """
+  #     Finalizes the initialization of the component, and checks input settings.
+  #     @ In, None
+  #     @ Out, None
+  #   """
+  #   self.get_interaction().finalize_init()
 
-  def get_crossrefs(self):
-    """
-      Collect the required value entities needed for this component to function.
-      @ In, None
-      @ Out, crossrefs, dict, mapping of dictionaries with information about the entities required.
-    """
-    inter = self.get_interaction()
-    crossrefs = {inter: inter.get_crossrefs()}
-    crossrefs.update(self._economics.get_crossrefs())
-    return crossrefs
+  # def get_crossrefs(self):
+  #   """
+  #     Collect the required value entities needed for this component to function.
+  #     @ In, None
+  #     @ Out, crossrefs, dict, mapping of dictionaries with information about the entities required.
+  #   """
+  #   inter = self.get_interaction()
+  #   crossrefs = {inter: inter.get_crossrefs()}
+  #   crossrefs.update(self._economics.get_crossrefs())
+  #   return crossrefs
 
-  def set_crossrefs(self, refs):
-    """
-      Connect cross-reference material from other entities to the ValuedParams in this component.
-      @ In, refs, dict, dictionary of entity information
-      @ Out, None
-    """
-    try_match = self.get_interaction()
-    for interaction in list(refs.keys()):
-      # find associated interaction
-      if try_match == interaction:
-        try_match.set_crossrefs(refs.pop(interaction))
-        break
-    # send what's left to the economics
-    self._economics.set_crossrefs(refs)
-    # if anything left, there's an issue
-    assert not refs
+  # def set_crossrefs(self, refs):
+  #   """
+  #     Connect cross-reference material from other entities to the ValuedParams in this component.
+  #     @ In, refs, dict, dictionary of entity information
+  #     @ Out, None
+  #   """
+  #   try_match = self.get_interaction()
+  #   for interaction in list(refs.keys()):
+  #     # find associated interaction
+  #     if try_match == interaction:
+  #       try_match.set_crossrefs(refs.pop(interaction))
+  #       break
+  #   # send what's left to the economics
+  #   self._economics.set_crossrefs(refs)
+  #   # if anything left, there's an issue
+  #   assert not refs
 
-  def get_interaction(self):
-    """
-      Return the interactions this component uses.
-      TODO could this just return the only non-empty one, since there can only be one?
-      @ In, None
-      @ Out, interactions, list, list of Interaction instances
-    """
-    try:
-      return (self._produces + self._stores + self._demands)[0]
-    except IndexError: # there are no interactions!
-      return None
+  # def get_interaction(self):
+  #   """
+  #     Return the interactions this component uses.
+  #     TODO could this just return the only non-empty one, since there can only be one?
+  #     @ In, None
+  #     @ Out, interactions, list, list of Interaction instances
+  #   """
+  #   try:
+  #     return (self._produces + self._stores + self._demands)[0]
+  #   except IndexError: # there are no interactions!
+  #     return None
 
-  def get_sqrt_RTE(self):
-    """
-      Provide the square root of the round-trip efficiency for this component.
-      Note we use the square root due to splitting loss across the input and output.
-      @ In, None
-      @ Out, RTE, float, round-trip efficiency as a multiplier
-    """
-    return self.get_interaction().get_sqrt_RTE()
+  # def get_sqrt_RTE(self):
+  #   """
+  #     Provide the square root of the round-trip efficiency for this component.
+  #     Note we use the square root due to splitting loss across the input and output.
+  #     @ In, None
+  #     @ Out, RTE, float, round-trip efficiency as a multiplier
+  #   """
+  #   return self.get_interaction().get_sqrt_RTE()
 
-  def print_me(self, tabs=0, tab='  '):
-    """
-      Prints info about self
-      @ In, tabs, int, optional, number of tabs to insert before prints
-      @ In, tab, str, optional, characters to use to denote hierarchy
-      @ Out, None
-    """
-    pre = tab*tabs
-    self.raiseADebug(pre+'Component:')
-    self.raiseADebug(pre+'  name:', self.name)
-    self.get_interaction().print_me(tabs=tabs+1, tab=tab)
+  # def print_me(self, tabs=0, tab='  '):
+  #   """
+  #     Prints info about self
+  #     @ In, tabs, int, optional, number of tabs to insert before prints
+  #     @ In, tab, str, optional, characters to use to denote hierarchy
+  #     @ Out, None
+  #   """
+  #   pre = tab*tabs
+  #   self.raiseADebug(pre+'Component:')
+  #   self.raiseADebug(pre+'  name:', self.name)
+  #   self.get_interaction().print_me(tabs=tabs+1, tab=tab)
 
-  def get_inputs(self):
-    """
-      returns list of all resources consumed here
-      @ In, None
-      @ Out, inputs, set, set of input resources as strings (resources that are taken/consumed/stored)
-    """
-    inputs = set()
-    # simply combine the inputs for the interaction
-    inputs.update(self.get_interaction().get_inputs())
-    return inputs
+  # def get_inputs(self):
+  #   """
+  #     returns list of all resources consumed here
+  #     @ In, None
+  #     @ Out, inputs, set, set of input resources as strings (resources that are taken/consumed/stored)
+  #   """
+  #   inputs = set()
+  #   # simply combine the inputs for the interaction
+  #   inputs.update(self.get_interaction().get_inputs())
+  #   return inputs
 
-  def get_outputs(self):
-    """
-      returns list of all resources producable here
-      @ In, None
-      @ Out, outputs, set, set of output resources as strings (resources that are produced/provided)
-    """
-    outputs = set()
-    outputs.update(self.get_interaction().get_outputs())
-    return outputs
+  # def get_outputs(self):
+  #   """
+  #     returns list of all resources producable here
+  #     @ In, None
+  #     @ Out, outputs, set, set of output resources as strings (resources that are produced/provided)
+  #   """
+  #   outputs = set()
+  #   outputs.update(self.get_interaction().get_outputs())
+  #   return outputs
 
-  def get_resources(self):
-    """
-      Provides the full set of resources used by this component.
-      @ In, None
-      @ Out, res, set, set(str) of resource names
-    """
-    res = set()
-    res.update(self.get_inputs())
-    res.update(self.get_outputs())
-    return res
+  # def get_resources(self):
+  #   """
+  #     Provides the full set of resources used by this component.
+  #     @ In, None
+  #     @ Out, res, set, set(str) of resource names
+  #   """
+  #   res = set()
+  #   res.update(self.get_inputs())
+  #   res.update(self.get_outputs())
+  #   return res
 
-  def get_capacity(self, meta, raw=False):
-    """
-      returns the capacity of the interaction of this component
-      @ In, meta, dict, arbitrary metadata from EGRET
-      @ In, raw, bool, optional, if True then return the ValuedParam instance for capacity, instead of the evaluation
-      @ Out, capacity, float (or ValuedParam), the capacity of this component's interaction
-    """
-    return self.get_interaction().get_capacity(meta, raw=raw)
+  # def get_capacity(self, meta, raw=False):
+  #   """
+  #     returns the capacity of the interaction of this component
+  #     @ In, meta, dict, arbitrary metadata from EGRET
+  #     @ In, raw, bool, optional, if True then return the ValuedParam instance for capacity, instead of the evaluation
+  #     @ Out, capacity, float (or ValuedParam), the capacity of this component's interaction
+  #   """
+  #   return self.get_interaction().get_capacity(meta, raw=raw)
 
-  def get_minimum(self, meta, raw=False):
-    """
-      returns the minimum of the interaction of this component
-      @ In, meta, dict, arbitrary metadata from EGRET
-      @ In, raw, bool, optional, if True then return the ValuedParam instance for capacity, instead of the evaluation
-      @ Out, capacity, float (or ValuedParam), the capacity of this component's interaction
-    """
-    return self.get_interaction().get_minimum(meta, raw=raw)
+  # def get_minimum(self, meta, raw=False):
+  #   """
+  #     returns the minimum of the interaction of this component
+  #     @ In, meta, dict, arbitrary metadata from EGRET
+  #     @ In, raw, bool, optional, if True then return the ValuedParam instance for capacity, instead of the evaluation
+  #     @ Out, capacity, float (or ValuedParam), the capacity of this component's interaction
+  #   """
+  #   return self.get_interaction().get_minimum(meta, raw=raw)
 
-  def get_capacity_var(self):
-    """
-      Returns the variable that is used to define this component's capacity.
-      @ In, None
-      @ Out, var, str, name of capacity resource
-    """
-    return self.get_interaction().get_capacity_var()
+  # def get_capacity_var(self):
+  #   """
+  #     Returns the variable that is used to define this component's capacity.
+  #     @ In, None
+  #     @ Out, var, str, name of capacity resource
+  #   """
+  #   return self.get_interaction().get_capacity_var()
 
-  def get_tracking_vars(self):
-    """
-      Provides the variables used by this component to track dispatch
-      @ In, None
-      @ Out, get_tracking_vars, list, variable name list
-    """
-    return self.get_interaction().get_tracking_vars()
+  # def get_tracking_vars(self):
+  #   """
+  #     Provides the variables used by this component to track dispatch
+  #     @ In, None
+  #     @ Out, get_tracking_vars, list, variable name list
+  #   """
+  #   return self.get_interaction().get_tracking_vars()
 
-  def is_dispatchable(self):
-    """
-      Returns the dispatchability indicator of this component.
-      TODO Note that despite the name, this is NOT boolean, but a string indicator.
-      @ In, None
-      @ Out, dispatchable, str, dispatchability (e.g. independent, dependent, fixed)
-    """
-    return self.get_interaction().is_dispatchable()
+  # def is_dispatchable(self):
+  #   """
+  #     Returns the dispatchability indicator of this component.
+  #     TODO Note that despite the name, this is NOT boolean, but a string indicator.
+  #     @ In, None
+  #     @ Out, dispatchable, str, dispatchability (e.g. independent, dependent, fixed)
+  #   """
+  #   return self.get_interaction().is_dispatchable()
 
-  def is_governed(self):
-    """
-      Determines if this component is optimizable or governed by some function.
-      @ In, None
-      @ Out, is_governed, bool, whether this component is governed.
-    """
-    return self.get_interaction().is_governed()
+  # def is_governed(self):
+  #   """
+  #     Determines if this component is optimizable or governed by some function.
+  #     @ In, None
+  #     @ Out, is_governed, bool, whether this component is governed.
+  #   """
+  #   return self.get_interaction().is_governed()
 
-  def set_capacity(self, cap):
-    """
-      Set the float value of the capacity of this component's interaction
-      @ In, cap, float, value
-      @ Out, None
-    """
-    return self.get_interaction().set_capacity(cap)
+  # def set_capacity(self, cap):
+  #   """
+  #     Set the float value of the capacity of this component's interaction
+  #     @ In, cap, float, value
+  #     @ Out, None
+  #   """
+  #   return self.get_interaction().set_capacity(cap)
 
-  @property
-  def ramp_limit(self):
-    """
-      Accessor for ramp limits on interactions.
-      @ In, None
-      @ Out, limit, float, limit
-    """
-    return self.get_interaction().ramp_limit
+  # @property
+  # def ramp_limit(self):
+  #   """
+  #     Accessor for ramp limits on interactions.
+  #     @ In, None
+  #     @ Out, limit, float, limit
+  #   """
+  #   return self.get_interaction().ramp_limit
 
-  @property
-  def ramp_freq(self):
-    """
-      Accessor for ramp frequency limits on interactions.
-      @ In, None
-      @ Out, limit, float, limit
-    """
-    return self.get_interaction().ramp_freq
+  # @property
+  # def ramp_freq(self):
+  #   """
+  #     Accessor for ramp frequency limits on interactions.
+  #     @ In, None
+  #     @ Out, limit, float, limit
+  #   """
+  #   return self.get_interaction().ramp_freq
 
-  def get_capacity_param(self):
-    """
-      Provides direct access to the ValuedParam for the capacity of this component.
-      @ In, None
-      @ Out, cap, ValuedParam, capacity valued param
-    """
-    intr = self.get_interaction()
-    return intr.get_capacity(None, None, None, None, raw=True)
+  # def get_capacity_param(self):
+  #   """
+  #     Provides direct access to the ValuedParam for the capacity of this component.
+  #     @ In, None
+  #     @ Out, cap, ValuedParam, capacity valued param
+  #   """
+  #   intr = self.get_interaction()
+  #   return intr.get_capacity(None, None, None, None, raw=True)
 
-  def set_levelized_cost_meta(self, cashflows):
-    """
-      Create a dictionary for determining correct resource to use per cashflow if using levelized
-      inner objective (only an option when selecting LC as an econ metric)
-      @ In, cashflows, list, list of Interaction instances
-      @ Out, None
-    """
-    for cf in cashflows:
-      tracker = cf.get_driver()._vp.get_tracking_var()
-      resource = cf.get_driver()._vp.get_resource()
-      self.levelized_meta[cf.name] = {tracker:resource}
+  # def set_levelized_cost_meta(self, cashflows):
+  #   """
+  #     Create a dictionary for determining correct resource to use per cashflow if using levelized
+  #     inner objective (only an option when selecting LC as an econ metric)
+  #     @ In, cashflows, list, list of Interaction instances
+  #     @ Out, None
+  #   """
+  #   for cf in cashflows:
+  #     tracker = cf.get_driver()._vp.get_tracking_var()
+  #     resource = cf.get_driver()._vp.get_resource()
+  #     self.levelized_meta[cf.name] = {tracker:resource}
 
 
 

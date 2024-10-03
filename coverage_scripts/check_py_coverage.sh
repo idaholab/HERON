@@ -9,11 +9,6 @@ source $HERON_DIR/coverage_scripts/initialize_coverage.sh
 #coverage help run
 SRC_DIR=`(cd src && pwd)`
 
-# get display var
-DISPLAY_VAR=`(echo $DISPLAY)`
-# reset it
-export DISPLAY=
-
 export COVERAGE_RCFILE="$SRC_DIR/../coverage_scripts/.coveragerc"
 SOURCE_DIRS=($SRC_DIR,$SRC_DIR/../templates/)
 OMIT_FILES=($SRC_DIR/dispatch/twin_pyomo_test.py,$SRC_DIR/dispatch/twin_pyomo_test_rte.py,$SRC_DIR/dispatch/twin_pyomo_limited_ramp.py,$SRC_DIR/ArmaBypass.py)
@@ -22,9 +17,6 @@ export COVERAGE_FILE=`pwd`/.coverage
 
 coverage erase
 ($RAVEN_DIR/run_tests "$@" --re=HERON/tests --python-command="coverage run $EXTRA " || echo run_tests done but some tests failed)
-
-#get DISPLAY BACK
-DISPLAY=$DISPLAY_VAR
 
 ## Prepare data and generate the html documents
 coverage combine

@@ -160,7 +160,7 @@ HERON allows users to create their own functions that perform computations durin
 
 Currently, these functions can only deal with computations that do not occur during the dispatch optimization. For example, a user can write a function that determines the `<reference_price>` parameter of a component's cashflow because cashflows are not computed during the inner dispatch optimization. 
 
-Currently, a user would _not_ be able to write a custom transfer function that informs the dispatcher on how resources are transformed while moving between components of the specified system. This is because transfer functions are required during the dispatch of the system and would require the user to write the function in a way that could be interpreted by our underlying optimization library. **While this feature is not currently available, it may be made available in the future.**
+Currently, a user would _not_ be able to write a custom transfer function that informs the dispatcher on how resources are transformed while moving between components of the specified system. This is because transfer functions are required during the dispatch of the system and would require the user to write the function in a way that could be interpreted by our underlying optimization library. To be more specific, a user would **not** be able to use a custom function within a `<transfer>` XML node in the HERON input file. **While this feature is not currently available, it may be made available in the future.**
 
 Users can see examples of these custom functions in the [FORCE use case repository.](https://github.com/idaholab/FORCE/tree/main/use_cases)
 
@@ -173,9 +173,9 @@ A custom function utilized in a HERON input file requires two input parameters t
 * `data`: A Python dictionary containing information related to associated component that is calling the function.
 * `meta`: A Python dictionary containing information pertaining to the case as a whole. 
 
-It is possible to specify ancillary functions in your python file that do not follow the API conventions, but realize that functions called in your HERON input file will require this specification. 
+It is possible to specify ancillary functions in the python file that do not follow the API conventions, but understand that functions called from the HERON input file will require this specification. 
 
-For example, suppose a user wanted to write a function that computed the reference price for a particular component. In their input file under the `reference_price` node they would write:
+For example, suppose a user wanted to write a function that computed the reference price for a particular component based the current year of the project. In the input file, under the `<reference_price>` node, the user would write:
 
 
 ```xml
@@ -185,22 +185,34 @@ For example, suppose a user wanted to write a function that computed the referen
 </reference_price>
 ...
 
-<!-- Also make sure you specify down in DataGenerators the path to your python file -->
+<!-- Also make sure to specify down in <DataGenerators> the path to the python file -->
 <DataGenerators>
     <Function name="functions">[path/to/python/functions/file]</Function>
 </DataGenerators>
 ```
 
-Then in a file created by the user, they would write the following function:
+Then in a file created by the user, they might write the following function:
 
 ```python
 def get_price(data, meta):
-    
+    """Determine the time-dependent price multiplier and return new reference_price."""
+    # For the first ten years of the project we can sell for a higher price
+    year = meta['HERON']['active_index']['year']
+    if year <=10:
+        multiplier = 3
+    else: 
+        multiplier = 1.5
+    result = 1000 * multiplier
     return {"reference_price": result}, meta
 ```
+
+In the above code block, the function starts by accessing data from the `meta` parameter to determine what the current year is within the simulation. Then the function determines the multiplier based on the current year of the simulation. If the simulation is within the first ten years of the project timeline, then it sets a higher multiplier, otherwise it sets the multiplier lower. Finally, the function stores the newly computed `reference_price` into a dictionary that is returned by the function. This value will then be used as the `<reference_price>` within the component that this function is called from within the input file.  
+
+
 
 
 
 
 ### Custom User Specified Dispatch
 
+**Under Construction**

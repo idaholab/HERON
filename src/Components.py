@@ -118,8 +118,8 @@ class HeronComponent(DoveComponent):
           for param_name, param_key in config["add_params"]:
             new_sub.addParam(param_name, descr=current_sub.parameters[param_key]['description'])
             # Replace the old sub with the new one
-          current_sub.popSub(sub_name)
-          current_sub.addSub(new_sub)
+          _ = sub.popSub(sub_name)
+          sub.addSub(new_sub)
 
     for sub in input_specs.subs:
       if sub.getName() == "economics":
@@ -133,9 +133,9 @@ class HeronComponent(DoveComponent):
                 # Add parameters if any
                 for param_name, param_key in config["add_params"]:
                   new_sub.addParam(param_name, descr=current_sub.parameters[param_key]['description'])
-                # Replace the old sub with the new one
-                current_sub.popSub(sub_name)
-                current_sub.addSub(new_sub)
+                  # Replace the old sub with the new one
+                econ_sub.popSub(sub_name)
+                econ_sub.addSub(new_sub)
 
     return input_specs
 

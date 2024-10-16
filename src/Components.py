@@ -12,36 +12,38 @@ from HERON.src.base import Base
 import xml.etree.ElementTree as ET
 from HERON.src.Economics import CashFlowUser
 from HERON.src.ValuedParams import factory as vp_factory
-from HERON.src.TransferFuncs import factory as tf_factory
+
 from HERON.src.ValuedParamHandler import ValuedParamHandler
 from HERON.src import _utils as hutils
+
+from DOVE.src.Components import Component as DoveComponent
+from DOVE.src.TransferFuncs import factory as tf_factory
+from DOVE.src.Interactions import Interaction as DoveInteraction
+from DOVE.src.Interactions import Producer as DoveProducer
+from DOVE.src.Interactions import Demand as DoveDemand
+from DOVE.src.Interactions import Storage as DoveStorage
 
 try:
   import ravenframework
 except ModuleNotFoundError:
   framework_path = hutils.get_raven_loc()
   sys.path.append(framework_path)
-from ravenframework.utils import InputData, xmlUtils,InputTypes
+from ravenframework.utils import InputData, xmlUtils, InputTypes
 
-# TODO can we use EntityFactory from RAVEN?
-def factory(xml, method='sweep'):
-  """
-    Tool for constructing compnents without the input_loader
-    TODO can this be set up so the input_loader calls it instead of the methods directly?
-    @ In, xml, ET.Element, node from which to read component settings
-    @ In, method, string, optional, operational mode for case
-    @ Out, comp, Component instance, component constructed
-  """
-  comp = Component()
-  comp.read_input(xml, method)
-  comp.finalize_init()
-  return comp
 
-class Component(Base, CashFlowUser):
+class HeronComponent(DoveComponent):
   """
     Represents a unit in the grid analysis. Each component has a single "interaction" that
     describes what it can do (produce, store, demand)
   """
+  def __repr__(self):
+    """
+    String representation.
+    @ In, None
+    @ Out, __repr__, string representation
+    """
+    return f'<HERON Component "{self.name}">'
+
   @classmethod
   def get_input_specs(cls):
     """
@@ -49,48 +51,111 @@ class Component(Base, CashFlowUser):
       @ In, None
       @ Out, input_specs, InputData, specs
     """
-    input_specs = InputData.parameterInputFactory('Component', ordered=False, baseNode=None,
-        descr=r"""defines a component as an element of the grid system. Components are defined by the action they
-              perform such as \xmlNode{produces} or \xmlNode{consumes}; see details below.""")
-    input_specs.addParam('name', param_type=InputTypes.StringType, required=True,
-        descr=r"""identifier for the component. This identifier will be used to generate variables
-              and relate signals to this component throughout the HERON analysis.""")
-    # production
-    ## this unit may be able to make stuff, possibly from other stuff
-    input_specs.addSub(Producer.get_input_specs())
-    # storage
-    ## this unit may be able to store stuff
-    input_specs.addSub(Storage.get_input_specs())
-    # demands
-    ## this unit may have a certain demand that must be met
-    input_specs.addSub(Demand.get_input_specs())
-    # this unit probably has some economics
-    input_specs = CashFlowUser.get_input_specs(input_specs)
+    ## DEVELOPER NOTE:
+    ## You should NOT add new subspecs to this method unless they have nothing to
+    ## do with DOVE (In which case maybe rethink its applicability to HERON).
+    ## All InputSpecs for Interactions are defined within the DOVE.src.Interactions.
+    ## If a new VP node needs to be added, find someway to add a fixed-value version
+    ## to DOVE first! Then modify it in here. This will keep feature parity with DOVE.
+    ## YOU HAVE BEEN WARNED!
+
+    # Grab all the DOVE input specs -- these input specs have no ValuedParams in
+    # them, so we need to modify the input spec to allow for those VPs
+    input_specs = super().get_input_specs()
+
+    # Define the subs to modify along with their configurations -- if we need to
+    # modify more subs later, just add them to this dict and they'll be added.
+    interact_subs_to_modify = {
+      "capacity": {
+        "add_params": [("resource", "resource")],
+        "allowed": None
+      },
+      "capacity_factor": {
+        "add_params": [],
+        "allowed": ['ARMA', 'CSV']
+      },
+      "minimum": {
+        "add_params": [("resource", "resource")],
+        "allowed": None,
+      },
+      "initial_stored": {
+        "add_params": [],
+        "allowed": None,
+      },
+      "strategy": {
+        "add_params": [],
+        "allowed": ['Function'],
+      },
+    }
+
+    econ_subs_to_modify = {
+      "driver":{
+        "add_params": [],
+        "allowed": None,
+      },
+      "reference_price": {
+        "add_params": [],
+        "allowed": None,
+      },
+      "reference_driver": {
+        "add_params": [],
+        "allowed": None,
+      },
+      "scaling_factor_x": {
+        "add_params": [],
+        "allowed": None,
+      },
+    }
+
+    # Iterate over the subs to modify
+    for sub in input_specs.subs:
+      for sub_name, config in interact_subs_to_modify.items():
+        current_sub = sub.getSub(sub_name)
+        if current_sub is not None:
+          print(f"INSIDE HERE -- {sub.getName()} - {sub_name}")
+          new_sub = vp_factory.make_input_specs(sub_name, descr=sub.description, allowed=config["allowed"])
+          # Add parameters if any
+          for param_name, param_key in config["add_params"]:
+            new_sub.addParam(param_name, descr=current_sub.parameters[param_key]['description'])
+            # Replace the old sub with the new one
+          _ = sub.popSub(sub_name)
+          sub.addSub(new_sub)
+
+    for sub in input_specs.subs:
+      if sub.getName() == "economics":
+        for econ_sub in sub.subs:
+          if econ_sub.getName() == "CashFlow":
+            for sub_name, config in econ_subs_to_modify.items():
+              current_sub = econ_sub.getSub(sub_name)
+              if current_sub is not None:
+                print(f"INSIDE HERE -- {econ_sub.getName()} - {sub_name}")
+                new_sub = vp_factory.make_input_specs(sub_name, descr=sub.description, allowed=config["allowed"])
+                # Add parameters if any
+                for param_name, param_key in config["add_params"]:
+                  new_sub.addParam(param_name, descr=current_sub.parameters[param_key]['description'])
+                  # Replace the old sub with the new one
+                econ_sub.popSub(sub_name)
+                econ_sub.addSub(new_sub)
+
     return input_specs
 
-  def __init__(self, **kwargs):
-    """
-      Constructor
-      @ In, kwargs, dict, optional, arguments to pass to other constructors
-      @ Out, None
-    """
-    Base.__init__(self, **kwargs)
-    CashFlowUser.__init__(self)
-    self.name = None
-    self._produces = []
-    self._stores = []
-    self._demands = []
-    self.levelized_meta = {}
+  # def __init__(self, **kwargs):
+  #   """
+  #     Constructor
+  #     @ In, kwargs, dict, optional, arguments to pass to other constructors
+  #     @ Out, None
+  #   """
+  #   super().__init__(**kwargs)
+  #   # Base.__init__(self, **kwargs)
+  #   # CashFlowUser.__init__(self)
+  #   self.name = None
+  #   self._produces = []
+  #   self._stores = []
+  #   self._demands = []
+  #   self.levelized_meta = {}
 
-  def __repr__(self):
-    """
-      String representation.
-      @ In, None
-      @ Out, __repr__, string representation
-    """
-    return f'<HERON Component "{self.name}">'
 
-  def read_input(self, xml, mode):
+  def read_input(self, xml, mode="opt"):
     """
       Sets settings from input file
       @ In, xml, xml.etree.ElementTree.Element, input from user
@@ -98,7 +163,10 @@ class Component(Base, CashFlowUser):
       @ Out, None
     """
     # get specs for allowable inputs
+    print("STARRTING READ INPUT")
     specs = self.get_input_specs()()
+    print(specs.generateLatex(recDepth=2))
+    print("PARSENODE")
     specs.parseNode(xml)
     self.name = specs.parameterValues['name']
     self.raiseADebug(f'Loading component "{self.name}"')
@@ -132,208 +200,7 @@ class Component(Base, CashFlowUser):
       self.raiseAnError(IOError, f'<economics> node missing from component "{self.name}"!')
     CashFlowUser.read_input(self, econ_node)
 
-  def finalize_init(self):
-    """
-      Finalizes the initialization of the component, and checks input settings.
-      @ In, None
-      @ Out, None
-    """
-    self.get_interaction().finalize_init()
-
-  def get_crossrefs(self):
-    """
-      Collect the required value entities needed for this component to function.
-      @ In, None
-      @ Out, crossrefs, dict, mapping of dictionaries with information about the entities required.
-    """
-    inter = self.get_interaction()
-    crossrefs = {inter: inter.get_crossrefs()}
-    crossrefs.update(self._economics.get_crossrefs())
-    return crossrefs
-
-  def set_crossrefs(self, refs):
-    """
-      Connect cross-reference material from other entities to the ValuedParams in this component.
-      @ In, refs, dict, dictionary of entity information
-      @ Out, None
-    """
-    try_match = self.get_interaction()
-    for interaction in list(refs.keys()):
-      # find associated interaction
-      if try_match == interaction:
-        try_match.set_crossrefs(refs.pop(interaction))
-        break
-    # send what's left to the economics
-    self._economics.set_crossrefs(refs)
-    # if anything left, there's an issue
-    assert not refs
-
-  def get_interaction(self):
-    """
-      Return the interactions this component uses.
-      TODO could this just return the only non-empty one, since there can only be one?
-      @ In, None
-      @ Out, interactions, list, list of Interaction instances
-    """
-    try:
-      return (self._produces + self._stores + self._demands)[0]
-    except IndexError: # there are no interactions!
-      return None
-
-  def get_sqrt_RTE(self):
-    """
-      Provide the square root of the round-trip efficiency for this component.
-      Note we use the square root due to splitting loss across the input and output.
-      @ In, None
-      @ Out, RTE, float, round-trip efficiency as a multiplier
-    """
-    return self.get_interaction().get_sqrt_RTE()
-
-  def print_me(self, tabs=0, tab='  '):
-    """
-      Prints info about self
-      @ In, tabs, int, optional, number of tabs to insert before prints
-      @ In, tab, str, optional, characters to use to denote hierarchy
-      @ Out, None
-    """
-    pre = tab*tabs
-    self.raiseADebug(pre+'Component:')
-    self.raiseADebug(pre+'  name:', self.name)
-    self.get_interaction().print_me(tabs=tabs+1, tab=tab)
-
-  def get_inputs(self):
-    """
-      returns list of all resources consumed here
-      @ In, None
-      @ Out, inputs, set, set of input resources as strings (resources that are taken/consumed/stored)
-    """
-    inputs = set()
-    # simply combine the inputs for the interaction
-    inputs.update(self.get_interaction().get_inputs())
-    return inputs
-
-  def get_outputs(self):
-    """
-      returns list of all resources producable here
-      @ In, None
-      @ Out, outputs, set, set of output resources as strings (resources that are produced/provided)
-    """
-    outputs = set()
-    outputs.update(self.get_interaction().get_outputs())
-    return outputs
-
-  def get_resources(self):
-    """
-      Provides the full set of resources used by this component.
-      @ In, None
-      @ Out, res, set, set(str) of resource names
-    """
-    res = set()
-    res.update(self.get_inputs())
-    res.update(self.get_outputs())
-    return res
-
-  def get_capacity(self, meta, raw=False):
-    """
-      returns the capacity of the interaction of this component
-      @ In, meta, dict, arbitrary metadata from EGRET
-      @ In, raw, bool, optional, if True then return the ValuedParam instance for capacity, instead of the evaluation
-      @ Out, capacity, float (or ValuedParam), the capacity of this component's interaction
-    """
-    return self.get_interaction().get_capacity(meta, raw=raw)
-
-  def get_minimum(self, meta, raw=False):
-    """
-      returns the minimum of the interaction of this component
-      @ In, meta, dict, arbitrary metadata from EGRET
-      @ In, raw, bool, optional, if True then return the ValuedParam instance for capacity, instead of the evaluation
-      @ Out, capacity, float (or ValuedParam), the capacity of this component's interaction
-    """
-    return self.get_interaction().get_minimum(meta, raw=raw)
-
-  def get_capacity_var(self):
-    """
-      Returns the variable that is used to define this component's capacity.
-      @ In, None
-      @ Out, var, str, name of capacity resource
-    """
-    return self.get_interaction().get_capacity_var()
-
-  def get_tracking_vars(self):
-    """
-      Provides the variables used by this component to track dispatch
-      @ In, None
-      @ Out, get_tracking_vars, list, variable name list
-    """
-    return self.get_interaction().get_tracking_vars()
-
-  def is_dispatchable(self):
-    """
-      Returns the dispatchability indicator of this component.
-      TODO Note that despite the name, this is NOT boolean, but a string indicator.
-      @ In, None
-      @ Out, dispatchable, str, dispatchability (e.g. independent, dependent, fixed)
-    """
-    return self.get_interaction().is_dispatchable()
-
-  def is_governed(self):
-    """
-      Determines if this component is optimizable or governed by some function.
-      @ In, None
-      @ Out, is_governed, bool, whether this component is governed.
-    """
-    return self.get_interaction().is_governed()
-
-  def set_capacity(self, cap):
-    """
-      Set the float value of the capacity of this component's interaction
-      @ In, cap, float, value
-      @ Out, None
-    """
-    return self.get_interaction().set_capacity(cap)
-
-  @property
-  def ramp_limit(self):
-    """
-      Accessor for ramp limits on interactions.
-      @ In, None
-      @ Out, limit, float, limit
-    """
-    return self.get_interaction().ramp_limit
-
-  @property
-  def ramp_freq(self):
-    """
-      Accessor for ramp frequency limits on interactions.
-      @ In, None
-      @ Out, limit, float, limit
-    """
-    return self.get_interaction().ramp_freq
-
-  def get_capacity_param(self):
-    """
-      Provides direct access to the ValuedParam for the capacity of this component.
-      @ In, None
-      @ Out, cap, ValuedParam, capacity valued param
-    """
-    intr = self.get_interaction()
-    return intr.get_capacity(None, None, None, None, raw=True)
-
-  def set_levelized_cost_meta(self, cashflows):
-    """
-      Create a dictionary for determining correct resource to use per cashflow if using levelized
-      inner objective (only an option when selecting LC as an econ metric)
-      @ In, cashflows, list, list of Interaction instances
-      @ Out, None
-    """
-    for cf in cashflows:
-      tracker = cf.get_driver()._vp.get_tracking_var()
-      resource = cf.get_driver()._vp.get_resource()
-      self.levelized_meta[cf.name] = {tracker:resource}
-
-
-
-class Interaction(Base):
+class HeronInteraction(DoveInteraction):
   """
     Base class for component interactions (e.g. Producer, Storage, Demand)
   """
@@ -346,51 +213,50 @@ class Interaction(Base):
       @ In, None
       @ Out, input_specs, InputData, specs
     """
-    if cls.tag == 'produces':
-      desc = r"""indicates that this component produces one or more resources by consuming other resources."""
-      resource_desc = r"""the resource produced by this component's activity."""
-    elif cls.tag == 'stores':
-      desc = r"""indicates that this component stores one resource, potentially absorbing or providing that resource."""
-      resource_desc = r"""the resource stored by this component."""
-    elif cls.tag == "demands":
-      desc = r"""indicates that this component exclusively consumes a resource."""
-      resource_desc = r"""the resource consumed by this component."""
-    specs = InputData.parameterInputFactory(cls.tag, ordered=False, descr=desc)
-    specs.addParam('resource', param_type=InputTypes.StringListType, required=True,
-        descr=resource_desc)
-    dispatch_opts = InputTypes.makeEnumType('dispatch_opts', 'dispatch_opts', ['fixed', 'independent', 'dependent'])
-    specs.addParam('dispatch', param_type=dispatch_opts,
-        descr=r"""describes the way this component should be dispatched, or its flexibility.
-              \texttt{fixed} indicates the component always fully dispatched at its maximum level.
-              \texttt{independent} indicates the component is fully dispatchable by the dispatch optimization algorithm.
-              \texttt{dependent} indicates that while this component is not directly controllable by the dispatch
-              algorithm, it can however be flexibly dispatched in response to other units changing dispatch level.
-              For example, when attempting to increase profitability, the \texttt{fixed} components are not adjustable,
-              but the \texttt{independent} components can be adjusted to attempt to improve the economic metric.
-              In response to the \texttt{independent} component adjustment, the \texttt{dependent} components
-              may respond to balance the resource usage from the changing behavior of other components.""")
+    ## DEVELOPER NOTE:
+    ## You should NOT add new subspecs to this method unless they have nothing to
+    ## do with DOVE (In which case maybe rethink its applicability to HERON).
+    ## All InputSpecs for Interactions are defined within the DOVE.src.Interactions.
+    ## If a new VP node needs to be added, find someway to add a fixed-value version
+    ## to DOVE first! Then modify it in here. This will keep feature parity with DOVE.
+    ## YOU HAVE BEEN WARNED!
 
-    descr = r"""the maximum value at which this component can act, in units corresponding to the indicated resource. """
-    cap = vp_factory.make_input_specs('capacity', descr=descr)
-    cap.addParam('resource', param_type=InputTypes.StringType,
-        descr=r"""indicates the resource that defines the capacity of this component's operation. For example,
-              if a component consumes steam and electricity to produce hydrogen, the capacity of the component
-              can be defined by the maximum steam consumable, maximum electricity consumable, or maximum
-              hydrogen producable. Any choice should be nominally equivalent, but determines the units
-              of the value of this node.""")
-    specs.addSub(cap)
+    # Grab all the DOVE input specs -- these input specs have no ValuedParams in
+    # them, so we need to modify the input spec to allow for those VPs
+    input_specs = super().get_input_specs()
 
-    descr = r"""the actual value at which this component can act, as a unitless fraction of total rated capacity.
-            Note that these factors are applied within the dispatch optimization; we assume that the capacity factor
-            is not a variable in the outer optimization."""
-    capfactor = vp_factory.make_input_specs('capacity_factor', descr=descr, allowed=['ARMA', 'CSV'])
-    specs.addSub(capfactor)
+    # Define the subs to modify along with their configurations -- if we need to
+    # modify more subs later, just add them to this dict and they'll be added.
+    subs_to_modify = {
+        "capacity": {
+            "add_params": [("resource", "resource")],
+            "allowed": None
+        },
+        "capacity_factor": {
+            "add_params": [],
+            "allowed": ['ARMA', 'CSV']
+        },
+        "minimum": {
+            "add_params": [("resource", "resource")],
+            "allowed": None
+        },
+    }
 
-    descr = r"""provides the minimum value at which this component can act, as a percentage of the installed capacity. """
-    minn = vp_factory.make_input_specs('minimum', descr=descr)
-    specs.addSub(minn)
+    # Iterate over the subs to modify
+    for sub_name, config in subs_to_modify.items():
+        # Get the sub from input_specs
+        sub = input_specs.getSub(sub_name)
+        if sub is not None:
+            # Create a new input spec using vp_factory
+            new_sub = vp_factory.make_input_specs(sub_name, descr=sub.description, allowed=config["allowed"])
+            # Add parameters if any
+            for param_name, param_key in config["add_params"]:
+                new_sub.addParam(param_name, descr=sub.parameters[param_key]['description'])
+            # Replace the old sub with the new one
+            input_specs.popSub(sub_name)
+            input_specs.addSub(new_sub)
 
-    return specs
+    return input_specs
 
   def __init__(self, **kwargs):
     """
@@ -669,7 +535,7 @@ class Interaction(Base):
 
 
 
-class Producer(Interaction):
+class HeronProducer(HeronInteraction, DoveProducer):
   """
     Explains a particular interaction, where resources are consumed to produce other resources
   """
@@ -723,383 +589,383 @@ class Producer(Interaction):
     )
 
     return specs
-
-  def __init__(self, **kwargs):
-    """
-      Constructor
-      @ In, None
-      @ Out, None
-    """
-    Interaction.__init__(self, **kwargs)
-    self._produces = []     # the resource(s) produced by this interaction
-    self._consumes = []     # the resource(s) consumed by this interaction
-    self._tracking_vars = ['production']
-
-  def read_input(self, specs, mode, comp_name):
-    """
-      Sets settings from input file
-      @ In, specs, InputData, specs
-      @ In, mode, string, case mode to operate in (e.g. 'sweep' or 'opt')
-      @ In, comp_name, string, name of component this Interaction belongs to
-      @ Out, None
-    """
-    # specs were already checked in Component
-    Interaction.read_input(self, specs, mode, comp_name)
-    self._produces = specs.parameterValues['resource']
-    for item in specs.subparts:
-      if item.getName() == 'consumes':
-        self._consumes = item.value
-      elif item.getName() == 'transfer':
-        self._set_transfer_func('_transfer', comp_name, item)
-      elif item.getName() == 'ramp_limit':
-        self.ramp_limit = item.value
-      elif item.getName() == 'ramp_freq':
-        self.ramp_freq = item.value
-
-    # input checking
-    ## if a transfer function not given, can't be consuming a resource
-    if self._transfer is None:
-      if self._consumes:
-        self.raiseAnError(IOError, 'Any component that consumes a resource must have a transfer function describing the production process!')
-    ## transfer elements are all in IO list
-    if self._transfer is not None:
-      self._transfer.check_io(self.get_inputs(), self.get_outputs(), comp_name)
-      self._transfer.set_io_signs(self.get_inputs(), self.get_outputs())
-    ## ramp limit is (0, 1]
-    if self.ramp_limit is not None and not 0 < self.ramp_limit <= 1:
-      self.raiseAnError(IOError, f'Ramp limit must be (0, 1] but got "{self.ramp_limit}"')
-
-  def _set_transfer_func(self, name, comp, spec):
-    """
-      Sets up a Transfer Function
-      @ In, name, str, name of member of this class
-      @ In, comp, str, name of associated component
-      @ In, spec, inputparam, input specifications
-      @ Out, None
-    """
-    known = tf_factory.knownTypes()
-    found = False
-    for sub in spec.subparts:
-      if sub.getName() in known:
-        if found:
-          self.raiseAnError(IOError, f'Received multiple Transfer Functions for component "{name}"!')
-        self._transfer = tf_factory.returnInstance(sub.getName())
-        self._transfer.read(comp, spec)
-        found = True
-
-  def get_inputs(self):
-    """
-      Returns the set of resources that are inputs to this interaction.
-      @ In, None
-      @ Out, inputs, set, set of inputs
-    """
-    inputs = Interaction.get_inputs(self)
-    inputs.update(np.atleast_1d(self._consumes))
-    return inputs
-
-  def get_outputs(self):
-    """
-      Returns the set of resources that are outputs to this interaction.
-      @ In, None
-      @ Out, outputs, set, set of outputs
-    """
-    outputs = set(np.atleast_1d(self._produces))
-    return outputs
-
-  def print_me(self, tabs: int=0, tab: str='  ') -> None:
-    """
-      Prints info about self
-      @ In, tabs, int, optional, number of tabs to insert before prints
-      @ In, tab, str, optional, characters to use to denote hierarchy
-      @ Out, None
-    """
-    pre = tab*tabs
-    self.raiseADebug(pre+'Producer:')
-    self.raiseADebug(pre+'  produces:', self._produces)
-    self.raiseADebug(pre+'  consumes:', self._consumes)
-    self.raiseADebug(pre+'  transfer:', self._transfer)
-    self.raiseADebug(pre+'  capacity:', self._capacity)
-
-
-
-class Storage(Interaction):
-  """
-    Explains a particular interaction, where a resource is stored and released later
-  """
-  tag = 'stores' # node name in input file
-
-  @classmethod
-  def get_input_specs(cls):
-    """
-      Collects input specifications for this class.
-      @ In, None
-      @ Out, input_specs, InputData, specs
-    """
-    specs = super().get_input_specs()
-    # TODO unused, please implement ... :
-    # descr = r"""the limiting charge/discharge rate of this storage. """
-    # specs.addSub(ValuedParam.get_input_specs('rate'))
-    # initial stored
-    descr=r"""indicates what percent of the storage unit is full at the start of each optimization sequence,
-              from 0 to 1. Overwritten if using periodic level conditions, in which case the initial level is
-              solved as part of the optimization, but the initial and final levels must match. \default{0.0}. """
-    sub = vp_factory.make_input_specs('initial_stored', descr=descr)
-    specs.addSub(sub)
-    # periodic level boundary condition
-    descr=r"""indicates whether the level of the storage should be required to return to its initial level
-              at the end of each modeling window. If True, replaces the \xmlNode{initial_stored} with an optimization
-              variable. If False, this increases the flexibility of the storage at the cost of potentially
-              violating conservation of resources. \default{True}. """
-    sub = InputData.parameterInputFactory('periodic_level', contentType=InputTypes.BoolType, descr=descr)
-    specs.addSub(sub)
-    # control strategy
-    descr=r"""control strategy for operating the storage. If not specified, uses a perfect foresight strategy. """
-    specs.addSub(vp_factory.make_input_specs('strategy', allowed=['Function'], descr=descr))
-    # round trip efficiency
-    descr = r"""round-trip efficiency for this component as a scalar multiplier. \default{1.0}"""
-    specs.addSub(InputData.parameterInputFactory('RTE', contentType=InputTypes.FloatType, descr=descr))
-    return specs
-
-  def __init__(self, **kwargs):
-    """
-      Constructor
-      @ In, kwargs, dict, passthrough args
-      @ Out, None
-    """
-    Interaction.__init__(self, **kwargs)
-    self.apply_periodic_level = True # whether to apply periodic boundary conditions for the level of the storage
-    self._stores = None              # the resource stored by this interaction
-    self._rate = None                # the rate at which this component can store up or discharge
-    self._initial_stored = None      # how much resource does this component start with stored?
-    self._strategy = None            # how to operate storage unit
-    self._tracking_vars = ['level', 'charge', 'discharge'] # stored quantity, charge activity, discharge activity
-
-  def read_input(self, specs, mode, comp_name):
-    """
-      Sets settings from input file
-      @ In, specs, InputData, specs
-      @ In, mode, string, case mode to operate in (e.g. 'sweep' or 'opt')
-      @ In, comp_name, string, name of component this Interaction belongs to
-      @ Out, None
-    """
-    # specs were already checked in Component
-    Interaction.read_input(self, specs, mode, comp_name)
-    self._stores = specs.parameterValues['resource']
-    for item in specs.subparts:
-      if item.getName() == 'rate':
-        self._set_valued_param('_rate', comp_name, item, mode)
-      elif item.getName() == 'initial_stored':
-        self._set_valued_param('_initial_stored', comp_name, item, mode)
-      elif item.getName() == 'periodic_level':
-        self.apply_periodic_level = item.value
-      elif item.getName() == 'strategy':
-        self._set_valued_param('_strategy', comp_name, item, mode)
-      elif item.getName() == 'RTE':
-        self._sqrt_rte = np.sqrt(item.value)
-    assert len(self._stores) == 1, f'Multiple storage resources given for component "{comp_name}"'
-    self._stores = self._stores[0]
-    # checks and defaults
-    if self._initial_stored is None:
-      self.raiseAWarning(f'Initial storage level for "{comp_name}" was not provided! Defaulting to 0%.')
-      # make a fake reader node for a 0 value
-      vp = ValuedParamHandler('initial_stored')
-      vp.set_const_VP(0.0)
-      self._initial_stored = vp
-    # the capacity is limited by the stored resource.
-    self._capacity_var = self._stores
-
-  def get_inputs(self):
-    """
-      Returns the set of resources that are inputs to this interaction.
-      @ In, None
-      @ Out, inputs, set, set of inputs
-    """
-    inputs = Interaction.get_inputs(self)
-    inputs.update(np.atleast_1d(self._stores))
-    return inputs
-
-  def get_outputs(self):
-    """
-      Returns the set of resources that are outputs to this interaction.
-      @ In, None
-      @ Out, outputs, set, set of outputs
-    """
-    outputs = Interaction.get_outputs(self)
-    outputs.update(np.atleast_1d(self._stores))
-    return outputs
-
-  def get_resource(self):
-    """
-      Returns the resource this unit stores.
-      @ In, None
-      @ Out, stores, str, resource stored
-    """
-    return self._stores
-
-  def get_strategy(self):
-    """
-      Returns the resource this unit stores.
-      @ In, None
-      @ Out, stores, str, resource stored
-    """
-    return self._strategy
-
-  def is_governed(self):
-    """
-      Determines if this interaction is optimizable or governed by some function.
-      @ In, None
-      @ Out, is_governed, bool, whether this component is governed.
-    """
-    return self._strategy is not None
-
-  def print_me(self, tabs=0, tab='  '):
-    """
-      Prints info about self
-      @ In, tabs, int, optional, number of tabs to insert before prints
-      @ In, tab, str, optional, characters to use to denote hierarchy
-      @ Out, None
-    """
-    pre = tab*tabs
-    self.raiseADebug(pre+'Storage:')
-    self.raiseADebug(pre+'  stores:', self._stores)
-    self.raiseADebug(pre+'  rate:', self._rate)
-    self.raiseADebug(pre+'  capacity:', self._capacity)
-
-  def _check_capacity_limit(self, res, amt, balance, meta, raven_vars, dispatch, t, level):
-    """
-      Check to see if capacity limits of this component have been violated.
-      overloads Interaction method, since units for storage are "res" not "res per second"
-      @ In, res, str, name of capacity-limiting resource
-      @ In, amt, float, requested amount of resource used in interaction
-      @ In, balance, dict, results of requested interaction
-      @ In, meta, dict, additional variable passthrough
-      @ In, raven_vars, dict, TODO part of meta! consolidate!
-      @ In, dispatch, dict, TODO part of meta! consolidate!
-      @ In, t, int, TODO part of meta! consolidate!
-      @ In, level, float, current level of storage
-      @ Out, balance, dict, new results of requested action, possibly modified if capacity hit
-      @ Out, meta, dict, additional variable passthrough
-    """
-    # note "amt" has units of AMOUNT not RATE (resource, not resource per second)
-    sign = np.sign(amt)
-    # are we storing or providing?
-    #print('DEBUGG supposed current level:', level)
-    if sign < 0:
-      # we are being asked to consume some
-      cap, meta = self.get_capacity(meta, raven_vars, dispatch, t)
-      available_amount = cap[res] - level
-      #print('Supposed Capacity, Only calculated ins sign<0 (being asked to consumer)',cap)
-    else:
-      # we are being asked to produce some
-      available_amount = level
-    # the amount we can consume is the minimum of the requested or what's available
-    delta = sign * min(available_amount, abs(amt))
-    return {res: delta}, meta
-
-  def _check_rate_limit(self, res, amt, balance, meta, raven_vars, dispatch, t):
-    """
-      Determines the limiting rate of in/out production for storage
-      @ In, res, str, name of capacity-limiting resource
-      @ In, amt, float, requested amount of resource used in interaction
-      @ In, balance, dict, results of requested interaction
-      @ In, meta, dict, additional variable passthrough
-      @ In, raven_vars, dict, TODO part of meta! consolidate!
-      @ In, dispatch, dict, TODO part of meta! consolidate!
-      @ In, t, int, TODO part of meta! consolidate!
-      @ Out, balance, dict, new results of requested action, possibly modified if capacity hit
-      @ Out, meta, dict, additional variable passthrough
-    """
-    # TODO distinct up/down rates
-    # check limiting rate for resource flow in/out, if any
-    if self._rate:
-      request = {res: None}
-      inputs = {'request': request,
-                'meta': meta,
-                'raven_vars': raven_vars,
-                'dispatch': dispatch,
-                't': t}
-      max_rate = self._rate.evaluate(inputs, target_var=res)[0][res]
-      delta = np.sign(amt) * min(max_rate, abs(amt))
-      print('max_rate in _check_rate_limit',max_rate, 'delta (min of maxrate and abs(amt)',delta)
-      return {res: delta}, meta
-    return {res: amt}, meta
-
-  def get_initial_level(self, meta):
-    """
-      Find initial level of the storage
-      @ In, meta, dict, additional variable passthrough
-      @ Out, initial, float, initial level
-    """
-    res = self.get_resource()
-    request = {res: None}
-    meta['request'] = request
-    pct = self._initial_stored.evaluate(meta, target_var=res)[0][res]
-    if not (0 <= pct <= 1):
-      self.raiseAnError(ValueError, f'While calculating initial storage level for storage "{self.tag}", ' +
-          f'an invalid percent was provided/calculated ({pct}). Initial levels should be between 0 and 1, inclusive.')
-    amt = pct * self.get_capacity(meta)[0][res]
-    return amt
-
-
-
-
-class Demand(Interaction):
-  """
-    Explains a particular interaction, where a resource is demanded
-  """
-  tag = 'demands' # node name in input file
-
-  @classmethod
-  def get_input_specs(cls):
-    """
-      Collects input specifications for this class.
-      @ In, None
-      @ Out, input_specs, InputData, specs
-    """
-    specs = super().get_input_specs()
-    return specs
-
-  def __init__(self, **kwargs):
-    """
-      Constructor
-      @ In, kwargs, dict, arguments
-      @ Out, None
-    """
-    Interaction.__init__(self, **kwargs)
-    self._demands = None  # the resource demanded by this interaction
-    self._tracking_vars = ['production']
-
-  def read_input(self, specs, mode, comp_name):
-    """
-      Sets settings from input file
-      @ In, specs, InputData, specs
-      @ In, mode, string, case mode to operate in (e.g. 'sweep' or 'opt')
-      @ In, comp_name, string, name of component this Interaction belongs to
-      @ Out, None
-    """
-    # specs were already checked in Component
-    # must set demands first, so that "capacity" can access it
-    self._demands = specs.parameterValues['resource']
-    Interaction.read_input(self, specs, mode, comp_name)
-
-  def get_inputs(self):
-    """
-      Returns the set of resources that are inputs to this interaction.
-      @ In, None
-      @ Out, inputs, set, set of inputs
-    """
-    inputs = Interaction.get_inputs(self)
-    inputs.update(np.atleast_1d(self._demands))
-    return inputs
-
-  def print_me(self, tabs: int=0, tab: str='  ') -> None:
-    """
-      Prints info about self
-      @ In, tabs, int, optional, number of tabs to insert before prints
-      @ In, tab, str, optional, characters to use to denote hierarchy
-      @ Out, None
-    """
-    pre = tab*tabs
-    self.raiseADebug(pre+'Demand/Load:')
-    self.raiseADebug(pre+'  demands:', self._demands)
-    self.raiseADebug(pre+'  capacity:', self._capacity)
+#
+#   def __init__(self, **kwargs):
+#     """
+#       Constructor
+#       @ In, None
+#       @ Out, None
+#     """
+#     Interaction.__init__(self, **kwargs)
+#     self._produces = []     # the resource(s) produced by this interaction
+#     self._consumes = []     # the resource(s) consumed by this interaction
+#     self._tracking_vars = ['production']
+#
+#   def read_input(self, specs, mode, comp_name):
+#     """
+#       Sets settings from input file
+#       @ In, specs, InputData, specs
+#       @ In, mode, string, case mode to operate in (e.g. 'sweep' or 'opt')
+#       @ In, comp_name, string, name of component this Interaction belongs to
+#       @ Out, None
+#     """
+#     # specs were already checked in Component
+#     Interaction.read_input(self, specs, mode, comp_name)
+#     self._produces = specs.parameterValues['resource']
+#     for item in specs.subparts:
+#       if item.getName() == 'consumes':
+#         self._consumes = item.value
+#       elif item.getName() == 'transfer':
+#         self._set_transfer_func('_transfer', comp_name, item)
+#       elif item.getName() == 'ramp_limit':
+#         self.ramp_limit = item.value
+#       elif item.getName() == 'ramp_freq':
+#         self.ramp_freq = item.value
+#
+#     # input checking
+#     ## if a transfer function not given, can't be consuming a resource
+#     if self._transfer is None:
+#       if self._consumes:
+#         self.raiseAnError(IOError, 'Any component that consumes a resource must have a transfer function describing the production process!')
+#     ## transfer elements are all in IO list
+#     if self._transfer is not None:
+#       self._transfer.check_io(self.get_inputs(), self.get_outputs(), comp_name)
+#       self._transfer.set_io_signs(self.get_inputs(), self.get_outputs())
+#     ## ramp limit is (0, 1]
+#     if self.ramp_limit is not None and not 0 < self.ramp_limit <= 1:
+#       self.raiseAnError(IOError, f'Ramp limit must be (0, 1] but got "{self.ramp_limit}"')
+#
+#   def _set_transfer_func(self, name, comp, spec):
+#     """
+#       Sets up a Transfer Function
+#       @ In, name, str, name of member of this class
+#       @ In, comp, str, name of associated component
+#       @ In, spec, inputparam, input specifications
+#       @ Out, None
+#     """
+#     known = tf_factory.knownTypes()
+#     found = False
+#     for sub in spec.subparts:
+#       if sub.getName() in known:
+#         if found:
+#           self.raiseAnError(IOError, f'Received multiple Transfer Functions for component "{name}"!')
+#         self._transfer = tf_factory.returnInstance(sub.getName())
+#         self._transfer.read(comp, spec)
+#         found = True
+#
+#   def get_inputs(self):
+#     """
+#       Returns the set of resources that are inputs to this interaction.
+#       @ In, None
+#       @ Out, inputs, set, set of inputs
+#     """
+#     inputs = Interaction.get_inputs(self)
+#     inputs.update(np.atleast_1d(self._consumes))
+#     return inputs
+#
+#   def get_outputs(self):
+#     """
+#       Returns the set of resources that are outputs to this interaction.
+#       @ In, None
+#       @ Out, outputs, set, set of outputs
+#     """
+#     outputs = set(np.atleast_1d(self._produces))
+#     return outputs
+#
+#   def print_me(self, tabs: int=0, tab: str='  ') -> None:
+#     """
+#       Prints info about self
+#       @ In, tabs, int, optional, number of tabs to insert before prints
+#       @ In, tab, str, optional, characters to use to denote hierarchy
+#       @ Out, None
+#     """
+#     pre = tab*tabs
+#     self.raiseADebug(pre+'Producer:')
+#     self.raiseADebug(pre+'  produces:', self._produces)
+#     self.raiseADebug(pre+'  consumes:', self._consumes)
+#     self.raiseADebug(pre+'  transfer:', self._transfer)
+#     self.raiseADebug(pre+'  capacity:', self._capacity)
+#
+#
+#
+# class Storage(Interaction):
+#   """
+#     Explains a particular interaction, where a resource is stored and released later
+#   """
+#   tag = 'stores' # node name in input file
+#
+#   @classmethod
+#   def get_input_specs(cls):
+#     """
+#       Collects input specifications for this class.
+#       @ In, None
+#       @ Out, input_specs, InputData, specs
+#     """
+#     specs = super().get_input_specs()
+#     # TODO unused, please implement ... :
+#     # descr = r"""the limiting charge/discharge rate of this storage. """
+#     # specs.addSub(ValuedParam.get_input_specs('rate'))
+#     # initial stored
+#     descr=r"""indicates what percent of the storage unit is full at the start of each optimization sequence,
+#               from 0 to 1. Overwritten if using periodic level conditions, in which case the initial level is
+#               solved as part of the optimization, but the initial and final levels must match. \default{0.0}. """
+#     sub = vp_factory.make_input_specs('initial_stored', descr=descr)
+#     specs.addSub(sub)
+#     # periodic level boundary condition
+#     descr=r"""indicates whether the level of the storage should be required to return to its initial level
+#               at the end of each modeling window. If True, replaces the \xmlNode{initial_stored} with an optimization
+#               variable. If False, this increases the flexibility of the storage at the cost of potentially
+#               violating conservation of resources. \default{True}. """
+#     sub = InputData.parameterInputFactory('periodic_level', contentType=InputTypes.BoolType, descr=descr)
+#     specs.addSub(sub)
+#     # control strategy
+#     descr=r"""control strategy for operating the storage. If not specified, uses a perfect foresight strategy. """
+#     specs.addSub(vp_factory.make_input_specs('strategy', allowed=['Function'], descr=descr))
+#     # round trip efficiency
+#     descr = r"""round-trip efficiency for this component as a scalar multiplier. \default{1.0}"""
+#     specs.addSub(InputData.parameterInputFactory('RTE', contentType=InputTypes.FloatType, descr=descr))
+#     return specs
+#
+#   def __init__(self, **kwargs):
+#     """
+#       Constructor
+#       @ In, kwargs, dict, passthrough args
+#       @ Out, None
+#     """
+#     Interaction.__init__(self, **kwargs)
+#     self.apply_periodic_level = True # whether to apply periodic boundary conditions for the level of the storage
+#     self._stores = None              # the resource stored by this interaction
+#     self._rate = None                # the rate at which this component can store up or discharge
+#     self._initial_stored = None      # how much resource does this component start with stored?
+#     self._strategy = None            # how to operate storage unit
+#     self._tracking_vars = ['level', 'charge', 'discharge'] # stored quantity, charge activity, discharge activity
+#
+#   def read_input(self, specs, mode, comp_name):
+#     """
+#       Sets settings from input file
+#       @ In, specs, InputData, specs
+#       @ In, mode, string, case mode to operate in (e.g. 'sweep' or 'opt')
+#       @ In, comp_name, string, name of component this Interaction belongs to
+#       @ Out, None
+#     """
+#     # specs were already checked in Component
+#     Interaction.read_input(self, specs, mode, comp_name)
+#     self._stores = specs.parameterValues['resource']
+#     for item in specs.subparts:
+#       if item.getName() == 'rate':
+#         self._set_valued_param('_rate', comp_name, item, mode)
+#       elif item.getName() == 'initial_stored':
+#         self._set_valued_param('_initial_stored', comp_name, item, mode)
+#       elif item.getName() == 'periodic_level':
+#         self.apply_periodic_level = item.value
+#       elif item.getName() == 'strategy':
+#         self._set_valued_param('_strategy', comp_name, item, mode)
+#       elif item.getName() == 'RTE':
+#         self._sqrt_rte = np.sqrt(item.value)
+#     assert len(self._stores) == 1, f'Multiple storage resources given for component "{comp_name}"'
+#     self._stores = self._stores[0]
+#     # checks and defaults
+#     if self._initial_stored is None:
+#       self.raiseAWarning(f'Initial storage level for "{comp_name}" was not provided! Defaulting to 0%.')
+#       # make a fake reader node for a 0 value
+#       vp = ValuedParamHandler('initial_stored')
+#       vp.set_const_VP(0.0)
+#       self._initial_stored = vp
+#     # the capacity is limited by the stored resource.
+#     self._capacity_var = self._stores
+#
+#   def get_inputs(self):
+#     """
+#       Returns the set of resources that are inputs to this interaction.
+#       @ In, None
+#       @ Out, inputs, set, set of inputs
+#     """
+#     inputs = Interaction.get_inputs(self)
+#     inputs.update(np.atleast_1d(self._stores))
+#     return inputs
+#
+#   def get_outputs(self):
+#     """
+#       Returns the set of resources that are outputs to this interaction.
+#       @ In, None
+#       @ Out, outputs, set, set of outputs
+#     """
+#     outputs = Interaction.get_outputs(self)
+#     outputs.update(np.atleast_1d(self._stores))
+#     return outputs
+#
+#   def get_resource(self):
+#     """
+#       Returns the resource this unit stores.
+#       @ In, None
+#       @ Out, stores, str, resource stored
+#     """
+#     return self._stores
+#
+#   def get_strategy(self):
+#     """
+#       Returns the resource this unit stores.
+#       @ In, None
+#       @ Out, stores, str, resource stored
+#     """
+#     return self._strategy
+#
+#   def is_governed(self):
+#     """
+#       Determines if this interaction is optimizable or governed by some function.
+#       @ In, None
+#       @ Out, is_governed, bool, whether this component is governed.
+#     """
+#     return self._strategy is not None
+#
+#   def print_me(self, tabs=0, tab='  '):
+#     """
+#       Prints info about self
+#       @ In, tabs, int, optional, number of tabs to insert before prints
+#       @ In, tab, str, optional, characters to use to denote hierarchy
+#       @ Out, None
+#     """
+#     pre = tab*tabs
+#     self.raiseADebug(pre+'Storage:')
+#     self.raiseADebug(pre+'  stores:', self._stores)
+#     self.raiseADebug(pre+'  rate:', self._rate)
+#     self.raiseADebug(pre+'  capacity:', self._capacity)
+#
+#   def _check_capacity_limit(self, res, amt, balance, meta, raven_vars, dispatch, t, level):
+#     """
+#       Check to see if capacity limits of this component have been violated.
+#       overloads Interaction method, since units for storage are "res" not "res per second"
+#       @ In, res, str, name of capacity-limiting resource
+#       @ In, amt, float, requested amount of resource used in interaction
+#       @ In, balance, dict, results of requested interaction
+#       @ In, meta, dict, additional variable passthrough
+#       @ In, raven_vars, dict, TODO part of meta! consolidate!
+#       @ In, dispatch, dict, TODO part of meta! consolidate!
+#       @ In, t, int, TODO part of meta! consolidate!
+#       @ In, level, float, current level of storage
+#       @ Out, balance, dict, new results of requested action, possibly modified if capacity hit
+#       @ Out, meta, dict, additional variable passthrough
+#     """
+#     # note "amt" has units of AMOUNT not RATE (resource, not resource per second)
+#     sign = np.sign(amt)
+#     # are we storing or providing?
+#     #print('DEBUGG supposed current level:', level)
+#     if sign < 0:
+#       # we are being asked to consume some
+#       cap, meta = self.get_capacity(meta, raven_vars, dispatch, t)
+#       available_amount = cap[res] - level
+#       #print('Supposed Capacity, Only calculated ins sign<0 (being asked to consumer)',cap)
+#     else:
+#       # we are being asked to produce some
+#       available_amount = level
+#     # the amount we can consume is the minimum of the requested or what's available
+#     delta = sign * min(available_amount, abs(amt))
+#     return {res: delta}, meta
+#
+#   def _check_rate_limit(self, res, amt, balance, meta, raven_vars, dispatch, t):
+#     """
+#       Determines the limiting rate of in/out production for storage
+#       @ In, res, str, name of capacity-limiting resource
+#       @ In, amt, float, requested amount of resource used in interaction
+#       @ In, balance, dict, results of requested interaction
+#       @ In, meta, dict, additional variable passthrough
+#       @ In, raven_vars, dict, TODO part of meta! consolidate!
+#       @ In, dispatch, dict, TODO part of meta! consolidate!
+#       @ In, t, int, TODO part of meta! consolidate!
+#       @ Out, balance, dict, new results of requested action, possibly modified if capacity hit
+#       @ Out, meta, dict, additional variable passthrough
+#     """
+#     # TODO distinct up/down rates
+#     # check limiting rate for resource flow in/out, if any
+#     if self._rate:
+#       request = {res: None}
+#       inputs = {'request': request,
+#                 'meta': meta,
+#                 'raven_vars': raven_vars,
+#                 'dispatch': dispatch,
+#                 't': t}
+#       max_rate = self._rate.evaluate(inputs, target_var=res)[0][res]
+#       delta = np.sign(amt) * min(max_rate, abs(amt))
+#       print('max_rate in _check_rate_limit',max_rate, 'delta (min of maxrate and abs(amt)',delta)
+#       return {res: delta}, meta
+#     return {res: amt}, meta
+#
+#   def get_initial_level(self, meta):
+#     """
+#       Find initial level of the storage
+#       @ In, meta, dict, additional variable passthrough
+#       @ Out, initial, float, initial level
+#     """
+#     res = self.get_resource()
+#     request = {res: None}
+#     meta['request'] = request
+#     pct = self._initial_stored.evaluate(meta, target_var=res)[0][res]
+#     if not (0 <= pct <= 1):
+#       self.raiseAnError(ValueError, f'While calculating initial storage level for storage "{self.tag}", ' +
+#           f'an invalid percent was provided/calculated ({pct}). Initial levels should be between 0 and 1, inclusive.')
+#     amt = pct * self.get_capacity(meta)[0][res]
+#     return amt
+#
+#
+#
+#
+# class Demand(Interaction):
+#   """
+#     Explains a particular interaction, where a resource is demanded
+#   """
+#   tag = 'demands' # node name in input file
+#
+#   @classmethod
+#   def get_input_specs(cls):
+#     """
+#       Collects input specifications for this class.
+#       @ In, None
+#       @ Out, input_specs, InputData, specs
+#     """
+#     specs = super().get_input_specs()
+#     return specs
+#
+#   def __init__(self, **kwargs):
+#     """
+#       Constructor
+#       @ In, kwargs, dict, arguments
+#       @ Out, None
+#     """
+#     Interaction.__init__(self, **kwargs)
+#     self._demands = None  # the resource demanded by this interaction
+#     self._tracking_vars = ['production']
+#
+#   def read_input(self, specs, mode, comp_name):
+#     """
+#       Sets settings from input file
+#       @ In, specs, InputData, specs
+#       @ In, mode, string, case mode to operate in (e.g. 'sweep' or 'opt')
+#       @ In, comp_name, string, name of component this Interaction belongs to
+#       @ Out, None
+#     """
+#     # specs were already checked in Component
+#     # must set demands first, so that "capacity" can access it
+#     self._demands = specs.parameterValues['resource']
+#     Interaction.read_input(self, specs, mode, comp_name)
+#
+#   def get_inputs(self):
+#     """
+#       Returns the set of resources that are inputs to this interaction.
+#       @ In, None
+#       @ Out, inputs, set, set of inputs
+#     """
+#     inputs = Interaction.get_inputs(self)
+#     inputs.update(np.atleast_1d(self._demands))
+#     return inputs
+#
+#   def print_me(self, tabs: int=0, tab: str='  ') -> None:
+#     """
+#       Prints info about self
+#       @ In, tabs, int, optional, number of tabs to insert before prints
+#       @ In, tab, str, optional, characters to use to denote hierarchy
+#       @ Out, None
+#     """
+#     pre = tab*tabs
+#     self.raiseADebug(pre+'Demand/Load:')
+#     self.raiseADebug(pre+'  demands:', self._demands)
+#     self.raiseADebug(pre+'  capacity:', self._capacity)

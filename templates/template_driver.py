@@ -1196,7 +1196,7 @@ class Template(TemplateBase, Base):
       ## For each interaction of each component, that means making sure the Function, ARMA, or constant makes it.
       ## Constants from outer (namely sweep/opt capacities) are set in the MC Sampler from the outer
       ## The Dispatch needs info from the Outer to know which capacity to use, so we can't pass it from here.
-      capacity = component.get_capacity(None, raw=True)
+      capacity = component.get_capacity()#None, raw=True)
       interaction = component.get_interaction()
       parametric = capacity.is_parametric()
 

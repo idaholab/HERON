@@ -3,4 +3,8 @@
   type = RavenPython
   input = 'testComponent.py'
  [../]
+ [./listproperty]
+  type = Unittest
+  input = 'test_listproperty.py'
+ [../]
 []

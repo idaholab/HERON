@@ -15,7 +15,6 @@
       <Optimizer class="Optimizers" type="BayesianOptimizer">cap_opt</Optimizer>
       <Output class="DataObjects" type="PointSet">opt_eval</Output>
       <SolutionExport class="DataObjects" type="PointSet">opt_soln</SolutionExport>
-      <Output class="OutStreams" type="Print">opt_soln</Output>
     </MultiRun>
     <IOStep name="plot">
       <Input class="DataObjects" type="PointSet">opt_soln</Input>
@@ -27,9 +26,6 @@
   <VariableGroups>
     <Group name="GRO_capacities">steamer_capacity, generator_capacity, electr_market_capacity, electr_flex_capacity</Group>
     <Group name="GRO_outer_results">mean_NPV, std_NPV, med_NPV, mean_TotalActivity__steamer__production__steam, mean_TotalActivity__generator__production__electricity, mean_TotalActivity__generator__production__steam, mean_TotalActivity__electr_market__production__electricity, mean_TotalActivity__electr_flex__production__electricity, std_TotalActivity__steamer__production__steam, std_TotalActivity__generator__production__electricity, std_TotalActivity__generator__production__steam, std_TotalActivity__electr_market__production__electricity, std_TotalActivity__electr_flex__production__electricity, med_TotalActivity__steamer__production__steam, med_TotalActivity__generator__production__electricity, med_TotalActivity__generator__production__steam, med_TotalActivity__electr_market__production__electricity, med_TotalActivity__electr_flex__production__electricity</Group>
-    <Group name="GRO_outer_debug_dispatch" />
-    <Group name="GRO_outer_debug_synthetics" />
-    <Group name="GRO_outer_debug_cashflows" />
   </VariableGroups>
 
   <DataObjects>
@@ -57,7 +53,7 @@
       <alias variable="electr_flex_capacity" type="input">Samplers|MonteCarlo@name:mc_arma_dispatch|constant@name:electr_flex_capacity</alias>
     </Code>
     <ROM name="gpROM" subType="GaussianProcessRegressor">
-      <Features>steamer_capacity,electr_flex_capacity</Features>
+      <Features>steamer_capacity, electr_flex_capacity</Features>
       <Target>mean_NPV</Target>
       <alpha>1e-8</alpha>
       <n_restarts_optimizer>5</n_restarts_optimizer>
@@ -135,7 +131,7 @@
   <Files>
     <Input name="inner_workflow" type="raven">../inner.xml</Input>
     <Input name="heron_lib">../heron.lib</Input>
-    <Input name="transfers">../%HERON_DATA%/XML_check/transfers.py</Input>
+    <Input name="transfers">%HERON_DATA%/XML_check/transfers.py</Input>
   </Files>
 
   <OutStreams>

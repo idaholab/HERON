@@ -1,0 +1,63 @@
+<Simulation verbosity="all">
+  <RunInfo>
+    <JobName></JobName>
+    <WorkingDir>.</WorkingDir>
+    <Sequence>sweep</Sequence>
+    <batchSize>1</batchSize>
+  </RunInfo>
+
+  <Steps>
+    <MultiRun name="sweep">
+      <Input class="Files" type="raven">inner_workflow</Input>
+      <Input class="Files" type="">heron_lib</Input>
+      <Model class="Models" type="Code">raven</Model>
+      <Sampler class="Samplers" type="Grid">grid</Sampler>
+      <Output class="DataObjects" type="PointSet">grid</Output>
+      <Output class="OutStreams" type="Print">sweep</Output>
+    </MultiRun>
+  </Steps>
+
+  <Files>
+    <Input name="inner_workflow" type="raven">../inner.xml</Input>
+    <Input name="heron_lib">../heron.lib</Input>
+  </Files>
+
+  <VariableGroups>
+    <Group name="GRO_capacities"></Group>
+    <Group name="GRO_outer_results"></Group>
+  </VariableGroups>
+
+  <DataObjects>
+    <PointSet name="grid">
+      <Input>GRO_capacities</Input>
+      <Output>GRO_outer_results</Output>
+    </PointSet>
+  </DataObjects>
+
+  <Databases/>
+
+  <Models>
+    <Code name="raven" subType="RAVEN">
+      <executable>~/projects/raven/raven_framework</executable>
+      <outputDatabase>disp_results</outputDatabase>
+      <conversion>
+        <input source="../write_inner.py"/>
+      </conversion>
+    </Code>
+  </Models>
+
+  <Distributions/>
+
+  <Samplers>
+    <Grid name="grid">
+      <constant name="denoises">1</constant>
+    </Grid>
+  </Samplers>
+
+  <OutStreams>
+    <Print name="sweep">
+      <type>csv</type>
+      <source>grid</source>
+    </Print>
+  </OutStreams>
+</Simulation>

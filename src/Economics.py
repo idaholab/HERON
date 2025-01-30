@@ -467,13 +467,11 @@ class CashFlow:
     price_is_levelized = bool(levelized_cost)
     return price_is_levelized
 
-
-  # Not none set it to default 1
   def get_period(self):
     """
       Getter for Recurring cashflow period type.
       @ In, None
-      @ Out, period, str, 'hourly' or 'yearly'
+      @ Out, period, str | None, 'hour' or 'year' or None
     """
     return self._period
 
@@ -574,6 +572,19 @@ class CashFlow:
     params = {'alpha': a, 'driver': D, 'ref_driver': Dp, 'scaling': x, 'cost': cost} # TODO float(cost) except in pyomo it's not a float
     return params
 
+  def get_uncertain_params(self):
+    """
+      Gets any of the cashflow equation parameters which are random variables
+      @ In, None
+      @ Out, uncertain_params, dict[ValuedParam], the uncertain cashflow parameters
+    """
+    params = ["_driver", "_alpha", "_reference", "_scale"]
+    uncertain_params = {}
+    for param_name in params:
+      if (param := getattr(self, param_name)).type == "RandomVariable":
+        uncertain_params[param_name[1:]] = param
+    return uncertain_params
+
   #######
   # API #
   #######
@@ -656,3 +667,11 @@ class CashFlow:
       @ Out, npv_exempt, bool, is cashflow exempt from NPV calculations?
     """
     return self._npv_exempt
+
+  def is_uncertain(self):
+    """
+      Does the cashflow have any uncertain parameters?
+      @ In, None
+      @ Out, uncertain, bool, is cashflow a random variable?
+    """
+    return len(self.get_uncertain_params()) > 0

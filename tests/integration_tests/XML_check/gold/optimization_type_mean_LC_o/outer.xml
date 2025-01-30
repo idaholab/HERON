@@ -12,9 +12,8 @@
       <Input class="Files" type="">heron_lib</Input>
       <Model class="Models" type="Code">raven</Model>
       <Optimizer class="Optimizers" type="GradientDescent">cap_opt</Optimizer>
-      <Output class="DataObjects" type="PointSet">opt_eval</Output>
       <SolutionExport class="DataObjects" type="PointSet">opt_soln</SolutionExport>
-      <Output class="OutStreams" type="Print">opt_soln</Output>
+      <Output class="DataObjects" type="PointSet">opt_eval</Output>
     </MultiRun>
     <IOStep name="plot">
       <Input class="DataObjects" type="PointSet">opt_soln</Input>
@@ -23,28 +22,30 @@
     </IOStep>
   </Steps>
 
+  <Files>
+    <Input name="inner_workflow" type="raven">../inner.xml</Input>
+    <Input name="heron_lib">../heron.lib</Input>
+  </Files>
+
   <VariableGroups>
     <Group name="GRO_capacities">source_capacity, sink_capacity, import_capacity</Group>
     <Group name="GRO_outer_results">mean_LC_Mult, std_LC_Mult, med_LC_Mult, mean_TotalActivity__source__production__a, mean_TotalActivity__sink__production__a, mean_TotalActivity__import__production__a, std_TotalActivity__source__production__a, std_TotalActivity__sink__production__a, std_TotalActivity__import__production__a, med_TotalActivity__source__production__a, med_TotalActivity__sink__production__a, med_TotalActivity__import__production__a</Group>
-    <Group name="GRO_outer_debug_dispatch" />
-    <Group name="GRO_outer_debug_synthetics" />
-    <Group name="GRO_outer_debug_cashflows" />
   </VariableGroups>
 
   <DataObjects>
-    <PointSet name="opt_eval">
-      <Input>GRO_capacities</Input>
-      <Output>GRO_outer_results</Output>
-    </PointSet>
     <PointSet name="opt_soln">
       <Input>trajID</Input>
       <Output>iteration, accepted, GRO_capacities, GRO_outer_results</Output>
     </PointSet>
+    <PointSet name="opt_eval">
+      <Input>GRO_capacities</Input>
+      <Output>GRO_outer_results</Output>
+    </PointSet>
   </DataObjects>
 
   <Models>
-    <Code name="raven" subType="RAVEN">
-      <executable></executable>
+    <Code subType="RAVEN" name="raven">
+      <executable>/Users/bryaja/projects/raven/raven_framework</executable>
       <outputDatabase>disp_results</outputDatabase>
       <conversion>
         <input source="../write_inner.py" />
@@ -65,17 +66,19 @@
 
   <Optimizers>
     <GradientDescent name="cap_opt">
-      <objective>mean_LC_Mult</objective>
-      <constant name="denoises">3</constant>
-      <TargetEvaluation class="DataObjects" type="PointSet">opt_eval</TargetEvaluation>
       <samplerInit>
         <limit>800</limit>
-        <writeSteps>every</writeSteps>
         <type>min</type>
+        <writeSteps>every</writeSteps>
       </samplerInit>
       <gradient>
         <FiniteDifference />
       </gradient>
+      <convergence>
+        <persistence>1</persistence>
+        <gradient>1e-2</gradient>
+        <objective>1e-2</objective>
+      </convergence>
       <stepSize>
         <GradientHistory>
           <growthFactor>2</growthFactor>
@@ -86,24 +89,17 @@
       <acceptance>
         <Strict />
       </acceptance>
-      <convergence>
-        <persistence>1</persistence>
-        <gradient>1e-2</gradient>
-        <objective>1e-2</objective>
-      </convergence>
+      <objective>mean_LC_Mult</objective>
+      <constant name="denoises">3</constant>
       <variable name="source_capacity">
         <distribution>source_capacity_dist</distribution>
         <initial>0.25</initial>
       </variable>
       <constant name="sink_capacity">-3.0</constant>
       <constant name="import_capacity">100.0</constant>
+      <TargetEvaluation class="DataObjects" type="PointSet">opt_eval</TargetEvaluation>
     </GradientDescent>
   </Optimizers>
-
-  <Files>
-    <Input name="inner_workflow" type="raven">../inner.xml</Input>
-    <Input name="heron_lib">../heron.lib</Input>
-  </Files>
 
   <OutStreams>
     <Print name="opt_soln">

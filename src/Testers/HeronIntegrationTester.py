@@ -95,7 +95,13 @@ class HeronIntegration(RavenTester):
       cmd += ' bash.exe '
     python = self._get_python_command()
     # python-command is for running HERON; python_command_for_raven is for running RAVEN inner
-    cmd += f' {self.heron_driver} --python-command="{python}" --python_command_for_raven="{python}" {heron_inp}'
+    # NOTE: Adding the --python_command_for_raven argument causes a <clargs> node to be added in a RAVEN <Code> block
+    #       in outer.xml. We only want this to appear if "python" contains something beyond a typical python executable
+    #       (for running coverage scripts, in particular).
+    if len(python.split()) == 1 and os.path.basename(python) == "python":  # should be just a python command
+      cmd += f' {self.heron_driver} --python-command="{python}" {heron_inp}'
+    else:  # play it safe and use the arguments
+      cmd += f' {self.heron_driver} --python-command="{python}" --python_command_for_raven="{python}" {heron_inp}'
     return cmd, heron_inp
 
   def get_raven_command(self, cmd, heron_inp):

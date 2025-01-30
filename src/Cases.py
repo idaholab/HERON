@@ -46,22 +46,22 @@ class Case(Base):
   #    > 'optimization_default' - 'min' or 'max' for optimization
   #    > 'percent' (only for percentile) - list of percentiles to return
   #    > 'threshold' (only for sortinoRatio, gainLossRatio, expectedShortfall, valueAtRisk) - threshold value for calculation
-  stats_metrics_meta = {'expectedValue': {'prefix': 'mean', 'optimization_default': 'max'},
-                           'minimum': {'prefix': 'min', 'optimization_default': 'max'},
-                           'maximum': {'prefix': 'max', 'optimization_default': 'max'},
-                           'median': {'prefix': 'med', 'optimization_default': 'max'},
-                           'variance': {'prefix': 'var', 'optimization_default': 'min'},
-                           'sigma': {'prefix': 'std', 'optimization_default': 'min'},
-                           'percentile': {'prefix': 'perc', 'optimization_default': 'max', 'percent': ['5', '95']},
-                           'variationCoefficient': {'prefix': 'varCoeff', 'optimization_default': 'min'},
-                           'skewness': {'prefix': 'skew', 'optimization_default': 'min'},
-                           'kurtosis': {'prefix': 'kurt', 'optimization_default': 'min'},
-                           'samples': {'prefix': 'samp'},
-                           'sharpeRatio': {'prefix': 'sharpe', 'optimization_default': 'max'},
-                           'sortinoRatio': {'prefix': 'sortino', 'optimization_default': 'max', 'threshold': 'median'},
-                           'gainLossRatio': {'prefix': 'glr', 'optimization_default': 'max', 'threshold': 'median'},
-                           'expectedShortfall': {'prefix': 'es', 'optimization_default': 'min', 'threshold': ['0.05']},
-                           'valueAtRisk': {'prefix': 'VaR', 'optimization_default': 'min', 'threshold': ['0.05']}}
+  stats_metrics_meta = {'expectedValue':        {'prefix': 'mean',     'optimization_default': 'max'},
+                        'minimum':              {'prefix': 'min',      'optimization_default': 'max'},
+                        'maximum':              {'prefix': 'max',      'optimization_default': 'max'},
+                        'median':               {'prefix': 'med',      'optimization_default': 'max'},
+                        'variance':             {'prefix': 'var',      'optimization_default': 'min'},
+                        'sigma':                {'prefix': 'std',      'optimization_default': 'min'},
+                        'percentile':           {'prefix': 'perc',     'optimization_default': 'max', 'percent': ['5', '95']},
+                        'variationCoefficient': {'prefix': 'varCoeff', 'optimization_default': 'min'},
+                        'skewness':             {'prefix': 'skew',     'optimization_default': 'min'},
+                        'kurtosis':             {'prefix': 'kurt',     'optimization_default': 'min'},
+                        'samples':              {'prefix': 'samp'},
+                        'sharpeRatio':          {'prefix': 'sharpe',   'optimization_default': 'max'},
+                        'sortinoRatio':         {'prefix': 'sortino',  'optimization_default': 'max', 'threshold': 'median'},
+                        'gainLossRatio':        {'prefix': 'glr',      'optimization_default': 'max', 'threshold': 'median'},
+                        'expectedShortfall':    {'prefix': 'es',       'optimization_default': 'min', 'threshold': ['0.05']},
+                        'valueAtRisk':          {'prefix': 'VaR',      'optimization_default': 'min', 'threshold': ['0.05']}}
 
   # creating a similar dictionary, this time with the optimization defaults flipped
   #    (Levelized Cost does the opposite optimization for all of these stats)
@@ -77,21 +77,21 @@ class Case(Base):
   # economic metrics that can be returned by sweep results OR alongside optimization results
   #    TODO: might be important to index the stats_metrics_meta... does VaR of IRR make sense?
   #    NOTE: the keys for this meta dictionary are the XML Input names
-  economic_metrics_meta =  {'NPV': {'output_name': 'NPV',
-                                   'TEAL_in_name': 'NPV',
+  economic_metrics_meta =  {'NPV': {'output_name':  'NPV',
+                                   'TEAL_in_name':  'NPV',
                                    'TEAL_out_name': 'NPV',
                                    'stats_map': stats_metrics_meta},
-                            'PI': {'output_name': 'PI',
-                                   'TEAL_in_name': 'PI',
+                            'PI': {'output_name':   'PI',
+                                   'TEAL_in_name':  'PI',
                                    'TEAL_out_name': 'PI',
                                    'stats_map': stats_metrics_meta},
-                            'IRR': {'output_name': 'IRR',
-                                    'TEAL_in_name': 'IRR',
+                            'IRR': {'output_name':   'IRR',
+                                    'TEAL_in_name':  'IRR',
                                     'TEAL_out_name': 'IRR',
                                     'stats_map': stats_metrics_meta},
-                            'LC': {'output_name': 'LC_Mult',      #this is how it will appear in CSV
-                                   'TEAL_in_name': 'NPV_search',  #this is how TEAL recognizes it
-                                   'TEAL_out_name': 'NPV_mult',   #this is how TEAL outputs it (don't know why)
+                            'LC': {'output_name':   'LC_Mult',     #this is how it will appear in CSV
+                                   'TEAL_in_name':  'NPV_search',  #this is how TEAL recognizes it
+                                   'TEAL_out_name': 'NPV_mult',    #this is how TEAL outputs it (don't know why)
                                    'stats_map': flipped_stats_metrics_meta}}
   # the keys of the meta dictionary are the names used in XML input
   economic_metrics_input_names = list(em_name for em_name,_ in economic_metrics_meta.items())
@@ -959,8 +959,15 @@ class Case(Base):
         # add other information to opt_settings dictionary (type is only information implemented)
         opt_settings[sub_name] = sub.value
 
-    if 'stats_metric' not in list(opt_settings):
-      opt_settings['stats_metric'] = {'name':self._default_stats_metric, 'tol':1e-4}
+    if 'stats_metric' not in opt_settings:
+      opt_settings['stats_metric'] = {'name': self._default_stats_metric, 'tol': 1e-4}
+
+    # Set optimization type ("min" or "max") based on default by economic metric if not provided
+    if 'type' not in opt_settings:
+      opt_metric = opt_settings['opt_metric']
+      stats_metric = opt_settings['stats_metric']['name']
+      opt_settings['type'] = self.economic_metrics_meta[opt_metric]['stats_map'][stats_metric]['optimization_default']
+
     return opt_settings
 
   def _read_result_statistics(self, node):
@@ -1068,14 +1075,9 @@ class Case(Base):
       self._econ_metrics[new_metric] = self.economic_metrics_meta[new_metric]
     else:
       # we are updating the stored economic metric dictionary with new entries via an ordered dict
+      self._econ_metrics[new_metric] = self.economic_metrics_meta[new_metric]
       if first:
-        # there has to be a better way, but OrderedDict has no "prepend" method
-        new_dict = OrderedDict()
-        new_dict[new_metric] = self.economic_metrics_meta[new_metric]
-        new_dict.update(self._econ_metrics)
-        self._econ_metrics = new_dict
-      else:
-        self._econ_metrics[new_metric] = self.economic_metrics_meta[new_metric]
+        self._econ_metrics.move_to_end(new_metric, last=False)  # last=False means move to beginning
 
   def determine_inner_objective(self, components):
     """
@@ -1354,35 +1356,31 @@ class Case(Base):
     return self._npv_target
 
   #### API ####
-  def write_workflows(self, components, sources, loc):
+  def write_workflows(self, components, sources, dest_dir):
     """
       Writes workflows for this case to XMLs on disk.
       @ In, components, HERON components, components for the simulation
       @ In, sources, HERON sources, sources for the simulation
-      @ In, loc, str, location in which to write files
+      @ In, dest_dir, str, directory in which to write files
       @ Out, None
     """
-    # load templates
-    template_class = self._load_template()
-    inner, outer = template_class.createWorkflow(self, components, sources)
-
-    template_class.writeWorkflow((inner, outer), loc)
+    # Load templates, create RAVEN workflows, and write those workflows using a TemplateDriver
+    driver = self._make_template_driver()
+    driver.create_workflow(self, components, sources)
+    driver.write_workflow(dest_dir, self, components, sources)
 
   #### UTILITIES ####
-  def _load_template(self):
+  def _make_template_driver(self):
     """
       Loads template files for modification
       @ In, None
-      @ Out, template_class, RAVEN Template, instantiated Template class
+      @ Out, template_class, TemplateDriver, instantiated TemplateDriver class
     """
     src_dir = os.path.dirname(os.path.realpath(__file__))
-    heron_dir = os.path.abspath(os.path.join(src_dir, '..'))
-    template_dir = os.path.abspath(os.path.join(heron_dir, 'templates'))
-    template_name = 'template_driver'
+    heron_dir = os.path.abspath(os.path.join(src_dir, ".."))
     # import template module
     sys.path.append(heron_dir)
-    module = importlib.import_module(f'templates.{template_name}', package="HERON")
+    module = importlib.import_module("templates.template_driver", package="HERON")
     # load template, perform actions
-    template_class = module.Template(messageHandler=self.messageHandler)
-    template_class.loadTemplate(template_dir)
-    return template_class
+    driver = module.TemplateDriver(messageHandler=self.messageHandler)
+    return driver

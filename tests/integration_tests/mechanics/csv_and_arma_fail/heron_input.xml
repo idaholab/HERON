@@ -1,0 +1,60 @@
+<HERON>
+  <TestInfo>
+    <name>CsvAndArma</name>
+    <author>j-bryan</author>
+    <created>2025-01-22</created>
+    <description>
+      Test that tries to use both ARMA and CSV sources, which should fail
+    </description>
+    <classesTested>HERON</classesTested>
+  </TestInfo>
+
+    <Case name="Runs">
+      <mode>sweep</mode>
+      <num_arma_samples>3</num_arma_samples>
+      <time_discretization>
+        <time_variable>Time</time_variable>
+        <end_time>2</end_time>
+        <num_steps>21</num_steps>
+      </time_discretization>
+      <economics>
+        <ProjectTime>3</ProjectTime>
+        <DiscountRate>0.08</DiscountRate>
+        <tax>0.0</tax>
+        <inflation>0.03</inflation>
+        <verbosity>50</verbosity>
+      </economics>
+      <dispatcher>
+        <pyomo/>
+      </dispatcher>
+    </Case>
+
+    <Components>
+      <Component name="source">
+        <produces resource="a" dispatch="fixed">
+          <capacity resource="a">
+            <sweep_values>1, 2</sweep_values>
+          </capacity>
+        </produces>
+        <economics>
+          <lifetime>10</lifetime>
+        </economics>
+      </Component>
+
+      <Component name="sink">
+        <demands resource="a" dispatch="independent">
+          <capacity>
+            <fixed_value>-2</fixed_value>
+          </capacity>
+        </demands>
+        <economics>
+          <lifetime>30</lifetime>
+        </economics>
+      </Component>
+    </Components>
+
+    <DataGenerators>
+      <ARMA name="arma" variable="Signal">%HERON_DATA%/TSA/Sine30yr/arma_30yr.pk</ARMA>
+      <CSV name="csv" variable="Signal">%HERON_DATA%/mechanics/static_history/Static.csv</CSV>
+    </DataGenerators>
+</HERON>

@@ -68,7 +68,7 @@
     <Component name="ngcc">
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <fixed_value>400</fixed_value>
+          <fixed_value>200</fixed_value>
         </capacity>
       </produces>
       <economics>

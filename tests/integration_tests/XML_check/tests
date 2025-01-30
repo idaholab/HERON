@@ -9,6 +9,7 @@
     unordered = true
     output = optimization_type_mean_NPV/outer.xml
     gold_files = optimization_type_mean_NPV_o/outer.xml
+    path_nodes = Files|Input@name:transfers
     ignored_nodes = Models|Code@name:raven|executable
   [../]
  [../]
@@ -22,6 +23,7 @@
     unordered = true
     output = optimization_type_VaR_NPV/outer.xml
     gold_files = optimization_type_VaR_NPV_o/outer.xml
+    path_nodes = Files|Input@name:transfers
     ignored_nodes = Models|Code@name:raven|executable
   [../]
  [../]
@@ -48,6 +50,7 @@
     unordered = true
     output = optimization_type_BO_mean_NPV/outer.xml
     gold_files = optimization_type_BO_mean_NPV_o/outer.xml
+    path_nodes = Files|Input@name:transfers
     ignored_nodes = Models|Code@name:raven|executable
   [../]
  [../]

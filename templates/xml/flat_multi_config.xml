@@ -1,0 +1,60 @@
+<Simulation verbosity="all">
+  <RunInfo>
+    <JobName></JobName>
+    <WorkingDir>.</WorkingDir>
+    <Sequence>sweep</Sequence>
+    <batchSize>1</batchSize>
+  </RunInfo>
+
+  <Steps>
+    <MultiRun name="sweep">
+      <Input class="DataObjects" type="PointSet">dispatch_placeholder</Input>
+      <Model class="Models" type="ExternalModel">dispatch</Model>
+      <Sampler class="Samplers" type="EnsembleForward">ensemble_sampler</Sampler>
+      <Output class="DataObjects" type="PointSet">grid</Output>
+      <Output class="OutStreams" type="Print">sweep</Output>
+    </MultiRun>
+  </Steps>
+
+  <VariableGroups>
+    <Group name="GRO_capacities"/>
+    <Group name="GRO_results"/>
+    <Group name="GRO_timeseries"/>
+  </VariableGroups>
+
+  <DataObjects>
+    <PointSet name="dispatch_placeholder">
+      <Input>GRO_capacities, scaling</Input>
+    </PointSet>
+    <PointSet name="grid">
+      <Input>GRO_capacities</Input>
+      <Output>GRO_results</Output>
+    </PointSet>
+  </DataObjects>
+
+  <Models>
+    <ExternalModel name="dispatch" subType="HERON.DispatchManager">
+      <inputs>GRO_capacities, GRO_timeseries</inputs>
+      <outputs>GRO_results</outputs>
+    </ExternalModel>
+  </Models>
+
+  <Distributions/>
+
+  <Samplers>
+    <EnsembleForward name="ensemble_sampler">
+      <Grid name="grid">
+        <constant name="denoises">1</constant>
+      </Grid>
+      <CustomSampler name="static_history_sampler"/>
+      <constant name="scaling">1.0</constant>
+    </EnsembleForward>
+  </Samplers>
+
+  <OutStreams>
+    <Print name="sweep">
+      <type>csv</type>
+      <source>grid</source>
+    </Print>
+  </OutStreams>
+</Simulation>

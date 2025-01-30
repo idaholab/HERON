@@ -1,0 +1,74 @@
+<Simulation verbosity="all">
+  <RunInfo>
+    <JobName></JobName>
+    <WorkingDir>.</WorkingDir>
+    <Sequence>optimize, plot</Sequence>
+    <batchSize>1</batchSize>
+  </RunInfo>
+
+  <Steps>
+    <MultiRun name="optimize">
+      <Input class="Files" type="raven">inner_workflow</Input>
+      <Input class="Files" type="">heron_lib</Input>
+      <Model class="Models" type="Code">raven</Model>
+      <SolutionExport class="DataObjects" type="PointSet">opt_soln</SolutionExport>
+      <Output class="DataObjects" type="PointSet">opt_eval</Output>
+    </MultiRun>
+    <IOStep name="plot">
+      <Input class="DataObjects" type="PointSet">opt_soln</Input>
+      <Output class="OutStreams" type="Plot">opt_path</Output>
+      <Output class="OutStreams" type="Print">opt_soln</Output>
+    </IOStep>
+  </Steps>
+
+  <Files>
+    <Input name="inner_workflow" type="raven">../inner.xml</Input>
+    <Input name="heron_lib">../heron.lib</Input>
+  </Files>
+
+  <VariableGroups>
+    <Group name="GRO_capacities"></Group>
+    <Group name="GRO_outer_results"></Group>
+  </VariableGroups>
+
+  <DataObjects>
+    <PointSet name="opt_soln">
+      <Input>trajID</Input>
+      <Output>iteration, accepted, GRO_capacities, GRO_outer_results</Output>
+    </PointSet>
+    <PointSet name="opt_eval">
+      <Input>GRO_capacities</Input>
+      <Output>GRO_outer_results</Output>
+    </PointSet>
+  </DataObjects>
+
+  <Databases/>
+
+  <Models>
+    <Code name="raven" subType="RAVEN">
+      <executable>~/projects/raven/raven_framework</executable>
+      <outputDatabase>disp_results</outputDatabase>
+      <conversion>
+        <input source="../write_inner.py"/>
+      </conversion>
+    </Code>
+  </Models>
+
+  <Distributions/>
+
+  <Samplers/>
+
+  <Optimizers/>
+
+  <OutStreams>
+    <Print name="opt_soln">
+      <type>csv</type>
+      <source>opt_soln</source>
+      <clusterLabel>trajID</clusterLabel>
+    </Print>
+    <Plot name="opt_path" subType="OptPath">
+      <source>opt_soln</source>
+      <vars>GRO_capacities</vars>
+    </Plot>
+  </OutStreams>
+</Simulation>

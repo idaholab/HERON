@@ -1,0 +1,98 @@
+<Simulation verbosity="all">
+  <RunInfo>
+    <JobName></JobName>
+    <WorkingDir>.</WorkingDir>
+    <Sequence>debug, debug_output, write_database</Sequence>  <!-- fill in with steps -->
+    <batchSize>1</batchSize>
+  </RunInfo>
+
+  <Steps>
+    <MultiRun name="debug">
+      <Input class="DataObjects" type="PointSet">dispatch_placeholder</Input>
+      <Output class="DataObjects" type="DataSet">dispatch</Output>
+      <Output class="DataObjects" type="HistorySet">cashflows</Output>
+    </MultiRun>
+    <IOStep name="debug_output">
+      <Input class="DataObjects" type="DataSet">dispatch</Input>
+      <Input class="DataObjects" type="HistorySet">cashflows</Input>
+      <Output class="OutStreams" type="Print">dispatch_print</Output>
+      <Output class="OutStreams" type="Print">cashflows</Output>
+    </IOStep>
+    <IOStep name="write_database">
+      <Input class="DataObjects" type="DataSet">dispatch</Input>
+      <Output class="Databases" type="NetCDF">dispatch</Output>
+    </IOStep>
+  </Steps>
+
+  <VariableGroups>
+    <Group name="GRO_capacities"/>
+    <Group name="GRO_debug_synthetics"></Group>
+    <Group name="GRO_dispatch">GRO_dispatch_in, GRO_dispatch_out, GRO_time_indices</Group>
+    <Group name="GRO_dispatch_in">GRO_dispatch_in_scalar, GRO_dispatch_in_Time</Group>
+    <Group name="GRO_dispatch_out"/>
+    <Group name="GRO_dispatch_in_scalar" >GRO_capacities, scaling</Group>
+    <Group name="GRO_dispatch_in_Time"/>
+    <Group name="GRO_full_dispatch"/>
+    <Group name="GRO_full_dispatch_indices">GRO_time_indices</Group>
+    <Group name="GRO_timeseries">GRO_timeseries_in, GRO_timeseries_out</Group>
+    <Group name="GRO_timeseries_in">GRO_timeseries_in_scalar</Group>
+    <Group name="GRO_timeseries_out">GRO_timeseries_out_scalar</Group>
+    <Group name="GRO_timeseries_in_scalar">scaling, GRO_capacities</Group>
+    <Group name="GRO_timeseries_out_scalar"/>
+    <Group name="GRO_time_indices"/>
+    <Group name="GRO_cashflows"/>
+  </VariableGroups>
+
+  <DataObjects>
+    <DataSet name="dispatch_eval">
+      <Input>GRO_dispatch_in</Input>
+      <Output>GRO_full_dispatch</Output>
+      <Index var="Time">GRO_dispatch_in_Time, GRO_full_dispatch</Index>
+      <Index var="Year">GRO_dispatch_in_Time, GRO_full_dispatch</Index>
+      <Index var="_ROM_Cluster">GRO_dispatch_in_Time, GRO_full_dispatch</Index>
+    </DataSet>
+    <PointSet name="dispatch_placeholder">
+      <Input>GRO_dispatch_in_scalar</Input>
+    </PointSet>
+    <DataSet name="dispatch">
+      <Input>scaling</Input>
+      <Output>GRO_full_dispatch, GRO_debug_synthetics</Output>
+      <Index var="Time">GRO_full_dispatch, GRO_debug_synthetics</Index>
+      <Index var="Year">GRO_full_dispatch, GRO_debug_synthetics</Index>
+      <Index var="_ROM_Cluster">GRO_full_dispatch, GRO_debug_synthetics</Index>
+    </DataSet>
+    <HistorySet name="cashflows">
+      <Output>GRO_cashflows</Output>
+      <options>
+        <pivotParameter>cfYears</pivotParameter>
+      </options>
+    </HistorySet>
+  </DataObjects>
+
+  <Databases>
+    <NetCDF name="dispatch" readMode="overwrite" directory="">
+      <variables>GRO_full_dispatch, GRO_debug_synthetics</variables>
+    </NetCDF>
+  </Databases>
+
+  <Models>
+    <ExternalModel name="dispatch" subType="HERON.DispatchManager">
+      <variables>GRO_dispatch, GRO_timeseries, GRO_full_dispatch, GRO_full_dispatch_indices, GRO_cashflows, cfYears</variables>
+    </ExternalModel>
+  </Models>
+
+  <Samplers/>
+
+  <Files/>
+
+  <OutStreams>
+    <Print name="dispatch_print">
+      <type>csv</type>
+      <source>dispatch</source>
+    </Print>
+    <Print name="cashflows">
+      <type>csv</type>
+      <source>cashflows</source>
+    </Print>
+  </OutStreams>
+</Simulation>

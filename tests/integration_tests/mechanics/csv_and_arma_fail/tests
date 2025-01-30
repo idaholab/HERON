@@ -1,0 +1,8 @@
+[Tests]
+  [./CsvAndArma]
+    type = HeronIntegration
+    kind = heron_only
+    input = heron_input.xml
+    expected_fail = True
+  [../]
+[]

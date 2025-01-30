@@ -1,0 +1,76 @@
+<Simulation verbosity="debug">
+  <RunInfo>
+    <JobName></JobName>
+    <WorkingDir>.</WorkingDir>
+    <Sequence>arma_sampling, summarize, database</Sequence>
+    <batchSize>1</batchSize>
+  </RunInfo>
+
+  <Steps>
+    <MultiRun name="arma_sampling">
+      <Input class="DataObjects" type="PointSet">dispatch_placeholder</Input>
+      <Model class="Models" type="ExternalModel">dispatch</Model>
+      <Output class="DataObjects" type="DataSet">arma_metrics</Output>
+    </MultiRun>
+    <PostProcess name="summarize">
+      <Input class="DataObjects" type="PointSet">arma_metrics</Input>
+      <Model class="Models" type="PostProcessor">statistics</Model>
+      <Output class="DataObjects" type="PointSet">metrics_stats</Output>
+    </PostProcess>
+    <IOStep name="database">
+      <Input class="DataObjects" type="PointSet">metrics_stats</Input>
+    </IOStep>
+  </Steps>
+
+  <Files>
+    <Input name="libs">../../heron.lib</Input>
+  </Files>
+
+  <VariableGroups>
+    <Group name="GRO_dispatch">GRO_dispatch_in, GRO_dispatch_out</Group>
+    <Group name="GRO_dispatch_in">GRO_dispatch_in_scalar, GRO_dispatch_in_Time</Group>
+    <Group name="GRO_dispatch_out"></Group>
+    <Group name="GRO_dispatch_in_scalar">GRO_capacities, scaling</Group>
+    <Group name="GRO_dispatch_in_Time"></Group>
+    <Group name="GRO_timeseries">GRO_timeseries_in, GRO_timeseries_out</Group>
+    <Group name="GRO_timeseries_in">GRO_timeseries_in_scalar</Group>
+    <Group name="GRO_timeseries_out">GRO_timeseries_out_scalar</Group>
+    <Group name="GRO_timeseries_in_scalar">scaling, GRO_capacities</Group>
+    <Group name="GRO_timeseries_out_scalar"/>
+    <Group name="GRO_metrics_stats"/>
+    <Group name="GRO_interp">stepwise</Group>
+    <Group name="GRO_capacities"/>
+  </VariableGroups>
+
+  <DataObjects>
+    <PointSet name="arma_metrics"/>
+    <PointSet name="metrics_stats">
+      <Output>GRO_metrics_stats</Output>
+    </PointSet>
+    <DataSet name="dispatch_eval">
+      <Input>GRO_dispatch_in</Input>
+      <Index var="Time">GRO_dispatch_in_Time</Index>
+      <Index var="Year">GRO_dispatch_in_Time</Index>
+    </DataSet>
+    <PointSet name="dispatch_placeholder">
+      <Input>GRO_dispatch_in_scalar</Input>
+    </PointSet>
+  </DataObjects>
+
+  <Databases/>
+
+  <Models>
+    <ExternalModel name="dispatch" subType="HERON.DispatchManager">
+      <variables>GRO_dispatch, GRO_timeseries</variables>
+    </ExternalModel>
+
+    <PostProcessor name="statistics" subType="EconomicRatio"/>
+  </Models>
+
+  <Distributions/>
+
+  <Samplers/>
+
+  <OutStreams/>
+
+</Simulation>

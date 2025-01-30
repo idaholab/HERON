@@ -1,0 +1,54 @@
+[Tests]
+  [./RavenSnippet]
+    type = Unittest
+    input = 'test_base.py'
+  [../]
+  [./SnippetFactory]
+    type = Unittest
+    input = 'test_factory.py'
+  [../]
+  [./File]
+    type = Unittest
+    input = 'test_files.TestFile'
+  [../]
+  [./RunInfo]
+    type = Unittest
+    input = 'test_runinfo.py'
+  [../]
+  [./VariableGroup]
+    type = Unittest
+    input = 'test_variablegroups.py'
+  [../]
+  [./Databases]
+    type = Unittest
+    input = 'test_databases.py'
+  [../]
+  [./DataObjects]
+    type = Unittest
+    input = 'test_dataobjects.py'
+  [../]
+  [./Models]
+    type = Unittest
+    input = 'test_models.py'
+  [../]
+  [./Optimizers]
+    type = Unittest
+    input = 'test_optimizers.py'
+  [../]
+  [./Distributions]
+    type = Unittest
+    input = 'test_distributions.py'
+  [../]
+  [./OutStreams]
+    type = Unittest
+    input = 'test_outstreams.py'
+  [../]
+  [./Samplers]
+    type = Unittest
+    input = 'test_samplers.py'
+  [../]
+  [./Steps]
+    type = Unittest
+    input = 'test_steps.py'
+  [../]
+[]

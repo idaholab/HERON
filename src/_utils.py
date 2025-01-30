@@ -9,17 +9,7 @@ import importlib
 import xml.etree.ElementTree as ET
 import warnings
 import pickle
-try:
-  from functools import cache
-except ImportError:
-  from functools import lru_cache
-  def cache(user_function):
-     """
-       use lru_cache for older versions of python
-       @ In, user_function, function
-       @ Out, user_function, function that caches values
-     """
-     return lru_cache(maxsize=None)(user_function)
+from functools import cache
 from os import path
 
 
@@ -184,6 +174,9 @@ def get_csv_structure(fpath, macro_var, micro_var):
   # to find the environment.
   data = pd.read_csv(fpath)
   structure = {}
+
+  structure['num_samples'] = data['RAVEN_sample_ID'].unique().size
+
   if macro_var in data.columns:
     macro_steps = pd.unique(data[macro_var].values)
     structure['macro'] = {

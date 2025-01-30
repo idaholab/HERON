@@ -200,6 +200,19 @@ class HeronComponent(DoveComponent):
       self.raiseAnError(IOError, f'<economics> node missing from component "{self.name}"!')
     CashFlowUser.read_input(self, econ_node)
 
+  def get_uncertain_cashflow_params(self):
+    """
+      Get all uncertain economic parameters
+      @ In, None
+      @ Out, params, dict, the uncertain parameters
+    """
+    params = {}
+    for cf in self.get_cashflows():
+      uncertain = cf.get_uncertain_params()
+      params |= {f"{self.name}_{k}": v for k, v in uncertain.items()}
+    return params
+
+
 class HeronInteraction(DoveInteraction):
   """
     Base class for component interactions (e.g. Producer, Storage, Demand)

@@ -187,6 +187,7 @@ def main():
 
   if sim._case._workflow == 'standard':
     if args.python_cmd_raven is not None:
+      print("creating workflow")
       sim.create_raven_workflow(python_cmd_raven=args.python_cmd_raven)
     else:
       sim.create_raven_workflow()

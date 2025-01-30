@@ -900,5 +900,3 @@ class DispatchManager(ExternalModelPluginBase):
       runner.override_time(override_time) # TODO setter
     dispatch, metrics, tot_activity = runner.run(raven_vars)
     runner.save_variables(raven, dispatch, metrics, tot_activity)
-
-

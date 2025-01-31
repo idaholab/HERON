@@ -95,7 +95,7 @@ class HeronComponent(DoveComponent):
         "add_params": [],
         "allowed": ['activity', 'variable'],
       },
-      "reference_price": { 
+      "reference_price": {
         "add_params": [],
         "allowed": None,
       },
@@ -114,8 +114,6 @@ class HeronComponent(DoveComponent):
       for sub_name, config in interact_subs_to_modify.items():
         current_sub = sub.getSub(sub_name)
         if current_sub is not None:
-          #print(f"INSIDE HERE -- {sub.getName()} - {sub_name}")
-          #print(config["allowed"])
           new_sub = vp_factory.make_input_specs(sub_name, descr=sub.description, allowed=config["allowed"])
           # Add parameters if any
           for param_name, param_key in config["add_params"]:
@@ -182,16 +180,19 @@ class HeronComponent(DoveComponent):
         except IOError as e:
           self.raiseAWarning(f'Errors while reading component "{self.name}"!')
           raise e
+        self._interaction = prod
         self._produces.append(prod)
       # read in storages
       elif item.getName() == 'stores':
         store = HeronStorage(messageHandler=self.messageHandler)
         store.read_input(item, self.name)
+        self._interaction = store
         self._stores.append(store)
       # read in demands
       elif item.getName() == 'demands':
         demand = HeronDemand(messageHandler=self.messageHandler)
         demand.read_input(item, self.name)
+        self._interaction = demand
         self._demands.append(demand)
       # read in economics
       elif item.getName() == 'economics':
@@ -202,6 +203,16 @@ class HeronComponent(DoveComponent):
     print("TYPE: ", type(econ_node))
     cf_group = DoveCashFlowGroup()
     cf_group.read_input(econ_node)
+    self._economics = cf_group
+
+  def get_capacity(self, meta, raw=False):
+    """
+      returns the capacity of the interaction of this component
+      @ In, meta, dict, arbitrary metadata from EGRET
+      @ In, raw, bool, optional, if True then return the ValuedParam instance for capacity, instead of the evaluation
+      @ Out, capacity, float (or ValuedParam), the capacity of this component's interaction
+    """
+    return self.get_interaction().get_capacity(meta, raw=raw)
 
   def get_uncertain_cashflow_params(self):
     """
@@ -232,7 +243,7 @@ class HeronInteraction(Base, DoveInteraction):
     # Grab all the DOVE input specs -- these input specs have no ValuedParams in
     # them, so we need to modify the input spec to allow for those VPs
     input_specs = super().get_input_specs()
-    return 
+    return
 
   def __init__(self, **kwargs):
     """
@@ -305,25 +316,25 @@ class HeronInteraction(Base, DoveInteraction):
   #   """
   #   # nothing to do in general
 
-  # def get_capacity(self, meta, raw=False):
-  #   """
-  #     Returns the capacity of this interaction.
-  #     Returns an evaluated value unless "raw" is True, then gives ValuedParam
-  #     @ In, meta, dict, additional variables to pass through
-  #     @ In, raw, bool, optional, if True then provide ValuedParam instead of evaluation
-  #     @ Out, evaluated, float or ValuedParam, requested value
-  #     @ Out, meta, dict, additional variable passthrough
-  #   """
-  #   if raw:
-  #     #NOTE: not returing capacity_factor since it will not be used as a variable
-  #     return self._capacity
-  #   meta['request'] = {self._capacity_var: None}
-  #   evaluated, meta = self._capacity.evaluate(meta, target_var=self._capacity_var)
-  #   # apply capacity factor to get actual capacity for given timestep
-  #   if self._capacity_factor is not None:
-  #     capacity_factor = self._capacity_factor.evaluate(meta, target_var=self._capacity_var)[0]
-  #     evaluated[self._capacity_var] *= capacity_factor[self._capacity_var]
-  #   return evaluated, meta
+  def get_capacity(self, meta, raw=False):
+    """
+      Returns the capacity of this interaction.
+      Returns an evaluated value unless "raw" is True, then gives ValuedParam
+      @ In, meta, dict, additional variables to pass through
+      @ In, raw, bool, optional, if True then provide ValuedParam instead of evaluation
+      @ Out, evaluated, float or ValuedParam, requested value
+      @ Out, meta, dict, additional variable passthrough
+    """
+    if raw:
+      #NOTE: not returing capacity_factor since it will not be used as a variable
+      return self._capacity
+    meta['request'] = {self._capacity_var: None}
+    evaluated, meta = self._capacity.evaluate(meta, target_var=self._capacity_var)
+    # apply capacity factor to get actual capacity for given timestep
+    if self._capacity_factor is not None:
+      capacity_factor = self._capacity_factor.evaluate(meta, target_var=self._capacity_var)[0]
+      evaluated[self._capacity_var] *= capacity_factor[self._capacity_var]
+    return evaluated, meta
 
   # def get_capacity_var(self):
   #   """

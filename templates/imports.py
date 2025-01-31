@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent.parent))
 from HERON.src.base import Base
 from HERON.src.Cases import Case
-from HERON.src.Components import Component
+from HERON.src.Components import HeronComponent as Component
 from HERON.src.Placeholders import Placeholder
 from HERON.src.ValuedParams import ValuedParam
 import HERON.src._utils as hutils

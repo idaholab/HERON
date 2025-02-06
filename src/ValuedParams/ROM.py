@@ -58,7 +58,7 @@ class ROM(ValuedParam):
     self._inputs = {}          # map of {name: VP} for all input sources to ROM
     self._output = None        # name of output that should be used
 
-  def read(self, comp_name, spec, mode, alias_dict=None):
+  def read(self, comp_name, spec, alias_dict=None):
     """
       Used to read valued param from XML input
       @ In, comp_name, str, name of component that this valued param will be attached to; only used for print messages
@@ -67,7 +67,7 @@ class ROM(ValuedParam):
       @ In, alias_dict, dict, optional, aliases to use for variable naming
       @ Out, needs, list, signals needed to evaluate this ValuedParam at runtime
     """
-    super().read(comp_name, spec, mode, alias_dict=None)
+    super().read(comp_name, spec, alias_dict=None)
     # aliases get used to convert variable names, notably for the cashflow's "capacity"
     if alias_dict is None:
       alias_dict = {}
@@ -79,11 +79,11 @@ class ROM(ValuedParam):
     req_signals = [self._source_name]
     for vp_node in spec.findAll('input'):
       name = vp_node.parameterValues['name']
-      new_signals = self.make_sub_vp(name, comp_name, vp_node, mode)
+      new_signals = self.make_sub_vp(name, comp_name, vp_node)
       req_signals.extend(new_signals)
     return req_signals
 
-  def make_sub_vp(self, name, comp, spec, mode):
+  def make_sub_vp(self, name, comp, spec):
     """
       Creates a sub VP for this VP
       @ In, name, str, input variable name for ROM
@@ -94,7 +94,7 @@ class ROM(ValuedParam):
     """
     from ValuedParamHandler import ValuedParamHandler
     vp = ValuedParamHandler(name)
-    signal = vp.read(comp, spec, mode)
+    signal = vp.read(comp, spec)
     self._inputs[name] = {'vp': vp, 'signals': [signal]}
     return signal
 

@@ -55,7 +55,7 @@ class ValuedParam(MessageUser):
     """
     return f"<HERON {self._source_kind}>"
 
-  def read(self, comp_name, spec, mode, alias_dict=None):
+  def read(self, comp_name, spec, alias_dict=None):
     """
       Used to read valued param from XML input
       Also determines what "needs" from external entities exist for this entity; these are returned

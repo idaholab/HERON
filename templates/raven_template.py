@@ -549,7 +549,6 @@ class RavenTemplate(Template):
     # distribution and sampled variable objects.
     for component in components:
       for cashflow in component.get_cashflows():
-        print(cashflow)
         for param_name, vp in cashflow.get_uncertain_params().items():
           unit_name = f"{component.name}_{cashflow.name}"
           feat_name = self.namingTemplates["variable"].format(unit=unit_name, feature=param_name)

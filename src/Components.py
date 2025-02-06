@@ -203,8 +203,6 @@ class HeronComponent(DoveComponent):
       self.raiseAnError(IOError, f'<economics> node missing from component "{self.name}"!')
     self._economics = HeronCashFlowGroup(self)
     self._economics.read_input(econ_node)
-    print("HELLO")
-    # self._economics = cf_group
 
   def get_capacity(self, meta, raw=False):
     """

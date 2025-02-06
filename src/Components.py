@@ -382,33 +382,33 @@ class HeronInteraction(Base, DoveInteraction):
   #   """
   #   self._capacity.set_value(float(cap))
 
-  # def get_minimum(self, meta, raw=False):
-  #   """
-  #     Returns the minimum level of this interaction.
-  #     Returns an evaluated value unless "raw" is True, then gives ValuedParam
-  #     @ In, meta, dict, additional variables to pass through
-  #     @ In, raw, bool, optional, if True then provide ValuedParam instead of evaluation
-  #     @ Out, evaluated, float or ValuedParam, requested value
-  #     @ Out, meta, dict, additional variable passthrough
-  #   """
-  #   if raw:
-  #     return self._minimum
-  #   cap_var = self.get_capacity_var()
-  #   if self._minimum is None:
-  #     evaluated = {cap_var: 0.0}
-  #   else:
-  #     meta['request'] = {cap_var: None}
-  #     evaluated, meta = self._minimum.evaluate(meta, target_var=cap_var)
-  #     # check that min value is acceptable [0,1]
-  #     # TODO it would be better to be able to check this before run-time, but we don't have a method
-  #     #   in place to check e.g. ARMA,
-  #     value = evaluated[cap_var]
-  #     if not (0 <= value <= 1):
-  #       self.raiseAnError(ValueError, f'While calculating minimum operating level for component "{self.tag}", ' +
-  #           f'an invalid percent was provided/calculated ({value}). Minimums should be between 0 and 1, inclusive.')
-  #     # convert percentage to real value
-  #     evaluated[cap_var] = self.get_capacity(meta)[0][cap_var] * value
-  #   return evaluated, meta
+  def get_minimum(self, meta, raw=False):
+    """
+      Returns the minimum level of this interaction.
+      Returns an evaluated value unless "raw" is True, then gives ValuedParam
+      @ In, meta, dict, additional variables to pass through
+      @ In, raw, bool, optional, if True then provide ValuedParam instead of evaluation
+      @ Out, evaluated, float or ValuedParam, requested value
+      @ Out, meta, dict, additional variable passthrough
+    """
+    if raw:
+      return self._minimum
+    cap_var = self.get_capacity_var()
+    if self._minimum is None:
+      evaluated = {cap_var: 0.0}
+    else:
+      meta['request'] = {cap_var: None}
+      evaluated, meta = self._minimum.evaluate(meta, target_var=cap_var)
+      # check that min value is acceptable [0,1]
+      # TODO it would be better to be able to check this before run-time, but we don't have a method
+      #   in place to check e.g. ARMA,
+      value = evaluated[cap_var]
+      if not (0 <= value <= 1):
+        self.raiseAnError(ValueError, f'While calculating minimum operating level for component "{self.tag}", ' +
+            f'an invalid percent was provided/calculated ({value}). Minimums should be between 0 and 1, inclusive.')
+      # convert percentage to real value
+      evaluated[cap_var] = self.get_capacity(meta)[0][cap_var] * value
+    return evaluated, meta
 
   # def get_sqrt_RTE(self):
   #   """

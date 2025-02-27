@@ -93,7 +93,7 @@ class HeronComponent(DoveComponent):
     econ_subs_to_modify = {
       "driver":{
         "add_params": [],
-        "allowed": ['activity', 'variable'],
+        "allowed": ['activity', 'variable', 'Function'],
       },
       "reference_price": {
         "add_params": [],
@@ -321,6 +321,13 @@ class HeronInteraction(Base, DoveInteraction):
     Base class for component interactions (e.g. Producer, Storage, Demand)
   """
   tag = 'interacts' # node name in input file
+
+  def _set_fixed_value(self, name, value):
+    """
+    """
+    vp = ValuedParamHandler(name)
+    vp.set_const_VP(value)
+    return vp
 
   def _set_value(self, name, comp, spec):
     """

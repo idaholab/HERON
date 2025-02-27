@@ -80,7 +80,7 @@ class OptPathPlot(OutStream):
 class HeronDispatchPlot(OutStream):
   """ OutStream snippet for HERON dispatch plots """
   tag = "Plot"
-  subtype = "HERON.DispatchPlot"
+  subtype = "DOVE.DispatchPlot"
 
   @classmethod
   def from_xml(cls, node: ET.Element) -> "HeronDispatchPlot":

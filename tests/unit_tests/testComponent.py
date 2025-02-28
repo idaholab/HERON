@@ -35,7 +35,7 @@ def transfer_function(inputs): #method, requests, inputs):
     return {'electricity': 0}, inputs
 
 # Set up the component
-producer = Components.Producer()
+producer = Components.HeronProducer()
 producer.messageHandler = MessageHandler.MessageHandler()
 producer.messageHandler.verbosity = 'debug'
 # these are usually set in reading the input

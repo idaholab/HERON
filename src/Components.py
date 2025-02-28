@@ -17,7 +17,7 @@ from HERON.src import _utils as hutils
 
 from DOVE.src.Components import Component as DoveComponent
 from DOVE.src.TransferFuncs import factory as tf_factory
-from DOVE.src.Interactions import (Interaction as DoveInteraction, 
+from DOVE.src.Interactions import (Interaction as DoveInteraction,
                                    Producer as DoveProducer,
                                    Demand as DoveDemand,
                                    Storage as DoveStorage)
@@ -70,7 +70,7 @@ class HeronComponent(DoveComponent):
     interact_subs_to_modify = {
       "capacity": {
         "add_params": [("resource", "resource")],
-        "allowed": None
+        "allowed": None # Meaning all "allowed" ValuedParams
       },
       "capacity_factor": {
         "add_params": [],
@@ -130,14 +130,23 @@ class HeronComponent(DoveComponent):
             for sub_name, config in econ_subs_to_modify.items():
               current_sub = econ_sub.getSub(sub_name)
               if current_sub is not None:
-                #print(f"INSIDE HERE -- {econ_sub.getName()} - {sub_name}")
-                #print(config["allowed"])
                 new_sub = vp_factory.make_input_specs(sub_name, descr=sub.description, allowed=config["allowed"])
                 # Add parameters if any
                 for param_name, param_key in config["add_params"]:
                   new_sub.addParam(param_name, descr=current_sub.parameters[param_key]['description'])
-                  # Replace the old sub with the new one
-                econ_sub.popSub(sub_name)
+                # FIXME: This is bad and I should be punished...
+                # Since <levelized_cost> is a child node of <reference_price> we need to re-add it to the input spec
+                # when recreating the ValuedParam version of <reference_price>. Otherwise it gets deleted and is no
+                # longer seen as an available input option. We should find a way to dynamically add child subs by perhaps
+                # adding a key to `econ_subs_to_modify` dictionary like "add_subs". For now we add a conditional checking
+                # if we are modifying <reference_price> and then directly add <levelized_cost> to the new input definition.
+                if sub_name == "reference_price":
+                  levelized_cost = InputData.parameterInputFactory(
+                    "levelized_cost", strictMode=True, descr="indicates to solve for levelized price related to the cashflow"
+                  )
+                  new_sub.addSub(levelized_cost)
+                # Replace the old sub with the new one
+                _ = econ_sub.popSub(sub_name)
                 econ_sub.addSub(new_sub)
 
     return input_specs
@@ -228,7 +237,7 @@ class HeronComponent(DoveComponent):
 class HeronCashFlowGroup(DoveCashFlowGroup):
   """
   """
-  
+
   def read_input(self, source, xml=False):
     """
     Sets settings from input file
@@ -273,7 +282,7 @@ class HeronCashFlow(DoveCashFlow):
   #   # them, so we need to modify the input spec to allow for those VPs
   #   input_specs = super().get_input_specs()
   #   return
-  
+
   def _set_value(self, name, spec):
     """
       Utilitly method to set ValuedParam members via reading input specifications.
@@ -291,7 +300,7 @@ class HeronCashFlow(DoveCashFlow):
       # are not a variable in the outer optimization.
       vp = self._component.get_capacity_param()
     setattr(self, name, vp)
-  
+
   def _set_fixed_param(self, name, value):
     """
       Fixes a ValuedParam to have a constant value

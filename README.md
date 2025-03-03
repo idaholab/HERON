@@ -15,6 +15,9 @@ See more on the [HERON wiki](https://github.com/idaholab/HERON/wiki) for install
 The following are a selection of technical reports, conference proceedings, and journal articles that may be of interest to users and developers of HERON, loosely in order of work performed.
 
 ### Technoeconomic Assessments
+- [Stochastic Optimization and Uncertainty Quantification of Natrium-based Nuclear-Renewable Energy Systems for Flexible Power Applications in Deregulated Markets](https://www.sciencedirect.com/science/article/pii/S0306261924014880)
+- [Sensitivity Analysis of a Nuclear Hybrid Energy System With Thermal Energy Storage in Deregulated Electricity Markets Considering Time Series Uncertainty in Electricity Price](https://onlinelibrary.wiley.com/doi/full/10.1002/est2.70082)
+- [Powering Data Centers with Clean Energy: A Techno-Economic Case Study of Nuclear and Renewable Energy Dependability](https://www.osti.gov/biblio/2438321)
 - [A Technical and Economic Assessment of LWR Flexible Operation for Generation and Demand Balancing to Optimize Plant Revenue](https://www.osti.gov/biblio/1844211-technical-economic-assessment-lwr-flexible-operation-generation-demand-balancing-optimize-plant-revenue)
 - [Evaluation of Hybrid FPOG Applications in Regulated and Deregulated Markets Using HERON](https://www.osti.gov/biblio/1755894-evaluation-hybrid-fpog-applications-regulated-deregulated-markets-using-heron)
 - [HERON as a Tool for LWR Market Interaction in a Deregulated Market](https://www.osti.gov/biblio/1581179-heron-tool-lwr-market-interaction-deregulated-market)

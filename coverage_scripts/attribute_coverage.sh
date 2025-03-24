@@ -28,8 +28,8 @@ do
   ((TEST_NUM++))
 
   echo "Running command to check individual test coverage ($TEST_NUM/$TEST_TOT):"
-  echo ./coverage_scripts/check_py_coverage.sh --coverage-run-only --re=\"$TEST_NAME\" --coverage-clargs=\"--context="$TEST_NAME"\"
-  CPC_OUT=$(./coverage_scripts/check_py_coverage.sh --coverage-run-only --re="$TEST_NAME" --coverage-clargs="--context='$TEST_NAME'")
+  echo ./coverage_scripts/check_py_coverage.sh "$@" --coverage-run-only --re=\"$TEST_NAME\" --coverage-clargs=\"--context="$TEST_NAME"\"
+  CPC_OUT=$(./coverage_scripts/check_py_coverage.sh "$@" --coverage-run-only --re="$TEST_NAME" --coverage-clargs="--context='$TEST_NAME'")
   if [[ $? -ne 0 ]]
   then
     echo "Failure in check_py_coverage run:"

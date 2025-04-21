@@ -1,44 +1,35 @@
-
 # Copyright 2020, Battelle Energy Alliance, LLC
 # ALL RIGHTS RESERVED
 """
   Defines the Component entity.
 """
-import sys
-from collections import defaultdict
-import numpy as np
-from HERON.src.base import Base
-import xml.etree.ElementTree as ET
-#from HERON.src.Economics import CashFlowUser
-from HERON.src.ValuedParams import factory as vp_factory
+from numbers import Real
 
+from HERON.src.ValuedParams import factory as vp_factory
 from HERON.src.ValuedParamHandler import ValuedParamHandler
-from HERON.src import _utils as hutils
 
 from DOVE.src.Components import Component as DoveComponent
-from DOVE.src.TransferFuncs import factory as tf_factory
-from DOVE.src.Interactions import (Interaction as DoveInteraction,
-                                   Producer as DoveProducer,
-                                   Demand as DoveDemand,
-                                   Storage as DoveStorage)
-from DOVE.src.Economics import (CashFlowGroup as DoveCashFlowGroup,
-                                CashFlow as DoveCashFlow)
+from DOVE.src.Interactions import Interaction as DoveInteraction
+from DOVE.src.Interactions import Producer as DoveProducer
+from DOVE.src.Interactions import Demand as DoveDemand
+from DOVE.src.Interactions import Storage as DoveStorage
+from DOVE.src.Economics import CashFlowGroup as DoveCashFlowGroup
+from DOVE.src.Economics import CashFlow as DoveCashFlow
 
-try:
-  import ravenframework
-except ModuleNotFoundError:
-  framework_path = hutils.get_raven_loc()
-  sys.path.append(framework_path)
-from ravenframework.utils import InputData, xmlUtils, InputTypes
+from ravenframework.utils import InputData
+from ravenframework.utils.InputData import ParameterInput
 
 
 class HeronComponent(DoveComponent):
   """
-    Represents a unit in the grid analysis. Each component has a single "interaction" that
-    describes what it can do (produce, store, demand)
+  Represents a unit in the grid analysis. 
+  Each component has a single "interaction" that describes what it can do:
+    -produce
+    -store
+    -demand
   """
   tag = "component"
-  def __repr__(self):
+  def __repr__(self) -> str:
     """
     String representation.
     @ In, None
@@ -47,11 +38,11 @@ class HeronComponent(DoveComponent):
     return f'<HERON Component "{self.name}">'
 
   @classmethod
-  def get_input_specs(cls):
+  def get_input_specs(cls) -> type[ParameterInput]:
     """
-      Collects input specifications for this class.
-      @ In, None
-      @ Out, input_specs, InputData, specs
+    Collects input specifications for this class.
+    @ In, None
+    @ Out, input_specs, InputData, specs
     """
     ## DEVELOPER NOTE:
     ## You should NOT add new subspecs to this method unless they have nothing to
@@ -151,82 +142,56 @@ class HeronComponent(DoveComponent):
 
     return input_specs
 
-  def __init__(self, **kwargs):
+  def read_input(self, xml) -> None:
     """
-      Constructor
-      @ In, kwargs, dict, optional, arguments to pass to other constructors
-      @ Out, None
-    """
-    super().__init__(**kwargs)
-    # Base.__init__(self, **kwargs)
-    # HeronCashFlowGroup.__init__(self)
-    self.name = None
-    self._produces = []
-    self._stores = []
-    self._demands = []
-    self.levelized_meta = {}
-
-
-  def read_input(self, xml, mode="opt"):
-    """
-      Sets settings from input file
-      @ In, xml, xml.etree.ElementTree.Element, input from user
-      @ In, mode, string, case mode to operate in (e.g. 'sweep' or 'opt')
-      @ Out, None
+    Sets settings from input file
+    @In, xml, xml.etree.ElementTree.Element, input from user
+    @In, mode, string, case mode to operate in (e.g. 'sweep' or 'opt')
+    @Out, None
     """
     # get specs for allowable inputs
     specs = self.get_input_specs()()
     specs.parseNode(xml)
     self.name = specs.parameterValues['name']
-    self.raiseADebug(f'Loading component "{self.name}"')
+    interaction_map = {
+      "produces": HeronProducer,
+      "stores": HeronStorage,
+      "demands": HeronDemand
+    }
+
+    found_interactions: dict
+    not_found_in_spec: list
+    found_interactions, not_found_in_spec = specs.findNodesAndExtractValues(interaction_map.keys())
+    if all((interaction == 'no-default' for interaction in found_interactions.values())):
+      self.raiseAnError(NotImplementedError, f"No interaction found for Component '{self.name}'")
+    elif len(not_found_in_spec) < 2:
+      self.raiseAnError(NotImplementedError, f"A Component can only have one interaction! Check Component '{self.name}'")
+
     for item in specs.subparts:
-      if self.get_interaction() and item.getName() in ['produces', 'stores', 'demands']:
-        self.raiseAnError(NotImplementedError, f'Currently each Component can only have one interaction (produces, stores, demands)! Check Component "{self.name}"')
-      # read in producers
-      if item.getName() == 'produces':
-        prod = HeronProducer(messageHandler=self.messageHandler)
-        try:
-          prod.read_input(item, self.name)
-        except IOError as e:
-          self.raiseAWarning(f'Errors while reading component "{self.name}"!')
-          raise e
-        self._interaction = prod
-        self._produces.append(prod)
-      # read in storages
-      elif item.getName() == 'stores':
-        store = HeronStorage(messageHandler=self.messageHandler)
-        store.read_input(item, self.name)
-        self._interaction = store
-        self._stores.append(store)
-      # read in demands
-      elif item.getName() == 'demands':
-        demand = HeronDemand(messageHandler=self.messageHandler)
-        demand.read_input(item, self.name)
-        self._interaction = demand
-        self._demands.append(demand)
-      # read in economics
-      elif item.getName() == 'economics':
-        econ_node = item # need to read AFTER the interactions!
-    # after looping over nodes, finish up
-    if econ_node is None:
-      self.raiseAnError(IOError, f'<economics> node missing from component "{self.name}"!')
-    self._economics = HeronCashFlowGroup(self)
-    self._economics.read_input(econ_node)
+      item_name = item.getName()
+      if item_name in interaction_map:
+        interaction_instance = interaction_map[item_name](messageHandler=self.messageHandler)
+        interaction_instance.read_input(item, self.name)
+        self._interaction = interaction_instance
+      elif item_name == 'economics':
+        cashflows = HeronCashFlowGroup(self, messageHandler=self.messageHandler)
+        cashflows.read_input(item)
+        self._economics = cashflows
 
   def get_capacity(self, meta, raw=False):
     """
-      returns the capacity of the interaction of this component
-      @ In, meta, dict, arbitrary metadata from EGRET
-      @ In, raw, bool, optional, if True then return the ValuedParam instance for capacity, instead of the evaluation
-      @ Out, capacity, float (or ValuedParam), the capacity of this component's interaction
+    returns the capacity of the interaction of this component
+    @In, meta, dict, arbitrary metadata from HERON
+    @In, raw, bool, optional, if True then return the ValuedParam instance for capacity, instead of the evaluation
+    @Out, capacity, float (or ValuedParam), the capacity of this component's interaction
     """
-    return self.get_interaction().get_capacity(meta, raw=raw)
+    return self._interaction.get_capacity(meta, raw=raw)
 
   def get_uncertain_cashflow_params(self):
     """
-      Get all uncertain economic parameters
-      @ In, None
-      @ Out, params, dict, the uncertain parameters
+    Get all uncertain economic parameters
+    @In, None
+    @Out, params, dict, the uncertain parameters
     """
     params = {}
     for cf in self.get_cashflows():
@@ -236,62 +201,44 @@ class HeronComponent(DoveComponent):
 
 class HeronCashFlowGroup(DoveCashFlowGroup):
   """
+  Masks specific functionality from DoveCashFlowGroup to allow for ValuedParams.
   """
-
-  def read_input(self, source, xml=False):
+  def read_input(self, specs: ParameterInput) -> None:
     """
     Sets settings from input file
-    @ In, source, InputData.ParameterInput, input from user
-    @ In, xml, bool, if True then XML is passed in, not input data
-    @ Out, None
+    @In, source, InputData.ParameterInput, input from user
+    @Out, None
     """
-    # allow read_input argument to be either xml or input specs
-    if xml:
-      specs = self.get_input_specs()()
-      specs.parseNode(source)
-    else:
-      specs = source
-    # read in specs
     for item in specs.subparts:
-      if item.getName() == "lifetime":
+      item_name = item.getName()
+      if item_name == "lifetime":
         self._lifetime = item.value
-      elif item.getName() == "CashFlow":
-        new = HeronCashFlow(self._component)
-        new.read_input(item)
-        self._cash_flows.append(new)
+      elif item_name == "CashFlow":
+        cashflow = HeronCashFlow(self._component)
+        cashflow.read_input(item)
+        self._cash_flows.append(cashflow)
 
 class HeronCashFlow(DoveCashFlow):
   """
+  Masks specific functionality from DoveCashFlow to allow for ValuedParams.
   """
-  def __repr__(self):
+  def __repr__(self) -> str:
     """
     String representation.
-    @ In, None
-    @ Out, __repr__, string representation
+    @In, None
+    @Out, __repr__, string representation
     """
     return f'<HERON CashFlow "{self.name}">'
 
-  # @classmethod
-  # def get_input_specs(cls):
-  #   """
-  #     Collects input specifications for this class.
-  #     @ In, None
-  #     @ Out, input_specs, InputData, specs
-  #   """
-  #   # Grab all the DOVE input specs -- these input specs have no ValuedParams in
-  #   # them, so we need to modify the input spec to allow for those VPs
-  #   input_specs = super().get_input_specs()
-  #   return
-
-  def _set_value(self, name, spec):
+  def _set_value(self, name: str, spec: ParameterInput) -> None:
     """
-      Utilitly method to set ValuedParam members via reading input specifications.
-      @ In, name, str, member variable name (e.g. self.<name>)
-      @ In, spec, InputData params, input parameters
-      @ Out, None
+    Utilitly method to set ValuedParam members via reading input specifications.
+    @In, name, str, member variable name (e.g. self.<name>)
+    @In, spec, InputData params, input parameters
+    @Out, None
     """
     vp = ValuedParamHandler(name)
-    signal = vp.read(f'CashFlow \'{self.name}\'', spec) # TODO what "mode" to use?
+    signal = vp.read(f'CashFlow \'{self.name}\'', spec)
     self._signals.update(signal)
     self._crossrefs[name] = vp
     # standard alias: redirect "capacity" variable
@@ -301,66 +248,69 @@ class HeronCashFlow(DoveCashFlow):
       vp = self._component.get_capacity_param()
     setattr(self, name, vp)
 
-  def _set_fixed_param(self, name, value):
+  def _set_fixed_param(self, name: str, value: Real) -> None:
     """
-      Fixes a ValuedParam to have a constant value
-      @ In, name, str, name of member to store on "self"
-      @ In, value, float, value to set for ValuedParam
-      @ Out, None
+    Fixes a ValuedParam to have a constant value
+    @In, name, str, name of member to store on "self"
+    @In, value, float, value to set for ValuedParam
+    @Out, None
     """
     vp = ValuedParamHandler(name)
     vp.set_const_VP(value)
     setattr(self, name, vp)
 
-  def get_uncertain_params(self):
+  def get_uncertain_params(self) -> dict[str, ValuedParamHandler]:
     """
-      Gets any of the cashflow equation parameters which are random variables
-      @ In, None
-      @ Out, uncertain_params, dict[ValuedParam], the uncertain cashflow parameters
+    Return all cashflow parameters that are random variables.
+    @In, None
+    @Out, uncertain_params, dict[str, RandomVariable], the uncertain cashflow parameters
     """
     params = ["_driver", "_alpha", "_reference", "_scale"]
     uncertain_params = {}
     for param_name in params:
-      if (param := getattr(self, param_name)).type == "RandomVariable":
+      if (param := getattr(self, param_name)).type == 'RandomVariable':
         uncertain_params[param_name[1:]] = param
     return uncertain_params
 
-class HeronInteraction(Base, DoveInteraction):
+class HeronInteraction(DoveInteraction):
   """
-    Base class for component interactions (e.g. Producer, Storage, Demand)
+  Base class for component interactions (e.g. Producer, Storage, Demand)
   """
-  tag = 'interacts' # node name in input file
+  tag = 'interacts'
 
-  def _set_fixed_value(self, name, value):
+  def _set_fixed_value(self, name: str, value: Real) -> None:
     """
+    Sets a class attribute to a constant ValuedParam that will be evaluated at Runtime.
+    This is a masked DoveInteraction method. The original method sets a literal value.
+    @In, name, str, name of class attribute to create
+    @In, value, Number, literal to set 
+    @Out, None
     """
     vp = ValuedParamHandler(name)
     vp.set_const_VP(value)
-    return vp
+    setattr(self, name, vp)
 
-  def _set_value(self, name, comp, spec):
+  def _set_value(self, name: str, comp_name: str, spec: ParameterInput) -> None:
     """
-      Sets up use of a ValuedParam for this interaction for the "name" attribute of this class.
-      @ In, name, str, name of member of this class
-      @ In, comp, str, name of associated component
-      @ In, spec, InputParam, input specifications
-      @ In, mode, string, case mode to operate in (e.g. 'sweep' or 'opt')
-      @ Out, None
+    Sets up use of a ValuedParam for this interaction for the "name" attribute of this class.
+    @In, name, str, name of member of this class
+    @In, comp_name, str, name of associated component
+    @In, spec, InputParam, input specifications
+    @Out, None
     """
     vp = ValuedParamHandler(name)
-    signal = vp.read(comp, spec)
+    signal = vp.read(comp_name, spec)
     self._signals.update(signal)
     self._crossrefs[name] = vp
     setattr(self, name, vp)
 
   def get_capacity(self, meta, raw=False):
     """
-      Returns the capacity of this interaction.
-      Returns an evaluated value unless "raw" is True, then gives ValuedParam
-      @ In, meta, dict, additional variables to pass through
-      @ In, raw, bool, optional, if True then provide ValuedParam instead of evaluation
-      @ Out, evaluated, float or ValuedParam, requested value
-      @ Out, meta, dict, additional variable passthrough
+    Returns an evaluated value unless "raw" is True, then gives ValuedParam
+    @ In, meta, dict, additional variables to pass through
+    @ In, raw, bool, optional, if True then provide ValuedParam instead of evaluation
+    @ Out, evaluated, float or ValuedParam, requested value
+    @ Out, meta, dict, additional variable passthrough
     """
     if raw:
       #NOTE: not returing capacity_factor since it will not be used as a variable
@@ -375,12 +325,11 @@ class HeronInteraction(Base, DoveInteraction):
 
   def get_minimum(self, meta, raw=False):
     """
-      Returns the minimum level of this interaction.
-      Returns an evaluated value unless "raw" is True, then gives ValuedParam
-      @ In, meta, dict, additional variables to pass through
-      @ In, raw, bool, optional, if True then provide ValuedParam instead of evaluation
-      @ Out, evaluated, float or ValuedParam, requested value
-      @ Out, meta, dict, additional variable passthrough
+    Returns an evaluated value unless "raw" is True, then gives ValuedParam
+    @ In, meta, dict, additional variables to pass through
+    @ In, raw, bool, optional, if True then provide ValuedParam instead of evaluation
+    @ Out, evaluated, float or ValuedParam, requested value
+    @ Out, meta, dict, additional variable passthrough
     """
     if raw:
       return self._minimum
@@ -403,39 +352,18 @@ class HeronInteraction(Base, DoveInteraction):
 
 class HeronProducer(HeronInteraction, DoveProducer):
   """
-    Explains a particular interaction, where resources are consumed to produce other resources
+  Explains a particular interaction, where resources are consumed to produce other resources
   """
-  tag = 'produces' # node name in input file
-
-  @classmethod
-  def get_input_specs(cls):
-    """
-      Collects input specifications for this class.
-      @ In, None
-      @ Out, input_specs, InputData, specs
-    """
-    specs = super().get_input_specs()
-    return specs
-  
-  def __init__(self, **kwargs):
-    """
-      Constructor
-      @ In, None
-      @ Out, None
-    """
-    HeronInteraction.__init__(self, **kwargs)
-    self._produces = []     # the resource(s) produced by this interaction
-    self._consumes = []     # the resource(s) consumed by this interaction
-    self._tracking_vars = ['production']
+  pass
 
 class HeronStorage(HeronInteraction, DoveStorage):
   """
-    Explains a particular interaction, where a resource is stored and released later
+  Explains a particular interaction, where a resource is stored and released later
   """
-  tag = 'stores' # node name in input file
+  pass
 
 class HeronDemand(HeronInteraction, DoveDemand):
   """
-    Explains a particular interaction, where a resource is demanded
+  Explains a particular interaction, where a resource is demanded
   """
-  tag = 'demands' # node name in input file
+  pass

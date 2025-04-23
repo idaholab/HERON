@@ -22,7 +22,7 @@ from ravenframework.utils.InputData import ParameterInput
 
 class HeronComponent(DoveComponent):
   """
-  Represents a unit in the grid analysis. 
+  Represents a unit in the grid analysis.
   Each component has a single "interaction" that describes what it can do:
     -produce
     -store
@@ -241,11 +241,6 @@ class HeronCashFlow(DoveCashFlow):
     signal = vp.read(f'CashFlow \'{self.name}\'', spec)
     self._signals.update(signal)
     self._crossrefs[name] = vp
-    # standard alias: redirect "capacity" variable
-    if isinstance(vp, vp_factory.returnClass('variable')) and vp.get_raven_var() == 'capacity':
-      #NOTE: we are assuming here that capacity_factors are only applied in dispatch and
-      # are not a variable in the outer optimization.
-      vp = self._component.get_capacity_param()
     setattr(self, name, vp)
 
   def _set_fixed_param(self, name: str, value: Real) -> None:
@@ -283,7 +278,7 @@ class HeronInteraction(DoveInteraction):
     Sets a class attribute to a constant ValuedParam that will be evaluated at Runtime.
     This is a masked DoveInteraction method. The original method sets a literal value.
     @In, name, str, name of class attribute to create
-    @In, value, Number, literal to set 
+    @In, value, Number, literal to set
     @Out, None
     """
     vp = ValuedParamHandler(name)

@@ -3,8 +3,7 @@
 """
   Defines the Component entity.
 """
-from numbers import Real
-
+from typing import cast
 from HERON.src.ValuedParams import factory as vp_factory
 from HERON.src.ValuedParamHandler import ValuedParamHandler
 
@@ -194,7 +193,7 @@ class HeronComponent(DoveComponent):
     @Out, params, dict, the uncertain parameters
     """
     params = {}
-    for cf in self.get_cashflows():
+    for cf in cast(list[HeronCashFlow], self.get_cashflows()):
       uncertain = cf.get_uncertain_params()
       params |= {f"{self.name}_{k}": v for k, v in uncertain.items()}
     return params
@@ -206,17 +205,21 @@ class HeronCashFlowGroup(DoveCashFlowGroup):
   def read_input(self, specs: ParameterInput) -> None:
     """
     Sets settings from input file
-    @In, source, InputData.ParameterInput, input from user
-    @Out, None
+    @ In, source, InputData.ParameterInput, input from user
+    @ Out, None
     """
     for item in specs.subparts:
-      item_name = item.getName()
-      if item_name == "lifetime":
-        self._lifetime = item.value
-      elif item_name == "CashFlow":
-        cashflow = HeronCashFlow(self._component)
-        cashflow.read_input(item)
-        self._cash_flows.append(cashflow)
+      match item.getName():
+        case "lifetime":
+          self._lifetime = item.value
+        case "CashFlow":
+          cashflow = HeronCashFlow(self._component)
+          cashflow.read_input(item)
+          self._cash_flows.append(cashflow)
+    
+    if self._lifetime is None:
+      self.raiseAnError(IOError, f'Component "{self.name}" is missing its <lifetime> node!')
+
 
 class HeronCashFlow(DoveCashFlow):
   """
@@ -225,17 +228,17 @@ class HeronCashFlow(DoveCashFlow):
   def __repr__(self) -> str:
     """
     String representation.
-    @In, None
-    @Out, __repr__, string representation
+    @ In, None
+    @ Out, __repr__, string representation
     """
     return f'<HERON CashFlow "{self.name}">'
 
   def _set_value(self, name: str, spec: ParameterInput) -> None:
     """
     Utilitly method to set ValuedParam members via reading input specifications.
-    @In, name, str, member variable name (e.g. self.<name>)
-    @In, spec, InputData params, input parameters
-    @Out, None
+    @ In, name, str, member variable name (e.g. self.<name>)
+    @ In, spec, InputData params, input parameters
+    @ Out, None
     """
     vp = ValuedParamHandler(name)
     signal = vp.read(f'CashFlow \'{self.name}\'', spec)
@@ -243,12 +246,12 @@ class HeronCashFlow(DoveCashFlow):
     self._crossrefs[name] = vp
     setattr(self, name, vp)
 
-  def _set_fixed_param(self, name: str, value: Real) -> None:
+  def _set_fixed_param(self, name: str, value: float) -> None:
     """
     Fixes a ValuedParam to have a constant value
-    @In, name, str, name of member to store on "self"
-    @In, value, float, value to set for ValuedParam
-    @Out, None
+    @ In, name, str, name of member to store on "self"
+    @ In, value, float, value to set for ValuedParam
+    @ Out, None
     """
     vp = ValuedParamHandler(name)
     vp.set_const_VP(value)
@@ -257,10 +260,10 @@ class HeronCashFlow(DoveCashFlow):
   def get_uncertain_params(self) -> dict[str, ValuedParamHandler]:
     """
     Return all cashflow parameters that are random variables.
-    @In, None
-    @Out, uncertain_params, dict[str, RandomVariable], the uncertain cashflow parameters
+    @ In, None
+    @ Out, uncertain_params, dict[str, RandomVariable], the uncertain cashflow parameters
     """
-    params = ["_driver", "_alpha", "_reference", "_scale"]
+    params = ["_driver", "_alpha", "_reference_driver", "_scaling_factor_x"]
     uncertain_params = {}
     for param_name in params:
       if (param := getattr(self, param_name)).type == 'RandomVariable':
@@ -273,13 +276,13 @@ class HeronInteraction(DoveInteraction):
   """
   tag = 'interacts'
 
-  def _set_fixed_value(self, name: str, value: Real) -> None:
+  def _set_fixed_value(self, name: str, value: float) -> None:
     """
     Sets a class attribute to a constant ValuedParam that will be evaluated at Runtime.
     This is a masked DoveInteraction method. The original method sets a literal value.
-    @In, name, str, name of class attribute to create
-    @In, value, Number, literal to set
-    @Out, None
+    @ In, name, str, name of class attribute to create
+    @ In, value, Number, literal to set
+    @ Out, None
     """
     vp = ValuedParamHandler(name)
     vp.set_const_VP(value)
@@ -288,10 +291,10 @@ class HeronInteraction(DoveInteraction):
   def _set_value(self, name: str, comp_name: str, spec: ParameterInput) -> None:
     """
     Sets up use of a ValuedParam for this interaction for the "name" attribute of this class.
-    @In, name, str, name of member of this class
-    @In, comp_name, str, name of associated component
-    @In, spec, InputParam, input specifications
-    @Out, None
+    @ In, name, str, name of member of this class
+    @ In, comp_name, str, name of associated component
+    @ In, spec, InputParam, input specifications
+    @ Out, None
     """
     vp = ValuedParamHandler(name)
     signal = vp.read(comp_name, spec)

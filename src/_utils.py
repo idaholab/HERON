@@ -99,7 +99,7 @@ def get_project_lifetime(case, components):
     from TEAL.src.main import getProjectLength
     from TEAL.src import CashFlows
     sys.path.pop()
-  econ_comps = list(comp.get_economics() for comp in components)
+  econ_comps = list(comp.economics for comp in components)
   econ_params = case.get_econ(econ_comps)
   econ_settings = CashFlows.GlobalSettings()
   econ_settings.setParams(econ_params)

@@ -108,7 +108,7 @@ class TemplateDriver(Base):
     @ In, components, list[Component], list of HERON case components
     @ Out, has_all_capacities_fixed, bool, if all components have fixed capacities
     """
-    return not any(comp.get_capacity(None, raw=True).is_parametric() for comp in components)
+    return not any(comp.interaction.get_capacity(None, raw=True).is_parametric() for comp in components)
 
   @staticmethod
   def _has_uncertain_econ_params(components: list[Component]) -> bool:

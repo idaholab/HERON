@@ -1101,7 +1101,7 @@ class Case(Base):
 
     # collecting all cashflows marked with levelized cost
     # NOTE: we are allowing multiple cashflows at this time, unsure how common this will be?
-    levelized_cfs = {comp: [cf for cf in comp.get_economics().get_cashflows() if cf.is_mult_target()]
+    levelized_cfs = {comp: [cf for cf in comp.economics.cashflows if cf.is_mult_target()]
                         for comp in components}
     levelized_cfs = {comp:cf for comp,cf in levelized_cfs.items() if cf} # trimming components w/o LC
 
@@ -1120,7 +1120,7 @@ class Case(Base):
       return False
 
     # 3. check the dispatchability of the components
-    if all(comp.get_interaction().is_dispatchable() != 'independent'
+    if all(comp.interaction.dispatch_flexibility != 'independent'
             for comp in levelized_cfs.keys()):
       # means that all dispatches are static, so no decisions need to be made in the inner.
       # If this is the case, we can continue with default inner objective
@@ -1177,7 +1177,7 @@ class Case(Base):
       indic['active'] = []
       for comp in components:
         comp_name = comp.name
-        for cf in comp.get_cashflows():
+        for cf in comp.cashflows:
           cf_name = cf.name
           indic['active'].append(f'{comp_name}|{cf_name}')
       self._global_econ['Indicator'] = indic

@@ -105,7 +105,7 @@ def get_capacity_vars(components: list[Component], name_template, *, debug=False
     ## For each interaction of each component, that means making sure the Function, ARMA, or constant makes it.
     ## Constants from outer (namely sweep/opt capacities) are set in the MC Sampler from the outer
     ## The Dispatch needs info from the Outer to know which capacity to use, so we can't pass it from here.
-    capacity = component.get_capacity(None, raw=True)
+    capacity = component.interaction.get_capacity(None, raw=True)
 
     if capacity.is_parametric():
       cap_name = name_template.format(unit=name, feature='capacity')
@@ -132,8 +132,8 @@ def get_component_activity_vars(components: list[Component], name_template: str)
 
   for component in components:
     name = component.name
-    for tracker in component.get_tracking_vars():
-      resource_list = sorted(list(component.get_resources()))
+    for tracker in component.interaction.tracking_vars:
+      resource_list = sorted(list(component.interaction.resources))
       for resource in resource_list:
         var_name = name_template.format(component=name, tracker=tracker, resource=resource)
         variables.append(var_name)
@@ -178,14 +178,14 @@ def get_cashflow_names(components: list[Component]) -> list[str]:
   cfs = []
   for comp in components:
     comp_name = comp.name
-    for cashflow in comp.get_cashflows():
+    for cashflow in comp.economics.cashflows:
       # User has specified to leave this cashflow out of the NPV calculation. Skip it.
       if cashflow.is_npv_exempt():
         continue
       cf_name = cashflow.name
       name = f"{comp_name}_{cf_name}_CashFlow"
       cfs.append(name)
-      if cashflow.get_depreciation() is not None:
+      if cashflow.depreciation is not None:
         cfs.append(f"{comp_name}_{cf_name}_depreciation")
         cfs.append(f"{comp_name}_{cf_name}_depreciation_tax_credit")
   return cfs

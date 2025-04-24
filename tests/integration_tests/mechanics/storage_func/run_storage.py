@@ -20,10 +20,10 @@ def tiered(data, meta):
   dt = time[1] - time[0]
   price = meta['HERON']['RAVEN_vars']['Signal']
   steam_produced = meta['HERON']['RAVEN_vars']['steamer_capacity'][0] * dt
-  capacity = comp.get_capacity(meta)[0]['steam']
+  capacity = comp.interaction.get_capacity(meta)[0]['steam']
   generator = [meta['HERON']['Components'][c] for c, comp in enumerate(meta['HERON']['Components']) if comp.name == 'generator'][0]
-  gen_cap = generator.get_capacity(meta)[0]['steam'] * dt * -1
-  current_level = comp.get_interaction().get_initial_level(meta)
+  gen_cap = generator.interaction.get_capacity(meta)[0]['steam'] * dt * -1
+  current_level = comp.interaction.get_initial_level(meta)
   levels = np.zeros(len(time))
   for t, _ in enumerate(time):
     if price[t] > 0.7:

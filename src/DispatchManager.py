@@ -137,12 +137,12 @@ class DispatchRunner:
       name = self.naming_template['comp capacity'].format(comp=comp.name)
       update_capacity = raven_dict.get(name) # TODO is this ever not provided?
       if update_capacity is not None:
-        comp.set_capacity(update_capacity)
+        comp.interaction.set_capacity(update_capacity)
         pass_vars[f'{comp.name}_capacity'] = update_capacity
 
       # component cashflows
       # TODO this should be more automated - registry?
-      for cf in comp.get_cashflows():
+      for cf in comp.economics.cashflows:
         for att in ['alpha', 'driver', 'reference', 'scale']:
           cf_att = self.naming_template[f'cashflow {att}'].format(comp=comp.name, cf=cf.name)
           update_cf_att = raven_dict.get(cf_att) # TODO
@@ -191,7 +191,7 @@ class DispatchRunner:
     heron_meta['RAVEN_vars_full'] = raven_vars
     # build indexer for components
     ## indexer is as {component: {res: index}} where index is a standardized index for tracking activity
-    heron_meta['resource_indexer'] = dict((comp, dict((res, r) for r, res in enumerate(comp.get_resources())))
+    heron_meta['resource_indexer'] = dict((comp, dict((res, r) for r, res in enumerate(comp.interaction.resources)))
                                           for comp in self._components)
     # store meta
     meta = {'HERON': heron_meta}
@@ -435,7 +435,7 @@ class DispatchRunner:
       @ Out, global_settings, CashFlow.GlobalSettings instance, settings for CashFlow analysis
       @ Out, teal_components, dict, CashFlow component instances
     """
-    heron_econs = list(comp.get_economics() for comp in heron_components)
+    heron_econs = list(comp.economics for comp in heron_components)
     # build global econ settings for CashFlow
     global_params = heron_case.get_econ(heron_econs)
     global_settings = TEAL.src.CashFlows.GlobalSettings()
@@ -451,18 +451,18 @@ class DispatchRunner:
       # build TEAL equivalent component
       teal_comp = TEAL.src.CashFlows.Component()
       teal_comp_params = {'name': comp_name,
-                        'Life_time': cfg.get_lifetime(),
+                        'Life_time': cfg.lifetime,
                         # TODO StartTime, Repetitions, custom tax/inflation rate
                        }
       teal_comp.setParams(teal_comp_params)
       teal_components[comp_name] = teal_comp
       # create all the TEAL.CashFlows (teal_cf) for the TEAL.Component
       teal_cfs = []
-      for heron_cf in cfg.get_cashflows():
+      for heron_cf in cfg.cashflows:
         cf_name = heron_cf.name
-        cf_type = heron_cf.get_type()
-        cf_taxable = heron_cf.is_taxable()
-        cf_inflation = heron_cf.is_inflation()
+        cf_type = heron_cf.type
+        cf_taxable = heron_cf.taxable
+        cf_inflation = heron_cf.inflation
         cf_mult_target = heron_cf.is_mult_target()
 
         # skip NPV-exempt cashflows
@@ -571,7 +571,7 @@ class DispatchRunner:
       specific_meta['HERON']['all_activity'] = dispatch
       specific_activity = {}
       final_cashflows = final_comp.getCashflows()
-      for f, heron_cf in enumerate(comp.get_cashflows()):
+      for f, heron_cf in enumerate(comp.economics.cashflows):
         # get the corresponding TEAL.CashFlow
         if heron_cf.is_npv_exempt():
           continue # Skip adding this cashflow to the final cashflows
@@ -600,14 +600,14 @@ class DispatchRunner:
             # NOTE: listing params in order of TEAL.CashFlows.CashFlow.setParams
             cf_params = {'name': teal_cf.name,
                          'driver': params['driver'],
-                         'tax': heron_cf.is_taxable(),
-                         'inflation': heron_cf.is_inflation(),
+                         'tax': heron_cf.taxable,
+                         'inflation': heron_cf.inflation,
                          'mult_target': heron_cf.is_mult_target(),
                          # TODO "multiply" needed? Can't think of an application right now.
                          'alpha': params['alpha'],
                          'reference': params['ref_driver'],
                          'X': params['scaling'],
-                         'depreciate': heron_cf.get_depreciation(),
+                         'depreciate': heron_cf.depreciation,
                         }
             teal_cf.setParams(cf_params)
 
@@ -620,23 +620,23 @@ class DispatchRunner:
             final_comp._cashFlows[f] = teal_cf
             # depreciators
             # FIXME do we need to know alpha, drivers first??
-            depreciate = heron_cf.get_depreciation()
+            depreciate = heron_cf.depreciation
             if depreciate and teal_cf.getAmortization() is None:
               teal_cf.setAmortization('MACRS', depreciate)
               deprs = teal_comp._createDepreciation(teal_cf)
               final_comp._cashFlows.extend(deprs)
         elif teal_cf.type == 'Recurring':
           # yearly recurring only need setting up once per year
-          if heron_cf.get_period() == 'year':
+          if heron_cf.period == 'year':
             if s == 0:
               params = heron_cf.calculate_params(specific_meta) # a, D, Dp, x, cost
               contrib = params['cost']
               final_cf._yearlyCashflow[year + 1] += contrib
           # hourly recurring need iteration over time
-          elif heron_cf.get_period() == 'hour':
+          elif heron_cf.period == 'hour':
             for t, time in enumerate(times):
               # fill in the specific activity for this time stamp
-              for track_var in comp.get_tracking_vars():
+              for track_var in comp.interaction.tracking_vars:
                 specific_activity[track_var] = {}
                 for resource, r in resource_indexer[comp].items():
                   specific_activity[track_var][resource] = dispatch.get_activity(comp, track_var, resource, time)
@@ -651,7 +651,7 @@ class DispatchRunner:
               final_cf._yearlyCashflow[year+1] += contrib
           else:
             raise NotImplementedError(
-                f'Unrecognized Recurring period for "{comp.name}" cashflow "{heron_cf.name}": {heron_cf.get_period()}'
+                f'Unrecognized Recurring period for "{comp.name}" cashflow "{heron_cf.name}": {heron_cf.period}'
             )
         else:
             raise NotImplementedError(

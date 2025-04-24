@@ -3,9 +3,11 @@
 """
   Defines the Component entity.
 """
-from typing import cast
+from typing import Union, cast
+from collections import defaultdict
 from HERON.src.ValuedParams import factory as vp_factory
 from HERON.src.ValuedParamHandler import ValuedParamHandler
+from HERON.src.Placeholders import Placeholder
 
 from DOVE.src.Components import Component as DoveComponent
 from DOVE.src.Interactions import Interaction as DoveInteraction
@@ -17,7 +19,6 @@ from DOVE.src.Economics import CashFlow as DoveCashFlow
 
 from ravenframework.utils import InputData
 from ravenframework.utils.InputData import ParameterInput
-
 
 class HeronComponent(DoveComponent):
   """
@@ -144,14 +145,19 @@ class HeronComponent(DoveComponent):
   def read_input(self, xml) -> None:
     """
     Sets settings from input file
-    @In, xml, xml.etree.ElementTree.Element, input from user
-    @In, mode, string, case mode to operate in (e.g. 'sweep' or 'opt')
-    @Out, None
+    @ In, xml, xml.etree.ElementTree.Element, input from user
+    @ Out, None
     """
     # get specs for allowable inputs
     specs = self.get_input_specs()()
     specs.parseNode(xml)
     self.name = specs.parameterValues['name']
+
+    # We need to overwrite DoveComponent.read_input() so we can
+    # substitute our special HeronInteraction types that can handle
+    # ValuedParams! There must be a better way to do this, the only
+    # difference between the two functions is `interaction_map` and
+    # `HeronCashFlowGroup` instantiation.
     interaction_map = {
       "produces": HeronProducer,
       "stores": HeronStorage,
@@ -177,23 +183,41 @@ class HeronComponent(DoveComponent):
         cashflows.read_input(item)
         self._economics = cashflows
 
-  def get_capacity(self, meta, raw=False):
+  def get_crossrefs(self) -> dict[Union['HeronInteraction', 'HeronCashFlow'], defaultdict[str, ValuedParamHandler]]:
     """
-    returns the capacity of the interaction of this component
-    @In, meta, dict, arbitrary metadata from HERON
-    @In, raw, bool, optional, if True then return the ValuedParam instance for capacity, instead of the evaluation
-    @Out, capacity, float (or ValuedParam), the capacity of this component's interaction
+    Collect the required value entities needed for this component to function.
+    @ In, None
+    @ Out, crossrefs, dict, mapping of dictionaries with information about the entities required.
     """
-    return self._interaction.get_capacity(meta, raw=raw)
+    crossrefs: dict[Union[HeronInteraction,HeronCashFlow], defaultdict[str, ValuedParamHandler]] = {cast(HeronInteraction, self.interaction): cast(HeronInteraction, self.interaction).get_crossrefs()}
+    crossrefs |= cast(HeronCashFlowGroup, self.economics).get_crossrefs()
+    return crossrefs
 
-  def get_uncertain_cashflow_params(self):
+  def set_crossrefs(self, refs: dict[Union['HeronInteraction', 'HeronCashFlow'], defaultdict[str, Placeholder]]) -> None:
+    """
+    Connect cross-reference material from other entities to the ValuedParams in this component.
+    @ In, refs, dict, dictionary of entity information
+    @ Out, None
+    """
+    current_interaction = cast(HeronInteraction, self.interaction)
+    for found_interaction in list(refs.keys()):
+      # find associated interaction
+      if current_interaction == found_interaction:
+        current_interaction.set_crossrefs(refs.pop(found_interaction))
+        break
+    # send what's left to the economics
+    cast(HeronCashFlowGroup, self.economics).set_crossrefs(refs)
+    # if anything left, there's an issue
+    assert not refs
+
+  def get_uncertain_cashflow_params(self) -> dict[str, ValuedParamHandler]:
     """
     Get all uncertain economic parameters
-    @In, None
-    @Out, params, dict, the uncertain parameters
+    @ In, None
+    @ Out, params, dict, the uncertain parameters
     """
-    params = {}
-    for cf in cast(list[HeronCashFlow], self.get_cashflows()):
+    params: dict[str, ValuedParamHandler] = {}
+    for cf in cast(list[HeronCashFlow], self.economics.cashflows):
       uncertain = cf.get_uncertain_params()
       params |= {f"{self.name}_{k}": v for k, v in uncertain.items()}
     return params
@@ -216,9 +240,55 @@ class HeronCashFlowGroup(DoveCashFlowGroup):
           cashflow = HeronCashFlow(self._component)
           cashflow.read_input(item)
           self._cash_flows.append(cashflow)
-    
+
     if self._lifetime is None:
-      self.raiseAnError(IOError, f'Component "{self.name}" is missing its <lifetime> node!')
+      self.raiseAnError(IOError, f'Component "{self.name}" is missing <lifetime> node!')
+
+  def evaluate_cfs(self, activity, meta, marginal=False):
+    """
+    Calculates the incremental cost of a particular system configuration.
+    @ In, activity, XArray.DataArray, array of driver-centric variable values
+    @ In, meta, dict, additional user-defined meta
+    @ In, marginal, bool, optional, if True then only get marginal cashflows (e.g. recurring hourly)
+    @ Out, cost, dict, cash flow evaluations
+    """
+    # combine all cash flows into single cash flow evaluation
+    if marginal:
+      # FIXME assuming 'year' is the only non-marginal value
+      # FIXME why is it "repeating" and not "Recurring"?
+      cost = dict(
+        (cf.name, cf.evaluate_cost(activity, meta))
+        for cf in self.cashflows
+        if (cf.type == "repeating" and cf.period != "year")
+      )
+    else:
+      cost = dict((cf.name, cf.evaluate_cost(activity, meta)) for cf in self.cashflows)
+    return cost
+
+  def get_crossrefs(self) -> dict['HeronCashFlow', defaultdict[str, ValuedParamHandler]]:
+    """
+    Provides a dictionary of the entities needed by this cashflow group to be evaluated
+    @ In, None
+    @ Out, crossrefs, dict, dictionary of crossreferences needed (see ValuedParams)
+    """
+    crossrefs = dict((cast(HeronCashFlow, cf), cast(HeronCashFlow, cf).get_crossrefs()) for cf in self.cashflows)
+    return crossrefs
+
+  def set_crossrefs(self, refs: dict[Union['HeronInteraction','HeronCashFlow'], defaultdict[str, Placeholder]]) -> None:
+    """
+    Provides links to entities needed to evaluate this cash flow group.
+    @ In, refs, dict, reference entities
+    @ Out, None
+    """
+    # set up pointers
+    for cf in list(refs.keys()):
+      for try_match in self.cashflows:
+        if try_match == cf:
+          cast(HeronCashFlow, try_match).set_crossrefs(refs.pop(cast(HeronCashFlow, try_match)))
+          break
+      else:
+        cf.set_crossrefs({}) #type: ignore
+
 
 
 class HeronCashFlow(DoveCashFlow):
@@ -256,6 +326,63 @@ class HeronCashFlow(DoveCashFlow):
     vp = ValuedParamHandler(name)
     vp.set_const_VP(value)
     setattr(self, name, vp)
+
+  def get_crossrefs(self) -> defaultdict[str, ValuedParamHandler]:
+    """
+    Accessor for cross-referenced entities needed by this cashflow.
+    @ In, None
+    @ Out, crossrefs, dict, cross-referenced requirements dictionary
+    """
+    return self._crossrefs
+
+  def set_crossrefs(self, refs: defaultdict[str, Placeholder]) -> None:
+    """
+    Setter for cross-referenced entities needed by this cashflow.
+    @ In, refs, dict, cross referenced entities
+    @ Out, None
+    """
+    # set up pointers
+    for attr, obj in refs.items():
+      valued_param = cast(ValuedParamHandler, self._crossrefs[attr])
+      valued_param.set_object(obj)
+    # check on VP setup
+    for vp in self._crossrefs.values():
+      cast(ValuedParamHandler, vp).crosscheck(self._component.interaction)
+
+  def evaluate_cost(self, activity, values_dict):
+    """
+    Evaluates cost of a particular scenario provided by "activity".
+    @ In, activity, pandas.Series, multi-indexed array of scenario activities
+    @ In, values_dict, dict, additional values that may be needed to evaluate cost
+    @ In, t, int, time index at which cost should be evaluated
+    @ Out, cost, float, cost of activity
+    """
+    # note this method gets called a LOT, so speedups here are quite effective
+    # add the activity to the dictionary
+    values_dict["HERON"]["activity"] = activity
+    params = self.calculate_params(values_dict)
+    return params["cost"]
+
+  def calculate_params(self, values_dict):
+    """
+    Calculates the value of the cash flow parameters.
+    @ In, values_dict, dict, mapping from simulation variable names to their values (as floats or numpy arrays)
+    @ Out, params, dict, dictionary of parameters mapped to values including the cost
+    """
+    # TODO maybe don't cast these as floats, as they could be symbolic expressions (seems unlikely)
+    Dp = float(self._reference_driver.evaluate(values_dict, target_var="reference_driver")[0]["reference_driver"])
+    x = float(self._scaling_factor_x.evaluate(values_dict, target_var="scaling_factor_x")[0]["scaling_factor_x"])
+    a = self._alpha.evaluate(values_dict, target_var="reference_price")[0]["reference_price"]
+    D = self._driver.evaluate(values_dict, target_var="driver")[0]["driver"]
+    cost = a * (D / Dp) ** x
+    params = {
+      "alpha": a,
+      "driver": D,
+      "ref_driver": Dp,
+      "scaling": x,
+      "cost": cost,
+    }  # TODO float(cost) except in pyomo it's not a float
+    return params
 
   def get_uncertain_params(self) -> dict[str, ValuedParamHandler]:
     """
@@ -302,6 +429,38 @@ class HeronInteraction(DoveInteraction):
     self._crossrefs[name] = vp
     setattr(self, name, vp)
 
+  def get_crossrefs(self) -> defaultdict[str, ValuedParamHandler]:
+    """
+    Getter.
+    @ In, None
+    @ Out, crossrefs, dict, resource references
+    """
+    return cast(defaultdict[str, ValuedParamHandler], self._crossrefs)
+
+  def set_crossrefs(self, refs: defaultdict[str, Placeholder]) -> None:
+    """
+    Setter.
+    @ In, refs, dict, resource cross-reference objects
+    @ Out, None
+    """
+    # connect references to ValuedParams (Placeholder objects)
+    for attr, obj in refs.items():
+      valued_param = cast(ValuedParamHandler, self._crossrefs[attr])
+      valued_param.set_object(obj)
+    # perform crosscheck that VPs have what they need
+    for vp in self._crossrefs.values():
+      cast(ValuedParamHandler, vp).crosscheck(self)
+
+
+  def set_capacity(self, cap) -> None:
+    """
+    Allows hard-setting the capacity of this interaction.
+    This destroys any underlying ValuedParam that was there before.
+    @ In, cap, float, capacity value
+    @ Out, None
+    """
+    self._capacity.set_value(float(cap))
+
   def get_capacity(self, meta, raw=False):
     """
     Returns an evaluated value unless "raw" is True, then gives ValuedParam
@@ -313,12 +472,12 @@ class HeronInteraction(DoveInteraction):
     if raw:
       #NOTE: not returing capacity_factor since it will not be used as a variable
       return self._capacity
-    meta['request'] = {self._capacity_var: None}
-    evaluated, meta = self._capacity.evaluate(meta, target_var=self._capacity_var)
+    meta['request'] = {self.capacity_var: None}
+    evaluated, meta = self._capacity.evaluate(meta, target_var=self.capacity_var)
     # apply capacity factor to get actual capacity for given timestep
     if self._capacity_factor is not None:
-      capacity_factor = self._capacity_factor.evaluate(meta, target_var=self._capacity_var)[0]
-      evaluated[self._capacity_var] *= capacity_factor[self._capacity_var]
+      capacity_factor = self._capacity_factor.evaluate(meta, target_var=self.capacity_var)[0]
+      evaluated[self.capacity_var] *= capacity_factor[self.capacity_var]
     return evaluated, meta
 
   def get_minimum(self, meta, raw=False):
@@ -331,7 +490,7 @@ class HeronInteraction(DoveInteraction):
     """
     if raw:
       return self._minimum
-    cap_var = self.get_capacity_var()
+    cap_var = self.capacity_var
     if self._minimum is None:
       evaluated = {cap_var: 0.0}
     else:
@@ -358,10 +517,29 @@ class HeronStorage(HeronInteraction, DoveStorage):
   """
   Explains a particular interaction, where a resource is stored and released later
   """
-  pass
+  def get_initial_level(self, meta):
+    """
+    Find initial level of the storage
+    @ In, meta, dict, additional variable passthrough
+    @ Out, initial, float, initial level
+    """
+    res = self.get_stored_resource()
+    request = {res: None}
+    meta["request"] = request
+    pct = self._initial_stored.evaluate(meta, target_var=res)[0][res]
+    if not (0 <= pct <= 1):
+      self.raiseAnError(
+        ValueError,
+        f'While calculating initial storage level for storage "{self.tag}", '
+        + f"an invalid percent was provided/calculated ({pct}). Initial levels should be between 0 and 1, inclusive.",
+      )
+    amt = pct * self.get_capacity(meta)[0][res]
+    return amt
+
 
 class HeronDemand(HeronInteraction, DoveDemand):
   """
   Explains a particular interaction, where a resource is demanded
   """
   pass
+

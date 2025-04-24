@@ -70,7 +70,7 @@ class Activity(ValuedParam):
       @ Out, None
     """
     # use this chance to link the interaction tracking vars
-    ok_trackers = interaction.get_tracking_vars()
+    ok_trackers = interaction.tracking_vars
     if self._tracking_var is None:
       self._tracking_var = ok_trackers[0]
       self.raiseAMessage(f'Tracking variable not specified; using "{self._tracking_var}" ...')
@@ -79,7 +79,7 @@ class Activity(ValuedParam):
         self.raiseAnError(f'Tracking variable "{self._tracking_var}" is not one of the variables ' +
                            f'tracked by this interaction! Options are: {ok_trackers}.')
     # check that the requested resource is actually used by this interaction
-    available = interaction.get_resources()
+    available = interaction.resources
     if self._resource not in available:
       str_avail = [f'"{a}"' for a in available]
       self.raiseAnError(IOError, f'Requested <activity> value from resource "{self._resource}" but "{self._resource}" ' +

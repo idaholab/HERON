@@ -42,13 +42,13 @@ class NetworkPlot:
     for c in self._components:
       self._producers_and_consumers.add(c.name)
 
-      rsc_in = c.get_inputs()
+      rsc_in = c.interaction.inputs
       for ri in rsc_in:
         self._resources.add(ri)
         self._graph.add_edge(ri, c.name)
         self._edges.append((ri, c.name))
 
-      rsc_out = c.get_outputs()
+      rsc_out = c.interaction.outputs
       for ro in rsc_out:
         self._resources.add(ro)
         self._graph.add_edge(c.name, ro)
@@ -76,7 +76,7 @@ class NetworkPlot:
 
     for c in self._components:
       row_labels.append(c.name)
-      cell_text.append([c.is_dispatchable(), c.is_governed()])
+      cell_text.append([c.interaction.dispatch_flexibility, c.interaction.is_governed()])
 
     plt.table(cell_text, rowLabels=row_labels, colLabels=col_labels, loc='bottom')
 

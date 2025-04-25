@@ -1063,7 +1063,8 @@ class Storage(Interaction):
     """
       Get the max rates for charging and discharging the storage
       @ In, meta, dict, additional variable passthrough
-      @ Out, _max_charge_rate, float | None
+      @ Out, _max_charge_rate, float, max storage charge rate
+      @ Out, _max_discharge_rate, float, max storage discharge rate
     """
     charge_pct = self._extract_value(self._max_charge_rate, meta)
     discharge_pct = self._extract_value(self._max_discharge_rate, meta)

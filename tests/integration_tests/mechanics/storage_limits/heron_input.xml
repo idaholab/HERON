@@ -4,7 +4,12 @@
     <author>j-bryan</author>
     <created>2025-04-25</created>
     <description>
-      Tests limiting storage charge and discharge rates.
+      Tests limiting storage charge and discharge rates. The storage charge/discharge
+      limits affect limits the amount of "resource" that is stored in the first 3 time
+      steps (without the charging rate limit, the storage would be able to fill completely),
+      and the discharge limit prevents the storage from discharging the full stored capacity
+      at the higher of the two non-zero price time steps. Instead, the storage discharge is
+      forced to discharge across both non-zero price time steps.
     </description>
     <classesTested>HERON</classesTested>
   </TestInfo>
@@ -18,8 +23,8 @@
     <num_arma_samples>1</num_arma_samples>
     <time_discretization>
       <time_variable>Time</time_variable>
-      <end_time>5</end_time>
-      <num_steps>6</num_steps>
+      <end_time>4</end_time>
+      <num_steps>5</num_steps>
     </time_discretization>
     <economics>
       <ProjectTime>1</ProjectTime>
@@ -88,8 +93,13 @@
   </Components>
 
   <DataGenerators>
-    <!-- prices: 0 0 0 0 1 1 -->
     <CSV name="price" variable="price">price.csv</CSV>
+    <!--
+      2       *
+      1      / `*
+      0 *-*-*
+        0 1 2 3 4
+    -->
   </DataGenerators>
 
 </HERON>

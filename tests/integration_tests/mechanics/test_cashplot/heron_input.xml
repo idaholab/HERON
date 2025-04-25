@@ -43,7 +43,7 @@
         </produces>
         <economics>
           <lifetime>30</lifetime>
-          <CashFlow name="capex" type="one-time" taxable="False" inflation="none">
+          <CashFlow name="capex" type="one-time" taxable="False" inflation="none" depreciate="5">
             <driver>
               <variable>source_capacity</variable>
             </driver>
@@ -57,7 +57,7 @@
             <scaling_factor_x>
               <fixed_value>0.999</fixed_value>
             </scaling_factor_x>
-            <depreciate>5</depreciate>
+            <!-- <depreciate>5</depreciate> -->
           </CashFlow>
           <CashFlow name="FOM" type="repeating" period='year' taxable="False" inflation="none">
             <driver>

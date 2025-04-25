@@ -461,13 +461,13 @@ class DispatchRunner:
       for heron_cf in cfg.cashflows:
         cf_name = heron_cf.name
         cf_type = heron_cf.type
-        cf_taxable = heron_cf.taxable
-        cf_inflation = heron_cf.inflation
-        cf_mult_target = heron_cf.is_mult_target()
+        cf_taxable = heron_cf.is_taxable
+        cf_inflation = heron_cf.has_inflation
+        cf_mult_target = heron_cf.is_price_levelized
 
         # skip NPV-exempt cashflows
         # This means that the user has specified this cashflow should not be included in the NPV calculation.
-        if heron_cf.is_npv_exempt():
+        if heron_cf.is_npv_exempt:
           continue
         # the way to build it slightly changes depending on the CashFlow type
         if cf_type == 'repeating':
@@ -573,7 +573,7 @@ class DispatchRunner:
       final_cashflows = final_comp.getCashflows()
       for f, heron_cf in enumerate(comp.economics.cashflows):
         # get the corresponding TEAL.CashFlow
-        if heron_cf.is_npv_exempt():
+        if heron_cf.is_npv_exempt:
           continue # Skip adding this cashflow to the final cashflows
         teal_cf = teal_comp.getCashflows()[f]
         final_cf = final_cashflows[f]
@@ -600,9 +600,9 @@ class DispatchRunner:
             # NOTE: listing params in order of TEAL.CashFlows.CashFlow.setParams
             cf_params = {'name': teal_cf.name,
                          'driver': params['driver'],
-                         'tax': heron_cf.taxable,
-                         'inflation': heron_cf.inflation,
-                         'mult_target': heron_cf.is_mult_target(),
+                         'tax': heron_cf.is_taxable,
+                         'inflation': heron_cf.has_inflation,
+                         'mult_target': heron_cf.is_price_levelized,
                          # TODO "multiply" needed? Can't think of an application right now.
                          'alpha': params['alpha'],
                          'reference': params['ref_driver'],

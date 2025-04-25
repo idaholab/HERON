@@ -71,14 +71,14 @@
 
       <economics>
         <lifetime>20</lifetime>
-        <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" depreciate="15">
           <driver>
             <variable>pem_capacity</variable> <!-- kW -->
           </driver>
           <reference_price>
             <fixed_value>-1630</fixed_value> <!-- $/kWh -->
           </reference_price>
-          <depreciate>15</depreciate>
+          <!-- <depreciate>15</depreciate> -->
         </CashFlow>
         <CashFlow name="fixed_OM" type="repeating" period="year" taxable="True" inflation="none">
           <driver>
@@ -110,14 +110,14 @@
 
       <economics>
         <lifetime>20</lifetime>
-        <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" depreciate="15">
           <driver>
             <variable>h2tank_capacity</variable>
           </driver>
           <reference_price>
             <fixed_value>-965.69</fixed_value> <!-- $29/kWh, H2 LHV: 33.3 kWh/kg * 2.016e-3 kg/mol -->
           </reference_price>
-          <depreciate>15</depreciate>
+          <!-- <depreciate>15</depreciate> -->
         </CashFlow>
 
       </economics>
@@ -143,14 +143,14 @@
 
       <economics>
         <lifetime>20</lifetime>
-        <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" depreciate="15">
           <driver>
             <variable>h2turbine_capacity</variable>
           </driver>
           <reference_price>
             <fixed_value>-0.947</fixed_value> <!-- $/W -->
           </reference_price>
-          <depreciate>15</depreciate>
+          <!-- <depreciate>15</depreciate> -->
         </CashFlow>
 
         <CashFlow name="fixed_OM" type="repeating" period="year" taxable="True" inflation="none">

@@ -109,7 +109,7 @@ class HeronComponent(DoveComponent):
           # Add parameters if any
           for param_name, param_key in config["add_params"]:
             new_sub.addParam(param_name, descr=current_sub.parameters[param_key]['description'])
-            # Replace the old sub with the new one
+          # Replace the old sub with the new one
           _ = sub.popSub(sub_name)
           sub.addSub(new_sub)
 
@@ -148,40 +148,12 @@ class HeronComponent(DoveComponent):
     @ In, xml, xml.etree.ElementTree.Element, input from user
     @ Out, None
     """
-    # get specs for allowable inputs
     specs = self.get_input_specs()()
     specs.parseNode(xml)
-    self.name = specs.parameterValues['name']
-
     # We need to overwrite DoveComponent.read_input() so we can
-    # substitute our special HeronInteraction types that can handle
-    # ValuedParams! There must be a better way to do this, the only
-    # difference between the two functions is `interaction_map` and
-    # `HeronCashFlowGroup` instantiation.
-    interaction_map = {
-      "produces": HeronProducer,
-      "stores": HeronStorage,
-      "demands": HeronDemand
-    }
-
-    found_interactions: dict
-    not_found_in_spec: list
-    found_interactions, not_found_in_spec = specs.findNodesAndExtractValues(interaction_map.keys())
-    if all((interaction == 'no-default' for interaction in found_interactions.values())):
-      self.raiseAnError(NotImplementedError, f"No interaction found for Component '{self.name}'")
-    elif len(not_found_in_spec) < 2:
-      self.raiseAnError(NotImplementedError, f"A Component can only have one interaction! Check Component '{self.name}'")
-
-    for item in specs.subparts:
-      item_name = item.getName()
-      if item_name in interaction_map:
-        interaction_instance = interaction_map[item_name](messageHandler=self.messageHandler)
-        interaction_instance.read_input(item, self.name)
-        self._interaction = interaction_instance
-      elif item_name == 'economics':
-        cashflows = HeronCashFlowGroup(self, messageHandler=self.messageHandler)
-        cashflows.read_input(item)
-        self._economics = cashflows
+    # substitute our special HeronInteraction types that can handle ValuedParams!
+    interaction_map = {"produces": HeronProducer, "stores": HeronStorage, "demands": HeronDemand}
+    self.assign_attrs_from_specs(specs, interaction_map, HeronCashFlowGroup)
 
   def get_crossrefs(self) -> dict[Union['HeronInteraction', 'HeronCashFlow'], defaultdict[str, ValuedParamHandler]]:
     """
@@ -235,13 +207,13 @@ class HeronCashFlowGroup(DoveCashFlowGroup):
     for item in specs.subparts:
       match item.getName():
         case "lifetime":
-          self._lifetime = item.value
+          self.lifetime = item.value
         case "CashFlow":
           cashflow = HeronCashFlow(self._component)
           cashflow.read_input(item)
-          self._cash_flows.append(cashflow)
+          self.cashflows.append(cashflow)
 
-    if self._lifetime is None:
+    if self.lifetime is None:
       self.raiseAnError(IOError, f'Component "{self.name}" is missing <lifetime> node!')
 
   def evaluate_cfs(self, activity, meta, marginal=False):
@@ -347,7 +319,7 @@ class HeronCashFlow(DoveCashFlow):
       valued_param.set_object(obj)
     # check on VP setup
     for vp in self._crossrefs.values():
-      cast(ValuedParamHandler, vp).crosscheck(self._component.interaction)
+      cast(ValuedParamHandler, vp).crosscheck(self.component.interaction)
 
   def evaluate_cost(self, activity, values_dict):
     """

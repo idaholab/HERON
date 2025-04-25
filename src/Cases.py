@@ -1101,7 +1101,7 @@ class Case(Base):
 
     # collecting all cashflows marked with levelized cost
     # NOTE: we are allowing multiple cashflows at this time, unsure how common this will be?
-    levelized_cfs = {comp: [cf for cf in comp.economics.cashflows if cf.is_mult_target()]
+    levelized_cfs = {comp: [cf for cf in comp.economics.cashflows if cf.is_price_levelized]
                         for comp in components}
     levelized_cfs = {comp:cf for comp,cf in levelized_cfs.items() if cf} # trimming components w/o LC
 

@@ -44,14 +44,14 @@
       <economics>
         <lifetime>30</lifetime>
         <!-- NOTE THAT "mult_target" PARAMETER IS DEPRECATED, WON'T DO ANYTHING -->
-        <CashFlow name="capex" type="one-time" taxable="False" inflation="none">
+        <CashFlow name="capex" type="one-time" taxable="False" inflation="none" depreciate="3">
           <driver>
             <variable>source_capacity</variable>
           </driver>
           <reference_price>
             <levelized_cost/>  <!-- FINDING LEVELIZED COST HERE! -->
           </reference_price>
-          <depreciate>3</depreciate>
+          <!-- <depreciate>3</depreciate> Node Deprecated -->
         </CashFlow>
         <CashFlow name="FOM" type="repeating" period='year' taxable="False" inflation="none">
           <driver>

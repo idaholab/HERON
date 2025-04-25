@@ -1,6 +1,6 @@
 ﻿HYBRID Keyword,HERON (Node or Parameter),HERON Node,HERON Subnode,HERON Subsubnode,Belong_to_same_node,Required if HYBRID keyword?,Default value for the required variable,Description
 Activity,N,CashFlow,driver,activity,3,VOM,electricity,The activity indicates that this value will be taken from the dispatched activity of this component and the activity is the main driver for this cashflow
-Amortization_lifetime,N,CashFlow,depreciate,,"1,2,3",,,The lifetime over which the the cost of the assets is reduced
+Amortization_lifetime,P,CashFlow,depreciate,,"1,2,3",,,The lifetime over which the the cost of the assets is reduced
 capex,N,CashFlow,reference_price,fixed_value,1,,,The Capital Expenditures cash flow reference price fixed value
 capex_inflation,P,CashFlow,inflation,,1,capex,none,Determines how inflation affects the Capital Expenditures cash flow every cycle 
 capex_multi_target,P,CashFlow,mult_target,,1,capex,FALSE,Indicates whether this parameter (Capital Expenditures cash flow) should be a target of the multiplication factor for Net Present Value matching analyses. 

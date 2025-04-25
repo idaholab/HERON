@@ -180,7 +180,7 @@ def get_cashflow_names(components: list[Component]) -> list[str]:
     comp_name = comp.name
     for cashflow in comp.economics.cashflows:
       # User has specified to leave this cashflow out of the NPV calculation. Skip it.
-      if cashflow.is_npv_exempt():
+      if cashflow.is_npv_exempt:
         continue
       cf_name = cashflow.name
       name = f"{comp_name}_{cf_name}_CashFlow"

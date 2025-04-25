@@ -869,6 +869,11 @@ class Storage(Interaction):
     # round trip efficiency
     descr = r"""round-trip efficiency for this component as a scalar multiplier. \default{1.0}"""
     specs.addSub(InputData.parameterInputFactory('RTE', contentType=InputTypes.FloatType, descr=descr))
+    # max charge/discharge rates
+    descr=r"""maximum storage charge rate as a fraction of the storage capacity, from 0 to 1. \default{1.0}"""
+    specs.addSub(vp_factory.make_input_specs('max_charge_rate', descr=descr))
+    descr=r"""maximum storage discharge rate as a fraction of the storage capacity, from 0 to 1. \default{1.0}"""
+    specs.addSub(vp_factory.make_input_specs('max_discharge_rate', descr=descr))
     return specs
 
   def __init__(self, **kwargs):
@@ -884,6 +889,8 @@ class Storage(Interaction):
     self._initial_stored = None      # how much resource does this component start with stored?
     self._strategy = None            # how to operate storage unit
     self._tracking_vars = ['level', 'charge', 'discharge'] # stored quantity, charge activity, discharge activity
+    self._max_charge_rate = None     # maximum rate storage charges at
+    self._max_discharge_rate = None  # maximum rate storage discharges at
 
   def read_input(self, specs, mode, comp_name):
     """
@@ -907,6 +914,10 @@ class Storage(Interaction):
         self._set_valued_param('_strategy', comp_name, item, mode)
       elif item.getName() == 'RTE':
         self._sqrt_rte = np.sqrt(item.value)
+      elif item.getName() == 'max_charge_rate':
+        self._set_valued_param('_max_charge_rate', comp_name, item, mode)
+      elif item.getName() == 'max_discharge_rate':
+        self._set_valued_param('_max_discharge_rate', comp_name, item, mode)
     assert len(self._stores) == 1, f'Multiple storage resources given for component "{comp_name}"'
     self._stores = self._stores[0]
     # checks and defaults
@@ -1041,16 +1052,47 @@ class Storage(Interaction):
       @ In, meta, dict, additional variable passthrough
       @ Out, initial, float, initial level
     """
-    res = self.get_resource()
-    request = {res: None}
-    meta['request'] = request
-    pct = self._initial_stored.evaluate(meta, target_var=res)[0][res]
+    pct = self._extract_value(self._initial_stored, meta)
     if not (0 <= pct <= 1):
       self.raiseAnError(ValueError, f'While calculating initial storage level for storage "{self.tag}", ' +
           f'an invalid percent was provided/calculated ({pct}). Initial levels should be between 0 and 1, inclusive.')
-    amt = pct * self.get_capacity(meta)[0][res]
+    amt = pct * self.get_capacity(meta)[0][self.get_resource()]
     return amt
 
+  def get_charge_rate_limits(self, meta):
+    """
+      Get the max rates for charging and discharging the storage
+      @ In, meta, dict, additional variable passthrough
+      @ Out, _max_charge_rate, float | None
+    """
+    charge_pct = self._extract_value(self._max_charge_rate, meta)
+    discharge_pct = self._extract_value(self._max_discharge_rate, meta)
+
+    if not (0 <= charge_pct <= 1):
+      self.raiseAnError(ValueError, f'While calculating the maximum charging rate for storage "{self.tag}", ' +
+          f'an invalid percent was provided/calculated ({charge_pct}). Initial levels should be between 0 and 1, inclusive.')
+    if not (0 <= discharge_pct <= 1):
+      self.raiseAnError(ValueError, f'While calculating the maximum discharging rate for storage "{self.tag}", ' +
+          f'an invalid percent was provided/calculated ({discharge_pct}). Initial levels should be between 0 and 1, inclusive.')
+
+    capacity = self.get_capacity(meta)[0][self.get_resource()]
+    charge_amt = charge_pct * capacity
+    discharge_amt = discharge_pct * capacity
+
+    return charge_amt, discharge_amt
+
+  def _extract_value(self, vp, meta):
+    """
+      Extract the value from a ValuedParam
+      @ In, vp, ValuedParam, the valued param
+      @ In, meta, dict, additional variable passthrough
+      @ Out, value, Any, the value of the ValuedParam
+    """
+    res = self.get_resource()
+    request = {res: None}
+    meta['request'] = request
+    value = vp.evaluate(meta, target_var=res)[0][res]
+    return value
 
 
 

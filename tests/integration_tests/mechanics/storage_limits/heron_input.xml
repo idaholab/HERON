@@ -42,7 +42,7 @@
     <Component name="source">
       <produces resource="resource" dispatch="fixed">
         <capacity resource="resource">
-          <sweep_values debug_value="1">0, 1</sweep_values>
+          <sweep_values debug_value="2">0, 1</sweep_values>
         </capacity>
       </produces>
       <economics>

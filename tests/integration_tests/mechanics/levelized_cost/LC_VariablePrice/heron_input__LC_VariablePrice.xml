@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <HERON>
   <TestInfo>
     <name>LevelizedCost</name>
@@ -43,9 +44,7 @@
           <sweep_values>1, 2</sweep_values>
         </capacity>
       </produces>
-      <economics>
-        <lifetime>30</lifetime>
-        <!-- NOTE THAT "mult_target" PARAMETER IS DEPRECATED, WON'T DO ANYTHING -->
+      <economics lifetime="30">
         <CashFlow name="capex" type="one-time" taxable="False" inflation="none">
           <driver>
             <variable>source_capacity</variable>
@@ -55,7 +54,7 @@
             <multiplier>-1</multiplier>
           </reference_price>
         </CashFlow>
-        <CashFlow name="FOM" type="repeating" period='year' taxable="False" inflation="none">
+        <CashFlow name="FOM" type="repeating" period="year" taxable="False" inflation="none">
           <driver>
             <variable>source_capacity</variable>
           </driver>
@@ -81,8 +80,7 @@
           <fixed_value>-3</fixed_value>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>30</lifetime>
+      <economics lifetime="30">
         <CashFlow name="sales" type="repeating" taxable="False" inflation="none">
           <driver>
             <activity>a</activity>
@@ -98,6 +96,6 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='flex' variable="Signal">%HERON_DATA%/TSA/Sine/arma.pk</ARMA>
+    <ARMA name="flex" variable="Signal">%HERON_DATA%/TSA/Sine/arma.pk</ARMA>
   </DataGenerators>
 </HERON>

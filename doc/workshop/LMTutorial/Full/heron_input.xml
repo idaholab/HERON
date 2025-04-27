@@ -42,8 +42,7 @@
           <sweep_values debug_value="25">25, 50</sweep_values> <!-- MW -->
         </capacity>
       </produces>
-      <economics>
-        <lifetime>5</lifetime>
+      <economics lifetime="5">
         <CashFlow name="<!--here--> " type="one-time" taxable="True" inflation="none">
           <driver>
             <variable> <!--here--> </variable>
@@ -56,8 +55,7 @@
     </Component>
 
     <Component name="turbine">
-      <produces resource="<!--here--> " dispatch="independent">
-        <consumes><!--here--> </consumes>
+      <produces resource="<!--here--> " consumes="<!--here-->" dispatch="independent">
         <capacity resource="electricity">
           <fixed_value><!--here--> </fixed_value> <!-- MW -->
         </capacity>
@@ -68,8 +66,7 @@
           </linear>
         </transfer>
       </produces>
-      <economics>
-        <lifetime>5</lifetime>
+      <economics lifetime="5">
       </economics>
     </Component>
 
@@ -82,8 +79,7 @@
           <ARMA variable="WIND">synth</ARMA>
         </capacity_factor>
       </produces>
-      <economics>
-        <lifetime>5</lifetime>
+      <economics lifetime="5">
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
           <driver>
             <variable>wind_capacity</variable>
@@ -104,11 +100,10 @@
     </Component>
 
     <Component name="HTSE">
-      <produces resource= "<!--here-->"  dispatch="independent">
+      <produces resource= "<!--here-->" consumes="<!--here-->" dispatch="independent">
         <capacity resource="H2">
           <sweep_values debug_value="10">10, 15</sweep_values> <!-- MW -->
         </capacity>
-        <consumes><!--here--> </consumes>
         <transfer>
           <linear>
             <rate resource="steam">-0.17</rate>
@@ -117,8 +112,7 @@
           </linear>
         </transfer>
       </produces>
-      <economics>
-        <lifetime>5</lifetime>
+      <economics lifetime="5">
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
           <driver>
             <variable>HTSE_capacity</variable>
@@ -147,8 +141,7 @@
           <fixed_value>0.2</fixed_value> <!-- Try a different value -->
         </initial_stored>
       </stores>
-      <economics>
-        <lifetime>5</lifetime>
+      <economics lifetime="5">
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
           <driver>
             <variable><!--here--> </variable>
@@ -167,8 +160,7 @@
           <multiplier>-1</multiplier>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>5</lifetime>
+      <economics lifetime="5">
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none'>
           <driver>
             <activity>electricity</activity>
@@ -187,8 +179,7 @@
           <fixed_value>-10</fixed_value>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>5</lifetime>
+      <economics lifetime="5">
         <CashFlow name="H2_sales" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>H2</activity>

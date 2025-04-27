@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <HERON>
   <TestInfo>
     <name>Cashflows</name>
@@ -25,7 +26,7 @@
         <verbosity>50</verbosity>
       </economics>
       <dispatcher>
-        <pyomo/>
+        <pyomo />
       </dispatcher>
     </Case>
 
@@ -36,8 +37,7 @@
             <sweep_values>1, 2</sweep_values>
           </capacity>
         </produces>
-        <economics>
-          <lifetime>10</lifetime>
+        <economics lifetime="10">
           <CashFlow name="capex" type="one-time" taxable="False" inflation="none" depreciate="5">
             <driver>
               <variable>source_capacity</variable>
@@ -52,9 +52,9 @@
             <scaling_factor_x>
               <fixed_value>0.999</fixed_value>
             </scaling_factor_x>
-            <!-- <depreciate>5</depreciate> -->
+            
           </CashFlow>
-          <CashFlow name="FOM" type="repeating" period='year' taxable="False" inflation="none">
+          <CashFlow name="FOM" type="repeating" period="year" taxable="False" inflation="none">
             <driver>
               <variable>source_capacity</variable>
             </driver>
@@ -74,7 +74,7 @@
               <activity>a</activity>
             </driver>
             <reference_price>
-              <CSV variable='Signal'>flex</CSV>
+              <CSV variable="Signal">flex</CSV>
             </reference_price>
           </CashFlow>
         </economics>
@@ -86,8 +86,7 @@
             <fixed_value>-2</fixed_value>
           </capacity>
         </demands>
-        <economics>
-          <lifetime>30</lifetime>
+        <economics lifetime="30">
           <CashFlow name="sales" type="repeating" taxable="False" inflation="none">
             <driver>
               <activity>a</activity>
@@ -102,6 +101,6 @@
     </Components>
 
     <DataGenerators>
-      <CSV name='flex' variable="Signal">%HERON_DATA%/mechanics/static_history/Static.csv</CSV>
+      <CSV name="flex" variable="Signal">%HERON_DATA%/mechanics/static_history/Static.csv</CSV>
     </DataGenerators>
 </HERON>

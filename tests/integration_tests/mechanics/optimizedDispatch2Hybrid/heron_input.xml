@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <HERON>
   <TestInfo>
     <name>DebugMode</name>
@@ -31,7 +32,7 @@
       <verbosity>50</verbosity>
     </economics>
     <dispatcher>
-      <pyomo/>
+      <pyomo />
     </dispatcher>
   </Case>
 
@@ -42,14 +43,12 @@
           <sweep_values debug_value="3.14">1, 100</sweep_values>
         </capacity>
       </produces>
-      <economics>
-        <lifetime>5</lifetime>
-      </economics>
+      <economics lifetime="5">
+        </economics>
     </Component>
 
     <Component name="generator">
-      <produces resource="electricity" dispatch="independent">
-        <consumes>steam</consumes>
+      <produces resource="electricity" dispatch="independent" consumes="steam">
         <capacity resource="steam">
           <fixed_value>-100</fixed_value>
         </capacity>
@@ -60,9 +59,8 @@
           </linear>
         </transfer>
       </produces>
-      <economics>
-        <lifetime>5</lifetime>
-      </economics>
+      <economics lifetime="5">
+        </economics>
     </Component>
 
     <Component name="electr_market">
@@ -71,9 +69,8 @@
           <fixed_value>-2</fixed_value>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>30</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' >
+      <economics lifetime="30">
+        <CashFlow name="e_sales" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
           </driver>
@@ -90,9 +87,8 @@
           <fixed_value>-1e200</fixed_value>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>30</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' >
+      <economics lifetime="30">
+        <CashFlow name="e_sales" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
           </driver>
@@ -106,7 +102,7 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='Price' variable="Signal">%HERON_DATA%/TSA/Sine/arma.pk</ARMA>
+    <ARMA name="Price" variable="Signal">%HERON_DATA%/TSA/Sine/arma.pk</ARMA>
     <Function name="transfers">transfers.py</Function>
   </DataGenerators>
 

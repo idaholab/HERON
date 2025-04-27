@@ -5,20 +5,22 @@
 """
 from typing import Union, cast
 from collections import defaultdict
-from HERON.src.ValuedParams import factory as vp_factory
-from HERON.src.ValuedParamHandler import ValuedParamHandler
-from HERON.src.Placeholders import Placeholder
 
-from DOVE.src.Components import Component as DoveComponent
-from DOVE.src.Interactions import Interaction as DoveInteraction
-from DOVE.src.Interactions import Producer as DoveProducer
-from DOVE.src.Interactions import Demand as DoveDemand
-from DOVE.src.Interactions import Storage as DoveStorage
-from DOVE.src.Economics import CashFlowGroup as DoveCashFlowGroup
-from DOVE.src.Economics import CashFlow as DoveCashFlow
 
+from DOVE.dove import (Component as DoveComponent, 
+                       Interaction as DoveInteraction, 
+                       Producer as DoveProducer, 
+                       Demand as DoveDemand, 
+                       Storage as DoveStorage,
+                       CashFlowGroup as DoveCashFlowGroup,
+                       CashFlow as DoveCashFlow)
 from ravenframework.utils import InputData
 from ravenframework.utils.InputData import ParameterInput
+
+from .ValuedParams import factory as vp_factory
+from .ValuedParamHandler import ValuedParamHandler
+from .Placeholders import Placeholder
+
 
 class HeronComponent(DoveComponent):
   """
@@ -194,6 +196,23 @@ class HeronComponent(DoveComponent):
       params |= {f"{self.name}_{k}": v for k, v in uncertain.items()}
     return params
 
+  def set_levelized_cost_meta(self, cashflows) -> None:
+    """
+    Create a dictionary for determining the correct resource to use per cashflow
+    when using a levelized inner objective.
+
+    NOTE: This is only an option when selecting levelized cost as an econ metric.
+
+    :param cashflows: List of Interaction instances.
+    :type cashflows: list
+    :return: None
+    """
+    for cf in cashflows:
+      tracker = cf.get_driver()._vp.get_tracking_var()
+      resource = cf.get_driver()._vp.get_resource()
+      self.levelized_meta[cf.name] = {tracker: resource}
+
+
 class HeronCashFlowGroup(DoveCashFlowGroup):
   """
   Masks specific functionality from DoveCashFlowGroup to allow for ValuedParams.
@@ -204,6 +223,7 @@ class HeronCashFlowGroup(DoveCashFlowGroup):
     @ In, source, InputData.ParameterInput, input from user
     @ Out, None
     """
+    self.lifetime = specs.parameterValues.get("lifetime", 100)
     for item in specs.subparts:
       match item.getName():
         case "lifetime":
@@ -260,7 +280,6 @@ class HeronCashFlowGroup(DoveCashFlowGroup):
           break
       else:
         cf.set_crossrefs({}) #type: ignore
-
 
 
 class HeronCashFlow(DoveCashFlow):
@@ -422,7 +441,6 @@ class HeronInteraction(DoveInteraction):
     # perform crosscheck that VPs have what they need
     for vp in self._crossrefs.values():
       cast(ValuedParamHandler, vp).crosscheck(self)
-
 
   def set_capacity(self, cap) -> None:
     """

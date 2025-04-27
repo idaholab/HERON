@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <HERON>
   <TestInfo>
     <name>MOPED_storage_heavy</name>
@@ -29,7 +30,7 @@
       <verbosity>50</verbosity>
     </economics>
     <dispatcher>
-      <pyomo/>
+      <pyomo />
     </dispatcher>
   </Case>
 
@@ -39,13 +40,11 @@
 
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <fixed_value>25</fixed_value> <!--GW-->
+          <fixed_value>25</fixed_value> 
         </capacity>
       </produces>
 
-      <economics>
-        <lifetime>10</lifetime>
-        <!-- construction cost -->
+      <economics lifetime="10">
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
           <driver>
             <variable>npp_capacity</variable>
@@ -55,13 +54,13 @@
           </reference_price>
         </CashFlow>
 
-        <CashFlow name="var_OM" type="repeating" taxable='True' inflation='none'>
+        <CashFlow name="var_OM" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>
           </driver>
           <reference_price>
-            <!-- ballpark $25/MWh -->
+            
             <fixed_value>25e3</fixed_value>
           </reference_price>
         </CashFlow>
@@ -69,17 +68,15 @@
     </Component>
 
     <Component name="battery">
-      <stores resource="electricity" dispatch="independent">
+      <stores resource="electricity" dispatch="independent" rte="0.9">
         <capacity resource="electricity">
           <opt_bounds>1,15</opt_bounds>
         </capacity>
         <initial_stored>
           <fixed_value>0.5</fixed_value>
         </initial_stored>
-        <RTE>0.9</RTE>
-      </stores>
-      <economics>
-        <lifetime>10</lifetime>
+        </stores>
+      <economics lifetime="10">
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
           <driver>
             <variable>battery_capacity</variable>
@@ -95,13 +92,12 @@
 
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <fixed_value>100</fixed_value> <!-- GW -->
+          <fixed_value>100</fixed_value> 
         </capacity>
       </produces>
 
-      <economics>
-        <lifetime>1</lifetime>
-        <CashFlow name="import" type="repeating" taxable='True' inflation='none'>
+      <economics lifetime="1">
+        <CashFlow name="import" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>
@@ -121,9 +117,8 @@
           <multiplier>-1</multiplier>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>1</lifetime>
-        <CashFlow name="sales" type="repeating" taxable='True' inflation='none'>
+      <economics lifetime="1">
+        <CashFlow name="sales" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>
@@ -138,7 +133,7 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='synth' variable="TOTALLOAD">%HERON%/tests/integration_tests/ARMA/NYISO/nyiso_arma_2yr.pk</ARMA>
+    <ARMA name="synth" variable="TOTALLOAD">%HERON%/tests/integration_tests/ARMA/NYISO/nyiso_arma_2yr.pk</ARMA>
   </DataGenerators>
 
 </HERON>

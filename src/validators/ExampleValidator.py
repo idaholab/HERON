@@ -6,7 +6,7 @@
 """
 import numpy as np
 
-from DOVE.src.Interactions.Storage import Storage
+from DOVE.dove import Storage
 from ravenframework.utils import InputData, InputTypes
 
 from .Validator import Validator

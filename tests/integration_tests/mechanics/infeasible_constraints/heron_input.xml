@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <HERON>
   <TestInfo>
     <name>InfeasibleConstraints</name>
@@ -23,7 +24,7 @@
       <tax>0.0</tax>
       <inflation>0.0</inflation>
     </economics>
-    <dispatcher><pyomo/></dispatcher>
+    <dispatcher><pyomo /></dispatcher>
   </Case>
 
   <Components>
@@ -33,9 +34,8 @@
           <sweep_values>1095,1098</sweep_values>  <!-- Here we are purposely under-specifying capacity to force a failure -->
         </capacity>
       </produces>
-      <economics>
-        <lifetime>27</lifetime>
-      </economics>
+      <economics lifetime="27">
+        </economics>
     </Component>
 
     <Component name="Electric_Grid_1">
@@ -44,9 +44,8 @@
           <fixed_value>-2e4</fixed_value> <!-- Dispatch is fixed at 2000, meaning we should fall short by 5, 3 units respectively and that should show up in the contraint log" -->
         </capacity>
       </demands>
-      <economics>
-        <lifetime>3</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' mult_target='False'>
+      <economics lifetime="3">
+        <CashFlow name="e_sales" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>
@@ -66,7 +65,7 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='Speed' variable="Signal">%HERON_DATA%/TSA/Sine/arma.pk</ARMA>
+    <ARMA name="Speed" variable="Signal">%HERON_DATA%/TSA/Sine/arma.pk</ARMA>
   </DataGenerators>
 
 </HERON>

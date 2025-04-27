@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <HERON>
   <TestInfo>
     <name>TransferFuncs</name>
@@ -43,9 +44,8 @@
           <sweep_values debug_value="200">1, 1000</sweep_values>
         </capacity>
       </produces>
-      <economics>
-        <lifetime>2</lifetime>
-      </economics>
+      <economics lifetime="2">
+        </economics>
     </Component>
 
     <Component name="LaborSource">
@@ -54,29 +54,26 @@
           <fixed_value>500</fixed_value>
         </capacity>
       </produces>
-      <economics>
-        <lifetime>2</lifetime>
-      </economics>
+      <economics lifetime="2">
+        </economics>
     </Component>
 
     <Component name="BalanceRatio">
-      <produces resource="work" dispatch="independent">
-        <consumes>funding</consumes>
+      <produces resource="work" dispatch="independent" consumes="funding">
         <capacity resource="funding">
           <fixed_value>-100</fixed_value>
         </capacity>
         <transfer>
           <ratio>
-            <!-- 4f = 1.0w-->
-            <!-- w ranges from 0 to 1000 for f in [0,1000]-->
+
+
             <rate resource="funding">4</rate>
             <rate resource="work">1</rate>
           </ratio>
         </transfer>
       </produces>
-      <economics>
-        <lifetime>2</lifetime>
-      </economics>
+      <economics lifetime="2">
+        </economics>
     </Component>
 
     <!-- 0.9f + 1.0l + 1e-6fl^2 + 0.02fl^0.5 = 1.0w-->
@@ -84,8 +81,7 @@
     <!-- w ranges from 0 to 6000 for l in [0,500] and f in [0,1000]-->
     <!-- w(f=100, l=500) = 615 -->
     <Component name="Quadratic">
-      <produces resource="work" dispatch="independent">
-        <consumes>funding, labor</consumes>
+      <produces resource="work" dispatch="independent" consumes="funding, labor">
         <capacity resource="funding">
           <fixed_value>-100</fixed_value>
         </capacity>
@@ -98,9 +94,8 @@
           </poly>
         </transfer>
       </produces>
-      <economics>
-        <lifetime>2</lifetime>
-      </economics>
+      <economics lifetime="2">
+        </economics>
     </Component>
 
     <Component name="Milestones">
@@ -109,9 +104,8 @@
           <fixed_value>-6e3</fixed_value>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>3</lifetime>
-        <CashFlow name="proposals" type="repeating" taxable='True' inflation='none' >
+      <economics lifetime="3">
+        <CashFlow name="proposals" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>work</activity>
           </driver>
@@ -128,9 +122,8 @@
           <fixed_value>-150</fixed_value>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>3</lifetime>
-        <CashFlow name="contracts" type="repeating" taxable='True' inflation='none' >
+      <economics lifetime="3">
+        <CashFlow name="contracts" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>funding</activity>
           </driver>
@@ -147,9 +140,8 @@
           <fixed_value>-500</fixed_value>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>2</lifetime>
-        <CashFlow name="other_work" type="repeating" taxable='True' inflation='none' >
+      <economics lifetime="2">
+        <CashFlow name="other_work" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>labor</activity>
           </driver>
@@ -162,7 +154,7 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='Price' variable="Signal">%HERON_DATA%/TSA/Sine/arma.pk</ARMA>
+    <ARMA name="Price" variable="Signal">%HERON_DATA%/TSA/Sine/arma.pk</ARMA>
   </DataGenerators>
 
 </HERON>

@@ -2,3 +2,4 @@
 # ALL RIGHTS RESERVED
 
 from HERON.src import DispatchManager
+from HERON.src import DispatchPlot

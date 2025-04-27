@@ -139,7 +139,7 @@ class TestHeronDispatchPlot(unittest.TestCase, TestOutStreamBase):
     @ In, None
     @ Out, None
     """
-    self.assertEqual(self.outstream.subtype, "DOVE.DispatchPlot")
+    self.assertEqual(self.outstream.subtype, "HERON.DispatchPlot")
 
   def test_macro_variable(self):
     """

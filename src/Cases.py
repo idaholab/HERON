@@ -20,8 +20,8 @@ from HERON.src.ValuedParamHandler import ValuedParamHandler
 from HERON.src.validators.Factory import known as known_validators
 from HERON.src.validators.Factory import get_class as get_validator
 
-from DOVE.src.Dispatch.Factory import known as known_dispatchers
-from DOVE.src.Dispatch.Factory import get_class as get_dispatcher
+from DOVE.dove.Dispatch.Factory import known as known_dispatchers
+from DOVE.dove.Dispatch.Factory import get_class as get_dispatcher
 
 
 from collections import OrderedDict

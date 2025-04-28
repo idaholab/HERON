@@ -436,12 +436,12 @@ class PyomoModelHandler:
     charge_name = self._create_production_variable(comp,
                                                    tag='charge',
                                                    add_bounds=False,
-                                                   bounds=(-max_charge, 0),
+                                                   bounds=None if not max_charge else (-max_charge, 0),
                                                    within=pyo.NonPositiveReals)
     discharge_name = self._create_production_variable(comp,
                                                       tag='discharge',
                                                       add_bounds=False,
-                                                      bounds=(0, max_discharge),
+                                                      bounds=None if not max_discharge else (0, max_discharge),
                                                       within=pyo.NonNegativeReals)
     # balance level, charge/discharge
     level_rule_name = prefix + '_level_constr'

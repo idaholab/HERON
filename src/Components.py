@@ -871,9 +871,9 @@ class Storage(Interaction):
     specs.addSub(InputData.parameterInputFactory('RTE', contentType=InputTypes.FloatType, descr=descr))
     # max charge/discharge rates
     descr=r"""maximum storage charge rate as a fraction of the storage capacity, from 0 to 1. \default{1.0}"""
-    specs.addSub(vp_factory.make_input_specs('max_charge_rate', descr=descr))
+    specs.addSub(InputData.parameterInputFactory('max_charge_rate', contentType=InputTypes.FloatType, descr=descr))
     descr=r"""maximum storage discharge rate as a fraction of the storage capacity, from 0 to 1. \default{1.0}"""
-    specs.addSub(vp_factory.make_input_specs('max_discharge_rate', descr=descr))
+    specs.addSub(InputData.parameterInputFactory('max_discharge_rate', contentType=InputTypes.FloatType, descr=descr))
     return specs
 
   def __init__(self, **kwargs):
@@ -889,8 +889,8 @@ class Storage(Interaction):
     self._initial_stored = None      # how much resource does this component start with stored?
     self._strategy = None            # how to operate storage unit
     self._tracking_vars = ['level', 'charge', 'discharge'] # stored quantity, charge activity, discharge activity
-    self._max_charge_rate = None     # maximum rate storage charges at
-    self._max_discharge_rate = None  # maximum rate storage discharges at
+    self._max_charge_rate = None     # maximum rate storage charges at (default = 1.0 = full capacity)
+    self._max_discharge_rate = None  # maximum rate storage discharges at (default = 1.0 = full capacity)
 
   def read_input(self, specs, mode, comp_name):
     """
@@ -915,9 +915,16 @@ class Storage(Interaction):
       elif item.getName() == 'RTE':
         self._sqrt_rte = np.sqrt(item.value)
       elif item.getName() == 'max_charge_rate':
-        self._set_valued_param('_max_charge_rate', comp_name, item, mode)
+        self._max_charge_rate = item.value
+        if self._max_charge_rate <= 0 or self._max_charge_rate > 1:
+          raise ValueError("Value for <max_charge_rate> must be greater than 0 and less than or equal to 1. "
+                           f"Received {self._max_charge_rate}.")
       elif item.getName() == 'max_discharge_rate':
-        self._set_valued_param('_max_discharge_rate', comp_name, item, mode)
+        self._max_discharge_rate = item.value
+        if self._max_discharge_rate < 0 or self._max_discharge_rate > 1:
+          raise ValueError("Value for <max_discharge_rate> must be greater than 0 and less than or equal to 1. "
+                           f"Received {self._max_discharge_rate}.")
+    # TODO: We might want to relax this constraint. For example
     assert len(self._stores) == 1, f'Multiple storage resources given for component "{comp_name}"'
     self._stores = self._stores[0]
     # checks and defaults
@@ -927,10 +934,6 @@ class Storage(Interaction):
       vp = ValuedParamHandler('initial_stored')
       vp.set_const_VP(0.0)
       self._initial_stored = vp
-    # if self._max_charge_rate is None:
-    #   self._max_charge_rate = ValuedParamHandler('_max_charge_rate').set_const_VP(1.0)
-    # if self._max_discharge_rate is None:
-    #   self._max_discharge_rate = ValuedParamHandler('_max_discharge_rate').set_const_VP(1.0)
     # the capacity is limited by the stored resource.
     self._capacity_var = self._stores
 
@@ -1056,7 +1059,10 @@ class Storage(Interaction):
       @ In, meta, dict, additional variable passthrough
       @ Out, initial, float, initial level
     """
-    pct = self._extract_value(self._initial_stored, meta)
+    res = self.get_resource()
+    request = {res: None}
+    meta['request'] = request
+    pct = self._initial_stored.evaluate(meta, target_var=res)[0][res]
     if not (0 <= pct <= 1):
       self.raiseAnError(ValueError, f'While calculating initial storage level for storage "{self.tag}", ' +
           f'an invalid percent was provided/calculated ({pct}). Initial levels should be between 0 and 1, inclusive.')
@@ -1067,37 +1073,13 @@ class Storage(Interaction):
     """
       Get the max rates for charging and discharging the storage
       @ In, meta, dict, additional variable passthrough
-      @ Out, _max_charge_rate, float, max storage charge rate
-      @ Out, _max_discharge_rate, float, max storage discharge rate
+      @ Out, charge_amt, float | None, max storage charge rate
+      @ Out, discharge_amt, float | None, max storage discharge rate
     """
-    charge_pct = self._extract_value(self._max_charge_rate, meta)
-    discharge_pct = self._extract_value(self._max_discharge_rate, meta)
-
-    if not (0 <= charge_pct <= 1):
-      self.raiseAnError(ValueError, f'While calculating the maximum charging rate for storage "{self.tag}", ' +
-          f'an invalid percent was provided/calculated ({charge_pct}). Initial levels should be between 0 and 1, inclusive.')
-    if not (0 <= discharge_pct <= 1):
-      self.raiseAnError(ValueError, f'While calculating the maximum discharging rate for storage "{self.tag}", ' +
-          f'an invalid percent was provided/calculated ({discharge_pct}). Initial levels should be between 0 and 1, inclusive.')
-
     capacity = self.get_capacity(meta)[0][self.get_resource()]
-    charge_amt = charge_pct * capacity
-    discharge_amt = discharge_pct * capacity
-
+    charge_amt = None if self._max_charge_rate is None else self._max_charge_rate * capacity
+    discharge_amt = None if self._max_charge_rate is None else self._max_discharge_rate * capacity
     return charge_amt, discharge_amt
-
-  def _extract_value(self, vp, meta):
-    """
-      Extract the value from a ValuedParam
-      @ In, vp, ValuedParam, the valued param
-      @ In, meta, dict, additional variable passthrough
-      @ Out, value, Any, the value of the ValuedParam
-    """
-    res = self.get_resource()
-    request = {res: None}
-    meta['request'] = request
-    value = vp.evaluate(meta, target_var=res)[0][res]
-    return value
 
 
 

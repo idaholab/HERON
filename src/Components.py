@@ -927,6 +927,10 @@ class Storage(Interaction):
       vp = ValuedParamHandler('initial_stored')
       vp.set_const_VP(0.0)
       self._initial_stored = vp
+    # if self._max_charge_rate is None:
+    #   self._max_charge_rate = ValuedParamHandler('_max_charge_rate').set_const_VP(1.0)
+    # if self._max_discharge_rate is None:
+    #   self._max_discharge_rate = ValuedParamHandler('_max_discharge_rate').set_const_VP(1.0)
     # the capacity is limited by the stored resource.
     self._capacity_var = self._stores
 

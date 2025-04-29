@@ -3,23 +3,22 @@
 """
   Defines the Component entity.
 """
-from typing import Union, cast
 from collections import defaultdict
+from typing import Union, cast
 
-
-from DOVE.dove import (Component as DoveComponent, 
-                       Interaction as DoveInteraction, 
-                       Producer as DoveProducer, 
-                       Demand as DoveDemand, 
-                       Storage as DoveStorage,
-                       CashFlowGroup as DoveCashFlowGroup,
-                       CashFlow as DoveCashFlow)
+from dove import CashFlow as DoveCashFlow
+from dove import CashFlowGroup as DoveCashFlowGroup
+from dove import Component as DoveComponent
+from dove import Demand as DoveDemand
+from dove import Interaction as DoveInteraction
+from dove import Producer as DoveProducer
+from dove import Storage as DoveStorage
 from ravenframework.utils import InputData
 from ravenframework.utils.InputData import ParameterInput
 
-from .ValuedParams import factory as vp_factory
-from .ValuedParamHandler import ValuedParamHandler
 from .Placeholders import Placeholder
+from .ValuedParamHandler import ValuedParamHandler
+from .ValuedParams import factory as vp_factory
 
 
 class HeronComponent(DoveComponent):

@@ -4,35 +4,23 @@
 """
   Defines the Cases entity.
 """
-from __future__ import unicode_literals, print_function
+import copy
+import importlib
 import os
 import sys
-import importlib
-import copy
-
-import numpy as np
-
-from HERON.src.base import Base
-
-from HERON.src.ValuedParams import factory as vp_factory
-from HERON.src.ValuedParamHandler import ValuedParamHandler
-
-from HERON.src.validators.Factory import known as known_validators
-from HERON.src.validators.Factory import get_class as get_validator
-
-from DOVE.dove.Dispatch.Factory import known as known_dispatchers
-from DOVE.dove.Dispatch.Factory import get_class as get_dispatcher
-
-
 from collections import OrderedDict
 
-import HERON.src._utils as hutils
-try:
-  import ravenframework
-except ModuleNotFoundError:
-  framework_path = hutils.get_raven_loc()
-  sys.path.append(framework_path)
+import numpy as np
+from dove.dispatch import get_class as get_dispatcher
+from dove.dispatch import known as known_dispatchers
 from ravenframework.utils import InputData, InputTypes
+
+from .base import Base
+from .validators.Factory import get_class as get_validator
+from .validators.Factory import known as known_validators
+from .ValuedParamHandler import ValuedParamHandler
+from .ValuedParams import factory as vp_factory
+
 
 class Case(Base):
   """

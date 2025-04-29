@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <HERON>
   <TestInfo>
     <name>production</name>
@@ -28,7 +29,7 @@
       <verbosity>50</verbosity>
     </economics>
     <dispatcher>
-      <pyomo/>
+      <pyomo />
     </dispatcher>
   </Case>
 
@@ -39,14 +40,12 @@
           <sweep_values>1, 100</sweep_values>
         </capacity>
       </produces>
-      <economics>
-        <lifetime>27</lifetime>
-      </economics>
+      <economics lifetime="27">
+        </economics>
     </Component>
 
     <Component name="generator">
-      <produces resource="electricity" dispatch="independent">
-        <consumes>steam</consumes>
+      <produces resource="electricity" dispatch="independent" consumes="steam">
         <capacity resource="steam">
           <fixed_value>-100</fixed_value>
         </capacity>
@@ -57,9 +56,8 @@
           </linear>
         </transfer>
       </produces>
-      <economics>
-        <lifetime>27</lifetime>
-      </economics>
+      <economics lifetime="27">
+        </economics>
     </Component>
 
     <Component name="electr_market">
@@ -68,9 +66,8 @@
           <fixed_value>-2</fixed_value>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>3</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' >
+      <economics lifetime="3">
+        <CashFlow name="e_sales" type="repeating" taxable="True" inflation="none">
           <driver>
             <Function method="electric_consume">transfers</Function>
           </driver>
@@ -87,9 +84,8 @@
           <fixed_value>-1e200</fixed_value>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>3</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' >
+      <economics lifetime="3">
+        <CashFlow name="e_sales" type="repeating" taxable="True" inflation="none">
           <driver>
             <Function method="electric_consume">transfers</Function>
           </driver>
@@ -103,8 +99,8 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='Speed' variable="Signal">%HERON%/tests/integration_tests/ARMA/Sine/arma.pk</ARMA>
-    <Function name="transfers">transfers.py</Function> <!-- TODO specify the variables needed? -->
+    <ARMA name="Speed" variable="Signal">%HERON%/tests/integration_tests/ARMA/Sine/arma.pk</ARMA>
+    <Function name="transfers">transfers.py</Function> 
   </DataGenerators>
 
 </HERON>

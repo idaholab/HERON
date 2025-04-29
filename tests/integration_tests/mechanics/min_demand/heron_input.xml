@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <HERON>
   <TestInfo>
     <name>MinDemand</name>
@@ -14,7 +15,7 @@
 
     <Case name="Sizing">
       <mode>sweep</mode>
-      <debug/>
+      <debug />
       <num_arma_samples>3</num_arma_samples>
       <time_discretization>
         <time_variable>Time</time_variable>
@@ -29,7 +30,7 @@
         <verbosity>50</verbosity>
       </economics>
       <dispatcher>
-        <pyomo/>
+        <pyomo />
       </dispatcher>
     </Case>
 
@@ -40,9 +41,8 @@
             <fixed_value>1000</fixed_value>
           </capacity>
         </produces>
-        <economics>
-          <lifetime>1</lifetime>
-        </economics>
+        <economics lifetime="1">
+          </economics>
       </Component>
 
       <Component name="Coal">
@@ -51,9 +51,8 @@
             <sweep_values>2000,1750</sweep_values>
           </capacity>
         </produces>
-        <economics>
-          <lifetime>1</lifetime>
-        </economics>
+        <economics lifetime="1">
+          </economics>
       </Component>
 
       <Component name="e_grid">
@@ -65,8 +64,7 @@
             <fixed_value>0.1</fixed_value>
           </minimum>
         </demands>
-        <economics>
-          <lifetime>1</lifetime>
+        <economics lifetime="1">
           <CashFlow name="e_sales" type="repeating" taxable="False" inflation="none">
             <driver>
               <activity>electricity</activity>
@@ -84,8 +82,7 @@
             <fixed_value>-1e6</fixed_value>
           </capacity>
         </demands>
-        <economics>
-          <lifetime>3</lifetime>
+        <economics lifetime="3">
           <CashFlow name="e_sales" type="repeating" taxable="False" inflation="none">
             <driver>
               <activity>electricity</activity>
@@ -99,9 +96,6 @@
     </Components>
 
     <DataGenerators>
-      <ARMA name='flex' variable="Signal">%HERON_DATA%/TSA/Sine/arma.pk</ARMA>
+      <ARMA name="flex" variable="Signal">%HERON_DATA%/TSA/Sine/arma.pk</ARMA>
     </DataGenerators>
 </HERON>
-
-
-

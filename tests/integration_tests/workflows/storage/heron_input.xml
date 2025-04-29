@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <HERON>
   <TestInfo>
     <name>storage</name>
@@ -32,7 +33,7 @@
       </pyomo>
     </dispatcher>
     <dispatch_vars>
-      <variable name='NPP_bid_adjust'>
+      <variable name="NPP_bid_adjust">
         <sweep_values>1, 100</sweep_values>
       </variable>
     </dispatch_vars>
@@ -45,26 +46,22 @@
           <sweep_values debug_value="100">1, 100</sweep_values>
         </capacity>
       </produces>
-      <economics>
-        <lifetime>3</lifetime>
-      </economics>
+      <economics lifetime="3">
+        </economics>
     </Component>
 
     <Component name="steam_storage">
-      <stores resource="steam" dispatch="independent">
+      <stores resource="steam" dispatch="independent" rte="0.9">
         <capacity resource="steam">
           <fixed_value>100</fixed_value>
         </capacity>
-        <RTE>0.9</RTE>
-      </stores>
-      <economics>
-        <lifetime>3</lifetime>
-      </economics>
+        </stores>
+      <economics lifetime="3">
+        </economics>
     </Component>
 
     <Component name="generator">
-      <produces resource="electricity" dispatch="independent">
-        <consumes>steam</consumes>
+      <produces resource="electricity" dispatch="independent" consumes="steam">
         <capacity resource="steam">
           <fixed_value>-90</fixed_value>
         </capacity>
@@ -75,9 +72,8 @@
           </linear>
         </transfer>
       </produces>
-      <economics>
-        <lifetime>3</lifetime>
-      </economics>
+      <economics lifetime="3">
+        </economics>
     </Component>
 
     <Component name="market_linear">
@@ -86,9 +82,8 @@
           <fixed_value>-2</fixed_value>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>3</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none'>
+      <economics lifetime="3">
+        <CashFlow name="e_sales" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>
@@ -106,9 +101,8 @@
           <fixed_value>-40</fixed_value>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>3</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none'>
+      <economics lifetime="3">
+        <CashFlow name="e_sales" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>
@@ -121,15 +115,14 @@
     </Component>
 
     <Component name="steam_offload">
-      <!-- necessary for conservation of resources -->
+      
       <demands resource="steam" dispatch="dependent">
         <capacity>
           <fixed_value>-100</fixed_value>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>3</lifetime>
-        <CashFlow name="steam_sink" type="repeating" taxable='True' inflation='none' mult_target='False'>
+      <economics lifetime="3">
+        <CashFlow name="steam_sink" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>steam</activity>
             <multiplier>-1</multiplier>
@@ -144,7 +137,7 @@
   </Components>
 
   <DataGenerators>
-    <CSV name='prices' variable="spike,linear">%HERON_DATA%/CSV/2year_21step.csv</CSV>
+    <CSV name="prices" variable="spike,linear">%HERON_DATA%/CSV/2year_21step.csv</CSV>
   </DataGenerators>
 
 </HERON>

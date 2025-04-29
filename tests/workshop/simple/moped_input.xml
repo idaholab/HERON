@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <HERON>
   <TestInfo>
     <name>MOPED_simple</name>
@@ -28,7 +29,7 @@
       <verbosity>50</verbosity>
     </economics>
     <dispatcher>
-      <pyomo/>
+      <pyomo />
     </dispatcher>
   </Case>
 
@@ -38,32 +39,30 @@
 
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <opt_bounds>10, 40</opt_bounds> <!--GW-->
-          <!-- <sweep_values>0,21.69,23.73,24.5</sweep_values> -->
+          <opt_bounds>10, 40</opt_bounds> 
+          
         </capacity>
       </produces>
 
-      <economics>
-        <lifetime>10</lifetime>
-        <!-- construction cost -->
+      <economics lifetime="10">
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
           <driver>
             <variable>ngcc_capacity</variable>
           </driver>
           <reference_price>
-            <!-- 1000 $/kW * 1e6 kW/GW = 1e9 est cost for 1 GW NGCC -->
+            
             <fixed_value>-1e8</fixed_value>
           </reference_price>
-          <!-- <depreciate>15</depreciate> -->
+          
         </CashFlow>
 
-        <CashFlow name="var_OM" type="repeating" taxable='True' inflation='none'>
+        <CashFlow name="var_OM" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>
           </driver>
           <reference_price>
-            <!-- ballpark $25/MWh -->
+            
             <fixed_value>25e3</fixed_value>
           </reference_price>
         </CashFlow>
@@ -75,19 +74,18 @@
 
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <fixed_value>100</fixed_value> <!-- GW -->
+          <fixed_value>100</fixed_value> 
         </capacity>
       </produces>
 
-      <economics>
-        <lifetime>1</lifetime>
-        <CashFlow name="import" type="repeating" taxable='True' inflation='none'>
+      <economics lifetime="1">
+        <CashFlow name="import" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>
           </driver>
           <reference_price>
-            <!-- ballpark $100/MWh -->
+            
             <fixed_value>100e3</fixed_value>
           </reference_price>
         </CashFlow>
@@ -102,24 +100,14 @@
           <multiplier>-1</multiplier>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>1</lifetime>
-        <!-- <CashFlow name='e_sales' type='repeating' taxable="True" inflation="none">
-          <driver>
-            <activity>electricity</activity>
-            <multiplier>-15e3</multiplier>
-          </driver>
-          <reference_price>
-            <ARMA variable="SOLAR">synth</ARMA>
-          </reference_price>
-        </CashFlow> -->
-      </economics>
+      <economics lifetime="1">
+        </economics>
     </Component>
 
   </Components>
 
   <DataGenerators>
-    <ARMA name='synth' variable="TOTALLOAD,SOLAR">%HERON%/tests/integration_tests/ARMA/NYISO/nyiso_arma_2yr.pk</ARMA>
+    <ARMA name="synth" variable="TOTALLOAD,SOLAR">%HERON%/tests/integration_tests/ARMA/NYISO/nyiso_arma_2yr.pk</ARMA>
   </DataGenerators>
 
 </HERON>

@@ -59,7 +59,7 @@ class ValuedParamHandler(MessageUser):
     """
     return self._vp.type
 
-  def read(self, comp_name: str, spec: InputData.ParameterInput, mode: str, alias_dict=None):
+  def read(self, comp_name: str, spec: InputData.ParameterInput, alias_dict=None):
     """
       Used to read valued param from XML input
       @ In, comp_name, str, name of component that this valued param will be attached to; only used for print messages
@@ -82,7 +82,7 @@ class ValuedParamHandler(MessageUser):
           self.raiseAnError(IOError, 'Only one ValuedParam type can be used per node; received ' +
                             f'multiple for comp "{comp_name}" node <{spec.getName()}>!')
         self._vp = VPFactory.returnInstance(sub.getName())
-        signal = self._vp.read(comp_name, sub, mode, alias_dict=alias_dict)
+        signal = self._vp.read(comp_name, sub, alias_dict=alias_dict)
         found = True
       ## other addons
       # multiplier

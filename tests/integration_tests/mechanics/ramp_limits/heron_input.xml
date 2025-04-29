@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <HERON>
   <TestInfo>
     <name>ramp_limits</name>
@@ -29,7 +30,7 @@
       <verbosity>50</verbosity>
     </economics>
     <dispatcher>
-      <pyomo/>
+      <pyomo />
     </dispatcher>
   </Case>
 
@@ -40,19 +41,18 @@
           <sweep_values debug_value="700">500, 800</sweep_values>
         </capacity>
       </produces>
-      <economics>
-        <lifetime>60</lifetime>
+      <economics lifetime="60">
+
       </economics>
     </Component>
 
     <Component name="npp_bop">
-      <produces resource="electricity" dispatch="independent">
-        <consumes>steam</consumes>
+      <produces resource="electricity" dispatch="independent" ramp_limit="0.5" consumes="steam">
         <capacity resource="electricity">
           <fixed_value>200</fixed_value>
         </capacity>
-        <!-- limit change in production per time step -->
-        <ramp_limit>0.5</ramp_limit>
+
+
         <transfer>
           <linear>
             <rate resource="steam">-1</rate>
@@ -60,8 +60,8 @@
           </linear>
         </transfer>
       </produces>
-      <economics>
-        <lifetime>60</lifetime>
+      <economics lifetime="60">
+
       </economics>
     </Component>
 
@@ -71,9 +71,8 @@
           <fixed_value>400</fixed_value>
         </capacity>
       </produces>
-      <economics>
-        <lifetime>5</lifetime>
-        <CashFlow name="VOM" type="repeating" taxable='True' inflation='none' >
+      <economics lifetime="5">
+        <CashFlow name="VOM" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>
@@ -88,19 +87,19 @@
     <Component name="grid">
       <demands resource="electricity" dispatch="fixed">
         <capacity>
-          <CSV variable='demand'>static</CSV>
+          <CSV variable="demand">static</CSV>
           <multiplier>-1</multiplier>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>1</lifetime>
+      <economics lifetime="1">
+
       </economics>
     </Component>
 
   </Components>
 
   <DataGenerators>
-    <CSV name='static' variable="demand">%BASE_WORKING_DIR%/../demand.csv</CSV>
+    <CSV name="static" variable="demand">%BASE_WORKING_DIR%/../demand.csv</CSV>
     <!--
     400                 *
     300       *        / \

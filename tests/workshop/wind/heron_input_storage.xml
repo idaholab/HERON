@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <HERON>
   <TestInfo>
     <name>arbitrage</name>
@@ -29,7 +30,7 @@
       <verbosity>50</verbosity>
     </economics>
     <dispatcher>
-      <pyomo/>
+      <pyomo />
     </dispatcher>
   </Case>
 
@@ -38,14 +39,13 @@
     <Component name="wind">
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <sweep_values debug_value="10">0, 15</sweep_values> <!-- CHANGE THE DEBUG VALUE; ADD MORE!  -->
+          <sweep_values debug_value="10">0, 15</sweep_values>
         </capacity>
         <capacity_factor>
           <ARMA variable="WIND">synth</ARMA>
         </capacity_factor>
       </produces>
-      <economics>
-        <lifetime>5</lifetime>
+      <economics lifetime="5">
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
           <driver>
             <variable>wind_capacity</variable>
@@ -66,8 +66,7 @@
           <sweep_values debug_value="20">0, 50</sweep_values> <!-- CHANGE THE DEBUG VALUE; ADD MORE! -->
         </capacity>
       </produces>
-      <economics>
-        <lifetime>10</lifetime>
+      <economics lifetime="10">
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
           <driver>
             <variable>reactor_capacity</variable>
@@ -78,7 +77,7 @@
             <multiplier>0.5</multiplier> <!-- Efficiency Term (MWe/MWt)-->
           </reference_price>
         </CashFlow>
-        <CashFlow name="var_OM" type="repeating" taxable='True' inflation='none'>
+        <CashFlow name="var_OM" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>heat</activity>
             <multiplier>-1</multiplier>
@@ -103,8 +102,7 @@
           <fixed_value>0.01</fixed_value>
         </initial_stored>
       </stores>
-      <economics>
-        <lifetime>10</lifetime>
+      <economics lifetime="10">
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
           <driver>
             <variable>tes_capacity</variable>
@@ -121,8 +119,7 @@
     </Component>
 
     <Component name="turbine">
-      <produces resource="electricity" dispatch="dependent">
-        <consumes>heat</consumes>
+      <produces resource="electricity" dispatch="dependent" consumes="heat">
         <capacity resource="electricity">
           <fixed_value>200</fixed_value>
         </capacity>
@@ -133,9 +130,8 @@
           </linear>
         </transfer>
       </produces>
-      <economics>
-        <lifetime>10</lifetime>
-      </economics>
+      <economics lifetime="10">
+        </economics>
     </Component>
 
     <Component name="battery">
@@ -147,8 +143,7 @@
           <fixed_value>0.01</fixed_value>
         </initial_stored>
       </stores>
-      <economics>
-        <lifetime>10</lifetime>
+      <economics lifetime="10">
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
           <driver>
             <variable>battery_capacity</variable>
@@ -170,9 +165,8 @@
           <multiplier>-1</multiplier>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>1</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none'>
+      <economics lifetime="1">
+        <CashFlow name="e_sales" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>
@@ -190,9 +184,8 @@
           <fixed_value>100</fixed_value>
         </capacity>
       </produces>
-      <economics>
-        <lifetime>1</lifetime>
-        <CashFlow name="import" type="repeating" taxable='True' inflation='none'>
+      <economics lifetime="1">
+        <CashFlow name="import" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>
@@ -211,9 +204,8 @@
           <fixed_value>-100</fixed_value> <!-- GW -->
         </capacity>
       </demands>
-      <economics>
-        <lifetime>1</lifetime>
-        <CashFlow name="export" type="repeating" taxable='True' inflation='none'>
+      <economics lifetime="1">
+        <CashFlow name="export" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
           </driver>
@@ -228,7 +220,7 @@
 
 
   <DataGenerators>
-    <ARMA name='synth' variable="TOTALLOAD,WIND">%HERON_DATA%/TSA/NYISO/nyiso_arma_2yr.pk</ARMA>
+    <ARMA name="synth" variable="TOTALLOAD,WIND">%HERON_DATA%/TSA/NYISO/nyiso_arma_2yr.pk</ARMA>
   </DataGenerators>
 
 </HERON>

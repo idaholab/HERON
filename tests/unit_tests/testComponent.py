@@ -35,7 +35,7 @@ def transfer_function(inputs): #method, requests, inputs):
     return {'electricity': 0}, inputs
 
 # Set up the component
-producer = Components.Producer()
+producer = Components.HeronProducer()
 producer.messageHandler = MessageHandler.MessageHandler()
 producer.messageHandler.verbosity = 'debug'
 # these are usually set in reading the input
@@ -49,7 +49,7 @@ producer._transfer.set_transfer_VP(transfer_function)
 # test getters
 # TODO this needs significant expanding, it was originally
 # written to test things that are now deprecated.
-if producer.get_tracking_vars() != ['production']:
+if producer.tracking_vars != ['production']:
   print('Error: tracking vars are incorrect')
   results['fail'] += 1
 else:

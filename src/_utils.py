@@ -67,6 +67,22 @@ def get_cashflow_loc(raven_path=None):
   cf_loc = plugin_handler.getPluginLocation('TEAL')
   return cf_loc
 
+def get_plugin_loc(plugin_name, raven_path=None):
+  """
+    Get plugin location in installed RAVEN
+    @ In, plugin_name, str, name of plugin as found in raven plugin_directory.xml
+    @ In, raven_path, string, optional, if given then start with this path
+    @ Out, plugin_loc, string, location of plugin
+  """
+  if raven_path is None:
+    raven_path = get_raven_loc()
+  plugin_handler_dir = path.join(raven_path, 'scripts')
+  sys.path.append(plugin_handler_dir)
+  plugin_handler = importlib.import_module('plugin_handler')
+  sys.path.pop()
+  plugin_loc = plugin_handler.getPluginLocation(plugin_name)
+  return plugin_loc
+
 def get_farm_loc(raven_path=None): # Added by Haoyu Wang, May 25, 2022
   """
     Get FARM location in installed RAVEN
@@ -99,7 +115,7 @@ def get_project_lifetime(case, components):
     from TEAL.src.main import getProjectLength
     from TEAL.src import CashFlows
     sys.path.pop()
-  econ_comps = list(comp.get_economics() for comp in components)
+  econ_comps = list(comp.economics for comp in components)
   econ_params = case.get_econ(econ_comps)
   econ_settings = CashFlows.GlobalSettings()
   econ_settings.setParams(econ_params)
@@ -209,5 +225,7 @@ if __name__ == '__main__':
     print(get_raven_loc())
   elif action == 'get_cashflow_loc':
     print(get_cashflow_loc())
+  elif action == 'get_plugin_loc':
+    print(f"{get_plugin_loc('DOVE')=}")
   else:
     raise IOError(f'Unrecognized action: {action}')

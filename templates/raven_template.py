@@ -398,8 +398,8 @@ class RavenTemplate(Template):
     """
     act_metrics = []
     for component in components:
-      for tracker in component.get_tracking_vars():
-        resource_list = sorted(list(component.get_resources()))
+      for tracker in component.tracking_vars:
+        resource_list = sorted(list(component.interaction.resources))
         for resource in resource_list:
           # NOTE: Assumes the only activity metric we care about is total activity
           default_stats_tot_activity = self.namingTemplates["tot_activity"].format(component=component.name,
@@ -548,7 +548,7 @@ class RavenTemplate(Template):
     # For each component, cashflow, and cashflow equation parameter, find any which are uncertain, and create
     # distribution and sampled variable objects.
     for component in components:
-      for cashflow in component.get_cashflows():
+      for cashflow in component.economics.cashflows:
         for param_name, vp in cashflow.get_uncertain_params().items():
           unit_name = f"{component.name}_{cashflow.name}"
           feat_name = self.namingTemplates["variable"].format(unit=unit_name, feature=param_name)
@@ -594,7 +594,7 @@ class RavenTemplate(Template):
     # Make Distribution and SampledVariable objects for capacity variables. Capacities with non-parametric
     # ValuedParams are fixed values and are added instead as constants.
     for component in components:
-      interaction = component.get_interaction()
+      interaction = component.interaction
       name = component.name
       var_name = self.namingTemplates["variable"].format(unit=name, feature="capacity")
       cap = interaction.get_capacity(None, raw=True)  # type: ValuedParam
@@ -785,7 +785,7 @@ class RavenTemplate(Template):
     # Set GPR features list and target
     for component in components:
       name = component.name
-      interaction = component.get_interaction()
+      interaction = component.interaction
       cap = interaction.get_capacity(None, raw=True)
       if cap.is_parametric() and isinstance(cap.get_value(debug=case.debug["enabled"]) , list):
         gpr.features.append(self.namingTemplates["variable"].format(unit=name, feature="capacity"))

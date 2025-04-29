@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <HERON>
   <TestInfo>
     <name>CustomDispatch</name>
@@ -38,14 +39,12 @@
           <sweep_values>1, 100</sweep_values>
         </capacity>
       </produces>
-      <economics>
-        <lifetime>10</lifetime>
-      </economics>
+      <economics lifetime="10">
+        </economics>
     </Component>
 
     <Component name="desal">
-      <produces resource="water" dispatch="independent">
-        <consumes>electricity</consumes>
+      <produces resource="water" dispatch="independent" consumes="electricity">
         <capacity resource="electricity">
           <fixed_value>-100</fixed_value>
         </capacity>
@@ -56,9 +55,8 @@
           </linear>
         </transfer>
       </produces>
-      <economics>
-        <lifetime>27</lifetime>
-      </economics>
+      <economics lifetime="27">
+        </economics>
     </Component>
 
     <Component name="e_market">
@@ -67,9 +65,8 @@
           <fixed_value>-1e3</fixed_value>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>10</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' >
+      <economics lifetime="10">
+        <CashFlow name="e_sales" type="repeating" taxable="True" inflation="none">
           <driver>
             <Function method="electric_consume">transfers</Function>
           </driver>
@@ -86,9 +83,8 @@
           <fixed_value>-1e3</fixed_value>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>30</lifetime>
-        <CashFlow name="w_sales" type="repeating" taxable='True' inflation='none' >
+      <economics lifetime="30">
+        <CashFlow name="w_sales" type="repeating" taxable="True" inflation="none">
           <driver>
             <Function method="water_consume">transfers</Function>
           </driver>
@@ -102,7 +98,7 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='Price' variable="Signal">%HERON%/tests/integration_tests/ARMA/Sine/arma.pk</ARMA>
+    <ARMA name="Price" variable="Signal">%HERON%/tests/integration_tests/ARMA/Sine/arma.pk</ARMA>
     <Function name="transfers">transfers.py</Function>
   </DataGenerators>
 

@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <HERON>
   <TestInfo>
     <name>result_statistics</name>
@@ -27,22 +28,22 @@
       <verbosity>50</verbosity>
     </economics>
     <dispatcher>
-      <pyomo/>
+      <pyomo />
     </dispatcher>
     <result_statistics>
-      <minimum/>
-      <maximum/>
-      <variance/>
-      <percentile/>
-      <variationCoefficient/>
-      <skewness/>
-      <kurtosis/>
-      <samples/>
-      <sharpeRatio/>
-      <sortinoRatio threshold="median"/>
-      <gainLossRatio threshold="median"/>
-      <expectedShortfall/>
-      <valueAtRisk/>
+      <minimum />
+      <maximum />
+      <variance />
+      <percentile />
+      <variationCoefficient />
+      <skewness />
+      <kurtosis />
+      <samples />
+      <sharpeRatio />
+      <sortinoRatio threshold="median" />
+      <gainLossRatio threshold="median" />
+      <expectedShortfall />
+      <valueAtRisk />
     </result_statistics>
   </Case>
 
@@ -53,9 +54,8 @@
           <sweep_values>1095,1098</sweep_values>
         </capacity>
       </produces>
-      <economics>
-        <lifetime>27</lifetime>
-      </economics>
+      <economics lifetime="27">
+        </economics>
     </Component>
 
     <Component name="Electric_Grid">
@@ -64,9 +64,8 @@
           <fixed_value>-1e200</fixed_value>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>3</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' >
+      <economics lifetime="3">
+        <CashFlow name="e_sales" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>
@@ -87,7 +86,7 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='signal' variable="WIND">%HERON_DATA%/TSA/NYISO/nyiso_arma_2yr.pk</ARMA>
+    <ARMA name="signal" variable="WIND">%HERON_DATA%/TSA/NYISO/nyiso_arma_2yr.pk</ARMA>
   </DataGenerators>
 
 </HERON>

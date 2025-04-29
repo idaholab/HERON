@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <HERON>
   <TestInfo>
     <name>optimization_type_test_mean_LC</name>
@@ -29,13 +30,13 @@
       <verbosity>50</verbosity>
     </economics>
     <dispatcher>
-      <pyomo/>
+      <pyomo />
     </dispatcher>
     <optimization_settings>
       <opt_metric target="0">LC</opt_metric>
       <stats_metric>expectedValue</stats_metric>
       <algorithm>
-        <GradientDescent/>
+        <GradientDescent />
       </algorithm>
       <convergence>
         <gradient>1e-2</gradient>
@@ -51,9 +52,7 @@
           <opt_bounds>0, 5</opt_bounds>
         </capacity>
       </produces>
-      <economics>
-        <lifetime>30</lifetime>
-        <!-- NOTE THAT "mult_target" PARAMETER IS DEPRECATED, WON'T DO ANYTHING -->
+      <economics lifetime="30">
         <CashFlow name="capex" type="one-time" taxable="False" inflation="none">
           <driver>
             <variable>source_capacity</variable>
@@ -62,7 +61,7 @@
             <levelized_cost/>  <!-- FINDING LEVELIZED COST HERE! -->
           </reference_price>
         </CashFlow>
-        <CashFlow name="FOM" type="repeating" period='year' taxable="False" inflation="none">
+        <CashFlow name="FOM" type="repeating" period="year" taxable="False" inflation="none">
           <driver>
             <variable>source_capacity</variable>
           </driver>
@@ -88,8 +87,7 @@
           <fixed_value>-3</fixed_value>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>30</lifetime>
+      <economics lifetime="30">
         <CashFlow name="sales" type="repeating" taxable="False" inflation="none">
           <driver>
             <activity>a</activity>
@@ -108,9 +106,8 @@
           <fixed_value>100</fixed_value>
         </capacity>
       </produces>
-      <economics>
-        <lifetime>1</lifetime>
-        <CashFlow name="import" type="repeating" taxable='True' inflation='none'>
+      <economics lifetime="1">
+        <CashFlow name="import" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>a</activity>
           </driver>
@@ -124,6 +121,6 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='flex' variable="Signal">%HERON_DATA%/TSA/Sine/arma.pk</ARMA>
+    <ARMA name="flex" variable="Signal">%HERON_DATA%/TSA/Sine/arma.pk</ARMA>
   </DataGenerators>
 </HERON>

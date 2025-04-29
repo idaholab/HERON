@@ -202,20 +202,24 @@ def heron_node_from_hybrid(economics_node, hybrid_var_list, value_list, comments
 
       param_dict = dict(zip(parameters, param_values))
       if nodes_of_same_param:
-        subnode1 = ET.SubElement(
-          economics_node, nodes_of_same_param[0], param_dict
-          )
-        for comment in param_comments:
-          parameter_comment = comment
-          subnode1.append(ET.Comment(parameter_comment))
+        # <economics> can have top-level attributes so we may need to modify
+        # the top-level node itself. For example if we want to set:
+        # <economics lifetime="30"> we need to explicitly check for parameters
+        # of the economics node here.
+        if "economics" in nodes_of_same_param:
+          for param, value in param_dict.items():
+            economics_node.set(param, value)
+        else:
+          subnode1 = ET.SubElement(economics_node, nodes_of_same_param[0], param_dict)
+          for comment in param_comments:
+            parameter_comment = comment
+            subnode1.append(ET.Comment(parameter_comment))
       else:
         if nodes_of_same_subnodes:
           subnode1 = ET.SubElement(economics_node, nodes_of_same_subnodes[0])
         else:
           if nodes_of_same_sub_subnodes:
-            subnode1 = ET.SubElement(
-              economics_node, nodes_of_same_sub_subnodes[0]
-              )
+            subnode1 = ET.SubElement(economics_node, nodes_of_same_sub_subnodes[0])
 
       for n in range(len(subnodes_of_same_node)):
         subnode2 = ET.SubElement(subnode1, subnodes_of_same_node[n])

@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <HERON>
   <TestInfo>
     <name>HERD_nuclearCase_notebook_match</name>
@@ -31,7 +32,7 @@
       <verbosity>50</verbosity>
     </economics>
     <dispatcher>
-      <pyomo/>
+      <pyomo />
     </dispatcher>
   </Case>
 
@@ -42,43 +43,39 @@
     <Component name="npp">
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <fixed_value>1e6</fixed_value> <!-- kW -->
+          <fixed_value>1e6</fixed_value>
         </capacity>
       </produces>
 
-      <economics>
-        <lifetime>20</lifetime>
-        <!-- NPP Capex, OM Expenses not considered in DISPATCHES notebook -->
-      </economics>
+      <economics lifetime="20">
+        </economics>
 
     </Component>
 
     <Component name="pem">
-      <!-- kW   capacity units (e-) in DISPATCHES -->
-      <!-- $/kW cost units -->
-      <produces resource="hydrogen" dispatch="independent">
+
+
+      <produces resource="hydrogen" dispatch="independent" consumes="electricity">
         <capacity resource="hydrogen">
-          <opt_bounds> 0, 5e3 </opt_bounds> <!-- in kg -->
+          <opt_bounds> 0, 5e3 </opt_bounds>
         </capacity>
-        <consumes>electricity</consumes>
         <transfer>
           <linear>
             <rate resource="electricity">-1 </rate>
-            <rate resource="hydrogen"> 18.342 </rate> <!-- kg/MW-hr -->
+            <rate resource="hydrogen"> 18.342 </rate>
           </linear>
         </transfer>
       </produces>
 
-      <economics>
-        <lifetime>20</lifetime>
-        <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
+      <economics lifetime="20">
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" depreciate="15">
           <driver>
             <variable>pem_capacity</variable> <!-- kW -->
           </driver>
           <reference_price>
             <fixed_value>-1630</fixed_value> <!-- $/kWh -->
           </reference_price>
-          <depreciate>15</depreciate>
+
         </CashFlow>
         <CashFlow name="fixed_OM" type="repeating" period="year" taxable="True" inflation="none">
           <driver>
@@ -88,7 +85,7 @@
             <fixed_value>-47.9</fixed_value> <!-- $/kW -->
           </reference_price>
         </CashFlow>
-        <CashFlow name="var_OM" type="repeating" period="hour" taxable='True' inflation='none'>
+        <CashFlow name="var_OM" type="repeating" period="hour" taxable="True" inflation="none">
           <driver>
             <activity>hydrogen</activity>
           </driver>
@@ -104,53 +101,49 @@
       <!-- $/mol cost units -->
       <stores resource="hydrogen" dispatch="independent">
         <capacity resource="hydrogen">
-          <opt_bounds>0, 5e3</opt_bounds> <!-- kg -->
+          <opt_bounds>0, 5e3</opt_bounds>
         </capacity>
       </stores>
 
-      <economics>
-        <lifetime>20</lifetime>
-        <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
+      <economics lifetime="20">
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" depreciate="15">
           <driver>
             <variable>h2tank_capacity</variable>
           </driver>
           <reference_price>
             <fixed_value>-965.69</fixed_value> <!-- $29/kWh, H2 LHV: 33.3 kWh/kg * 2.016e-3 kg/mol -->
           </reference_price>
-          <depreciate>15</depreciate>
+
         </CashFlow>
 
       </economics>
     </Component>
 
     <Component name="h2turbine">
-      <!-- W   capacity (e-) units in DISPATCHES -->
-      <!-- $/W cost units -->
-      <produces resource="electricity" dispatch="independent">
-        <capacity resource="electricity">
-          <opt_bounds>0, 200</opt_bounds> <!-- MW -->
-        </capacity>
 
-        <consumes>hydrogen</consumes>
+
+      <produces resource="electricity" dispatch="independent" consumes="hydrogen">
+        <capacity resource="electricity">
+          <opt_bounds>0, 200</opt_bounds>
+        </capacity>
 
         <transfer>
           <linear>
-            <rate resource="electricity"> 0.0125 </rate> <!-- MW-hr/kg -->
-            <rate resource="hydrogen"> -1 </rate> <!-- kg/MW-hr -->
+            <rate resource="electricity"> 0.0125 </rate>
+            <rate resource="hydrogen"> -1 </rate>
           </linear>
         </transfer>
       </produces>
 
-      <economics>
-        <lifetime>20</lifetime>
-        <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
+      <economics lifetime="20">
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none" depreciate="15">
           <driver>
             <variable>h2turbine_capacity</variable>
           </driver>
           <reference_price>
             <fixed_value>-0.947</fixed_value> <!-- $/W -->
           </reference_price>
-          <depreciate>15</depreciate>
+
         </CashFlow>
 
         <CashFlow name="fixed_OM" type="repeating" period="year" taxable="True" inflation="none">
@@ -162,7 +155,7 @@
           </reference_price>
         </CashFlow>
 
-        <CashFlow name="var_OM" type="repeating" period="hour" taxable='True' inflation='none'>
+        <CashFlow name="var_OM" type="repeating" period="hour" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
           </driver>
@@ -181,9 +174,8 @@
         </capacity>
       </produces>
 
-      <economics>
-        <lifetime>20</lifetime>
-        <CashFlow name="import_electricity" type="repeating" taxable='True' inflation='none'>
+      <economics lifetime="20">
+        <CashFlow name="import_electricity" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>
@@ -205,15 +197,14 @@
         </capacity>
       </produces>
 
-      <economics>
-        <lifetime>20</lifetime>
-        <CashFlow name="import_hydrogen" type="repeating" taxable='True' inflation='none'>
+      <economics lifetime="20">
+        <CashFlow name="import_hydrogen" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>hydrogen</activity>
             <multiplier>-1</multiplier>
           </driver>
           <reference_price>
-            <!-- ballpark $100/MWh -->
+
             <fixed_value>100e3</fixed_value>
           </reference_price>
         </CashFlow>
@@ -227,9 +218,8 @@
         </capacity>
       </demands>
 
-      <economics>
-        <lifetime>20</lifetime>
-        <CashFlow name="electricity_revenue" type="repeating" period="hour" taxable='True' inflation='none'>
+      <economics lifetime="20">
+        <CashFlow name="electricity_revenue" type="repeating" period="hour" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
           </driver>
@@ -249,9 +239,8 @@
         </capacity>
       </demands>
 
-      <economics>
-        <lifetime>20</lifetime>
-        <CashFlow name="h2_revenue" type="repeating" period="hour" taxable='True' inflation='none'>
+      <economics lifetime="20">
+        <CashFlow name="h2_revenue" type="repeating" period="hour" taxable="True" inflation="none">
           <driver>
             <activity>hydrogen</activity>
             <multiplier>1</multiplier>

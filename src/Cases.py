@@ -4,34 +4,23 @@
 """
   Defines the Cases entity.
 """
-from __future__ import unicode_literals, print_function
+import copy
+import importlib
 import os
 import sys
-import importlib
-import copy
-
-import numpy as np
-
-from HERON.src.base import Base
-
-from HERON.src.dispatch.Factory import known as known_dispatchers
-from HERON.src.dispatch.Factory import get_class as get_dispatcher
-
-from HERON.src.ValuedParams import factory as vp_factory
-from HERON.src.ValuedParamHandler import ValuedParamHandler
-
-from HERON.src.validators.Factory import known as known_validators
-from HERON.src.validators.Factory import get_class as get_validator
-
 from collections import OrderedDict
 
-import HERON.src._utils as hutils
-try:
-  import ravenframework
-except ModuleNotFoundError:
-  framework_path = hutils.get_raven_loc()
-  sys.path.append(framework_path)
+import numpy as np
+from dove.dispatch import get_class as get_dispatcher
+from dove.dispatch import known as known_dispatchers
 from ravenframework.utils import InputData, InputTypes
+
+from .base import Base
+from .validators.Factory import get_class as get_validator
+from .validators.Factory import known as known_validators
+from .ValuedParamHandler import ValuedParamHandler
+from .ValuedParams import factory as vp_factory
+
 
 class Case(Base):
   """
@@ -1100,7 +1089,7 @@ class Case(Base):
 
     # collecting all cashflows marked with levelized cost
     # NOTE: we are allowing multiple cashflows at this time, unsure how common this will be?
-    levelized_cfs = {comp: [cf for cf in comp.get_economics().get_cashflows() if cf.is_mult_target()]
+    levelized_cfs = {comp: [cf for cf in comp.economics.cashflows if cf.is_price_levelized]
                         for comp in components}
     levelized_cfs = {comp:cf for comp,cf in levelized_cfs.items() if cf} # trimming components w/o LC
 
@@ -1119,7 +1108,7 @@ class Case(Base):
       return False
 
     # 3. check the dispatchability of the components
-    if all(comp.get_interaction().is_dispatchable() != 'independent'
+    if all(comp.interaction.dispatch_flexibility != 'independent'
             for comp in levelized_cfs.keys()):
       # means that all dispatches are static, so no decisions need to be made in the inner.
       # If this is the case, we can continue with default inner objective
@@ -1176,7 +1165,7 @@ class Case(Base):
       indic['active'] = []
       for comp in components:
         comp_name = comp.name
-        for cf in comp.get_cashflows():
+        for cf in comp.cashflows:
           cf_name = cf.name
           indic['active'].append(f'{comp_name}|{cf_name}')
       self._global_econ['Indicator'] = indic

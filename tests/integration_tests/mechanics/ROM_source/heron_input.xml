@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <HERON>
   <TestInfo>
     <name>ROMSource</name>
@@ -38,9 +39,8 @@
           <sweep_values>1, 100</sweep_values>
         </capacity>
       </produces>
-      <economics>
-        <lifetime>5</lifetime>
-      </economics>
+      <economics lifetime="5">
+        </economics>
     </Component>
 
     <Component name="sink">
@@ -49,14 +49,13 @@
           <fixed_value>-100</fixed_value>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>30</lifetime>
-        <CashFlow name="sales" type="repeating" taxable='True' inflation='none' >
+      <economics lifetime="30">
+        <CashFlow name="sales" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>widgets</activity>
           </driver>
           <reference_price>
-            <ROM rom='myROM' variable='price'>
+            <ROM rom="myROM" variable="price">
               <input name="a"><fixed_value>0</fixed_value></input>
               <input name="b"><fixed_value>1</fixed_value></input>
               <input name="c"><fixed_value>2</fixed_value></input>
@@ -71,7 +70,7 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='placeholder' variable="Signal">%HERON_DATA%/TSA/Sine/arma.pk</ARMA>
+    <ARMA name="placeholder" variable="Signal">%HERON_DATA%/TSA/Sine/arma.pk</ARMA>
     <ROM name="myROM">%HERON_DATA%/ROM/linear_rom.pk</ROM>
   </DataGenerators>
 

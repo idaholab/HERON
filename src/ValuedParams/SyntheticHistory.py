@@ -42,7 +42,7 @@ class SyntheticHistory(ValuedParam):
     self._var_name = None # name of the variable within the synth hist
     self._source_kind = 'ARMA'
 
-  def read(self, comp_name, spec, mode, alias_dict=None):
+  def read(self, comp_name, spec, alias_dict=None):
     """
       Used to read valued param from XML input
       @ In, comp_name, str, name of component that this valued param will be attached to; only used for print messages
@@ -51,7 +51,7 @@ class SyntheticHistory(ValuedParam):
       @ In, alias_dict, dict, optional, aliases to use for variable naming
       @ Out, needs, list, signals needed to evaluate this ValuedParam at runtime
     """
-    super().read(comp_name, spec, mode, alias_dict=None)
+    super().read(comp_name, spec, alias_dict=None)
     # aliases get used to convert variable names, notably for the cashflow's "capacity"
     if alias_dict is None:
       alias_dict = {}

@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <HERON>
   <TestInfo>
     <name>IES</name>
@@ -31,7 +32,7 @@
       <inflation>0.06</inflation>       <!-- Try a different value -->
     </economics>
     <dispatcher>
-      <pyomo/>
+      <pyomo />
     </dispatcher>
   </Case>
 
@@ -42,8 +43,7 @@
           <sweep_values debug_value="25">25, 50</sweep_values> <!-- MW -->
         </capacity>
       </produces>
-      <economics>
-        <lifetime>5</lifetime>
+      <economics lifetime="5">
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
           <driver>
             <variable>npp_capacity</variable>
@@ -56,8 +56,7 @@
     </Component>
 
     <Component name="turbine">
-      <produces resource="electricity" dispatch="independent">
-        <consumes>steam</consumes>
+      <produces resource="electricity" dispatch="independent" consumes="steam">
         <capacity resource="electricity">
           <fixed_value>40</fixed_value> <!-- MW -->
         </capacity>
@@ -68,9 +67,8 @@
           </linear>
         </transfer>
       </produces>
-      <economics>
-        <lifetime>5</lifetime>
-      </economics>
+      <economics lifetime="5">
+        </economics>
     </Component>
 
     <Component name="wind">
@@ -82,8 +80,7 @@
           <ARMA variable="WIND">synth</ARMA>
         </capacity_factor>
       </produces>
-      <economics>
-        <lifetime>5</lifetime>
+      <economics lifetime="5">
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
           <driver>
             <variable>wind_capacity</variable>
@@ -104,11 +101,10 @@
     </Component>
 
     <Component name="HTSE">
-      <produces resource="H2" dispatch="independent">
+      <produces resource="H2" dispatch="independent" consumes="electricity,steam">
         <capacity resource="H2">
           <sweep_values debug_value="10">10, 15</sweep_values> <!-- MW -->
         </capacity>
-        <consumes>electricity,steam</consumes>
         <transfer>
           <linear>
             <rate resource="steam">-0.17</rate>
@@ -117,8 +113,7 @@
           </linear>
         </transfer>
       </produces>
-      <economics>
-        <lifetime>5</lifetime>
+      <economics lifetime="5">
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
           <driver>
             <variable>HTSE_capacity</variable>
@@ -147,8 +142,7 @@
           <fixed_value>0.2</fixed_value> <!-- Try a different value -->
         </initial_stored>
       </stores>
-      <economics>
-        <lifetime>5</lifetime>
+      <economics lifetime="5">
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
           <driver>
             <variable>H2_storage_capacity</variable>
@@ -167,9 +161,8 @@
           <multiplier>-1</multiplier>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>5</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' >
+      <economics lifetime="5">
+        <CashFlow name="e_sales" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>
@@ -187,8 +180,7 @@
           <fixed_value>-10</fixed_value>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>5</lifetime>
+      <economics lifetime="5">
         <CashFlow name="H2_sales" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>H2</activity>
@@ -203,7 +195,7 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='synth' variable="TOTALLOAD,WIND">%HERON_DATA%/TSA/NYISO/nyiso_arma_2yr.pk</ARMA>
+    <ARMA name="synth" variable="TOTALLOAD,WIND">%HERON_DATA%/TSA/NYISO/nyiso_arma_2yr.pk</ARMA>
   </DataGenerators>
 
 </HERON>

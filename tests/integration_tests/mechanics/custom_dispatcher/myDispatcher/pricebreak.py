@@ -31,7 +31,7 @@ def dispatch(info):
     if comp.name == 'power_plant':
       power_plant = comp
       break
-  electricity_avail = power_plant.get_capacity(info)[0]['electricity']
+  electricity_avail = power_plant.interaction.get_capacity(info)[0]['electricity']
   # choose how to dispatch units (define their activity)
   ## activity is: per component, per resource, vector of activity in time
   activity = {

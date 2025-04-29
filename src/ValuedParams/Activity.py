@@ -44,7 +44,7 @@ class Activity(ValuedParam):
     self._resource = None # name of the resource whose activity should be used
     self._tracking_var = None # specific tracking variable for the component
 
-  def read(self, comp_name, spec, mode, alias_dict=None):
+  def read(self, comp_name, spec, alias_dict=None):
     """
       Used to read valued param from XML input
       @ In, comp_name, str, name of component that this valued param will be attached to; only used for print messages
@@ -53,7 +53,7 @@ class Activity(ValuedParam):
       @ In, alias_dict, dict, optional, aliases to use for variable naming
       @ Out, needs, list, signals needed to evaluate this ValuedParam at runtime
     """
-    super().read(comp_name, spec, mode, alias_dict=None)
+    super().read(comp_name, spec, alias_dict=None)
     subvar = spec.parameterValues.get('tracking', None)
     self._tracking_var = subvar # NOTE this gets fixed up in the crosscheck
     # aliases get used to convert variable names, notably for the cashflow's "capacity"
@@ -70,7 +70,7 @@ class Activity(ValuedParam):
       @ Out, None
     """
     # use this chance to link the interaction tracking vars
-    ok_trackers = interaction.get_tracking_vars()
+    ok_trackers = interaction.tracking_vars
     if self._tracking_var is None:
       self._tracking_var = ok_trackers[0]
       self.raiseAMessage(f'Tracking variable not specified; using "{self._tracking_var}" ...')
@@ -79,7 +79,7 @@ class Activity(ValuedParam):
         self.raiseAnError(f'Tracking variable "{self._tracking_var}" is not one of the variables ' +
                            f'tracked by this interaction! Options are: {ok_trackers}.')
     # check that the requested resource is actually used by this interaction
-    available = interaction.get_resources()
+    available = interaction.resources
     if self._resource not in available:
       str_avail = [f'"{a}"' for a in available]
       self.raiseAnError(IOError, f'Requested <activity> value from resource "{self._resource}" but "{self._resource}" ' +

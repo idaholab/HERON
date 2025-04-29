@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <HERON>
   <TestInfo>
     <name>consumption</name>
@@ -28,7 +29,7 @@
       <verbosity>50</verbosity>
     </economics>
     <dispatcher>
-      <pyomo/>
+      <pyomo />
     </dispatcher>
   </Case>
 
@@ -36,17 +37,15 @@
     <Component name="steamer">
       <produces resource="steam" dispatch="fixed">
         <capacity resource="steam">
-          <opt_bounds debug_value='4'>1, 10</opt_bounds>
+          <opt_bounds debug_value="4">1, 10</opt_bounds>
         </capacity>
       </produces>
-      <economics>
-        <lifetime>27</lifetime>
-      </economics>
+      <economics lifetime="27">
+        </economics>
     </Component>
 
     <Component name="generator">
-      <produces resource="electricity" dispatch="independent">
-        <consumes>steam</consumes>
+      <produces resource="electricity" dispatch="independent" consumes="steam">
         <capacity resource="steam">
           <fixed_value>-100</fixed_value>
         </capacity>
@@ -57,9 +56,8 @@
           </linear>
         </transfer>
       </produces>
-      <economics>
-        <lifetime>27</lifetime>
-      </economics>
+      <economics lifetime="27">
+        </economics>
     </Component>
 
     <Component name="electr_market">
@@ -68,15 +66,14 @@
           <fixed_value>-2</fixed_value>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>30</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none'>
+      <economics lifetime="30">
+        <CashFlow name="e_sales" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
             <multiplier>-10000</multiplier>
           </driver>
           <reference_price>
-            <ARMA variable='Signal'>Price</ARMA>
+            <ARMA variable="Signal">Price</ARMA>
           </reference_price>
         </CashFlow>
       </economics>
@@ -88,15 +85,14 @@
           <fixed_value>-5</fixed_value>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>30</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none'>
+      <economics lifetime="30">
+        <CashFlow name="e_sales" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>steam</activity>
             <multiplier>-10000</multiplier>
           </driver>
           <reference_price>
-            <fixed_value>5</fixed_value>>
+            <fixed_value>5</fixed_value>&gt;
           </reference_price>
         </CashFlow>
       </economics>
@@ -105,7 +101,7 @@
   </Components>
 
   <DataGenerators>
-    <ARMA name='Price' variable="Signal">%HERON_DATA%/TSA/Sine/arma.pk</ARMA>
+    <ARMA name="Price" variable="Signal">%HERON_DATA%/TSA/Sine/arma.pk</ARMA>
   </DataGenerators>
 
 </HERON>

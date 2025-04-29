@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <HERON>
   <TestInfo>
     <name>wind_cf</name>
@@ -29,7 +30,7 @@
       <verbosity>50</verbosity>
     </economics>
     <dispatcher>
-      <pyomo/>
+      <pyomo />
     </dispatcher>
   </Case>
 
@@ -38,14 +39,13 @@
     <Component name="wind">
       <produces resource="electricity" dispatch="independent">
         <capacity resource="electricity">
-          <sweep_values debug_value="30">0, 10, 30, 50, 70, 90</sweep_values> <!-- CHANGE THE DEBUG VALUE -->
+          <sweep_values debug_value="30">0, 10, 30, 50, 70, 90</sweep_values>
         </capacity>
         <capacity_factor>
           <ARMA variable="WIND">synth</ARMA>
         </capacity_factor>
       </produces>
-      <economics>
-        <lifetime>5</lifetime>
+      <economics lifetime="5">
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
           <driver>
             <variable>wind_capacity</variable>
@@ -66,9 +66,7 @@
           <sweep_values debug_value="20">0, 20, 40, 60</sweep_values> <!-- CHANGE THE DEBUG VALUE -->
         </capacity>
       </produces>
-      <economics>
-        <lifetime>10</lifetime>
-        <!-- construction cost -->
+      <economics lifetime="10">
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
           <driver>
             <variable>npp_capacity</variable>
@@ -78,7 +76,7 @@
             <fixed_value>-3e8</fixed_value>
           </reference_price>
         </CashFlow>
-        <CashFlow name="var_OM" type="repeating" taxable='True' inflation='none' >
+        <CashFlow name="var_OM" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>
@@ -100,9 +98,8 @@
           <multiplier>-1</multiplier>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>1</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' >
+      <economics lifetime="1">
+        <CashFlow name="e_sales" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>
@@ -121,9 +118,8 @@
           <fixed_value>100</fixed_value>
         </capacity>
       </produces>
-      <economics>
-        <lifetime>1</lifetime>
-        <CashFlow name="import" type="repeating" taxable='True' inflation='none' >
+      <economics lifetime="1">
+        <CashFlow name="import" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>
@@ -139,12 +135,11 @@
     <Component name="export">
       <demands resource="electricity" dispatch="independent">
         <capacity>
-          <fixed_value>-100</fixed_value> <!-- GW -->
+          <fixed_value>-100</fixed_value>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>1</lifetime>
-        <CashFlow name="export" type="repeating" taxable='True' inflation='none' >
+      <economics lifetime="1">
+        <CashFlow name="export" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
           </driver>
@@ -159,7 +154,7 @@
 
 
   <DataGenerators>
-    <ARMA name='synth' variable="TOTALLOAD,WIND">%HERON_DATA%/TSA/NYISO/nyiso_arma_2yr.pk</ARMA>
+    <ARMA name="synth" variable="TOTALLOAD,WIND">%HERON_DATA%/TSA/NYISO/nyiso_arma_2yr.pk</ARMA>
   </DataGenerators>
 
 </HERON>

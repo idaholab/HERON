@@ -6,6 +6,7 @@
 """
 import numpy as np
 
+from dove import Storage
 from ravenframework.utils import InputData, InputTypes
 
 from .Validator import Validator
@@ -71,12 +72,12 @@ class Example(Validator):
     """
     errs = [] # TODO best format for this?
     for comp, info in dispatch._resources.items():
-      for tracker in comp.get_tracking_vars():
+      for tracker in comp.interaction.tracking_vars:
         for res in info:
           for t, time in enumerate(times):
             current = dispatch.get_activity(comp, tracker, res, time)
-            if comp.get_interaction().is_type('Storage') and t == 0:
-              init_level = comp.get_interaction().get_initial_level(meta)
+            if isinstance(comp.interaction, Storage)  and t == 0: #.is_type('Storage')
+              init_level = comp.interaction.get_initial_level(meta)
             if t > 0:
               previous = dispatch.get_activity(comp, tracker, res, times[t-1])
               delta = current - previous

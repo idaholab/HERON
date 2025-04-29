@@ -56,9 +56,9 @@ def parse(xml, loc, messageHandler):
   if components_node is None:
     raise IOError('<Components> node is missing from HERON input file!')
   for comp_xml in components_node:
-    comp = Components.Component(messageHandler=messageHandler)
+    comp = Components.HeronComponent(messageHandler=messageHandler)
     # check parsing
-    comp.read_input(comp_xml, case.get_mode())
+    comp.read_input(comp_xml, )#case.get_mode())
     components.append(comp)
   if not components:
     raise IOError('No <Component> nodes were found in the <Components> section!')

@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <HERON>
   <TestInfo>
     <name>1_simple</name>
@@ -27,7 +28,7 @@
       <verbosity>50</verbosity>
     </economics>
     <dispatcher>
-      <pyomo/>
+      <pyomo />
     </dispatcher>
   </Case>
 
@@ -36,15 +37,13 @@
     <Component name="ngcc">
 
       <produces resource="electricity" dispatch="independent">
-        <capacity resource="electricity"><!-- GW -->
+        <capacity resource="electricity">
           <sweep_values>10, 20, 30, 40, 50, 60</sweep_values>
-          <!-- <opt_bounds>30, 50</opt_bounds> -->
+
         </capacity>
       </produces>
 
-      <economics>
-        <lifetime>10</lifetime>
-        <!-- construction cost -->
+      <economics lifetime="10">
         <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
           <driver>
             <variable>ngcc_capacity</variable>
@@ -53,10 +52,10 @@
             <!-- 1000 $/kW * 1e6 kW/GW = 1e9 est cost for 1 GW NGCC -->
             <fixed_value>-1e9</fixed_value>
           </reference_price>
-          <!-- <depreciate>15</depreciate> -->
+
         </CashFlow>
 
-        <CashFlow name="var_OM" type="repeating" taxable='True' inflation='none' >
+        <CashFlow name="var_OM" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>
@@ -78,9 +77,8 @@
         </capacity>
       </produces>
 
-      <economics>
-        <lifetime>1</lifetime>
-        <CashFlow name="import" type="repeating" taxable='True' inflation='none' >
+      <economics lifetime="1">
+        <CashFlow name="import" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>
@@ -101,15 +99,14 @@
           <multiplier>-1</multiplier>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>1</lifetime>
-      </economics>
+      <economics lifetime="1">
+        </economics>
     </Component>
 
   </Components>
 
   <DataGenerators>
-    <ARMA name='synth' variable="TOTALLOAD">%HERON_DATA%/TSA/NYISO/nyiso_arma_2yr.pk</ARMA>
+    <ARMA name="synth" variable="TOTALLOAD">%HERON_DATA%/TSA/NYISO/nyiso_arma_2yr.pk</ARMA>
   </DataGenerators>
 
 </HERON>

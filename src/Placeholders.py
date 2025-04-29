@@ -442,7 +442,7 @@ class CSV(Placeholder):
                The text of this node indicates the location of the CSV file.
                This location is usually relative with respect to the HERON XML input file;
                however, a full absolute path can be used, or the path can be prepended
-               with ``\%HERON\%'' to be relative to the installation directory of HERON.
+               with ``\\%HERON\\%'' to be relative to the installation directory of HERON.
                It is expected that variables contained in this file are defined as headers
                in the first row."""
     )

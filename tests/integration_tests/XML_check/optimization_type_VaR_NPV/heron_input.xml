@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <HERON>
   <TestInfo>
     <name>optimization_type_test_VaR_NPV</name>
@@ -29,14 +30,14 @@
       <verbosity>50</verbosity>
     </economics>
     <dispatcher>
-      <pyomo/>
+      <pyomo />
     </dispatcher>
     <optimization_settings>
       <opt_metric>NPV</opt_metric>
       <stats_metric>valueAtRisk</stats_metric>
       <persistence>5</persistence>
       <algorithm>
-        <GradientDescent/>
+        <GradientDescent />
       </algorithm>
       <convergence>
         <gradient>1e-4</gradient>
@@ -55,14 +56,12 @@
           <opt_bounds>1, 10</opt_bounds>
         </capacity>
       </produces>
-      <economics>
-        <lifetime>27</lifetime>
-      </economics>
+      <economics lifetime="27">
+        </economics>
     </Component>
 
     <Component name="generator">
-      <produces resource="electricity" dispatch="independent">
-        <consumes>steam</consumes>
+      <produces resource="electricity" dispatch="independent" consumes="steam">
         <capacity resource="steam">
           <fixed_value>-100</fixed_value>
         </capacity>
@@ -73,9 +72,8 @@
           </linear>
         </transfer>
       </produces>
-      <economics>
-        <lifetime>27</lifetime>
-      </economics>
+      <economics lifetime="27">
+        </economics>
     </Component>
 
     <Component name="electr_market">
@@ -84,9 +82,8 @@
           <fixed_value>-2</fixed_value>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>30</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' >
+      <economics lifetime="30">
+        <CashFlow name="e_sales" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity>electricity</activity>
             <multiplier>-1</multiplier>
@@ -104,9 +101,8 @@
           <opt_bounds>-2e3, -2.05e3</opt_bounds>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>30</lifetime>
-        <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' >
+      <economics lifetime="30">
+        <CashFlow name="e_sales" type="repeating" taxable="True" inflation="none">
           <driver>
             <Function method="electric_consume">transfers</Function>
             <multiplier>-1</multiplier>
@@ -121,7 +117,7 @@
   </Components>
 
   <DataGenerators>
-    <!-- <ARMA name='Price' variable="Signal">%HERON_DATA%/TSA/Sine/arma.pk</ARMA> -->
+    
     <Function name="transfers">%HERON_DATA%/XML_check/transfers.py</Function>
   </DataGenerators>
 

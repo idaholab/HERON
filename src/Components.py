@@ -506,6 +506,7 @@ class HeronStorage(HeronInteraction, DoveStorage):
   """
   Explains a particular interaction, where a resource is stored and released later
   """
+
   def get_initial_level(self, meta):
     """
     Find initial level of the storage
@@ -517,14 +518,22 @@ class HeronStorage(HeronInteraction, DoveStorage):
     meta["request"] = request
     pct = self._initial_stored.evaluate(meta, target_var=res)[0][res]
     if not (0 <= pct <= 1):
-      self.raiseAnError(
-        ValueError,
-        f'While calculating initial storage level for storage "{self.tag}", '
-        + f"an invalid percent was provided/calculated ({pct}). Initial levels should be between 0 and 1, inclusive.",
-      )
-    amt = pct * self.get_capacity(meta)[0][res]
+      self.raiseAnError(ValueError, f'While calculating initial storage level for storage "{self.tag}", ' +
+          f'an invalid percent was provided/calculated ({pct}). Initial levels should be between 0 and 1, inclusive.')
+    amt = pct * self.get_capacity(meta)[0][self.get_resource()]
     return amt
 
+  def get_charge_rate_limits(self, meta):
+    """
+      Get the max rates for charging and discharging the storage
+      @ In, meta, dict, additional variable passthrough
+      @ Out, charge_amt, float | None, max storage charge rate
+      @ Out, discharge_amt, float | None, max storage discharge rate
+    """
+    capacity = self.get_capacity(meta)[0][self.get_resource()]
+    charge_amt = None if self._max_charge_rate is None else self._max_charge_rate * capacity
+    discharge_amt = None if self._max_charge_rate is None else self._max_discharge_rate * capacity
+    return charge_amt, discharge_amt
 
 class HeronDemand(HeronInteraction, DoveDemand):
   """

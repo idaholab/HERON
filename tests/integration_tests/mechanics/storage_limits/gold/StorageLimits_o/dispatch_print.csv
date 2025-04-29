@@ -1,0 +1,6 @@
+RAVEN_sample_ID,Time,Year,_ROM_Cluster,scaling,Dispatch__source__production__resource,Dispatch__storage__level__resource,Dispatch__storage__charge__resource,Dispatch__storage__discharge__resource,Dispatch__sink__production__resource,price,ProbabilityWeight-price,PointProbability,prefix,ProbabilityWeight-Time,ProbabilityWeight,ProbabilityWeight-Year,ProbabilityWeight-_ROM_Cluster
+0,0,0,0,1.0,2.0,1.0,-1.0,0.0,-1.0,0,1.0,1.0,1,1.0,1.0,1.0,1.0
+0,1,0,0,1.0,2.0,2.0,-1.0,0.0,-1.0,0,1.0,1.0,1,1.0,1.0,1.0,1.0
+0,2,0,0,1.0,2.0,3.0,-1.0,0.0,-1.0,0,1.0,1.0,1,1.0,1.0,1.0,1.0
+0,3,0,0,1.0,2.0,1.0,0.0,2.0,-4.0,2,1.0,1.0,1,1.0,1.0,1.0,1.0
+0,4,0,0,1.0,2.0,0.0,-1.0,2.0,-3.0,1,1.0,1.0,1,1.0,1.0,1.0,1.0

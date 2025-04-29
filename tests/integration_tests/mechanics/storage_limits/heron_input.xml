@@ -1,0 +1,101 @@
+<HERON>
+  <TestInfo>
+    <name>storage_limits</name>
+    <author>j-bryan</author>
+    <created>2025-04-25</created>
+    <description>
+      Tests limiting storage charge and discharge rates. The storage charge/discharge
+      limits affect limits the amount of "resource" that is stored in the first 3 time
+      steps (without the charging rate limit, the storage would be able to fill completely),
+      and the discharge limit prevents the storage from discharging the full stored capacity
+      at the higher of the two non-zero price time steps. Instead, the storage discharge is
+      forced to discharge across both non-zero price time steps.
+    </description>
+    <classesTested>HERON</classesTested>
+  </TestInfo>
+
+  <Case name="StorageLimits">
+    <mode>sweep</mode>
+    <verbosity>debug</verbosity>
+    <debug>
+      <cashflow_plot>False</cashflow_plot>
+    </debug>
+    <num_arma_samples>1</num_arma_samples>
+    <time_discretization>
+      <time_variable>Time</time_variable>
+      <end_time>4</end_time>
+      <num_steps>5</num_steps>
+    </time_discretization>
+    <economics>
+      <ProjectTime>1</ProjectTime>
+      <DiscountRate>0.08</DiscountRate>
+      <tax>0.2</tax>
+      <inflation>0.06</inflation>
+      <verbosity>50</verbosity>
+    </economics>
+    <dispatcher>
+      <pyomo/>
+    </dispatcher>
+  </Case>
+
+  <Components>
+    <Component name="source">
+      <produces resource="resource" dispatch="fixed">
+        <capacity resource="resource">
+          <sweep_values debug_value="2">0, 1</sweep_values>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>1</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="storage">
+      <stores resource="resource" dispatch="independent">
+        <capacity resource="resource">
+          <fixed_value>4</fixed_value>
+        </capacity>
+        <max_charge_rate>0.25</max_charge_rate>
+        <max_discharge_rate>0.5</max_discharge_rate>
+        <initial_stored>
+          <fixed_value>0.0</fixed_value>
+        </initial_stored>
+      </stores>
+      <economics>
+        <lifetime>1</lifetime>
+      </economics>
+    </Component>
+
+    <Component name="sink">
+      <demands resource="resource" dispatch="independent">
+        <capacity>
+          <fixed_value>-10</fixed_value>
+        </capacity>
+      </demands>
+      <economics>
+        <lifetime>1</lifetime>
+        <CashFlow name="sales" type="repeating" taxable="False" inflation="False">
+          <driver>
+            <activity>resource</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <CSV variable="price">price</CSV>
+          </reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+  </Components>
+
+  <DataGenerators>
+    <CSV name="price" variable="price">price.csv</CSV>
+    <!--
+      2       *
+      1      / `*
+      0 *-*-*
+        0 1 2 3 4
+    -->
+  </DataGenerators>
+
+</HERON>

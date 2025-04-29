@@ -198,12 +198,13 @@ class PyomoModelHandler:
     return prod_name
 
 
-  def _create_production_variable(self, comp, tag=None, add_bounds=True, **kwargs):
+  def _create_production_variable(self, comp, tag=None, add_bounds=True, bounds=None, **kwargs):
     """
       Creates production pyomo variable object for a component
       @ In, comp, HERON Component, component to make production variables for
       @ In, tag, str, optional, if not None then name will be component_[tag]; otherwise "production"
       @ In, add_bounds, bool, optional, if True then determine and set bounds for variable
+      @ In, bounds, Iterable[float], optional, custom bounds to set for the variable; ignored if add_bounds=True
       @ In, kwargs, dict, optional, passalong kwargs to pyomo variable
       @ Out, prod_name, str, name of production variable
     """
@@ -234,7 +235,7 @@ class PyomoModelHandler:
       bounds = lambda m, r, t: (mins[t] if r == limit_r else None, caps[t] if r == limit_r else None)
       initial = lambda m, r, t: inits[t] if r == limit_r else 0
     else:
-      bounds = (None, None)
+      bounds = bounds or (None, None)
       initial = 0
     # production variable depends on resources, time
     #FIXME initials! Should be lambda with mins for tracking var!
@@ -430,8 +431,18 @@ class PyomoModelHandler:
     # -> set operational limits
     # self._create_capacity(m, comp, level_name, meta)
     # (2, 3) separate charge/discharge trackers, so we can implement round-trip efficiency and ramp rates
-    charge_name = self._create_production_variable(comp, tag='charge', add_bounds=False, within=pyo.NonPositiveReals)
-    discharge_name = self._create_production_variable(comp, tag='discharge', add_bounds=False, within=pyo.NonNegativeReals)
+    # Storage charging and/or discharging rates might be limited to less than the component capacity
+    max_charge, max_discharge = comp.get_interaction().get_charge_rate_limits(self.meta)
+    charge_name = self._create_production_variable(comp,
+                                                   tag='charge',
+                                                   add_bounds=False,
+                                                   bounds=None if not max_charge else (-max_charge, 0),
+                                                   within=pyo.NonPositiveReals)
+    discharge_name = self._create_production_variable(comp,
+                                                      tag='discharge',
+                                                      add_bounds=False,
+                                                      bounds=None if not max_discharge else (0, max_discharge),
+                                                      within=pyo.NonNegativeReals)
     # balance level, charge/discharge
     level_rule_name = prefix + '_level_constr'
     if comp.get_interaction().apply_periodic_level:

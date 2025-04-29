@@ -869,6 +869,11 @@ class Storage(Interaction):
     # round trip efficiency
     descr = r"""round-trip efficiency for this component as a scalar multiplier. \default{1.0}"""
     specs.addSub(InputData.parameterInputFactory('RTE', contentType=InputTypes.FloatType, descr=descr))
+    # max charge/discharge rates
+    descr=r"""maximum storage charge rate as a fraction of the storage capacity, from 0 to 1. \default{1.0}"""
+    specs.addSub(InputData.parameterInputFactory('max_charge_rate', contentType=InputTypes.FloatType, descr=descr))
+    descr=r"""maximum storage discharge rate as a fraction of the storage capacity, from 0 to 1. \default{1.0}"""
+    specs.addSub(InputData.parameterInputFactory('max_discharge_rate', contentType=InputTypes.FloatType, descr=descr))
     return specs
 
   def __init__(self, **kwargs):
@@ -884,6 +889,8 @@ class Storage(Interaction):
     self._initial_stored = None      # how much resource does this component start with stored?
     self._strategy = None            # how to operate storage unit
     self._tracking_vars = ['level', 'charge', 'discharge'] # stored quantity, charge activity, discharge activity
+    self._max_charge_rate = None     # maximum rate storage charges at (default = 1.0 = full capacity)
+    self._max_discharge_rate = None  # maximum rate storage discharges at (default = 1.0 = full capacity)
 
   def read_input(self, specs, mode, comp_name):
     """
@@ -907,6 +914,17 @@ class Storage(Interaction):
         self._set_valued_param('_strategy', comp_name, item, mode)
       elif item.getName() == 'RTE':
         self._sqrt_rte = np.sqrt(item.value)
+      elif item.getName() == 'max_charge_rate':
+        self._max_charge_rate = item.value
+        if self._max_charge_rate <= 0 or self._max_charge_rate > 1:
+          raise ValueError("Value for <max_charge_rate> must be greater than 0 and less than or equal to 1. "
+                           f"Received {self._max_charge_rate}.")
+      elif item.getName() == 'max_discharge_rate':
+        self._max_discharge_rate = item.value
+        if self._max_discharge_rate < 0 or self._max_discharge_rate > 1:
+          raise ValueError("Value for <max_discharge_rate> must be greater than 0 and less than or equal to 1. "
+                           f"Received {self._max_discharge_rate}.")
+    # TODO: We might want to relax this constraint. For example
     assert len(self._stores) == 1, f'Multiple storage resources given for component "{comp_name}"'
     self._stores = self._stores[0]
     # checks and defaults
@@ -1048,9 +1066,20 @@ class Storage(Interaction):
     if not (0 <= pct <= 1):
       self.raiseAnError(ValueError, f'While calculating initial storage level for storage "{self.tag}", ' +
           f'an invalid percent was provided/calculated ({pct}). Initial levels should be between 0 and 1, inclusive.')
-    amt = pct * self.get_capacity(meta)[0][res]
+    amt = pct * self.get_capacity(meta)[0][self.get_resource()]
     return amt
 
+  def get_charge_rate_limits(self, meta):
+    """
+      Get the max rates for charging and discharging the storage
+      @ In, meta, dict, additional variable passthrough
+      @ Out, charge_amt, float | None, max storage charge rate
+      @ Out, discharge_amt, float | None, max storage discharge rate
+    """
+    capacity = self.get_capacity(meta)[0][self.get_resource()]
+    charge_amt = None if self._max_charge_rate is None else self._max_charge_rate * capacity
+    discharge_amt = None if self._max_charge_rate is None else self._max_discharge_rate * capacity
+    return charge_amt, discharge_amt
 
 
 

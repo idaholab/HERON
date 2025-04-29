@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <HERON>
   <TestInfo>
     <name>storage_limits</name>
@@ -34,7 +35,7 @@
       <verbosity>50</verbosity>
     </economics>
     <dispatcher>
-      <pyomo/>
+      <pyomo />
     </dispatcher>
   </Case>
 
@@ -45,25 +46,21 @@
           <sweep_values debug_value="2">0, 1</sweep_values>
         </capacity>
       </produces>
-      <economics>
-        <lifetime>1</lifetime>
-      </economics>
+      <economics lifetime="1">
+        </economics>
     </Component>
 
     <Component name="storage">
-      <stores resource="resource" dispatch="independent">
+      <stores resource="resource" dispatch="independent" max_charge_rate="0.25" max_discharge_rate="0.5">
         <capacity resource="resource">
           <fixed_value>4</fixed_value>
         </capacity>
-        <max_charge_rate>0.25</max_charge_rate>
-        <max_discharge_rate>0.5</max_discharge_rate>
         <initial_stored>
           <fixed_value>0.0</fixed_value>
         </initial_stored>
       </stores>
-      <economics>
-        <lifetime>1</lifetime>
-      </economics>
+      <economics lifetime="1">
+        </economics>
     </Component>
 
     <Component name="sink">
@@ -72,8 +69,7 @@
           <fixed_value>-10</fixed_value>
         </capacity>
       </demands>
-      <economics>
-        <lifetime>1</lifetime>
+      <economics lifetime="1">
         <CashFlow name="sales" type="repeating" taxable="False" inflation="False">
           <driver>
             <activity>resource</activity>

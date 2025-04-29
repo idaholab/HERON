@@ -99,6 +99,20 @@ def transform_xml(input_file, output_file, dry_run) -> None:
                         stores.set('periodic_level', periodic_level_value)
                         stores.remove(periodic_level)
 
+                    # Handle max_charge_rate
+                    max_charge_rate = stores.find('max_charge_rate')
+                    if max_charge_rate is not None:
+                        max_charge_rate_value = max_charge_rate.text
+                        stores.set('max_charge_rate', max_charge_rate_value)
+                        stores.remove(max_charge_rate)
+
+                    # Handle max_discharge_rate
+                    max_discharge_rate = stores.find('max_discharge_rate')
+                    if max_discharge_rate is not None:
+                        max_discharge_rate_value = max_discharge_rate.text
+                        stores.set('max_discharge_rate', max_discharge_rate_value)
+                        stores.remove(max_discharge_rate)
+
                     # Handle the RTE element
                     rte = stores.find('RTE')
                     if rte is not None:
@@ -132,7 +146,7 @@ def main() -> None:
         output_file = args.output_file
     else:
         input_filename = os.path.basename(args.input_file)
-        output_file = os.path.dirname(args.input_file) / f"new_{input_filename}"
+        output_file = os.path.join(os.path.dirname(args.input_file), f"new_{input_filename}")
 
     transform_xml(args.input_file, output_file, args.dry_run)
 

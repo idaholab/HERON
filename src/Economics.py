@@ -452,16 +452,19 @@ class CashFlow:
       @ Out, price_is_levelized, bool, are we computing levelized cost for this cashflow?
     """
     levelized_cost = False
+    multiplier = 1
     for sub in node.subparts:
       if sub.name == 'levelized_cost':
         levelized_cost = True
         __ = node.popSub('levelized_cost')
+      elif sub.name == "multiplier":
+        multiplier = sub.value
 
     try:
       self._set_valued_param('_alpha', node)
     except AttributeError as e:
       if levelized_cost:
-        self._set_fixed_param('_alpha', 1)
+        self._set_fixed_param('_alpha', 1 * multiplier)
       else:
         raise IOError(f'No <reference_price> node provided for CashFlow {self.name}!') from e
     price_is_levelized = bool(levelized_cost)

@@ -83,29 +83,29 @@ class PyomoModelHandler:
       for t in range(len(self.model.Times)):
         # update time index in meta for capacity/minimum evaluation
         context['HERON']['time_index'] = t + self.model.time_offset
-        # cap_val = comp.get_capacity(context)[0][comp.get_capacity_var()] # get capacity for this component
-        # caps.append(cap_val)
-        # mins.append(cap_val if (comp.is_dispatchable() == 'fixed') else comp.get_minimum(self.meta)[0][comp.get_capacity_var()]) # get minimum for this component
-        context["HERON"]["activity"] = {comp.get_tracking_vars()[0]: {comp.get_capacity_var(): 0}}
+        cap_val = comp.get_capacity(context)[0][comp.get_capacity_var()] # get capacity for this component
+        caps.append(cap_val)
+        mins.append(cap_val if (comp.is_dispatchable() == 'fixed') else comp.get_minimum(self.meta)[0][comp.get_capacity_var()]) # get minimum for this component
+        # We have to spoof activity to get the other cashflow params
         recurring_cfs = [cf for cf in comp.get_cashflows() if cf.get_type() == 'repeating' and cf.get_period() != "year"]
         for cf in recurring_cfs:
+          context["HERON"]["activity"] = {cf.get_driver()._vp._tracking_var: {comp.get_capacity_var(): 0}}
           params = cf.calculate_params(context)
           alphas.append(params["alpha"])
           dprimes.append(params["ref_driver"])
           scaling_factors.append(params["scaling"])
           mult_target = cf.is_mult_target()
 
-      # if comp.get_interaction().get_transfer() is not None:
-      #   coeffs = comp.get_interaction().get_transfer().get_coefficients()
-      #   print(coeffs) # ensure transfer function is evaluated)
-      # comp._capacity_vector_t = caps
-      # comp._minimum_vector_t = mins
+      if comp.get_interaction().get_transfer() is not None:
+        comp._coeffs = comp.get_interaction().get_transfer().get_coefficients()
+      comp._capacity_vector_t = caps
+      comp._minimum_vector_t = mins
       comp._alpha_vector_t = alphas
       comp._dprime_vector_t = dprimes
       comp._scaling_factor_vector_t = scaling_factors
-      # comp._capacity = comp._capacity_vector_t[-1] # get capacity for this component
-      # comp._minimum = comp._minimum_vector_t[-1] # get minimum for this component
-      # comp._r = self.model.resource_index_map[comp][comp.get_capacity_var()] # production index of the governing resource
+      comp._capacity = comp._capacity_vector_t[-1] # get capacity for this component
+      comp._minimum = comp._minimum_vector_t[-1] # get minimum for this component
+      comp._r = self.model.resource_index_map[comp][comp.get_capacity_var()] # production index of the governing resource
 
       # if comp.get_interaction().is_type("Storage"):
       #   comp.get_interaction()._initial_storage = self.initial_storage[comp]
@@ -253,15 +253,15 @@ class PyomoModelHandler:
       tag = 'production'
     name = comp.name
     cap_res = comp.get_capacity_var()       # name of resource that defines capacity
-    limit_r = self.model.resource_index_map[comp][cap_res] # production index of the governing resource
+    limit_r = self.resource_index_map[comp][cap_res] # production index of the governing resource
     # create pyomo indexer for this component's resources
     indexer_name = f'{name}_res_index_map'
     indexer = getattr(self.model, indexer_name, None)
     if indexer is None:
-      indexer = pyo.Set(initialize=range(len(self.model.resource_index_map[comp])))
+      indexer = pyo.Set(initialize=range(len(self.resource_index_map[comp])))
       setattr(self.model, indexer_name, indexer)
     prod_name = f'{name}_{tag}'
-    caps, mins = self._find_production_limits(comp)
+    caps, mins = comp._capacity_vector_t, comp._minimum_vector_t
     if min(caps) < 0:
       # quick check that capacities signs are consistent #FIXME: revisit, this is an assumption
       assert max(caps) <= 0, \
@@ -298,8 +298,8 @@ class PyomoModelHandler:
     """
     # ramping is defined in terms of the capacity variable
     cap_res = comp.get_capacity_var()       # name of resource that defines capacity
-    cap = comp.get_capacity(self.meta)[0][cap_res]
-    r = self.model.resource_index_map[comp][cap_res] # production index of the governing resource
+    cap = comp._capacity
+    r = self.resource_index_map[comp][cap_res] # production index of the governing resource
     # NOTE: this includes the built capacity * capacity factor, if any, which assumes
     # the ramp rate depends on the available capacity, not the built capacity.
     limit_delta = comp.ramp_limit * cap # NOTE: if cap is negative, then this is negative.
@@ -349,8 +349,8 @@ class PyomoModelHandler:
       @ Out, None
     """
     cap_res = comp.get_capacity_var()       # name of resource that defines capacity
-    r = self.model.resource_index_map[comp][cap_res] # production index of the governing resource
-    caps, mins = self._find_production_limits(comp)
+    r = self.resource_index_map[comp][cap_res] # production index of the governing resource
+    caps, mins = comp._capacity_vector_t, comp._minimum_vector_t
     # capacity
     max_rule = lambda mod, t: prl.capacity_rule(prod_name, r, caps, mod, t)
     constr = pyo.Constraint(self.model.T, rule=max_rule)
@@ -369,33 +369,6 @@ class PyomoModelHandler:
           values[k] = cap
         var.set_values(values)
     setattr(self.model, f'{comp.name}_{cap_res}_minprod_constr', constr)
-
-
-  def _find_production_limits(self, comp):
-    """
-      Determines the capacity limits of a unit's operation, in time.
-      @ In, comp, HERON Component, component to make variables for
-      @ Out, caps, array, max production values by time
-      @ Out, mins, array, min production values by time
-    """
-    cap_res = comp.get_capacity_var()       # name of resource that defines capacity
-    r = self.model.resource_index_map[comp][cap_res] # production index of the governing resource
-    # production is always lower than capacity
-    ## NOTE get_capacity returns (data, meta) and data is dict
-    ## TODO does this work with, e.g., ARMA-based capacities?
-    ### -> "time" is stored on "m" and could be used to correctly evaluate the capacity
-    caps = []
-    mins = []
-    for t, time in enumerate(self.model.Times):
-      self.meta['HERON']['time_index'] = t + self.model.time_offset
-      cap = comp.get_capacity(self.meta)[0][cap_res] # value of capacity limit (units of governing resource)
-      caps.append(cap)
-      if (comp.is_dispatchable() == 'fixed'):
-        minimum = cap
-      else:
-        minimum = comp.get_minimum(self.meta)[0][cap_res]
-      mins.append(minimum)
-    return caps, mins
 
 
   def _create_transfer(self, comp, prod_name):
@@ -425,13 +398,13 @@ class PyomoModelHandler:
       @ Out, None
     """
     name = comp.name
-    coeffs = transfer.get_coefficients()
+    coeffs = comp._coeffs
     coeffs_iter = iter(coeffs.items())
     first_name, first_coef = next(coeffs_iter)
-    first_r = self.model.resource_index_map[comp][first_name]
+    first_r = self.resource_index_map[comp][first_name]
     for resource, coef in coeffs_iter:
       ratio = coef / first_coef
-      r = self.model.resource_index_map[comp][resource]
+      r = self.resource_index_map[comp][resource]
       rule_name = f'{name}_{resource}_{first_name}_transfer'
       rule = lambda mod, t: prl.ratio_transfer_rule(ratio, r, first_r, prod_name, mod, t)
       constr = pyo.Constraint(self.model.T, rule=rule)
@@ -452,7 +425,7 @@ class PyomoModelHandler:
     #   r1, r2 are resource names
     #   o1, o2 are polynomial orders (may not be integers?)
     #   n is the float polynomial coefficient for the term
-    rule = lambda mod, t: prl.poly_transfer_rule(coeffs, self.model.resource_index_map[comp], prod_name, mod, t)
+    rule = lambda mod, t: prl.poly_transfer_rule(coeffs, self.resource_index_map[comp], prod_name, mod, t)
     constr = pyo.Constraint(self.model.T, rule=rule)
     setattr(self.model, rule_name, constr)
 
@@ -599,34 +572,38 @@ class PyomoModelHandler:
       Compute levelized cashflows by solving non_multiplied + x * multiplied = npv_target.
       Returns x (with a sign flip to match the cashflow_rule convention).
     """
-    specific_meta = dict(meta)
-    resource_indexer = specific_meta['HERON']['resource_indexer']
     total_non = 0.0
     total_mul = 0.0
-    args = state_args or {}
 
+    # only consider components that have cashflows
+    comps_with_recurring_cfs = []
     for comp in components:
-      specific_meta['HERON']['component'] = comp
+      for cf in comp.get_cashflows():
+        if cf.get_type() == 'repeating' and cf.get_period() != "year":
+          comps_with_recurring_cfs.append(comp)
+          comp._is_levelized = cf.is_mult_target()
+          continue
+
+    for comp in comps_with_recurring_cfs:
       comp_non = 0.0
       comp_mul = 0.0
-
+      cfs = []
       for t, time in enumerate(times):
-        specific_meta['HERON']['time_index'] = t + time_offset
-        specific_meta['HERON']['time_value'] = time
+        for tracker in comp.get_tracking_vars():
+          for res in self.resource_index_map[comp]:
+            pyo_activity = self._build_specific_activity(comp, activity, time, state_args)
+            cfs.append(comp._alpha_vector_t[t] * (pyo_activity[tracker][res] / comp._dprime_vector_t[t])**comp._scaling_factor_vector_t[t])
 
-        specific_activity = self._build_specific_activity(comp, activity, time, args)
-
-        cfs = comp.get_state_cost(specific_activity, specific_meta, marginal=True)
         if comp.levelized_meta:
           # extract the levelized cashflow term(s)
           for lvl_key in comp.levelized_meta:
             comp_mul += cfs.pop(lvl_key, 0.0)
         else:
-          comp_non += sum(cfs.values())
+          comp_non += sum(cfs)
 
       total_non += comp_non
       total_mul += comp_mul
 
-    target = specific_meta['HERON']['Case'].npv_target
+    target = self.case.npv_target
     # solve: total_non + x * total_mul = target  =>  x = (target - total_non) / (total_mul + eps)
     return -(target - total_non) / (total_mul + self._eps)

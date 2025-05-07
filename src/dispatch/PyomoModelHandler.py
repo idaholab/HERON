@@ -5,6 +5,7 @@
 """
 import numpy as np
 import pyomo.environ as pyo
+from copy import deepcopy
 
 from . import PyomoRuleLibrary as prl
 from . import putils
@@ -35,6 +36,7 @@ class PyomoModelHandler:
     self.components = components
     self.resources = resources
     self.initial_storage = initial_storage
+    self.resource_index_map = meta["HERON"]["resource_indexer"]
     self.meta = meta
     self.model = self.build_model()
 
@@ -71,7 +73,46 @@ class PyomoModelHandler:
       @ In, None
       @ Out, None
     """
+    context = deepcopy(self.meta)
     for comp in self.components:
+      caps = []
+      mins = []
+      alphas = []
+      dprimes = []
+      scaling_factors = []
+      for t in range(len(self.model.Times)):
+        # update time index in meta for capacity/minimum evaluation
+        context['HERON']['time_index'] = t + self.model.time_offset
+        # cap_val = comp.get_capacity(context)[0][comp.get_capacity_var()] # get capacity for this component
+        # caps.append(cap_val)
+        # mins.append(cap_val if (comp.is_dispatchable() == 'fixed') else comp.get_minimum(self.meta)[0][comp.get_capacity_var()]) # get minimum for this component
+        context["HERON"]["activity"] = {comp.get_tracking_vars()[0]: {comp.get_capacity_var(): 0}}
+        recurring_cfs = [cf for cf in comp.get_cashflows() if cf.get_type() == 'repeating' and cf.get_period() != "year"]
+        for cf in recurring_cfs:
+          params = cf.calculate_params(context)
+          alphas.append(params["alpha"])
+          dprimes.append(params["ref_driver"])
+          scaling_factors.append(params["scaling"])
+          mult_target = cf.is_mult_target()
+
+      # if comp.get_interaction().get_transfer() is not None:
+      #   coeffs = comp.get_interaction().get_transfer().get_coefficients()
+      #   print(coeffs) # ensure transfer function is evaluated)
+      # comp._capacity_vector_t = caps
+      # comp._minimum_vector_t = mins
+      comp._alpha_vector_t = alphas
+      comp._dprime_vector_t = dprimes
+      comp._scaling_factor_vector_t = scaling_factors
+      # comp._capacity = comp._capacity_vector_t[-1] # get capacity for this component
+      # comp._minimum = comp._minimum_vector_t[-1] # get minimum for this component
+      # comp._r = self.model.resource_index_map[comp][comp.get_capacity_var()] # production index of the governing resource
+
+      # if comp.get_interaction().is_type("Storage"):
+      #   comp.get_interaction()._initial_storage = self.initial_storage[comp]
+      #   comp.get_interaction()._max_charge, comp.get_interaction()._max_discharge = comp.get_interaction().get_charge_rate_limits(context)
+        # if comp.is_governed():
+        #   comp._activity = comp.get_interaction().get_strategy().evaluate(self.meta)[0]['level']
+
       self._process_component(comp)
     self._create_conservation() # conservation of resources (e.g. production == consumption)
     self._create_objective() # objective function
@@ -511,92 +552,81 @@ class PyomoModelHandler:
     if state_args is None:
       state_args = {}
 
-    if meta['HERON']['Case'].use_levelized_inner:
-      total = self._compute_levelized_cashflows(components, activity, times, meta, state_args, time_offset)
-      return total
+    # dispatch to levelized if requested
+    if self.case.use_levelized_inner:
+      return self._compute_levelized_cashflows(
+        components, activity, times, meta, state_args, time_offset
+      )
 
-    total = 0
-    specific_meta = dict(meta) # TODO what level of copying do we need here?
-    resource_indexer = meta['HERON']['resource_indexer']
+    total = 0.0
 
-    #print('DEBUGG computing cashflows!')
+    # only consider components that have cashflows
+    comps_with_recurring_cfs = []
     for comp in components:
-      #print(f'DEBUGG ... comp {comp.name}')
-      specific_meta['HERON']['component'] = comp
-      comp_subtotal = 0
+      for cf in comp.get_cashflows():
+        if cf.get_type() == 'repeating' and cf.get_period() != "year":
+          comps_with_recurring_cfs.append(comp)
+          continue
+
+    for comp in comps_with_recurring_cfs:
+      cfs = []
       for t, time in enumerate(times):
-        #print(f'DEBUGG ... ... time {t}')
-        # NOTE care here to assure that pyomo-indexed variables work here too
-        specific_activity = {}
         for tracker in comp.get_tracking_vars():
-          specific_activity[tracker] = {}
-          for resource in resource_indexer[comp]:
-            specific_activity[tracker][resource] = activity.get_activity(comp, tracker, resource, time, **state_args)
-        specific_meta['HERON']['time_index'] = t + time_offset
-        specific_meta['HERON']['time_value'] = time
-        cfs = comp.get_state_cost(specific_activity, specific_meta, marginal=True)
-        time_subtotal = sum(cfs.values())
-        comp_subtotal += time_subtotal
-      total += comp_subtotal
+          for res in self.resource_index_map[comp]:
+            pyo_activity = self._build_specific_activity(comp, activity, time, state_args)
+            cfs.append(comp._alpha_vector_t[t] * (pyo_activity[tracker][res] / comp._dprime_vector_t[t])**comp._scaling_factor_vector_t[t])
+        total += sum(cfs)
+
     return total
+
+
+  def _build_specific_activity(self, comp, activity, time, state_args):
+    """
+      Helper to build the activity dict for a component at a given time.
+    """
+    snapshot = {}
+    for tracker in comp.get_tracking_vars():
+      snapshot[tracker] = {
+        resource: activity.get_activity(
+          comp, tracker, resource, time, **state_args
+        )
+        for resource in self.resource_index_map[comp]
+      }
+    return snapshot
 
   def _compute_levelized_cashflows(self, components, activity, times, meta, state_args=None, time_offset=0):
     """
-      Method to compute CashFlow evaluations given components and their activity.
-      @ In, components, list, HERON components whose cashflows should be evaluated
-      @ In, activity, DispatchState instance, activity by component/resources/time
-      @ In, times, np.array(float), time values to evaluate; may be length 1 or longer
-      @ In, meta, dict, additional info to be passed through to functional evaluations
-      @ In, state_args, dict, optional, additional arguments to pass while getting activity state
-      @ In, time_offset, int, optional, increase time index tracker by this value if provided
-      @ Out, total, float, total cashflows for given components
+      Compute levelized cashflows by solving non_multiplied + x * multiplied = npv_target.
+      Returns x (with a sign flip to match the cashflow_rule convention).
     """
-    total = 0
-    specific_meta = dict(meta) # TODO what level of copying do we need here?
-    resource_indexer = meta['HERON']['resource_indexer']
-
-    # How does this work?
-    #   The general equation looks like:
-    #
-    #     SUM(Non-Multiplied Terms) + x * SUM(Multiplied Terms) = Target
-    #
-    #   and we are solving for `x`. Target is 0 by default. Terms here are marginal cashflows.
-    #   Summations here occur over: components, time steps, tracking variables, and resources.
-    #   Typically, there is only 1 multiplied term/cash flow.
-
-    multiplied = 0
-    non_multiplied = 0
+    specific_meta = dict(meta)
+    resource_indexer = specific_meta['HERON']['resource_indexer']
+    total_non = 0.0
+    total_mul = 0.0
+    args = state_args or {}
 
     for comp in components:
       specific_meta['HERON']['component'] = comp
-      multiplied_comp = 0
-      non_multiplied_comp = 0
+      comp_non = 0.0
+      comp_mul = 0.0
+
       for t, time in enumerate(times):
-        # NOTE care here to assure that pyomo-indexed variables work here too
-        specific_activity = {}
-        for tracker in comp.get_tracking_vars():
-          specific_activity[tracker] = {}
-          for resource in resource_indexer[comp]:
-            specific_activity[tracker][resource] = activity.get_activity(comp, tracker, resource, time, **state_args)
         specific_meta['HERON']['time_index'] = t + time_offset
         specific_meta['HERON']['time_value'] = time
+
+        specific_activity = self._build_specific_activity(comp, activity, time, args)
+
         cfs = comp.get_state_cost(specific_activity, specific_meta, marginal=True)
-
-        # there is an assumption here that if a component has a levelized cost, marginal cashflow
-        # then it is the only marginal cashflow
         if comp.levelized_meta:
-          for cf in comp.levelized_meta.keys():
-            lcf = cfs.pop(cf) # this should be ok as long as HERON init checks are successful
-            multiplied_comp += lcf
+          # extract the levelized cashflow term(s)
+          for lvl_key in comp.levelized_meta:
+            comp_mul += cfs.pop(lvl_key, 0.0)
         else:
-          time_subtotal = sum(cfs.values())
-          non_multiplied_comp += time_subtotal
+          comp_non += sum(cfs.values())
 
-      multiplied     += multiplied_comp
-      non_multiplied += non_multiplied_comp
+      total_non += comp_non
+      total_mul += comp_mul
 
-    # at this point, there should be a not None NPV Target
-    multiplied += self._eps
-    total = (meta['HERON']['Case'].npv_target - non_multiplied) / multiplied
-    total *= -1
-    return total
+    target = specific_meta['HERON']['Case'].npv_target
+    # solve: total_non + x * total_mul = target  =>  x = (target - total_non) / (total_mul + eps)
+    return -(target - total_non) / (total_mul + self._eps)

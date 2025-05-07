@@ -77,10 +77,10 @@
         <CashFlow name="sales" type="repeating" taxable="False" inflation="False">
           <driver>
             <activity>resource</activity>
-            <multiplier>-1</multiplier>
           </driver>
           <reference_price>
             <CSV variable="price">price</CSV>
+            <multiplier>-1</multiplier>            
           </reference_price>
         </CashFlow>
       </economics>

@@ -91,10 +91,10 @@
         <CashFlow name="VOM" type="repeating" taxable="True" inflation="none">
           <driver>
             <activity tracking="discharge">a</activity>
-            <multiplier>-1</multiplier> <!-- there's an extra negative associated with discharging-->
           </driver>
           <reference_price>
             <levelized_cost/> <!-- FINDING LEVELIZED COST HERE! -->
+            <multiplier>-1</multiplier> <!-- there's an extra negative associated with discharging-->            
           </reference_price>
         </CashFlow>
       </economics>
@@ -111,10 +111,10 @@
         <CashFlow name="sales" type="repeating" taxable="False" inflation="none">
           <driver>
             <activity>a</activity>
-            <multiplier>-1</multiplier>
           </driver>
           <reference_price>
             <ARMA variable="Signal">flex</ARMA>
+            <multiplier>-1</multiplier>            
           </reference_price>
         </CashFlow>
       </economics>

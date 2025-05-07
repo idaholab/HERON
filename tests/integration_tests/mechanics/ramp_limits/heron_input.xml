@@ -76,10 +76,10 @@
         <CashFlow name="VOM" type="repeating" taxable='True' inflation='none' >
           <driver>
             <activity>electricity</activity>
-            <multiplier>-1</multiplier>
           </driver>
           <reference_price>
             <fixed_value>0.3</fixed_value>
+            <multiplier>-1</multiplier>            
           </reference_price>
         </CashFlow>
       </economics>

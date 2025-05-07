@@ -91,10 +91,10 @@
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none'>
           <driver>
             <activity>electricity</activity>
-            <multiplier>-1</multiplier>
           </driver>
           <reference_price>
             <CSV variable="linear">prices</CSV>
+            <multiplier>-1</multiplier>            
           </reference_price>
         </CashFlow>
       </economics>
@@ -111,10 +111,10 @@
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none'>
           <driver>
             <activity>electricity</activity>
-            <multiplier>-1</multiplier>
           </driver>
           <reference_price>
             <CSV variable="spike">prices</CSV>
+            <multiplier>-1</multiplier>            
           </reference_price>
         </CashFlow>
       </economics>
@@ -132,10 +132,10 @@
         <CashFlow name="steam_sink" type="repeating" taxable='True' inflation='none' mult_target='False'>
           <driver>
             <activity>steam</activity>
-            <multiplier>-1</multiplier>
           </driver>
           <reference_price>
             <fixed_value>0.01</fixed_value>
+            <multiplier>-1</multiplier>
           </reference_price>
         </CashFlow>
       </economics>

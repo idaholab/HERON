@@ -89,10 +89,10 @@
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' >
           <driver>
             <activity>electricity</activity>
-            <multiplier>-1</multiplier>
           </driver>
           <reference_price>
             <fixed_value>0.5</fixed_value>
+            <multiplier>-1</multiplier>            
           </reference_price>
         </CashFlow>
       </economics>
@@ -109,10 +109,10 @@
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' >
           <driver>
             <activity>electricity</activity>
-            <multiplier>-1</multiplier>
           </driver>
           <reference_price>
             <Function method="flex_price">transfers</Function>
+            <multiplier>-1</multiplier>
             <AdditionalInfo>
               <General>
                 <TheAnswer>42</TheAnswer>

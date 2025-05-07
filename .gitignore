@@ -1,6 +1,6 @@
 # mac stuff
 .DS_Store
-
+.vscode/
 # vim stuff
 *.swp
 *~

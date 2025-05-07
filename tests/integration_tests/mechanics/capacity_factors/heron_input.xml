@@ -84,11 +84,11 @@
         <CashFlow name="var_OM" type="repeating" taxable='True' inflation='none' >
           <driver>
             <activity>electricity</activity>
-            <multiplier>-1</multiplier>
           </driver>
           <reference_price>
             <!-- from Lazard (2019) -  3.5 $/MWh * 1e3 MWh/GWh -->
             <fixed_value>3.5e3</fixed_value>
+            <multiplier>-1</multiplier>
           </reference_price>
         </CashFlow>
       </economics>
@@ -107,10 +107,10 @@
         <CashFlow name="e_sales" type="repeating" taxable='True' inflation='none' >
           <driver>
             <activity>electricity</activity>
-            <multiplier>-1</multiplier>
           </driver>
           <reference_price>
             <fixed_value>50e3</fixed_value>
+            <multiplier>-1</multiplier>
           </reference_price>
         </CashFlow>
       </economics>
@@ -128,10 +128,10 @@
         <CashFlow name="import" type="repeating" taxable='True' inflation='none' >
           <driver>
             <activity>electricity</activity>
-            <multiplier>-1</multiplier>
           </driver>
           <reference_price>
             <fixed_value>1e6</fixed_value>
+            <multiplier>-1</multiplier>
           </reference_price>
         </CashFlow>
       </economics>

@@ -78,8 +78,8 @@
       </fourier>
       <gaussianize target="Signal"/>
       <arma target="Signal" seed='42'>
-        <SignalLag>0</SignalLag>
-        <NoiseLag>0</NoiseLag>
+        <P>0</P>
+        <Q>0</Q>
       </arma>
       <Segment grouping="interpolate">
         <macroParameter>Year</macroParameter>

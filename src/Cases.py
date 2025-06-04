@@ -749,11 +749,11 @@ class Case(Base):
 
     # checks
     if self._mode is None:
-      self.raiseAnError('No <mode> node was provided in the <Case> node!')
+      self.raiseAnError(ValueError, 'No <mode> node was provided in the <Case> node!')
     if self.dispatcher is None:
-      self.raiseAnError('No <dispatch> node was provided in the <Case> node!')
+      self.raiseAnError(ValueError, 'No <dispatch> node was provided in the <Case> node!')
     if self._time_discretization is None:
-      self.raiseAnError('<time_discretization> node was not provided in the <Case> node!')
+      self.raiseAnError(ValueError, '<time_discretization> node was not provided in the <Case> node!')
     # check that opt metric is part of econ metrics for output
     if self.get_mode() == 'opt':
       opt_metric, _ = self.get_opt_metric()
@@ -1106,7 +1106,8 @@ class Case(Base):
 
     # 1. check first that there is a levelized cost CashFlow in any of available components
     if not levelized_cfs:
-      self.raiseAnError('Levelized Cost metric was selected, but no <levelized_cost> node was ' +
+      self.raiseAnError(ValueError,
+                        'Levelized Cost metric was selected, but no <levelized_cost> node was ' +
                         'found in component Cash Flows! \n' +
                         'The levelized cost subnode should be under the <reference_price> node')
 
@@ -1132,7 +1133,8 @@ class Case(Base):
     # TODO: should compile a list of linear vs nonlinear solvers...
     if self.dispatcher.get_solver() in ['glpk', 'cbc']:
       appropriate_solvers = ['ipopt']
-      self.raiseAnError('Levelized Cost metric requires a nonlinear optimization in the inner' +
+      self.raiseAnError(ValueError,
+                        'Levelized Cost metric requires a nonlinear optimization in the inner' +
                         f' step, please use any of the following solvers: {appropriate_solvers}')
 
     # for all remaining levelized cash flows, get tracker and resource for related Activity (saving it to component)

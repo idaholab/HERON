@@ -5,12 +5,12 @@
   Parses an input file, returning the objects therein.
 """
 import sys
-import xml.etree.ElementTree as ET
+import itertools as it
+from collections import Counter
 
 from . import Cases
 from . import Components
 from . import Placeholders
-from . import ValuedParams
 
 from . import _utils as hutils
 try:
@@ -81,6 +81,12 @@ def parse(xml, loc, messageHandler):
       raise IOError(f'Unrecognized DataGenerator: {sub_xml.tag}')
     new.read_input(sub_xml)
     sources.append(new)
+
+  # Check for duplicated variable names in the sources
+  source_var_names = {source.name: source.get_variable() or [] for source in sources}
+  name_counts = Counter(it.chain.from_iterable(source_var_names.values()))
+  if duplicated := dict(filter(lambda x: x[1] > 1, name_counts.items())):
+    raise ValueError(f"Multiple sources in <DataGenerators> node specify values for variables {list(duplicated.keys())}")
 
   # now go back through and link up stuff
   for comp in components:

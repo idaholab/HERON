@@ -1,0 +1,49 @@
+<HERON>
+  <TestInfo>
+    <name>UniqueVarNames</name>
+    <author>j-bryan</author>
+    <created>2025-06-04</created>
+    <description>
+      Tests for an error being thrown when DataGenerator items specify the same variable name
+    </description>
+    <classesTested>HERON</classesTested>
+  </TestInfo>
+
+    <Case name="Runs">
+      <mode>sweep</mode>
+      <num_arma_samples>3</num_arma_samples>
+      <time_discretization>
+        <time_variable>Time</time_variable>
+        <end_time>2</end_time>
+        <num_steps>21</num_steps>
+      </time_discretization>
+      <economics>
+        <ProjectTime>3</ProjectTime>
+        <DiscountRate>0.08</DiscountRate>
+        <tax>0.0</tax>
+        <inflation>0.03</inflation>
+        <verbosity>50</verbosity>
+      </economics>
+      <dispatcher>
+        <pyomo/>
+      </dispatcher>
+    </Case>
+
+    <Components>
+      <Component name="source">
+        <produces resource="a" dispatch="fixed">
+          <capacity resource="a">
+            <sweep_values>1, 2</sweep_values>
+          </capacity>
+        </produces>
+        <economics>
+          <lifetime>10</lifetime>
+        </economics>
+      </Component>
+    </Components>
+
+    <DataGenerators>
+      <CSV name='flex' variable="Signal">%HERON_DATA%/mechanics/static_history/Static.csv</CSV>
+      <CSV name='flex_alt' variable="Signal">%HERON_DATA%/mechanics/static_history/Static.csv</CSV>
+    </DataGenerators>
+</HERON>

@@ -1,0 +1,7 @@
+[Tests]
+  [./UniqueVarNames]
+    type = HeronIntegration
+    input = heron_input.xml
+    expected_fail = true
+  [../]
+[]

@@ -85,7 +85,6 @@ def parse(xml, loc, messageHandler):
   # Check for duplicated variable names in the sources
   source_var_names = {source.name: source.get_variable() or [] for source in sources}
   name_counts = Counter(it.chain.from_iterable(source_var_names.values()))
-  print(f"{name_counts}")
   if duplicated := dict(filter(lambda x: x[1] > 1, name_counts.items())):
     raise ValueError(f"Multiple sources in <DataGenerators> node specify values for variables {list(duplicated.keys())}")
 

@@ -155,6 +155,25 @@ class HeronDispatchPlot(OutStream):
     """
     find_node(self, "signals").text = value
 
+  @property
+  def sep_by_resource(self) -> bool:
+    """
+    Getter for sep_by_resource node
+    @ In, None
+    @ Out, sep, bool, separate plots for each resource
+    """
+    node = self.find("sep_by_resource")
+    sep = False if node is None else bool(node.text)
+    return sep
+
+  @sep_by_resource.setter
+  def sep_by_resource(self, value: bool):
+    """
+    Setting for sep_by_resource node
+    @ In, value, bool, separate plots for each resource
+    @ Out, None
+    """
+    find_node(self, "sep_by_resource").text = value
 
 class TealCashFlowPlot(OutStream):
   """ OutStream snippet for TEAL cashflow plots """

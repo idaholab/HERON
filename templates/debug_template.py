@@ -268,6 +268,7 @@ class DebugTemplate(RavenTemplate):
     disp_plot.macro_variable = case.get_year_name()
     disp_plot.micro_variable = case.get_time_name()
     disp_plot.signals.append("GRO_debug_synthetics")
+    disp_plot.sep_by_resource = case.debug["disp_plot_sep"]
     return disp_plot
 
   def _make_cashflow_plot(self) -> TealCashFlowPlot:

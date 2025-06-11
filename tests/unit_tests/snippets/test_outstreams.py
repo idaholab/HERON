@@ -178,6 +178,37 @@ class TestHeronDispatchPlot(unittest.TestCase, TestOutStreamBase):
     self.assertListEqual(self.outstream.signals, ["inp1"])
     self.assertListEqual(self.outstream.find("signals").text, ["inp1"])
 
+  def test_sep_by_resource(self):
+    """
+    Test sep_by_resource property
+    @ In, None
+    @ Out, None
+    """
+    # "sep_by_resource" node is not required and is not present by default
+    node = self.outstream.find("sep_by_resource")
+    self.assertIsNone(node)
+
+    # Setting the sep_by_resource property to true ensures the node is present and the node value (text) is True
+    self.outstream.sep_by_resource = True
+    self.assertTrue(self.outstream.sep_by_resource)
+    node = self.outstream.find("sep_by_resource")
+    self.assertIsNotNone(node)
+    self.assertTrue(node.text)
+
+    # A node with no text should also evaluate to True
+    node = self.outstream.find("sep_by_resource")
+    node.text = None
+    self.assertTrue(self.outstream.sep_by_resource)
+
+    # property returns False if node not present or if node value is False
+    self.outstream.remove(node)
+    self.assertFalse(self.outstream.sep_by_resource)
+    self.outstream.sep_by_resource = False
+    node = self.outstream.find("sep_by_resource")
+    self.assertIsNotNone(node)
+    self.assertFalse(node.text)
+    self.assertFalse(self.outstream.sep_by_resource)
+
 
 class TestTealCashFlowPlot(unittest.TestCase, TestOutStreamBase):
   """ TealCashFlowPlot snippet tests """

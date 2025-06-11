@@ -162,8 +162,18 @@ class HeronDispatchPlot(OutStream):
     @ In, None
     @ Out, sep, bool, separate plots for each resource
     """
+    # "True" conditions
+    #   - node present and text is None
+    #   - node present and text is True
+    # "False" conditions
+    #   - node not present
+    #   - node present and text is False
     node = self.find("sep_by_resource")
-    sep = False if node is None else bool(node.text)
+    # Need to be careful with falsy condition since bool(None) == False
+    if node is None or (not bool(node.text) and node.text is not None):
+      sep = False
+    else:
+      sep = True
     return sep
 
   @sep_by_resource.setter

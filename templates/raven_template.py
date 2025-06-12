@@ -13,7 +13,7 @@ from pathlib import Path
 import itertools as it
 import xml.etree.ElementTree as ET
 
-from .imports import xmlUtils, Template
+from .imports import Template
 from .heron_types import HeronCase, Component, Source, ValuedParam
 from .naming_utils import get_result_stats, get_component_activity_vars, get_opt_objective, get_statistics, Statistic
 from .xml_utils import add_node_to_tree, stringify_node_values
@@ -26,7 +26,7 @@ from .snippets.optimizers import BayesianOptimizer, GradientDescent
 from .snippets.models import GaussianProcessRegressor, PickledROM, EnsembleModel
 from .snippets.distributions import Distribution, Uniform
 from .snippets.outstreams import PrintOutStream
-from .snippets.dataobjects import DataObject, PointSet, DataSet
+from .snippets.dataobjects import PointSet, DataSet
 from .snippets.variablegroups import VariableGroup
 from .snippets.files import File
 from .snippets.factory import factory as snippet_factory
@@ -118,27 +118,26 @@ class RavenTemplate(Template):
     # Universal workflow settings
     self._set_verbosity(kwargs["case"].get_verbosity())
 
-  def writeWorkflow(self, template: ET.Element, destination: str, run: bool = False) -> None:
+  def writeWorkflow(self, dest_dir: str) -> None:
     """
       Writes a template to file.
-      @ In, template, xml.etree.ElementTree.Element, file to write
-      @ In, destination, str, path and filename to write to
-      @ In, run, bool, optional, if True then run the workflow after writing? good idea?
-      @ Out, errors, int, 0 if successfully wrote [and run] and nonzero if there was a problem
+      @ In, dest_dir, str, path to the directory to which to write template workflows
+      @ Out, None
     """
     # Ensure all node attribute values and text are expressed as strings. Errors are thrown if any of these aren't
     # strings. Enforcing this here allows flexibility with how node values are stored and manipulated before write
     # time, such as storing values as lists or numeric types. For example, text fields which are a comma-separated
     # list of values can be stored in the RavenSnippet object as a list, and new items can be inserted into that
     # list as needed, then the list can be converted to a string only now at write time.
-    stringify_node_values(template)
+    stringify_node_values(self._template)
 
     # Remove any unused top-level nodes (Models, Samplers, etc.) to keep things looking clean
-    for node in template:
+    for node in self._template:
       if len(node) == 0:
-        template.remove(node)
+        self._template.remove(node)
 
-    super().writeWorkflow(template, destination, run)
+    destination = self.get_write_path(dest_dir)
+    super().writeWorkflow(self._template, destination)
     print(f"Wrote '{self.write_name}' to '{destination}'")
 
   @property
@@ -221,7 +220,7 @@ class RavenTemplate(Template):
     @ In, name, str, case name to use
     @ Out, None
     """
-    run_info = self._template.find("RunInfo")  # type: RunInfo
+    run_info: RunInfo = self._template.find("RunInfo")
     run_info.job_name = name
     run_info.working_dir = name
 
@@ -232,7 +231,7 @@ class RavenTemplate(Template):
     @ In, index, int, optional, the index to add the step at
     @ Out, None
     """
-    run_info = self._template.find("RunInfo")  # type: RunInfo
+    run_info: RunInfo = self._template.find("RunInfo")
     idx = index if index is not None else len(run_info.sequence)
     run_info.sequence.insert(idx, step)
 
@@ -264,7 +263,7 @@ class RavenTemplate(Template):
     @ Out, step, IOStep, the step used to do the loading
     """
     # Get the file to load. Might already exist in the template XML
-    file = self._template.find("Files/Input[@name='{source.name}']")  # type: File
+    file: File | None = self._template.find("Files/Input[@name='{source.name}']")
     if file is None:
       file = File(source.name)
       file.path = source._target_file
@@ -416,14 +415,14 @@ class RavenTemplate(Template):
     @ In, sources, list[Source], case sources
     @ Out, None
     """
-    dispatch_eval = self._template.find("DataObjects/DataSet[@name='dispatch_eval']")  # type: DataSet
+    dispatch_eval: DataSet = self._template.find("DataObjects/DataSet[@name='dispatch_eval']")
 
     # Gather any ARMA sources from the list of sources
     arma_sources = [s for s in sources if s.is_type("ARMA")]
 
     # Add cluster index info to dispatch variable groups and data objects
     if any(source.eval_mode == "clustered" for source in arma_sources):
-      vg_dispatch = self._template.find("VariableGroups/Group[@name='GRO_dispatch']")  # type: VariableGroup
+      vg_dispatch: VariableGroup = self._template.find("VariableGroups/Group[@name='GRO_dispatch']")
       vg_dispatch.variables.append(self.namingTemplates["cluster_index"])
       dispatch_eval.add_index(self.namingTemplates["cluster_index"], "GRO_dispatch_in_Time")
 
@@ -555,7 +554,7 @@ class RavenTemplate(Template):
           dist_name = self.namingTemplates["distribution"].format(variable=feat_name)
 
           # Reconstruct distribution XML node from valuedParam definition
-          dist_node = vp._vp.get_distribution()  # type: ET.Element
+          dist_node: ET.Element = vp._vp.get_distribution()
           dist_node.set("name", dist_name)
           dist_snippet = snippet_factory.from_xml(dist_node)
           distributions.append(dist_snippet)
@@ -597,7 +596,7 @@ class RavenTemplate(Template):
       interaction = component.get_interaction()
       name = component.name
       var_name = self.namingTemplates["variable"].format(unit=name, feature="capacity")
-      cap = interaction.get_capacity(None, raw=True)  # type: ValuedParam
+      cap: ValuedParam = interaction.get_capacity(None, raw=True)
 
       if not cap.is_parametric():  # we already know the value
         continue
@@ -640,7 +639,7 @@ class RavenTemplate(Template):
     if case.debug["enabled"]:
       indices.append(cluster_index)
 
-    time_series_vargroup = self._template.find("VariableGroups/Group[@name='GRO_timeseries']")  # type: VariableGroup
+    time_series_vargroup: VariableGroup = self._template.find("VariableGroups/Group[@name='GRO_timeseries']")
 
     for source in filter(lambda x: x.is_type("CSV"), sources):
       # Add the source variables to the GRO_timeseries_in variable group

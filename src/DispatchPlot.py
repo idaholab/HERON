@@ -49,6 +49,7 @@ class DispatchPlot(PlotPlugin):
     specs.addSub(InputData.parameterInputFactory('macro_variable', contentType=InputTypes.StringType))
     specs.addSub(InputData.parameterInputFactory('micro_variable', contentType=InputTypes.StringType))
     specs.addSub(InputData.parameterInputFactory('signals', contentType=InputTypes.StringListType))
+    specs.addSub(InputData.parameterInputFactory('sep_by_resource', contentType=InputTypes.BoolType))
     return specs
 
   def __init__(self):
@@ -63,6 +64,7 @@ class DispatchPlot(PlotPlugin):
     self._source = None
     self._macroName = None
     self._microName = None
+    self._sepByResource = False
     self._addSignals = []
 
   def handleInput(self, spec):
@@ -81,6 +83,8 @@ class DispatchPlot(PlotPlugin):
         self._microName = node.value
       elif node.getName() == 'signals':
         self._addSignals = node.value
+      elif node.getName() == 'sep_by_resource':
+        self._sepByResource = node.value
 
   def initialize(self, stepEntities):
     """
@@ -329,10 +333,19 @@ class DispatchPlot(PlotPlugin):
       # nature of the subplots, as well as the dynamic number of
       # components and signals to plot (i.e. dynamically nested subplots)
 
-      # If only 3 resources, make one figure; otherwise, 2 resources per figure
-      if len(resources) <= 3:
+      # Use a separate figure for each resource, if requested.
+      if self._sepByResource:
+        res_figs = []
+        res_axs = []
+        for _ in range(len(resources)):
+          fig, axs = plt.subplots()
+          res_figs.append(fig)
+          res_axs.append(axs)
+      # Otherwise, if only 3 resources, make one figure
+      elif len(resources) <= 3:
         fig, res_axs = plt.subplots(len(resources), 1, sharex=True, squeeze=False)
         res_figs = [fig]
+      # Otherwise if more than 3 resources, plot 2 resources per figure
       else:
         res_figs = []
         res_axs = []

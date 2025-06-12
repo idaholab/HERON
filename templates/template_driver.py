@@ -88,15 +88,14 @@ class TemplateDriver(Base):
     print("========================")
     print("HERON: writing files ...")
     print("========================")
-    dest = self.template.get_write_path(dest_dir)
-    self.template.writeWorkflow(self.template.template_xml, dest)
+    self.template.writeWorkflow(dest_dir)
 
     # Write library of info so it can be read in dispatch during inner run. Doing this here ensures that the lib file
     # is written just once, no matter the number of workflow files written by the template.
     lib_file = Path(dest_dir) / self.template.namingTemplates["lib file"]
     with lib_file.open("wb") as lib:
       pk.dump((case, components, sources), lib)
-    print(f"Wrote '{lib_file.name}' to '{str(lib_file.resolve())}'")
+    print(f"Wrote '{lib_file.name}' to '{str(lib_file)}'")
 
   ###################
   # Utility methods #

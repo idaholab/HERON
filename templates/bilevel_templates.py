@@ -99,25 +99,22 @@ class BilevelTemplate(RavenTemplate):
 
     return {"inner": self.inner.template_xml, "outer": self.outer.template_xml}
 
-  def writeWorkflow(self, template: dict[str, ET.Element], destination: dict[str, str], run: bool = False) -> None:
+  def writeWorkflow(self, dest_dir: str) -> None:
     """
       Writes a template to file.
-      @ In, template, dict[str, ET.Element], XML trees to write
-      @ In, destination, dict[str, str], paths to write the templates to
-      @ In, run, bool, optional, if True then run the workflow after writing? good idea?
-      @ Out, errors, int, 0 if successfully wrote [and run] and nonzero if there was a problem
+      @ In, dest_dir, str, path to the directory to which to write template workflows
+      @ Out, None
     """
-    for name, xml in template.items():
-      super().writeWorkflow(xml, destination[name], run)
+    self.inner.writeWorkflow(dest_dir)
+    self.outer.writeWorkflow(dest_dir)
 
     # copy "write_inner.py", which has the denoising and capacity fixing algorithms
     conv_filename = "write_inner.py"
     write_inner_dir = Path(__file__).parent
-    dest_dir = Path(next(iter(destination.values()))).parent
     conv_src = write_inner_dir / conv_filename
-    conv_file = dest_dir / conv_filename
+    conv_file = Path(dest_dir) / conv_filename
     shutil.copyfile(str(conv_src), str(conv_file))
-    print(f"Wrote '{conv_filename}' to '{destination}'")
+    print(f"Wrote '{conv_filename}' to '{str(conv_file)}'")
 
   @property
   def template_xml(self) -> dict[str, ET.Element]:

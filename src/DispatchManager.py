@@ -571,10 +571,8 @@ class DispatchRunner:
       specific_meta['HERON']['all_activity'] = dispatch
       specific_activity = {}
       final_cashflows = final_comp.getCashflows()
-      for f, heron_cf in enumerate(comp.get_cashflows()):
+      for f, heron_cf in enumerate(filter(lambda cf: not cf.is_npv_exempt(), comp.get_cashflows())):
         # get the corresponding TEAL.CashFlow
-        if heron_cf.is_npv_exempt():
-          continue # Skip adding this cashflow to the final cashflows
         teal_cf = teal_comp.getCashflows()[f]
         final_cf = final_cashflows[f]
         # sanity continued

@@ -5,7 +5,7 @@ import sys
 import os
 
 # Make sure ravenframework can be imported
-import HERON.src._utils as hutils
+from . import _utils as hutils
 try:
   import ravenframework
 except ModuleNotFoundError:

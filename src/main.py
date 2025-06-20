@@ -9,11 +9,6 @@ import sys
 import argparse
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-import HERON.src._utils as hutils
-try:
-  import ravenframework
-except ModuleNotFoundError:
-  sys.path.append(hutils.get_raven_loc())
 
 from HERON.src import input_loader
 from HERON.src.base import Base

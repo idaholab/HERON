@@ -13,13 +13,7 @@ import functools
 import HERON.src._utils as hutils
 from HERON.src.base import Base
 
-try:
-  import ravenframework
-except ModuleNotFoundError:
-  FRAMEWORK_PATH = hutils.get_raven_loc()
-  sys.path.append(FRAMEWORK_PATH)
-from ravenframework.utils import InputData, InputTypes, utils, xmlUtils
-
+from ravenframework.utils import InputData, InputTypes, utils
 from ravenframework.ROMExternal import ROMLoader
 
 

@@ -4,7 +4,7 @@
 """
   Base class for validators.
 """
-from ravenframework.utils import InputData, InputTypes
+from ravenframework.utils import InputData
 
 class Validator:
   """

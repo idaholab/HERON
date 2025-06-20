@@ -5,7 +5,6 @@
   Interface for user-provided dispatching strategies.
 """
 import os
-import inspect
 import numpy as np
 
 from ravenframework.utils import utils, InputData, InputTypes

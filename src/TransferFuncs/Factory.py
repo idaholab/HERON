@@ -2,7 +2,7 @@
 # Copyright 2020, Battelle Energy Alliance, LLC
 # ALL RIGHTS RESERVED
 
-from ravenframework.utils import InputData, InputTypes
+from ravenframework.utils import InputData
 from ravenframework.EntityFactoryBase import EntityFactory
 
 from .Ratio import Ratio

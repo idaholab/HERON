@@ -4,7 +4,6 @@
 """
   Defines the Cases entity.
 """
-from __future__ import unicode_literals, print_function
 import os
 import sys
 import importlib
@@ -25,12 +24,6 @@ from HERON.src.validators.Factory import get_class as get_validator
 
 from collections import OrderedDict
 
-import HERON.src._utils as hutils
-try:
-  import ravenframework
-except ModuleNotFoundError:
-  framework_path = hutils.get_raven_loc()
-  sys.path.append(framework_path)
 from ravenframework.utils import InputData, InputTypes
 
 class Case(Base):

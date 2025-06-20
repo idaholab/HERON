@@ -5,14 +5,7 @@
   Defines the TransferFunc entity.
   These define the transfer functions for generating Components.
 """
-import sys
-from HERON.src import _utils as hutils
-try:
-  import ravenframework
-except ModuleNotFoundError:
-  framework_path = hutils.get_raven_loc()
-  sys.path.append(framework_path)
-from ravenframework.utils import InputData, InputTypes
+from ravenframework.utils import InputData
 from ravenframework.BaseClasses import MessageUser
 
 # class for potentially dynamically-evaluated quantities

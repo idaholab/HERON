@@ -5,7 +5,8 @@
   Values that are swept, optimized, or fixed in the "outer" workflow,
   so end up being constants in the "inner" workflow.
 """
-from .ValuedParam import ValuedParam, InputData, InputTypes
+from .ValuedParam import ValuedParam
+from ravenframework.utils import InputData, InputTypes
 
 # class for custom dynamically-evaluated quantities
 class Parametric(ValuedParam):

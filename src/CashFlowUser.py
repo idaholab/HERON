@@ -1,11 +1,7 @@
 
 # Copyright 2020, Battelle Energy Alliance, LLC
 # ALL RIGHTS RESERVED
-import sys
 from CashFlows import CashFlowGroup
-import _utils as hutils
-raven_path = hutils.get_raven_loc()
-sys.path.append(raven_path)
 
 class CashFlowUser:
   """

@@ -4,24 +4,16 @@
 """
   Defines the Component entity.
 """
-from __future__ import unicode_literals, print_function
-import sys
 from collections import defaultdict
 import numpy as np
+
 from HERON.src.base import Base
-import xml.etree.ElementTree as ET
 from HERON.src.Economics import CashFlowUser
 from HERON.src.ValuedParams import factory as vp_factory
 from HERON.src.TransferFuncs import factory as tf_factory
 from HERON.src.ValuedParamHandler import ValuedParamHandler
-from HERON.src import _utils as hutils
 
-try:
-  import ravenframework
-except ModuleNotFoundError:
-  framework_path = hutils.get_raven_loc()
-  sys.path.append(framework_path)
-from ravenframework.utils import InputData, xmlUtils,InputTypes
+from ravenframework.utils import InputData, InputTypes
 
 # TODO can we use EntityFactory from RAVEN?
 def factory(xml, method='sweep'):

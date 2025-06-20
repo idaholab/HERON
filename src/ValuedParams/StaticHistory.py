@@ -6,7 +6,8 @@
   These are objects that need to return values, but come from
   a wide variety of different sources.
 """
-from .ValuedParam import ValuedParam, InputData, InputTypes
+from .ValuedParam import ValuedParam
+from ravenframework.utils import InputData, InputTypes
 
 # class for potentially dynamically-evaluated quantities
 class StaticHistory(ValuedParam):

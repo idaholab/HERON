@@ -14,7 +14,6 @@ from HERON.templates.snippets import NetCDF, HDF5
 sys.path.pop()
 
 import unittest
-import xml.etree.ElementTree as ET
 
 
 class TestDatabasesBase:

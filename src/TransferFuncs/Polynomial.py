@@ -7,7 +7,8 @@
 """
 from collections import defaultdict
 
-from .TransferFunc import TransferFunc, InputData, InputTypes
+from .TransferFunc import TransferFunc
+from ravenframework.utils import InputData, InputTypes
 
 class Polynomial(TransferFunc):
   """

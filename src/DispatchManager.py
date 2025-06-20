@@ -8,27 +8,14 @@
 
 import os
 import sys
-import pickle as pk
-from time import time as run_clock
 
 import numpy as np
-from typing_extensions import final
 
 from . import _utils as hutils
 from . import SerializationManager
 
-try:
-  from ravenframework.PluginBaseClasses.ExternalModelPluginBase import ExternalModelPluginBase
-  import TEAL
-except ModuleNotFoundError:
-  raven_path = hutils.get_raven_loc()
-  sys.path.append(raven_path)
-  from ravenframework.PluginBaseClasses.ExternalModelPluginBase import ExternalModelPluginBase
-  sys.path.pop()
-
-  cashflow_path = os.path.abspath(os.path.join(hutils.get_cashflow_loc(raven_path=raven_path), '..'))
-  sys.path.append(cashflow_path)
-  import TEAL
+from ravenframework.PluginBaseClasses.ExternalModelPluginBase import ExternalModelPluginBase
+import TEAL
 
 # make functions findable
 sys.path.append(os.getcwd())

@@ -7,7 +7,6 @@
 import sys
 import importlib
 import xml.etree.ElementTree as ET
-import warnings
 import pickle
 from functools import cache
 from os import path

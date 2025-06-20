@@ -4,10 +4,7 @@
   Alternative analysis approach to HERON's standard RAVEN running RAVEN, contains all the necessary methods to run
   a monolithic solve that utilizes TEAL cashflows, RAVEN ROM(s), and pyomo optimization.
 """
-import os
-import sys
 from functools import partial
-import itertools as it
 
 import pyomo.environ as pyo
 from pyomo.opt import SolverFactory
@@ -17,12 +14,7 @@ import matplotlib.pyplot as plt
 
 from HERON.src import _utils as hutils
 from HERON.src.base import Base
-try:
-  import ravenframework
-except ModuleNotFoundError:
-  path_to_raven = hutils.get_raven_loc()
-  sys.path.append(os.path.abspath(os.path.join(path_to_raven, 'plugins')))
-  sys.path.append(path_to_raven)
+
 from TEAL.src import main as RunCashFlow
 from TEAL.src import CashFlows
 from ravenframework.ROMExternal import ROMLoader

@@ -10,7 +10,6 @@ import platform
 import numpy as np
 
 import pyomo.environ as pyo
-from pyomo.opt import SolverStatus, TerminationCondition
 
 if platform.system() == 'Windows':
   SOLVER = 'glpk'

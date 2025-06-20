@@ -4,22 +4,14 @@ Test specific aspects of HERON Components
 
 import os
 import sys
-import xml.etree.ElementTree as ET
 
 # Load HERON tools
 HERON_LOC = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, os.pardir))
 sys.path.append(HERON_LOC)
 from HERON.src import Components
 from HERON.src.ValuedParamHandler import ValuedParamHandler
-from HERON.src import _utils as hutils
 sys.path.pop()
 
-try:
-  import ravenframework
-except ModuleNotFoundError:
-    # Load RAVEN tools
-    sys.path.append(hutils.get_raven_loc())
-from ravenframework.utils import InputData, xmlUtils,InputTypes
 import ravenframework.MessageHandler as MessageHandler
 
 results = {"pass":0,"fail":0}

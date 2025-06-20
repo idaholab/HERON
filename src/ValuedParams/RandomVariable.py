@@ -6,9 +6,9 @@
   These are objects that need to return values, but come from
   a wide variety of different sources.
 """
-from .ValuedParam import ValuedParam, InputData, InputTypes
+from .ValuedParam import ValuedParam
 from ravenframework.Distributions import returnInputParameter
-from ravenframework.utils import xmlUtils
+from ravenframework.utils import InputData, InputTypes, xmlUtils
 
 # TODO: this is temporary until it becomes a part of the ValuedParam registry
 CF_TARGET_MAP = {

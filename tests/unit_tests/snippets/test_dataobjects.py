@@ -14,7 +14,6 @@ from HERON.templates.snippets import PointSet, HistorySet, DataSet
 sys.path.pop()
 
 import unittest
-import xml.etree.ElementTree as ET
 
 
 class TestDataObjectBase:

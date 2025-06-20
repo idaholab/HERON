@@ -12,12 +12,6 @@ from . import Cases
 from . import Components
 from . import Placeholders
 
-from . import _utils as hutils
-try:
-  import ravenframework
-except ModuleNotFoundError:
-  raven_path = hutils.get_raven_loc()
-  sys.path.append(raven_path)
 from ravenframework.utils import xmlUtils
 
 

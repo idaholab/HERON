@@ -6,14 +6,7 @@
   These are objects that need to return values, but come from
   a wide variety of different sources and may not be valued until run time.
 """
-import sys
-from HERON.src import _utils as hutils
-try:
-  import ravenframework
-except ModuleNotFoundError:
-  framework_path = hutils.get_raven_loc()
-  sys.path.append(framework_path)
-from ravenframework.utils import InputData, InputTypes
+from ravenframework.utils import InputData
 from ravenframework.BaseClasses import MessageUser
 
 # class for potentially dynamically-evaluated quantities

@@ -1,7 +1,3 @@
-import os
-import sys
-import platform
-
 from HeronIntegrationTester import HeronIntegration
 
 class HeronMoped(HeronIntegration):

@@ -4,25 +4,16 @@
   New HERON workflow for setting up and running DISPATCHES cases
   (HE)RON (R)uns (D)ISPATCHES (HERD)
 """
-import os.path as path
-import sys
 import time
 import copy
 import operator
 import pandas as pd
 from itertools import compress
 import pyomo.environ as pyo
-from pyomo.opt import SolverFactory
 import numpy as np
-import _utils as hutils
 from functools import partial
 import logging
-try:
-  import ravenframework
-except ModuleNotFoundError:
-  path_to_raven = hutils.get_raven_loc()
-  sys.path.append(path.abspath(path.join(path_to_raven, 'plugins')))
-  sys.path.append(path_to_raven)
+
 from ravenframework.utils import xmlUtils
 from ravenframework.ROMExternal import ROMLoader
 
@@ -37,12 +28,6 @@ try:
 except ModuleNotFoundError:
   print("DISPATCHES has not been found in current conda environment. This is only needed when "+
         "running the DISPATCHES workflow through HERD.")
-
-# append path with RAVEN location
-path_to_raven = hutils.get_raven_loc()
-sys.path.append(path.abspath(path.join(path_to_raven, 'scripts')))
-sys.path.append(path.abspath(path.join(path_to_raven, 'plugins')))
-sys.path.append(path_to_raven)
 
 from TEAL.src import CashFlows
 from TEAL.src import main as RunCashFlow

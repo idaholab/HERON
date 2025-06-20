@@ -7,7 +7,8 @@
 """
 import numpy as np
 
-from .TransferFunc import TransferFunc, InputData, InputTypes
+from .TransferFunc import TransferFunc
+from ravenframework.utils import InputData, InputTypes
 
 # class for custom dynamically-evaluated quantities
 class Ratio(TransferFunc):

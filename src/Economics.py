@@ -5,19 +5,12 @@
   Defines the Economics entity.
   Each component (or source?) can have one of these to describe its economics.
 """
-from __future__ import unicode_literals, print_function
-import sys
 from collections import defaultdict
 import numpy as np
 from HERON.src import ValuedParams
 from HERON.src.ValuedParamHandler import ValuedParamHandler
-import HERON.src._utils as hutils
-try:
-  import ravenframework
-except ModuleNotFoundError:
-  framework_path = hutils.get_raven_loc()
-  sys.path.append(framework_path)
-from ravenframework.utils import InputData, xmlUtils,InputTypes
+
+from ravenframework.utils import InputData, InputTypes
 
 
 class CashFlowUser:

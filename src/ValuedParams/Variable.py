@@ -4,7 +4,8 @@
 """
   Values taken from the RAVEN variable soup (in the inner)
 """
-from .ValuedParam import ValuedParam, InputData, InputTypes
+from .ValuedParam import ValuedParam
+from ravenframework.utils import InputData, InputTypes
 
 # class for custom dynamically-evaluated quantities
 class Variable(ValuedParam):

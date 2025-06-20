@@ -6,12 +6,9 @@
   These are objects that need to return values, but come from
   a wide variety of different sources.
 """
-import os
-import sys
 import numpy as np
-
-from HERON.src._utils import get_raven_loc
-from .ValuedParam import ValuedParam, InputData, InputTypes
+from .ValuedParam import ValuedParam
+from ravenframework.utils import InputData, InputTypes
 
 
 class ROM(ValuedParam):

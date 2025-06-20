@@ -5,20 +5,10 @@
   Load HERON input schematic and emit a WASP-formatted input definition
   for use with EDDI-formatted input in the NEAMS Workbench
 """
-import sys
-import xml.etree.ElementTree as ET
-
 from . import Cases
 from . import Components
 from . import Placeholders
 
-from . import _utils as hutils
-try:
-  import ravenframework
-except ModuleNotFoundError:
-  raven_path = hutils.get_raven_loc()
-  sys.path.append(raven_path)
-from ravenframework.utils import xmlUtils
 from ravenframework.utils.InputData import Quantity
 
 def indent(level):

@@ -6,7 +6,6 @@ Test specific aspects of HERON Parametric ValuedParams
 
 import os
 import sys
-import xml.etree.ElementTree as ET
 
 # Load HERON tools
 HERON_LOC = os.path.abspath(os.path.join(os.path.dirname(__file__), *[os.pardir]*4))

@@ -14,13 +14,7 @@ import matplotlib.pyplot as plt
 from typing import List, Dict
 import numpy as np
 
-try:
-  from ravenframework.PluginBaseClasses.OutStreamPlotPlugin import PlotPlugin, InputTypes, InputData
-except ModuleNotFoundError:
-  import sys
-  from . import _utils
-  sys.path.append(_utils.get_raven_loc())
-  from ravenframework.PluginBaseClasses.OutStreamPlotPlugin import PlotPlugin, InputTypes, InputData
+from ravenframework.PluginBaseClasses.OutStreamPlotPlugin import PlotPlugin, InputTypes, InputData
 
 
 # default color cycler, hatches

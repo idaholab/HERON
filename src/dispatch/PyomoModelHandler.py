@@ -7,7 +7,6 @@ import numpy as np
 import pyomo.environ as pyo
 
 from . import PyomoRuleLibrary as prl
-from . import putils
 from .DispatchState import PyomoState
 
 class PyomoModelHandler:

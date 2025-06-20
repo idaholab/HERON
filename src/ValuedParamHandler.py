@@ -4,20 +4,10 @@
 """
   Defines the base class ValuedParam entity.
 """
-from __future__ import unicode_literals, print_function
-import os
-import sys
-
-from HERON.src import _utils as hutils
 from HERON.src.ValuedParams import Parametric
 from HERON.src.ValuedParams import factory as VPFactory
 
-try:
-  import ravenframework
-except ModuleNotFoundError:
-  framework_path = hutils.get_raven_loc()
-  sys.path.append(framework_path)
-from ravenframework.utils import InputData, InputTypes
+from ravenframework.utils import InputData
 from ravenframework.BaseClasses import MessageUser
 
 class ValuedParamHandler(MessageUser):

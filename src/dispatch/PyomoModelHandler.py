@@ -3,6 +3,19 @@
 """
   This module constructs the dispatch optimization model used by HERON.
 """
+import os
+import sys
+try:
+  import dove.core as dv
+except ImportError:
+  # TODO: temporary solution that works when DOVE and HERON dirs share a parent
+  sys.path.append(
+    os.path.abspath(
+      os.path.join(__file__, os.pardir, os.pardir, os.pardir, os.pardir, 'DOVE', 'src')
+    )
+  )
+  import dove.core as dv
+
 import numpy as np
 import pyomo.environ as pyo
 from copy import deepcopy
@@ -74,50 +87,285 @@ class PyomoModelHandler:
       @ Out, None
     """
     context = deepcopy(self.meta)
+
+    dove_res_map = self._create_dove_resources(context)
+    dove_comp_list = []
     for comp in self.components:
-      caps = []
-      mins = []
-      alphas = []
-      dprimes = []
-      scaling_factors = []
+      caps = []  # Time dependent capacity values
+      mins = []  # Time dependent minimum values
+      cf_map = {} # dict keyed by cashflow names with values that are dicts containing economic info
       for t in range(len(self.model.Times)):
         # update time index in meta for capacity/minimum evaluation
         context['HERON']['time_index'] = t + self.model.time_offset
         cap_val = comp.get_capacity(context)[0][comp.get_capacity_var()] # get capacity for this component
         caps.append(cap_val)
-        mins.append(cap_val if (comp.is_dispatchable() == 'fixed') else comp.get_minimum(self.meta)[0][comp.get_capacity_var()]) # get minimum for this component
+        mins.append(comp.get_minimum(context)[0][comp.get_capacity_var()]) # get minimum for this component
         # We have to spoof activity to get the other cashflow params
         recurring_cfs = [cf for cf in comp.get_cashflows() if cf.get_type() == 'repeating' and cf.get_period() != "year"]
         for cf in recurring_cfs:
-          context["HERON"]["activity"] = {cf.get_driver()._vp._tracking_var: {comp.get_capacity_var(): 0}}
+          if cf.name not in cf_map.keys():
+            cf_map[cf.name] = {"alphas": [], "dprimes": [], "scaling_factors": [], "d_multipliers": [], "costs": []}  # costs only used for sign
+          context["HERON"]["activity"] = {cf.get_driver()._vp._tracking_var: {comp.get_capacity_var(): -1}} # NOTE: setting to 1 allows us to get the multiplier
           params = cf.calculate_params(context)
-          alphas.append(params["alpha"])
-          dprimes.append(params["ref_driver"])
-          scaling_factors.append(params["scaling"])
+          cf_map[cf.name]["alphas"].append(params["alpha"])
+          cf_map[cf.name]["dprimes"].append(params["ref_driver"])
+          cf_map[cf.name]["scaling_factors"].append(params["scaling"])
+          cf_map[cf.name]["d_multipliers"].append(params["driver"])
+          cf_map[cf.name]["costs"].append(params["cost"])
           mult_target = cf.is_mult_target()
 
       if comp.get_interaction().get_transfer() is not None:
         comp._coeffs = comp.get_interaction().get_transfer().get_coefficients()
       comp._capacity_vector_t = caps
       comp._minimum_vector_t = mins
-      comp._alpha_vector_t = alphas
-      comp._dprime_vector_t = dprimes
-      comp._scaling_factor_vector_t = scaling_factors
-      comp._capacity = comp._capacity_vector_t[-1] # get capacity for this component
-      comp._minimum = comp._minimum_vector_t[-1] # get minimum for this component
-      comp._r = self.model.resource_index_map[comp][comp.get_capacity_var()] # production index of the governing resource
+      comp._cfs = cf_map
+      comp._r = comp.get_capacity_var()
 
-      # if comp.get_interaction().is_type("Storage"):
-      #   comp.get_interaction()._initial_storage = self.initial_storage[comp]
-      #   comp.get_interaction()._max_charge, comp.get_interaction()._max_discharge = comp.get_interaction().get_charge_rate_limits(context)
+      if comp.get_interaction().is_type("Storage"):
+        comp._initial_storage = comp.get_interaction().get_initial_level(context)
+        comp._max_charge, comp._max_discharge = comp.get_interaction().get_charge_rate_limits(context)
+        comp._periodic_level = comp.get_interaction().apply_periodic_level
         # if comp.is_governed():
         #   comp._activity = comp.get_interaction().get_strategy().evaluate(self.meta)[0]['level']
+        # TODO: could we handle this?
 
-      self._process_component(comp)
-    self._create_conservation() # conservation of resources (e.g. production == consumption)
-    self._create_objective() # objective function
+      dove_comp = self._create_dove_component(comp, dove_res_map)
+      dove_comp_list.append(dove_comp)
 
+    dove_system = dv.System(
+      components=dove_comp_list,
+      resources=list(dove_res_map.values()),
+      dispatch_window=np.arange(0, len(self.time), dtype=int)
+    )
+    dispatch_results = dove_system.solve(model="price_taker")
+    print(dispatch_results)
 
+  def _create_dove_resources(self, context):
+    heron_res_map = context['HERON']['resource_indexer']
+    dove_res_map = {}
+    for indexer_per_comp in heron_res_map.values():
+      for r_name in indexer_per_comp.keys():
+        if r_name not in dove_res_map.keys():
+          dove_res_map[r_name] = dv.Resource(name=r_name)
+    return dove_res_map
+
+  def _create_dove_component(self, heron_comp, dove_res_map):
+    interaction = heron_comp.get_interaction()
+    if interaction.is_type("Producer"):
+      if interaction.get_transfer() is None:
+        dove_comp = self._create_dove_source(heron_comp, dove_res_map)
+      else:
+        dove_comp = self._create_dove_converter(heron_comp, dove_res_map)
+    elif interaction.is_type("Storage"):
+      dove_comp = self._create_dove_storage(heron_comp, dove_res_map)
+    elif interaction.is_type("Demand"):
+      dove_comp = self._create_dove_sink(heron_comp, dove_res_map)
+    else:
+      raise IOError(f"{heron_comp.name}: Unrecognized interaction type. Please use 'Producer', 'Storage', or 'Demand'.")
+
+    return dove_comp
+
+  def _create_dove_source(self, heron_comp, dove_res_map):
+    init_kwargs = {}
+    init_kwargs["name"] = heron_comp.name
+    init_kwargs["installed_capacity"] = max(heron_comp._capacity_vector_t)
+    if not all(cap_val == init_kwargs["installed_capacity"] for cap_val in heron_comp._capacity_vector_t):
+      init_kwargs["capacity_factor"] = [
+        cap_val / init_kwargs["installed_capacity"] for cap_val in heron_comp._capacity_vector_t
+      ]
+    if heron_comp.is_dispatchable() == "fixed":
+      init_kwargs["flexibility"] = "fixed"
+    elif init_kwargs["installed_capacity"] > 0:
+      # The minimum would be overridden by fixed flexibility, so only worry about it if it's flexible
+      init_kwargs["min_capacity_factor"] = [
+        min_val / init_kwargs["installed_capacity"] for min_val in heron_comp._minimum_vector_t
+      ]
+    if heron_comp._cfs:
+      init_kwargs["cashflows"] = []
+      for cf_name, cf_data in heron_comp._cfs.items():
+        init_kwargs["cashflows"].append(self._create_dove_cashflow(cf_name, cf_data, 1))
+    init_kwargs["produces"] = dove_res_map[heron_comp._r]
+
+    # TODO: HERON supports ramp_limits and ramp_freq for producers; DOVE does not
+    # Need to fix incompatibility issue
+
+    return dv.Source(**init_kwargs)
+
+  def _create_dove_sink(self, heron_comp, dove_res_map):
+    init_kwargs = {}
+    init_kwargs["name"] = heron_comp.name
+    init_kwargs["demand_profile"] = [abs(cap_at_t) for cap_at_t in heron_comp._capacity_vector_t]
+    if heron_comp.is_dispatchable() == "fixed":
+      init_kwargs["flexibility"] = "fixed"
+    else:
+      # The minimum would be overridden by fixed flexibility, so only worry about it if it's flexible
+      init_kwargs["min_demand_profile"] = [abs(min_val) for min_val in heron_comp._minimum_vector_t]
+    if heron_comp._cfs:
+      init_kwargs["cashflows"] = []
+      for cf_name, cf_data in heron_comp._cfs.items():
+        init_kwargs["cashflows"].append(self._create_dove_cashflow(cf_name, cf_data, -1))
+    init_kwargs["consumes"] = dove_res_map[heron_comp._r]
+
+    return dv.Sink(**init_kwargs)
+
+  def _create_dove_converter(self, heron_comp, dove_res_map):
+    init_kwargs = {}
+    init_kwargs["name"] = heron_comp.name
+
+    init_kwargs["installed_capacity"] = max(abs(cap_val) for cap_val in heron_comp._capacity_vector_t)
+    if not all(cap_val == heron_comp._capacity_vector_t[0] for cap_val in heron_comp._capacity_vector_t):
+      init_kwargs["capacity_factor"] = [
+        abs(cap_val) / init_kwargs["installed_capacity"] for cap_val in heron_comp._capacity_vector_t
+      ]
+    if heron_comp.is_dispatchable() == "fixed":
+      init_kwargs["flexibility"] = "fixed"
+    elif init_kwargs["installed_capacity"] > 0:
+      # The minimum would be overridden by fixed flexibility, so only worry about it if it's flexible
+      init_kwargs["min_capacity_factor"] = [
+        abs(min_val) / init_kwargs["installed_capacity"] for min_val in heron_comp._minimum_vector_t
+      ]
+
+    init_kwargs["consumes"] = [dove_res_map[res_name] for res_name in list(heron_comp.get_inputs())]
+    init_kwargs["produces"] = [dove_res_map[res_name] for res_name in list(heron_comp.get_outputs())]
+    init_kwargs["capacity_resource"] = dove_res_map[heron_comp._r]
+
+    match heron_comp.get_interaction().get_transfer().type:
+      case "Ratio":
+        tf_inputs = {dove_res: abs(heron_comp._coeffs[dove_res.name]) for dove_res in init_kwargs["consumes"]}
+        tf_outputs = {dove_res: abs(heron_comp._coeffs[dove_res.name]) for dove_res in init_kwargs["produces"]}
+        init_kwargs["transfer_fn"] = dv.RatioTransfer(input_resources=tf_inputs, output_resources=tf_outputs)
+      case "Polynomial":
+        # TODO
+        # HERON has everything on the lhs of the equation (0 on the right)
+        # DOVE is incompatible as is (it has the output on the right)
+        raise NotImplementedError(f"{heron_comp.name}: This version of HERON does not support Polynomial transfer functions.")
+      case _:
+        raise IOError(f"{heron_comp.name}: Unrecognized transfer function type.")
+
+    if heron_comp.ramp_limit is not None:
+      init_kwargs["ramp_limit"] = heron_comp.ramp_limit()
+    if heron_comp.ramp_freq is not None:
+      init_kwargs["ramp_freq"] = heron_comp.ramp_freq()
+
+    if heron_comp._cfs:
+      init_kwargs["cashflows"] = []
+      for cf_name, cf_data in heron_comp._cfs.items():
+        cf_default_sign = 1 if init_kwargs["capacity_resource"] in init_kwargs["produces"] else -1
+        init_kwargs["cashflows"].append(self._create_dove_cashflow(cf_name, cf_data, cf_default_sign))
+
+    return dv.Converter(**init_kwargs)
+
+  def _create_dove_storage(self, heron_comp, dove_res_map):
+    init_kwargs = {}
+    init_kwargs["name"] = heron_comp.name
+
+    init_kwargs["installed_capacity"] = max(abs(cap_val) for cap_val in heron_comp._capacity_vector_t)
+    if init_kwargs["installed_capacity"] > 0:
+      if not all(cap_val == heron_comp._capacity_vector_t[0] for cap_val in heron_comp._capacity_vector_t):
+        init_kwargs["capacity_factor"] = [
+          abs(cap_val) / init_kwargs["installed_capacity"] for cap_val in heron_comp._capacity_vector_t
+        ]
+      init_kwargs["min_capacity_factor"] = [
+          abs(min_val) / init_kwargs["installed_capacity"] for min_val in heron_comp._minimum_vector_t
+        ]
+    if heron_comp.is_dispatchable() == "fixed":
+      init_kwargs["flexibility"] = "fixed"
+    if heron_comp._cfs:
+      init_kwargs["cashflows"] = []
+      for cf_name, cf_data in heron_comp._cfs.items():
+        init_kwargs["cashflows"].append(self._create_dove_cashflow(cf_name, cf_data, 1))
+
+    init_kwargs["resource"] = dove_res_map[heron_comp._r]
+    init_kwargs["rte"] = (heron_comp.get_interaction().get_sqrt_RTE())**2
+    if heron_comp._max_charge is not None:
+      init_kwargs["max_charge_rate"] = heron_comp._max_charge
+    if heron_comp._max_discharge is not None:
+      init_kwargs["max_discharge_rate"] = heron_comp._max_discharge
+    if heron_comp._periodic_level:
+      init_kwargs["periodic_level"] = True
+      raise NotImplementedError("DOVE can't optimize the initial stored value yet.")
+    else:
+      init_kwargs["initial_stored"] = heron_comp._initial_storage / init_kwargs["installed_capacity"]
+      init_kwargs["periodic_level"] = False
+
+    return dv.Storage(**init_kwargs)
+
+  def _create_dove_cashflow(self, cf_name, cf_data, default_sign):
+    '''
+    default_sign: 1 if activity causes revenue from this cashflow; -1 if activity causes expense
+    '''
+    # HERON:  cost  =                      a(t) * [D(activity) / D'(t)]^x
+    #  DOVE: |cost| = | price_profile(t) * a    * [ activity   / D'   ]^x |
+    # We need to rearrange the HERON equation to:
+    # (1) find the absolute value of the cashflow (we'll handle the sign later)
+    # (2) move all t-dependencies into the price_profile term
+    # (3) convert D(activity) to activity
+    cf_kwargs = {"name": cf_name}
+    price_profile = []
+
+    # Handle alpha
+    if all(alpha_val == cf_data["alphas"][0] for alpha_val in cf_data["alphas"]):
+      # HERON a(t) is constant with time
+      cf_kwargs["alpha"] = abs(cf_data["alphas"][0])
+    else:
+      # HERON a(t) varies with time
+      cf_kwargs["alpha"] = 1
+      price_profile = [abs(alpha_at_t) for alpha_at_t in cf_data["alphas"]]
+
+    # Handle scalex
+    if all(sf_val == cf_data["scaling_factors"][0] for sf_val in cf_data["scaling_factors"]):
+      # HERON scaling factor is constant with time
+      cf_kwargs["scalex"] = cf_data["scaling_factors"][0]
+    else:
+      # HERON scaling factor varies with time
+      raise ValueError(f"{cf_name}: scaling factor must be constant with respect to time.")
+
+    # Handle dprime
+    if all(dprime_val == cf_data["dprimes"][0] for dprime_val in cf_data["dprimes"]):
+      # HERON D'(t) is constant with time
+      cf_kwargs["dprime"] = abs(cf_data["dprimes"][0])
+    else:
+      # HERON D'(t) varies with time
+      # cost = a * [D/D']^x => cost = D'^[-x] * [a * D^x]
+      cf_kwargs["dprime"] = 1.0
+      if price_profile:
+        # The new price_profile has a max length such that there's available data for itself and D'
+        allowed_len = min(len(price_profile), len(cf_data["dprimes"]))
+        price_profile = [
+          price_profile[t] * abs(cf_data["dprimes"][t])**(-1 * cf_kwargs["scalex"]) for t in range(allowed_len)
+        ]
+      else:
+        price_profile = [
+          abs(cf_data["dprimes"][t])**(-1 * cf_kwargs["scalex"]) for t in range(len(cf_data["d_primes"]))
+        ]
+
+    # Handle driver
+    # TODO: Any chance the Driver isn't activity-based? Would need to consider differently.
+    # Need to consider cases where HERON D(activity) = multiplier * activity
+    # cost = a * [D/D']^x; D = d_mult*activity => cost = d_mult^x * [a * [activity/D']^x]
+    if price_profile:
+      # The new price_profile has a max length such that there's available data for itself and d_mult
+      allowed_len = min(len(price_profile), len(cf_data["d_multipliers"]))
+      price_profile = [
+        price_profile[t] * abs(cf_data["d_multipliers"][t])**cf_kwargs["scalex"] for t in range(allowed_len)
+      ]
+    else:
+      price_profile = [
+        abs(cf_data["d_multipliers"][t])**cf_kwargs["scalex"] for t in range(len(cf_data["d_multipliers"]))
+      ]
+
+    # Set price_profile
+    if price_profile:
+      cf_kwargs["price_profile"] = price_profile
+
+    if all(cost*default_sign >= 0 for cost in cf_data["costs"]):
+      return dv.Revenue(**cf_kwargs)
+    elif all(cost*default_sign <= 0 for cost in cf_data["costs"]):
+      return dv.Cost(**cf_kwargs)
+    else:
+      raise ValueError(f"{cf_name}: Sign of cashflow must be either always positive or always negative.")
+
+  # TODO: delete below
   def _process_component(self, component):
     """
       Determine what kind of component this is and process it accordingly.

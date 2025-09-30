@@ -368,14 +368,17 @@ class Pyomo(Dispatcher):
       init_kwargs["min_capacity_factor"] = [
         min_val / init_kwargs["installed_capacity"] for min_val in heron_comp._minimum_vector_t
       ]
+
+    if heron_comp.ramp_limit is not None:
+      init_kwargs["ramp_limit"] = heron_comp.ramp_limit()
+    if heron_comp.ramp_freq is not None:
+      init_kwargs["ramp_freq"] = heron_comp.ramp_freq()
+
     if heron_comp._cfs:
       init_kwargs["cashflows"] = []
       for cf_name, cf_data in heron_comp._cfs.items():
         init_kwargs["cashflows"].append(self._create_dove_cashflow(cf_name, cf_data, 1))
     init_kwargs["produces"] = dove_res_map[heron_comp._r]
-
-    # TODO: HERON supports ramp_limits and ramp_freq for producers; DOVE does not
-    # Need to fix incompatibility issue
 
     return dv.Source(**init_kwargs)
 

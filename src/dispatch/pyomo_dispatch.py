@@ -554,12 +554,10 @@ class Pyomo(Dispatcher):
     if price_profile:
       cf_kwargs["price_profile"] = price_profile
 
-    if all(cost*default_sign >= 0 for cost in cf_data["costs"]):
+    if sum(cf_data["costs"])*default_sign >= 0:
       return dv.Revenue(**cf_kwargs)
-    elif all(cost*default_sign <= 0 for cost in cf_data["costs"]):
-      return dv.Cost(**cf_kwargs)
     else:
-      raise ValueError(f"{cf_name}: Sign of cashflow must be either always positive or always negative.")
+      return dv.Cost(**cf_kwargs)
 
 
   def _check_if_converged(self, new, old, components, tol=1e-4):

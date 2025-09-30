@@ -38,8 +38,8 @@
   <Components>
     <!-- COMPLETE NPP COMPONENT INFORMATION-->
     <Component name="npp">
-      <produces resource="" dispatch="independent">
-        <capacity resource="">
+      <produces resource="steam" dispatch="independent">
+        <capacity resource="steam">
           <sweep_values debug_value="25">25, 50</sweep_values> <!-- MW -->
         </capacity>
       </produces>

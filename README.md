@@ -15,6 +15,7 @@ See more on the [HERON wiki](https://github.com/idaholab/HERON/wiki) for install
 The following are a selection of technical reports, conference proceedings, and journal articles that may be of interest to users and developers of HERON, loosely in order of work performed.
 
 ### Technoeconomic Assessments
+- [Expanding market opportunities: cogeneration strategies for integrated PWR and thermal energy storage systems](https://www.sciencedirect.com/science/article/pii/S221313882500462X)
 - [Stochastic Optimization and Uncertainty Quantification of Natrium-based Nuclear-Renewable Energy Systems for Flexible Power Applications in Deregulated Markets](https://www.sciencedirect.com/science/article/pii/S0306261924014880)
 - [Sensitivity Analysis of a Nuclear Hybrid Energy System With Thermal Energy Storage in Deregulated Electricity Markets Considering Time Series Uncertainty in Electricity Price](https://onlinelibrary.wiley.com/doi/full/10.1002/est2.70082)
 - [Powering Data Centers with Clean Energy: A Techno-Economic Case Study of Nuclear and Renewable Energy Dependability](https://www.osti.gov/biblio/2438321)

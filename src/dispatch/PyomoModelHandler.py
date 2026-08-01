@@ -442,6 +442,11 @@ class PyomoModelHandler:
                                                       add_bounds=False,
                                                       bounds=None if not max_discharge else (0, max_discharge),
                                                       within=pyo.NonNegativeReals)
+    # if bounds are 0, fix the variable value but keep the indexing
+    if max_charge == 0.0:
+      getattr(self.model, charge_name).fix(0.0)
+    if max_discharge == 0.0:
+      getattr(self.model, discharge_name).fix(0.0)
     # balance level, charge/discharge
     level_rule_name = prefix + '_level_constr'
     if comp.get_interaction().apply_periodic_level:

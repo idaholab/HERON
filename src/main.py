@@ -11,6 +11,7 @@ import argparse
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from HERON.src import input_loader
+from HERON.src import install_skills
 from HERON.src.base import Base
 from HERON.src.Moped import MOPED
 from HERON.src.Herd import HERD
@@ -163,6 +164,8 @@ def main():
   parser.add_argument('xml_input_file', nargs='?', default="", help='HERON XML input file')
   parser.add_argument('--definition', action="store_true", dest="definition", help='HERON input file definition compatible with the NEAMS Workbench')
   parser.add_argument('--python_command_for_raven', dest='python_cmd_raven', help='Custom python command for running RAVEN inner')
+  parser.add_argument('--install-skills', dest='skills_dir', metavar='DIR',
+                      help='Install HERON agent skills into DIR (e.g. ~/.claude/skills)')
   args = parser.parse_args()
 
   sim = HERON()
@@ -171,6 +174,15 @@ def main():
   if args.definition:
     from HERON.src import input_definition
     input_definition.print_input_definition()
+    sys.exit(0)
+  # User requested the agent skills be installed
+  if args.skills_dir is not None:
+    try:
+      installed = install_skills.install_skills(args.skills_dir)
+    except FileNotFoundError as err:
+      sim.raiseAnError(FileNotFoundError, str(err))
+    for path in installed:
+      sim.raiseAMessage(f'Installed skill: {path}')
     sys.exit(0)
   if args.xml_input_file == "":
     parser.error("the following arguments are required: xml_input_file")
@@ -193,4 +205,3 @@ def main():
 
 if __name__ == '__main__':
   main()
-

@@ -55,3 +55,7 @@ tests/integration_tests/mechanics/hybrid_load/heron_input.xml
 tests/integration_tests/workflows/HERD/nuclearCase_Sine/temp_initialized_model.json
 tests/integration_tests/workflows/HERD/nuclearCase_notebook_match/temp_initialized_model.json
 /tests/integration_tests/TSA/Sine/synthetic.*
+
+# AI settings directories
+.claude/
+.agents/

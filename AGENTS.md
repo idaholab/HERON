@@ -111,6 +111,13 @@ through RAVEN's test harness:
 - If you cannot run the tests, say so explicitly in your report; do not
   claim a change is verified.
 
+## Project agent SKILLs
+
+HERON contains two agent SKILLs (in ./skills/) which are bundled with the pip package.
+These must be maintained alongside the source code. In particular, skills/heron/ includes
+descriptions of features and XML input file nodes and options. This must be kept up to
+date with the current state of the source code so the skills provide accurate guidance.
+
 ## Making changes
 
 - Development is issue-driven. Changes should trace to a GitHub issue; ask

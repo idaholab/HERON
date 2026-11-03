@@ -2,10 +2,10 @@
   <main>
     <networkx/>
     <pytest/>
-    <dill>0.3.5</dill>
+    <dill/>
     <!-- dispatches requires some effort to work with current raven libraries -->
     <!-- <dispatches source='pip' optional='True'>1.1.0</dispatches> -->
-    <pyomo source='forge'>6.4</pyomo>
+    <pyomo source='forge'>6.6</pyomo>
     <pyutilib source='forge'/>
     <glpk source='forge' skip_check='True'/>
     <ipopt source='forge' skip_check='True'/>

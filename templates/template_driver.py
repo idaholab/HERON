@@ -94,7 +94,9 @@ class TemplateDriver(Base):
     # is written just once, no matter the number of workflow files written by the template.
     lib_file = Path(dest_dir) / self.template.namingTemplates["lib file"]
     with lib_file.open("wb") as lib:
-      pk.dump((case, components, sources), lib)
+      # byref: pickle classes by reference (like dill 0.3.5 did). Newer dill cannot find classes whose name is also
+      # a submodule name (e.g. ValuedParams.Parametric) and would then pickle the whole class by value.
+      pk.dump((case, components, sources), lib, byref=True)
     print(f"Wrote '{lib_file.name}' to '{str(lib_file)}'")
 
   ###################

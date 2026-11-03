@@ -7,7 +7,6 @@ import os
 import time as time_mod
 import pprint
 import numpy as np
-import pyutilib.subprocess.GlobalData
 import logging
 
 import pyomo.environ as pyo
@@ -21,7 +20,13 @@ from .Dispatcher import Dispatcher, DispatchError
 from .DispatchState import NumpyState
 
 # allows pyomo to solve on threaded processes
-pyutilib.subprocess.GlobalData.DEFINE_SIGNAL_HANDLERS_DEFAULT = False
+# Only older pyomo (which used pyutilib to run solvers) has this setting; newer pyomo does not use
+# pyutilib, and pyutilib itself fails to import on Python 3.12 (it imports the removed "imp" module).
+try:
+  import pyutilib.subprocess.GlobalData
+  pyutilib.subprocess.GlobalData.DEFINE_SIGNAL_HANDLERS_DEFAULT = False
+except ImportError:
+  pass
 
 # different solvers express "tolerance" for converging solution in different
 # ways. Further, they mean different things for different solvers. This map

@@ -16,10 +16,13 @@ debugging is deciding which stage failed. The error text usually says.
    bilevel run the outer log often says only that an inner run failed. Go to
    the inner run's own output (below).
 3. **Reproduce small.** Add `<debug/>` to `<Case>` with a `debug_value` on
-   every swept or optimized capacity (see the heron skill, `references/modes.md`).
+   every swept or optimized capacity (`../heron/references/guide/modes.md`).
    Debug mode runs a single design point, one realization, one year, with
    plots, so failures show up in seconds.
-4. **Look up the message** in `references/error-catalog.md`.
+4. **Look up the message.** Search `references/error-catalog.md` for a
+   distinctive fragment of it (e.g. `grep -n "does not match" references/error-catalog.md`)
+   rather than reading the whole file. Messages are abbreviated there, so
+   search for a few plain words, not the full line with its values.
 5. **Change one thing at a time.** Re-run after each fix, because one error often
    hides the next.
 
@@ -39,26 +42,54 @@ run the analysis.
 
 | What | Where |
 |------|-------|
-| Generated workflows | Next to the HERON input: `outer.xml`, `inner.xml`, `heron.lib`. Open them to see what HERON actually asked RAVEN to do (sampled variables, aliases, statistics). Never hand-edit them to "fix" a study; fix the HERON input and regenerate. |
-| Outer run output | `<Case name>_o/` (`sweep.csv`, or `opt_soln_<trajID>.csv` with `opt_soln.csv` as an index of them) |
-| Inner run output | The outer run launches `inner.xml` once per design point through RAVEN's code interface. RAVEN makes one subfolder per run inside `<Case name>_o/`, named by the run's prefix (`1`, `2`, ... or `b<batch>_r<run>` when runs are batched). The inner run's console output is the file `generalOut` in that subfolder, and its own working directory (`<Case name>_i`) is nested inside. Read `generalOut` of a failed run for the real error |
-| How RAVEN decides an inner run failed | It looks for `.ravenStatus` in the inner working directory and, if it is missing, prints "RAVENInterface WARNING: Could not find ... .ravenStatus, assuming failed RAVEN run." So that warning means the inner run died; the cause is in `generalOut` |
-| Debug mode output | In `<Case name>_o/`: `dispatch_print.csv` (dispatch and signals), `cashflows.csv` plus one `cashflows_<id>.csv` per realization (RAVEN writes an index file and per-history files for a HistorySet), `dispatch.nc` (NetCDF database), the dispatch plots (`dispatch_id<sample>_y<year>_c<cluster>_f<figure>.png`, plus `dispatch_id..._SIGNAL.png` for the signals) and the cash flow plots (`Cash_Flows_from_Project_Year_0_to_<N>.png`, `Cumulative_from_Project_Year_0_to_<N>.png`, `Cumulative_pie_from_Project_Year_0_to_<N>.png`). `network.png` is written next to the input file when `heron` parses a debug case. These names are the ones HERON's own debug-mode tests expect (`tests/integration_tests/mechanics/debug_mode/tests`, `test_cashplot/tests`) |
-| Solver failures | `constraint_violations.log` in the working directory of the failed run, listing violated constraints; the console output also prints the resource map and Pyomo model |
+| Generated workflows | `outer.xml`, `inner.xml`, `heron.lib` next to the HERON input. Read them to see what HERON asked RAVEN to do. Never hand-edit them; fix the input and regenerate. |
+| Outer results | `<Case name>_o/`: `sweep.csv`, or `opt_soln.csv` and `opt_soln_<trajID>.csv` |
+| One inner run | `<Case name>_o/<prefix>/`, one subfolder per design point (below) |
+| Debug-mode output | `<Case name>_o/`; file names in `../heron/references/guide/results.md`, "Reading debug output" |
+| Infeasible solve | The console output of that run (`references/infeasible-solves.md`) |
 
-**Verification status of this table.** The debug-mode and sweep output names
-match what HERON's regression tests expect. The inner-run subfolder layout
-and the `generalOut` file come from RAVEN's source (`Code.py`,
-`RAVENInterface.py`), not from a captured run. If a name or location here
-does not match what you see on disk, trust the disk and list the directory.
+HERON's own dispatch messages are printed with a `DEBUGG` prefix: the solver
+used, each solve attempt, its solve time, and any validation concerns.
+`<verbosity>debug</verbosity>` in `<Case>` adds more RAVEN messages.
 
-To see the inner failure text, run the inner workflow directly on one
-design point. Set `<data_handling><inner_to_outer>csv</inner_to_outer></data_handling>`
-in `<Case>` to make inner results easy to read (`input/case.md` in the heron
-skill). Increase `<verbosity>` to `debug` for more messages.
+### Inner runs
 
-HERON's own dispatch solver messages are printed with a `DEBUGG` prefix. They show
-the solver used, each solve attempt, and any validation concerns.
+The outer run launches `inner.xml` once per design point, each in its own
+subfolder of `<Case name>_o/`, named by the run's prefix: `1`, `2`, ..., or
+`b<batch>_r<run>` when runs are batched in parallel. In that subfolder:
+
+- `generalOut` is the inner run's console output. **The real error of a
+  failed inner run is here.**
+- `<Case name>_i/` is the inner run's working directory.
+- `inner.xml` is the inner workflow with this design point's capacities
+  written in as `<constant>` values in its sampler.
+
+RAVEN marks a run as failed when `<Case name>_i/.ravenStatus` is missing,
+printing "Could not find ... .ravenStatus, assuming failed RAVEN run". If
+the files are not where described, list the `_o` directory and trust what is
+on disk.
+
+**To rerun one failed design point by itself,** run RAVEN on the inner input
+in that subfolder:
+
+```bash
+cd <Case name>_o/<prefix>
+raven_framework inner.xml
+```
+
+It finds `heron.lib` (and any `<Function>` file) by the relative paths in its
+`<Files>` block, so leave the directory layout as it is. If it cannot find
+them, compare those paths with what is on disk. Setting
+`<data_handling><inner_to_outer>csv</inner_to_outer></data_handling>` in
+`<Case>` (and regenerating) makes the inner results CSV files you can read
+directly.
+
+### Solver failures and `<Function>` errors
+
+- An infeasible, unbounded, or failed solve: read
+  `references/infeasible-solves.md` for what HERON prints and how to read it.
+- A `<Function>` that errors or misbehaves inside the dispatch: read
+  `references/function-debugging.md`.
 
 ## Suspicious results (no error)
 
@@ -68,28 +99,31 @@ Check in this order, and stop at the first problem:
    Does each component's activity have the expected sign, size, and daily shape?
    Is storage cycling? Is anything pinned at zero or at capacity all the time?
 2. **Signs.** Revenue showing as cost, or the reverse, is the most frequent
-   cause of a wrong NPV. Compare each cash flow's driver sign and price sign
-   against the table in the heron skill's `references/input/economics.md`.
+   cause of a wrong NPV. Check each cash flow against the sign table in
+   `../heron/references/spec/economics.md`.
 3. **Connections.** Misspelled resources create separate networks. Check
    `network.png`.
-4. **Units.** Price per MWh against activity in MW over hourly steps works. Check
-   that capacities, prices, and time steps use consistent units, and that
-   `ProjectTime`, `lifetime`, and the discount rate are in the same unit (years).
-5. **Data.** Is the signal what you expect? Compare the plotted signal against
-   the training data. Look for a flat or constant series.
+4. **Units.** Check that capacities, prices, and time steps are consistent,
+   and that `ProjectTime`, `lifetime`, and the discount rate are in years.
+5. **Data.** Compare the plotted signal against the training data. Look for
+   a flat or constant series.
 6. **Tag and mode.** `sweep_values` vs. `opt_bounds` against `<mode>`, and
    `debug_value` present.
 7. **Sample size.** Noisy or non-repeatable results: raise `<num_arma_samples>`
-   (`uncertainty.md` in the heron skill).
+   (`../heron/references/guide/uncertainty.md`).
 8. **Capacity at a bound.** An optimum on the edge of `opt_bounds` means the
    bound is limiting, not that the design is optimal. Widen it.
 
-Then check the symptoms in `references/error-catalog.md` under "Suspicious
-results".
+Then search `references/error-catalog.md`, "Suspicious results", for the
+symptom. To understand why the dispatch made a choice, see
+`../heron/references/theory/dispatch.md`.
 
 ## References
 
 | File | Read when |
 |------|-----------|
-| `references/error-catalog.md` | You have a specific error message or symptom |
-| the heron skill's `references/results.md` | You need to read outputs correctly before deciding they are wrong |
+| `references/error-catalog.md` | You have a specific error message or symptom (search it; do not read it whole) |
+| `references/infeasible-solves.md` | A dispatch solve failed: infeasible, unbounded, or other non-optimal status |
+| `references/function-debugging.md` | A `<Function>` value or storage `<strategy>` fails or gives wrong values |
+| `../heron/references/guide/results.md` | You need to read outputs correctly before deciding they are wrong |
+| `../heron/references/theory/` | You need the math behind a dispatch or economic result |

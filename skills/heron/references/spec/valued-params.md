@@ -101,4 +101,4 @@ there.
 
 A Python function supplies the value. The signature, return keys, the
 `meta` contents available, and the restrictions that apply inside the
-dispatch optimization are all in `functions.md`.
+dispatch optimization are all in `references/spec/functions.md`.

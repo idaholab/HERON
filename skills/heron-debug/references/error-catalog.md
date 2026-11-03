@@ -4,9 +4,11 @@ Each entry: symptom (message text, abbreviated), likely cause, fix. Messages
 are taken from HERON's source; the file that raises each is given so you can
 read the surrounding code. Where RAVEN raises the error, the entry says so.
 
-This is not an exhaustive list of failure modes. As you build HERON cases and
-debug issues, if you come across an error which is not documented here, add it
-to the table along with the diagnosed cause and how you fixed it.
+Search this file for a fragment of the message; do not read it whole.
+
+This is not an exhaustive list. When working in HERON's source repository
+and you diagnose an error that is not here, add a row with the cause and fix
+(`skills/heron-debug/references/error-catalog.md`).
 
 ## Parsing errors (`heron input.xml`)
 
@@ -28,14 +30,14 @@ to the table along with the diagnosed cause and how you fixed it.
 | `"linear" has been deprecated` (warning) | Rename `<linear>` to `<ratio>`. |
 | `Ramp limit must be (0, 1]` | `<ramp_limit>` out of range. `Components.py` |
 | `Value for <max_charge_rate> must be greater than 0 and less than or equal to 1` (also `max_discharge_rate`) | Fractions of capacity per step. `Components.py` |
-| `Multiple storage resources given for component "X"` | A storage holds exactly one resource. This is an `assert`, so it disappears under `python -O`. |
+| `Multiple storage resources given for component "X"` | A storage holds exactly one resource. |
 | `Initial storage level for "X" was not provided! Defaulting to 0%.` (warning) | Informational. Add `<initial_stored>` if you need a different start (ignored while `periodic_level` is true). |
 | `No <driver> node provided for CashFlow X!` / `No <reference_price> node provided for CashFlow X!` | Both are required. `Economics.py` |
 | `Unrecognized "CashFlow" node: ...` | A child node that is not part of CashFlow. Check spelling. `Economics.py` |
 | `Unrecognized DataGenerator: ...` | Use `ARMA`, `CSV`, `Function`, or `ROM`. `input_loader.py` |
 | `Multiple sources in <DataGenerators> node specify values for variables [...]` | Two generators list the same `variable`. Each variable may appear once. `input_loader.py` |
 | `Requested source "X" for component "Y" was not found!` | The text of a `<ARMA>`/`<CSV>`/`<Function>`/`<ROM>` value does not match any generator `name`. `input_loader.py` |
-| `File not found for <DataGenerator><TYPE> named "X". Looked in: ... Given location: ...` | Path wrong. See path rules in `input/data-generators.md`. `Placeholders.py` |
+| `File not found for <DataGenerator><TYPE> named "X". Looked in: ... Given location: ...` | Path wrong. See path rules in `../heron/references/spec/data-generators.md`. `Placeholders.py` |
 | `ERROR trying to find %HERON_DATA%...` / `path ... found in HERON_DATA environment variable does not seem to exist` | `%HERON_DATA%` could not be resolved. Set `HERON_DATA` or use a plain path. `Placeholders.py` |
 | `Variable "V" requested for "X" but not found in "<file>"! Found: [...]` | The CSV has no such column header. `Placeholders.py` |
 | `Module "..." for function "X" was not found!` | The `<Function>` Python file path is wrong. `Placeholders.py` |
@@ -44,7 +46,7 @@ to the table along with the diagnosed cause and how you fixed it.
 | `Multiple optimization algorithms found, only first algorithm provided...will be used` (warning) | Put one algorithm in `<optimization_settings>`. |
 | `System may be overloaded and greatly increase run time!` (warning) | `<parallel>` requests more processes than the machine has. Lower them. |
 | `HERON config file not found at ...! Has HERON been installed as a plugin in a RAVEN installation?` | Register HERON with RAVEN (`install_plugins.py`). `_utils.py` |
-| RAVEN input-spec error naming an unknown node or a bad value (printed while parsing) | A node is not part of HERON's input. Check spelling, nesting, and allowed values in `input/*.md`. |
+| RAVEN input-spec error naming an unknown node or a bad value (printed while parsing) | A node is not part of HERON's input. Check spelling, nesting, and allowed values in `../heron/references/spec/*.md`. |
 
 ## Workflow generation errors (`heron input.xml`, after parsing)
 
@@ -61,7 +63,7 @@ to the table along with the diagnosed cause and how you fixed it.
 | Symptom | Cause and fix |
 |---------|---------------|
 | File not found for `inner.xml`, `heron.lib`, or `../write_inner.py` | Run `raven_framework` on the generated `outer.xml` from the directory `heron` wrote to. Do not move `outer.xml` away from `inner.xml` and `heron.lib`. Re-run `heron` to regenerate. |
-| `RAVENInterface WARNING: Could not find .../.ravenStatus, assuming failed RAVEN run.` | The inner run died. Open `generalOut` in that run's subfolder of `<Case name>_o/` for the real error (see `SKILL.md`). Raised by RAVEN's `RAVENInterface.checkForOutputFailure`. |
+| `RAVENInterface WARNING: Could not find .../.ravenStatus, assuming failed RAVEN run.` | The inner run died. Open `generalOut` in that run's subfolder of `<Case name>_o/` for the real error (`SKILL.md`, "Inner runs"). RAVEN |
 | Outer run finishes but results are missing or the output database is empty (no specific message) | The inner runs died before writing results. Same as above. |
 | Python `ModuleNotFoundError` for `HERON`, `TEAL`, or `pyomo` | The environment is not the RAVEN one, or the plugin is not installed. |
 | Pickle or ROM load errors on an ARMA `.pk` | The model was trained with a different RAVEN version, or the file is corrupted. Retrain with the same RAVEN. |
@@ -70,11 +72,12 @@ to the table along with the diagnosed cause and how you fixed it.
 
 | Symptom | Cause and fix |
 |---------|---------------|
-| `Solve was unsuccessful, see log file located at ".../constraint_violations.log"... Status: warning Termination: infeasible` | The dispatch constraints cannot all hold. Read `constraint_violations.log`. Usual causes: a `fixed` producer whose output has nowhere to go; a `fixed` demand larger than total capacity; a resource with no producer or no consumer (check spelling); ramp limits or `minimum` that conflict with a fixed signal; a storage `periodic_level` with a forced draw. Add an `independent` market or storage to absorb or supply the resource, or fix the sign or capacity. `dispatch/pyomo_dispatch.py` |
-| `Solve was unsuccessful ... Status: warning Termination: unbounded` | The solver reports that the objective can improve without limit. HERON raises this for any result that is not status `ok` with termination `optimal`. Observed by solving a small unbounded model with Pyomo 6.10.0 and cbc 2.10.13: status `warning`, termination `unbounded`. HERON's source does not say which input causes it in a given case; start from the component signs and capacities in the dispatch (`constraint_violations.log` and the printed Pyomo model). |
-| Missing solver: `RuntimeError: Attempting to use an unavailable solver. The SolverFactory was unable to create the solver "X"...` | The name in `<solver>` is not an installed solver in the RAVEN environment. Observed with Pyomo 6.10.0 using a nonexistent solver name. Install the solver or set `<solver>` to one that is (default `cbc`, `glpk` on Windows). |
+| `Solve was unsuccessful, see log file located at ".../constraint_violations.log"... Status: warning Termination: infeasible` | The dispatch constraints cannot all hold. Read the infeasible constraints printed to the console (the log file is often empty; see `references/infeasible-solves.md`). Usual causes: a `fixed` producer whose output has nowhere to go; a `fixed` demand larger than total capacity; a resource with no producer or no consumer (check spelling); ramp limits or `minimum` that conflict with a fixed signal; a storage `periodic_level` with a forced draw. Add an `independent` market or storage to absorb or supply the resource, or fix the sign or capacity. `dispatch/pyomo_dispatch.py` |
+| `Solve was unsuccessful ... Status: warning Termination: unbounded` | The solver reports that the objective can improve without limit. HERON raises this for any result that is not status `ok` with termination `optimal`. Usually a variable with no upper bound appears in the objective: check component signs and capacities, and any `<Function>` price or driver, in the printed Pyomo model. |
+| Missing solver: `RuntimeError: Attempting to use an unavailable solver. The SolverFactory was unable to create the solver "X"...` | The name in `<solver>` is not an installed solver in the RAVEN environment. Install the solver or set `<solver>` to one that is (default `cbc`, `glpk` on Windows). |
 | `Tolerance setting not available for solver 'X'` | `<tol>` is not supported for that solver. Remove `<tol>`. `dispatch/pyomo_dispatch.py` |
 | `Window length of 1 detected, which is not supported.` | The number of time steps leaves a final window of one step with `rolling_window_length`. Pick a window length that does not leave a remainder of 1. `dispatch/pyomo_dispatch.py` |
+| `Exceeded validation attempt limit!` | A `<validator>` kept reporting violations for 100 re-solves of one window. The limits it imposes conflict with the rest of the dispatch; loosen the validator's settings (e.g. `<delta>`, `<tolerance>`). `dispatch/pyomo_dispatch.py` |
 | `Convergence not reached after 10 iterations.` | A storage `<strategy>` function is governing the dispatch and the iteration with the optimizer is not settling. Simplify the function or the coupling. `dispatch/pyomo_dispatch.py` |
 | `Requested number of steps (N) does not match "time" history provided (M)!` | `<time_discretization>` differs from the time series. Match it to the training data or CSV. `DispatchManager.py` |
 | `Requested end time (T) is greater than time variable ...` / `Requested start time ... is less than ...` | Case longer than the history. `DispatchManager.py` |
@@ -84,21 +87,18 @@ to the table along with the diagnosed cause and how you fixed it.
 | `Synthetic histories are not of consistent shape!` (with `History Shapes` and `Index Map` printed) | Signals from different models have different lengths. Retrain them on the same time axis. `DispatchManager.py` |
 | `variable "V" was not found among the RAVEN variables!` | A `<ARMA>`/`<CSV>` value names a variable that did not reach the dispatch. Check `variable` against the generator's list. `ValuedParams/SyntheticHistory.py`, `StaticHistory.py` |
 | `Attempted to access variable "V" beyond the end of its length!` | Signal shorter than the dispatch window. Match time grids. |
-| `From Function "F" method "m" expected ... to return with form (results_dict, meta_dict)` | A `<Function>` must return `(data, meta)`, both dicts. See `input/functions.md`. `Placeholders.py` |
+| `From Function "F" method "m" expected ... to return with form (results_dict, meta_dict)` | A `<Function>` must return `(data, meta)`, both dicts. See `../heron/references/spec/functions.md`. `Placeholders.py` |
 | `While calculating minimum operating level ... an invalid percent was provided` / `...initial storage level ... invalid percent` | `<minimum>` or `<initial_stored>` evaluated outside 0 to 1. `Components.py` |
 | `Some variables were missing or None!` | A component's evaluation lacks a needed value (see the warnings printed just above). `Components.py` |
-| A cash flow `Function` fails with a Pyomo error about expressions, `if`, `min`, `max`, or NumPy | The function received symbolic activity. Use only plain arithmetic on activity. See `input/functions.md`. |
+| A cash flow `Function` fails with a Pyomo error about expressions, `if`, `min`, `max`, or NumPy | The function received symbolic activity. Use only plain arithmetic on activity. See `../heron/references/spec/functions.md`. |
 
 ## Suspicious results
 
-These have no error message. Each row follows from how the code computes or
-names results (sign conventions, window length, statistic defaults, bounds),
-but none is a string from the source, so treat each as a hypothesis to check
-in debug mode.
+No error message. Treat each row as a hypothesis to check in debug mode.
 
 | Symptom | Likely cause and check |
 |---------|------------------------|
-| NPV very large or very negative, same magnitude in every design | Sign error in a cash flow driver or price (`input/economics.md`); units mismatch between price and activity. |
+| NPV very large or very negative, same magnitude in every design | Sign error in a cash flow driver or price (`../heron/references/spec/economics.md`); units mismatch between price and activity. |
 | Revenue shows up as a cost | Market sales without `<multiplier>-1</multiplier>` on the driver. |
 | Capex does not change when capacity changes | Capex driven by a constant rather than `<variable>X_capacity</variable>`. |
 | Optimum on the edge of `opt_bounds` | Bound is limiting. Widen it. |

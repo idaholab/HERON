@@ -2,7 +2,7 @@
 
 Declares the external data sources that components refer to. Every source
 has a `name`, and components refer to it by putting that name in the text of
-a ValuedParam (see `valued-params.md`). The node is required, but can be
+a ValuedParam (see `references/spec/valued-params.md`). The node is required, but can be
 empty if nothing uses external data.
 
 ```xml
@@ -25,7 +25,7 @@ empty if nothing uses external data.
 
 ### `<ARMA>`
 
-The model must be trained in RAVEN beforehand (see `../time-series.md`).
+The model must be trained in RAVEN beforehand (see `references/guide/time-series.md`).
 Each realization HERON draws is a new synthetic history, so the number of
 realizations is set by `<num_arma_samples>` in `<Case>`. The `variable`
 names must match the signal names the model was trained on.
@@ -49,7 +49,7 @@ RAVEN_sample_ID,Year,Time,price
 ### `<Function>`
 
 The Python file holds the methods named in `<Function method="...">` value
-slots and in storage `<strategy>`. See `functions.md` for how to write them.
+slots and in storage `<strategy>`. See `references/spec/functions.md` for how to write them.
 
 ## Paths
 

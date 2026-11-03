@@ -1,7 +1,7 @@
 # Python functions (`<Function>`)
 
 How to write the Python functions that `<Function>` value slots and storage
-`<strategy>` call. For declaring the file, see `data-generators.md`.
+`<strategy>` call. For declaring the file, see `references/spec/data-generators.md`.
 
 Use `<Function>` when a value can't be expressed with the other types: a
 price computed from a signal, a driver built from several activities, or a
@@ -61,7 +61,7 @@ the final cash flows are computed.
 **Signs.** Activity follows the usual convention (positive for produced,
 negative for consumed). A function returning a market's electricity activity
 as a driver still needs a `<multiplier>-1</multiplier>`, or a sign flip in
-the code, to count as revenue (see `economics.md`).
+the code, to count as revenue (see `references/spec/economics.md`).
 
 **Example: a price derived from a signal, and an activity driver.**
 

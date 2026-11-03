@@ -1,0 +1,71 @@
+<HERON>
+  <!-- Minimal HERON sweep: a swept generator selling into a market at a
+       synthetic price. Copy this and edit. Units here: MW, $/MWh, hourly steps.
+       Node details: references/spec/*.md. -->
+
+  <Case name="minimal">
+    <mode>sweep</mode>
+    <num_arma_samples>3</num_arma_samples>       <!-- raise before quoting results -->
+    <!-- <debug/> -->                            <!-- uncomment for the first run -->
+    <time_discretization>
+      <time_variable>Time</time_variable>        <!-- must match the training data -->
+      <year_variable>Year</year_variable>
+      <end_time>23</end_time>
+      <num_steps>24</num_steps>                  <!-- must match the model's time axis -->
+    </time_discretization>
+    <economics>
+      <ProjectTime>20</ProjectTime>
+      <DiscountRate>0.08</DiscountRate>
+      <tax>0.21</tax>
+      <inflation>0.0</inflation>
+    </economics>
+    <dispatcher>
+      <pyomo/>
+    </dispatcher>
+  </Case>
+
+  <Components>
+    <Component name="gen">
+      <produces resource="electricity" dispatch="independent">
+        <capacity resource="electricity">
+          <sweep_values debug_value="100">50, 100, 200</sweep_values>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>30</lifetime>
+        <!-- capex: positive driver x negative price = cost -->
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
+          <driver><variable>gen_capacity</variable></driver>
+          <reference_price><fixed_value>-1e6</fixed_value></reference_price>
+        </CashFlow>
+        <!-- variable O&M: positive activity x negative price = cost -->
+        <CashFlow name="VOM" type="repeating" taxable="True" inflation="none">
+          <driver><activity>electricity</activity></driver>
+          <reference_price><fixed_value>-5</fixed_value></reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="market">
+      <demands resource="electricity" dispatch="independent">
+        <capacity><fixed_value>-1000</fixed_value></capacity>   <!-- demands are negative -->
+      </demands>
+      <economics>
+        <lifetime>1</lifetime>
+        <!-- sales: activity is negative, so flip it to make revenue positive -->
+        <CashFlow name="sales" type="repeating" taxable="True" inflation="none">
+          <driver>
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price><ARMA variable="PRICE">synth</ARMA></reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+  </Components>
+
+  <DataGenerators>
+    <!-- trained RAVEN synthetic history model; path is relative to this file -->
+    <ARMA name="synth" variable="PRICE">price_arma.pk</ARMA>
+  </DataGenerators>
+</HERON>

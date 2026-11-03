@@ -66,7 +66,12 @@ Holds exactly one dispatcher:
   - `<tol>`: relative solver tolerance. The default depends on the solver.
   - `<debug_mode>`: extra printing. Default `False`. Do not use for
     production runs.
-- `<custom>`: a user-supplied Python dispatcher. This is for advanced use.
+- `<custom>`: a user-supplied Python dispatcher, with `<location>` the path
+  to the module. **Untested and probably broken:** it has no regression
+  test, and its only example (`tests/integration_tests/mechanics/custom_dispatcher/`)
+  does not match the signature the code calls (`dispatch(meta, state)` in
+  `src/dispatch/CustomDispatcher.py`). Do not recommend it. If a user needs
+  it, read that source first and tell them it is unsupported.
 
 ## Sampling and run size
 
@@ -74,7 +79,7 @@ Holds exactly one dispatcher:
 |------|---------|---------|
 | `<num_arma_samples>` | Number of stochastic realizations (inner samples) per design point. Each one is a separate dispatch and cash flow evaluation. | `1` |
 | `<debug>` | Runs a reduced-size check of one design point and writes dispatch and cash flow plots (details below). | off |
-| `<parallel>` | `<outer>` and `<inner>` process counts, and an optional `<runinfo>` block for clusters. | no parallelism |
+| `<parallel>` | `<outer>` and `<inner>` process counts, and an optional `<runinfo>` block (`<expectedTime>`, `<clusterParameters>`, `<memory>`, `<RemoteRunCommand>`) for clusters. Its presence also writes HPC queue settings; see `references/guide/modes.md`, "Running in parallel". | no parallelism |
 
 `<debug>` children, all optional (an empty `<debug/>` is valid):
 
@@ -108,8 +113,41 @@ In debug mode each `sweep_values` or `opt_bounds` is replaced by its
 |------|---------|
 | `<result_statistics>` | Extra statistics to report, as empty nodes (e.g. `<percentile percent="5"/>`, `<valueAtRisk/>`). Mean, standard deviation, and median are always reported. |
 | `<label name="...">value</label>` | A fixed tag passed through to the outputs. Not used in any calculation. |
-| `<dispatch_vars>` | Extra sampled variables that are not tied to a component: `<variable name="...">` containing a ValuedParam. |
-| `<validator>` | Checks or adjusts each dispatch after it is solved. |
+| `<dispatch_vars>` | Extra design variables that are not tied to a component (below). |
+| `<validator>` | Checks each solved dispatch and re-solves with tighter limits (below). |
 | `<data_handling><inner_to_outer>` | Data format passed from the inner runs to the outer run: `netcdf` (default) or `csv` (slower, but easier to inspect when debugging). |
 | `<verbosity>` | `silent`, `quiet`, `all` (default), or `debug`. |
 | `<workflow>` | `standard` (default), `MOPED`, `combined`, or `DISPATCHES`. These are alternative solve workflows. |
+
+### `<dispatch_vars>`
+
+A design variable that no component owns, such as a bid adjustment that a
+`<Function>` reads. Each `<variable name="X">` holds one ValuedParam. A
+`sweep_values` or `opt_bounds` makes it an outer design variable named
+`X_dispatch` (a column in `sweep.csv`), and it reaches the dispatch as
+`meta['HERON']['RAVEN_vars']['X']` (`references/spec/functions.md`). Elsewhere
+it can be referred to as `<variable>X</variable>`.
+
+```xml
+<dispatch_vars>
+  <variable name="bid_adjust">
+    <sweep_values debug_value="1">1, 100</sweep_values>
+  </variable>
+</dispatch_vars>
+```
+
+### `<validator>`
+
+Only works with `<pyomo/>`. After each window is solved, the validator
+checks the dispatch. Each violation it reports becomes a new upper or lower
+production limit at that time step, and the window is solved again, up to
+100 attempts ("Exceeded validation attempt limit!"). Validators:
+
+| Node | Does |
+|------|------|
+| `<Example>` | Demonstration only. Limits the change in any activity between steps to `<delta>`, within `<tolerance>`. |
+| `<FARM_SISO>`, `<FARM_MIMO>` | From the FARM plugin, if installed. Constrains dispatch with a reduced-order model of the plant's control. See FARM's documentation. |
+
+Messages are printed with `DEBUGG ... validation concerns raised:`. A new
+validator subclasses `src/validators/Validator.py` and is registered in
+`src/validators/Factory.py`.

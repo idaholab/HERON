@@ -2,7 +2,7 @@
 
 How HERON gets time-varying data (prices, loads, wind, solar) and how that
 data lines up with the analysis. Declaring the sources is covered in
-`input/data-generators.md`.
+`references/spec/data-generators.md`.
 
 ## Synthetic history (ARMA) or static history (CSV)?
 
@@ -11,17 +11,18 @@ data lines up with the analysis. Declaring the sources is covered in
 | What it is | A trained, serialized RAVEN synthetic history model (`.pk`) | A fixed history read from a file |
 | Realizations | A new random history per inner sample (`<num_arma_samples>`) | The same history every time (unless the file has several `RAVEN_sample_ID`s) |
 | Use when | Variability matters and you have training data | You want a deterministic, known scenario, or a quick first model |
-| Cost | Each realization is a dispatch solve | Cheapest case is a flat sweep: one solve per design point (`modes.md`) |
+| Cost | Each realization is a dispatch solve | Cheapest case is a flat sweep: one solve per design point (`references/guide/modes.md`) |
 
-A case cannot use both. The template driver stops with "Mixing ARMA and CSV
-sources is not yet supported".
+**A case cannot use both.** The template driver stops with "Mixing ARMA and
+CSV sources is not yet supported". This is the one place this rule is
+described in full.
 
 ## Training a synthetic history model
 
 HERON does not train models; RAVEN does, ahead of time, and HERON loads the
 serialized model. Working examples are `tests/integration_tests/ARMA/train_*.xml`
-(RAVEN `ARMA`) and `tests/integration_tests/TSA/train_*_TSA.xml`. The pattern
-in those files:
+(RAVEN `ARMA`) and `tests/integration_tests/TSA/train_*_TSA.xml`, in a source
+checkout of HERON only. The pattern in those files:
 
 1. Load the training CSV into a `HistorySet`. The pivot parameter is the
    time variable.
@@ -79,6 +80,8 @@ Two generators cannot list the same variable name. The default `time` and
 
 ## Clustering and higher moments
 
+(The index math is in `references/theory/time-indexing.md`.)
+
 When a clustered model has fewer clusters than segments, each cluster
 represents several segments and `DispatchManager` multiplies that cluster's
 cash flows and activity by the count of segments it represents (its
@@ -114,11 +117,11 @@ for a clustered model without comment, so the check is on you.
 
 ## Static history files
 
-See `input/data-generators.md` for the required columns. The extras:
+See `references/spec/data-generators.md` for the required columns. The extras:
 
 - The year and time columns must match the names in `<Case>`.
 - With one `RAVEN_sample_ID`, the case may qualify for the flat sweep
-  (`modes.md`). With several, each ID is a realization.
+  (`references/guide/modes.md`). With several, each ID is a realization.
 - A one-year file is repeated for every project year. A multi-year file must
   cover the project life.
 - Each requested `variable` must be a header. HERON checks this at parse time.
@@ -127,7 +130,7 @@ See `input/data-generators.md` for the required columns. The extras:
 
 1. In the RAVEN training run, plot or print a sampled synthetic history and
    compare its range and shape to the training data.
-2. Run HERON in debug mode (`modes.md`). The parse prints "detected:
+2. Run HERON in debug mode (`references/guide/modes.md`). The parse prints "detected:
    interpolated / clustered" for each generator, and the dispatch plot shows
    the signal alongside the dispatch (the `GRO_debug_synthetics` signals).
 3. Check that the signal's units match how the component uses it. A price in

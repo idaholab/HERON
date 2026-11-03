@@ -9,7 +9,7 @@ Each component has:
 
 - exactly one **interaction**: `<produces>`, `<stores>`, or `<demands>`
 - one `<economics>` node, which is required even if it has no cash flows
-  (see `economics.md`)
+  (see `references/spec/economics.md`)
 
 ```xml
 <Component name="npp">
@@ -59,7 +59,7 @@ network that nothing else connects to.
 
 ## Children common to all interactions
 
-All of these take a ValuedParam (see `valued-params.md`).
+All of these take a ValuedParam (see `references/spec/valued-params.md`).
 
 | Child | Meaning |
 |-------|---------|
@@ -67,11 +67,9 @@ All of these take a ValuedParam (see `valued-params.md`).
 | `<capacity_factor>` | Available fraction of capacity at each time step, from 0 to 1. Only `<ARMA>` or `<CSV>` are allowed. Typical use: wind or solar availability. |
 | `<minimum>` | Minimum operating level, as a fraction of capacity, from 0 to 1. Default 0. |
 
-**Sign convention:** activity is positive when a component adds a resource
-to the system and negative when it removes one, and capacities follow the
-same rule. A `<demands>` capacity is negative, and so is a producer's
-capacity when its `resource` attribute names a resource that the producer
-consumes. This matters most for economics; see `economics.md`.
+**Signs:** a `<demands>` capacity is negative, and so is a producer's
+capacity measured in a resource it consumes. The full convention is in
+`references/spec/economics.md`.
 
 ## `<produces>`
 
@@ -152,7 +150,7 @@ maximum stored amount (positive). Its activity is reported as the storage
 | `<RTE>` | Round-trip efficiency, as a fraction. | `1.0` |
 | `<max_charge_rate>` | Maximum charge rate per time step, as a fraction of capacity. | `1.0` |
 | `<max_discharge_rate>` | Maximum discharge rate per time step, as a fraction of capacity. | `1.0` |
-| `<strategy>` | A `<Function>` that sets the storage level directly, instead of letting the dispatcher optimize it (see `functions.md`). | (optimized) |
+| `<strategy>` | A `<Function>` that sets the storage level directly, instead of letting the dispatcher optimize it (see `references/spec/functions.md`). | (optimized) |
 
 ```xml
 <stores resource="steam" dispatch="independent">
@@ -167,7 +165,7 @@ maximum stored amount (positive). Its activity is reported as the storage
 
 Consumes one resource and nothing else. Its `<capacity>` is negative, and
 so is its activity (it removes the resource from the system; see the sign
-conventions in `economics.md`). Use `dispatch="fixed"` for a demand that must
+conventions in `references/spec/economics.md`). Use `dispatch="fixed"` for a demand that must
 always be met in full (e.g. a load profile), and `dispatch="independent"` for
 a market that takes whatever is profitable, up to its capacity.
 

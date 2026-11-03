@@ -18,16 +18,31 @@ A HERON input is one XML file with root `<HERON>` and three required children:
    what it produces, stores, or demands, and its cash flows.
 3. **`<DataGenerators>`**: where external data comes from. Synthetic
    history models (`<ARMA>`), static histories (`<CSV>`), Python functions
-   (`<Function>`), and RAVEN ROMs (`<ROM>`).
+   (`<Function>`), and RAVEN ROMs (`<ROM>`). Required, but may be empty.
 
 Components refer to data generators by `name`, and components are connected
-to each other only through shared resource names. Read
-`references/input-file.md` before writing or editing an input.
+to each other only through shared resource names. A name that does not match
+is an error.
+
+To start a new input, copy `assets/minimal_sweep.xml` (or
+`assets/minimal_opt.xml`). Each is a complete, commented case with the
+required nodes and correctly signed cash flows.
+
+## Gotchas
+
+- **Signs.** Activity is positive when a component adds a resource and
+  negative when it removes one, and capacities follow it. A market
+  (`<demands>`) has negative activity, so its sales need
+  `<multiplier>-1</multiplier>` on the driver or they count as a cost, with
+  no warning. Check every cash flow against `references/spec/economics.md`.
+- **Tag must match mode.** `sweep_values` for sweep, `opt_bounds` for opt,
+  each with a `debug_value`. HERON does not warn when they are swapped.
+- **Use `dispatch="fixed"` or `"independent"` only.** `dependent` is legacy.
 
 ## Recommended workflow
 
 Move through the modes in order, and only advance once the current stage
-looks right. Details are in `references/modes.md`.
+looks right. Details are in `references/guide/modes.md`.
 
 1. **Debug.** Add `<debug/>` to `<Case>` and give every swept or optimized
    capacity a `debug_value`. Run it and check the resource graph, the dispatch
@@ -47,41 +62,43 @@ the heron-debug skill.
 
 ## References
 
-Load these only when the task needs them:
+Load only what the task needs. Guides help you decide; specs list every
+option of one node.
+
+**Guides** (`references/guide/`)
 
 | File | Read when |
 |------|-----------|
-| `references/input-file.md` | Writing or editing any part of a HERON input file |
-| `references/components.md` | Defining producers, demanders, storage, capacities, transfer functions |
-| `references/valued-params.md` | Choosing how a value is supplied (fixed, sweep/opt, Function, SyntheticHistory, ...) |
-| `references/time-series.md` | Training or using synthetic history models, realizations, clustering |
-| `references/uncertainty.md` | Deciding what is stochastic, sample counts, statistics and objectives |
-| `references/modes.md` | Choosing debug vs. sweep vs. opt, the files HERON generates, and where results land |
-| `references/results.md` | Reading `sweep.csv`, `opt_soln*.csv`, and debug plots and metrics |
-| `references/best-practices.md` | Reviewing a study design or input for common mistakes |
+| `modes.md` | Choosing debug vs. sweep vs. opt, the files HERON generates, and where results land |
+| `modeling-components.md` | Turning a physical system into components: interactions, capacities, transfer functions, storage |
+| `choosing-values.md` | Choosing how a value is supplied (fixed, sweep/opt, ARMA, CSV, Function, ...) |
+| `time-series.md` | Using synthetic history models or static histories, realizations, clustering |
+| `uncertainty.md` | Deciding what is stochastic, sample counts, statistics and objectives |
+| `results.md` | Reading `sweep.csv`, `opt_soln*.csv`, and debug plots and metrics |
+| `best-practices.md` | Reviewing a study design or input for common mistakes |
 
-The `references/input/` files hold the per-node detail (`case.md`,
-`components.md`, `economics.md`, `valued-params.md`, `functions.md`,
-`data-generators.md`); `references/input-file.md` is the index to them.
+**Specs** (`references/spec/`)
 
-## Source of truth
+| File | Read when writing |
+|------|-------------------|
+| `case.md` | `<Case>`: mode, time grid, project economics, dispatcher, sampling, debug, optimization settings |
+| `components.md` | `<Component>`: produces, stores, demands, capacity, transfer functions, ramping, storage options |
+| `economics.md` | A component's `<economics>` and `<CashFlow>` nodes, and the sign conventions |
+| `valued-params.md` | Any value slot (`fixed_value`, `sweep_values`, `opt_bounds`, `ARMA`, `CSV`, `Function`, `activity`, ...) |
+| `functions.md` | The Python functions behind `<Function>` values or a storage `<strategy>` |
+| `data-generators.md` | `<ARMA>`, `<CSV>`, `<Function>`, or `<ROM>` sources, and file paths |
+| `test-info.md` | A regression test input for HERON itself |
 
-These references were written from HERON's source. When they disagree with
-the code, the code is right, so check it and tell the user about the
-mismatch. Where to look:
+**Theory** (`references/theory/`). Read only for "why" questions: why a
+dispatch or an NPV came out as it did, or what HERON actually computes.
 
-| Question | Source |
-|----------|--------|
-| What a `<Case>` node accepts, defaults, and metric/statistic names | `src/Cases.py` (`get_input_specs`, `stats_metrics_meta`, `economic_metrics_meta`) |
-| What a component, producer, storage, or demand accepts | `src/Components.py` |
-| Cash flow rules | `src/Economics.py`, `src/CashFlowUser.py` |
-| ValuedParam types and where they are allowed | `src/ValuedParams/`, `src/ValuedParamHandler.py` |
-| Transfer functions | `src/TransferFuncs/` |
-| Data generators, path resolution, ARMA/CSV checks | `src/Placeholders.py`, `src/input_loader.py` |
-| Which RAVEN workflow gets written and why | `templates/template_driver.py` |
-| What the generated workflows contain | `templates/*.py`, `templates/xml/` |
-| How dispatch is solved and failures are raised | `src/dispatch/pyomo_dispatch.py`, `PyomoModelHandler.py` |
-| How results are computed per run | `src/DispatchManager.py` |
-| Working examples | `tests/integration_tests/` (small, one feature each) and `tests/workshop/` (full studies) |
+| File | Read when |
+|------|-----------|
+| `dispatch.md` | The dispatch optimization: objective, balance, bounds, transfer, ramping, storage, rolling windows |
+| `economics.md` | How cash flows become NPV, IRR, PI, LC: tax, inflation, MACRS, replacement, discounting |
+| `bilevel.md` | The outer/inner problem structure and its consequences |
+| `time-indexing.md` | Realizations, years, segments, clusters, multiplicity, and how results are summed |
 
-`heron --definition` prints the input definition as HERON itself sees it.
+**Source** (`references/source-map.md`): where in HERON's code each topic
+lives. When a reference and the code disagree, the code is right; tell the
+user about the mismatch.

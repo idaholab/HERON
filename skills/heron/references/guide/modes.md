@@ -2,7 +2,7 @@
 
 A HERON study moves through three stages: **debug**, then **sweep**, then
 **opt**. Each stage answers a different question, and each is more expensive
-than the last. Settings for the nodes named here are in `input/case.md`.
+than the last. Settings for the nodes named here are in `references/spec/case.md`.
 
 ## How HERON runs a case
 
@@ -29,8 +29,55 @@ Which workflow gets written depends on the case
 | Only `<CSV>` sources, `mode` is `sweep`, no uncertain cash flow parameters, and the CSV has a single sample | **Flat sweep**: one dispatch per design point, no `inner.xml` |
 | Anything else | **Bilevel**: the outer run samples or optimizes capacities and launches `inner.xml` for each |
 
-Mixing `<ARMA>` and `<CSV>` sources is rejected outright ("Mixing ARMA and CSV
-sources is not yet supported").
+A case may not mix `<ARMA>` and `<CSV>` sources
+(`references/guide/time-series.md`). The math of the bilevel problem is in
+`references/theory/bilevel.md`.
+
+## Run cost
+
+Every dispatch solve is one rolling window of one cluster (or segment) of
+one year of one realization. Estimate before running:
+
+```
+solves = design points x realizations x years x clusters x windows per cluster
+```
+
+- **Design points:** product of the `sweep_values` list lengths (sweep), or
+  up to `<limit>` iterations, each with several evaluations (opt; below).
+- **Realizations:** `<num_arma_samples>`.
+- **Years:** `<ProjectTime>`. Every project year is dispatched, even when a
+  single-year model is replayed for each one.
+- **Clusters:** the number of representative clusters in a clustered model,
+  otherwise 1. The steps per cluster are `<num_steps>`.
+- **Windows:** `<num_steps>` / `rolling_window_length`, rounded up.
+
+A window of 24 hourly steps with a few components solves in a fraction of a
+second with cbc, so the count of solves is usually what matters. Time one
+debug run (the solve time is printed as `DEBUGG solve time`) and multiply.
+Binary variables (`ramp_freq`) and nonlinear solvers (`<poly>`, `LC`) cost
+much more per solve.
+
+## Running in parallel
+
+`<parallel>` in `<Case>` sets how many inner runs (design points) run at
+once (`<outer>`), and how many realizations each inner run evaluates at once
+(`<inner>`). Their product should not exceed the cores available. HERON
+warns ("System may be overloaded") when it does.
+
+| Setting | Default when `<parallel>` is present |
+|---------|--------------------------------------|
+| `<inner>` | `<num_arma_samples>` |
+| `<outer>` | Number of sampled capacities + 1 (one gradient evaluation for opt) |
+
+Any `<parallel>` node also writes HPC settings into the RunInfo of
+`outer.xml`. HERON looks for a preset matching the hostname in
+`templates/parallel/` (`sawtooth`, `bitterroot`). On any other machine it
+uses `<mode>mpi<runQSUB/></mode>`, which submits to a PBS queue. Check the
+`<RunInfo>` in the generated `outer.xml` before running, especially on a
+workstation. `<runinfo>` inside `<parallel>` adds cluster settings
+(`<expectedTime>`, `<clusterParameters>`, `<memory>`, `<RemoteRunCommand>`)
+to that block. See `tests/integration_tests/cluster_check/` for an example
+input and the `outer.xml` it produces.
 
 ## Debug
 
@@ -43,21 +90,14 @@ What it changes:
 - Runs `<inner_samples>` realizations (default 1) instead of
   `<num_arma_samples>`, and `<macro_steps>` years (default 1) instead of
   `<ProjectTime>`.
-- Writes `dispatch_print.csv` and `cashflows*.csv` (and a `dispatch.nc`
-  database), plus a dispatch plot and a cash flow plot (each switchable with `<dispatch_plot>` and
-  `<cashflow_plot>`; `sep_by_resource="True"` gives one figure per resource).
-- Writes `network.png` (the resource graph of the components) next to the
-  input file when `heron` parses a debug case.
+- Writes dispatch and cash flow CSVs, a `dispatch.nc` database, and plots
+  (names and contents in `references/guide/results.md`). `network.png`, the
+  resource graph, is written next to the input file when `heron` parses a
+  debug case.
 
 **Always set `debug_value`** on every swept or optimized capacity. Without it,
 the capacity is not held fixed: debug mode samples it from its range, so the
 dispatch you inspect is not a design you chose.
-
-```xml
-<capacity>
-  <sweep_values debug_value="100">50, 100, 200</sweep_values>
-</capacity>
-```
 
 What to check in the debug output, in order:
 1. The resource graph (`network.png`): are the components connected the way
@@ -67,7 +107,7 @@ What to check in the debug output, in order:
    they are high? Is any demand left unmet?
 3. The cash flow plot: do revenues and costs have the right sign and order
    of magnitude? A market that shows as a cost is the classic sign error
-   (see `input/economics.md`).
+   (see `references/spec/economics.md`).
 
 Do not read economics from a debug run. Its single year and few realizations
 are only meant to prove the model runs and behaves.
@@ -84,13 +124,10 @@ capacity you want to vary (others use `fixed_value`).
 - Size the grid first with a handful of points per dimension. Refine around
   the interesting region in a second sweep, rather than starting fine.
 - Output is `sweep.csv` in `<Case name>_o/`: one row per design point, with
-  the capacities and the result columns. In the bilevel workflow these are
-  statistics named `<stat>_<variable>`: `mean_`, `std_`, and `med_` always,
-  plus `max_`, `min_`, `perc_5_`, `perc_95_`, `samp_`, and `var_` in sweep
-  mode (for example `mean_NPV`, `perc_5_NPV`). Add others with
-  `<result_statistics>` (see `uncertainty.md`). In the flat sweep (single
-  static history) there is no statistic, so the columns are the plain values
-  (`NPV`, `TotalActivity__<comp>__<tag>__<resource>`).
+  the capacities and statistics of the results such as `mean_NPV`
+  (`references/guide/uncertainty.md` lists which). The flat sweep has no
+  statistics, so its columns are plain `NPV` and
+  `TotalActivity__<comp>__<tag>__<resource>`.
 - Prefer sweep over opt when there are one or two decision variables, when
   you want to see the shape of the response (not just the best point), or when
   the objective may be flat or noisy enough to confuse an optimizer.
@@ -104,11 +141,10 @@ optimized, and add `<optimization_settings>`.
 - `<opt_metric>` is the economic metric (default `NPV`) and `<stats_metric>`
   is the statistic of it across realizations (default `expectedValue`). The
   direction (`min` or `max`) defaults from the statistic, so check it with
-  `<type>` if you use risk or spread statistics (see `uncertainty.md`).
+  `<type>` if you use risk or spread statistics (see `references/guide/uncertainty.md`).
 - Algorithms (`<algorithm>`): `BayesianOpt` (default) or `GradientDescent`.
-  The values below are the template defaults, which `<limit>`,
-  `<persistence>`, and `<convergence>` override
-  (`templates/snippets/optimizers.py`):
+  Template defaults, which `<limit>`, `<persistence>`, and `<convergence>`
+  override:
 
   | | BayesianOpt | GradientDescent |
   |---|---|---|
@@ -116,12 +152,10 @@ optimized, and add `<optimization_settings>`.
   | Consecutive converged iterations (`persistence`) | 4 | 1 |
   | Convergence tolerances | acquisition 1e-5 | gradient 1e-4, objective 1e-8 |
 
-- Output is in `<Case name>_o/`: `opt_soln.csv` is an index (`trajID`,
-  `filename`) of one `opt_soln_<trajID>.csv` per optimizer trajectory, and
-  those files hold the results, plus an optimization path plot. Rows are
-  iterations; columns are `iteration`, `accepted`, the capacities, and result
-  statistics named `<stat>_<variable>`, such as `mean_NPV`, `std_NPV`,
-  `med_NPV`. Interpretation is in `results.md`.
+- Output is in `<Case name>_o/`: `opt_soln.csv` indexes one
+  `opt_soln_<trajID>.csv` per optimizer trajectory, which holds one row per
+  iteration, plus an optimization path plot. How to read them is in
+  `references/guide/results.md`.
 - Every outer iteration is a full inner run, so noise in the objective
   matters: with few realizations, the optimizer can chase sampling noise.
   Raise `<num_arma_samples>` before trusting a result.

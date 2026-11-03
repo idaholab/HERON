@@ -2,7 +2,7 @@
 
 Each `<Component>` needs one `<economics>` node. Project-wide settings
 (project length, discount rate, tax, inflation) are set once in the `<Case>`
-`<economics>` node instead (see `case.md`).
+`<economics>` node instead (see `references/spec/case.md`).
 
 | Child | Meaning |
 |-------|---------|
@@ -103,7 +103,7 @@ For a simple per-unit price, leave out `reference_driver` and
 
 ### Children
 
-All except `<depreciate>` take a ValuedParam (see `valued-params.md`). In
+All except `<depreciate>` take a ValuedParam (see `references/spec/valued-params.md`). In
 addition to the usual types, cash flow slots also accept `<activity>`, which
 is the dispatched activity of this component.
 

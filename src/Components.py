@@ -1069,8 +1069,8 @@ class Storage(Interaction):
       @ Out, discharge_amt, float | None, max storage discharge rate
     """
     capacity = self.get_capacity(meta)[0][self.get_resource()]
-    charge_amt = None if self._max_charge_rate is None else self._max_charge_rate * capacity
-    discharge_amt = None if self._max_charge_rate is None else self._max_discharge_rate * capacity
+    charge_amt = 1.0 * capacity if self._max_charge_rate is None else self._max_charge_rate * capacity
+    discharge_amt = 1.0 * capacity if self._max_discharge_rate is None else self._max_discharge_rate * capacity
     return charge_amt, discharge_amt
 
 

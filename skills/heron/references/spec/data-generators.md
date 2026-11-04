@@ -7,7 +7,7 @@ empty if nothing uses external data.
 
 ```xml
 <DataGenerators>
-  <ARMA name="synth" variable="PRICE,LOAD">%HERON_DATA%/TSA/my_arma.pk</ARMA>
+  <ARMA name="synth" variable="PRICE,LOAD">my_arma.pk</ARMA>
   <CSV name="prices" variable="price">price.csv</CSV>
   <Function name="funcs">functions.py</Function>
   <ROM name="myROM">my_rom.pk</ROM>
@@ -18,14 +18,15 @@ empty if nothing uses external data.
 
 | Node | Text | Attributes |
 |------|------|------------|
-| `<ARMA>` | Path to a trained, serialized RAVEN synthetic history ROM (`.pk`). | `name` (required), `variable` (required: comma-separated signal names to use), `evalMode` (optional RAVEN sampling mode, default `clustered`) |
+| `<ARMA>` | Path to a trained, serialized RAVEN synthetic history ROM (`.pk`). | `name` (required), `variable` (required: comma-separated signal names to use), `evalMode` (optional: `clustered` (default) or `full`; see heron-tsa `references/segmenting.md`) |
 | `<CSV>` | Path to a static history CSV. | `name` (required), `variable` (required: comma-separated column names to use) |
 | `<Function>` | Path to a Python file. | `name` (required) |
 | `<ROM>` | Path to a trained, serialized RAVEN ROM (`.pk`). | `name` (required) |
 
 ### `<ARMA>`
 
-The model must be trained in RAVEN beforehand (see `references/guide/time-series.md`).
+The model is a RAVEN `SyntheticHistory` ROM, trained beforehand (heron-tsa
+skill). How it lines up with the case is in `references/guide/time-series.md`.
 Each realization HERON draws is a new synthetic history, so the number of
 realizations is set by `<num_arma_samples>` in `<Case>`. The `variable`
 names must match the signal names the model was trained on.
@@ -55,11 +56,13 @@ slots and in storage `<strategy>`. See `references/spec/functions.md` for how to
 
 Paths are tried in this order:
 
-1. If the path starts with `%HERON%`: relative to the HERON installation.
-2. If it starts with `%HERON_DATA%`: relative to the `HERON_DATA`
-   environment variable if it is set, otherwise HERON's `data/` directory.
-3. Otherwise: relative to the input file's directory, then as an absolute
-   path.
+1. Relative to the input file's directory.
+2. As an absolute path.
+
+Use plain relative or absolute paths. HERON also accepts the prefixes
+`%HERON%` and `%HERON_DATA%`, which point into HERON's own installation and
+its workshop data. They are for HERON's tests and workshops, not user
+studies; do not write them in a new input.
 
 ## Rules
 

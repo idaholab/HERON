@@ -24,7 +24,7 @@ raven_framework outer.xml       # runs the debug case
 
 Read the `heron` output before running RAVEN. For each generator it prints
 "detected: interpolated / clustered" (or "NOT interpolated", "NOT
-clustered"). Confirm that matches what `--inspect-data` reported in phase 4.
+clustered"). Confirm that matches what `heron inspect` reported in phase 4.
 
 If either command fails, switch to the heron-debug skill.
 

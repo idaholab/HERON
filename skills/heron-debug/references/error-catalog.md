@@ -6,9 +6,9 @@ read the surrounding code. Where RAVEN raises the error, the entry says so.
 
 Search this file for a fragment of the message; do not read it whole.
 
-This is not an exhaustive list. When working in HERON's source repository
-and you diagnose an error that is not here, add a row with the cause and fix
-(`skills/heron-debug/references/error-catalog.md`).
+This is not an exhaustive list. For an error that is not here, find the
+message in HERON's source (`../heron/references/source-map.md`) and read the
+check that raises it.
 
 ## Parsing errors (`heron input.xml`)
 
@@ -38,7 +38,7 @@ and you diagnose an error that is not here, add a row with the cause and fix
 | `Multiple sources in <DataGenerators> node specify values for variables [...]` | Two generators list the same `variable`. Each variable may appear once. `input_loader.py` |
 | `Requested source "X" for component "Y" was not found!` | The text of a `<ARMA>`/`<CSV>`/`<Function>`/`<ROM>` value does not match any generator `name`. `input_loader.py` |
 | `File not found for <DataGenerator><TYPE> named "X". Looked in: ... Given location: ...` | Path wrong. See path rules in `../heron/references/spec/data-generators.md`. `Placeholders.py` |
-| `ERROR trying to find %HERON_DATA%...` / `path ... found in HERON_DATA environment variable does not seem to exist` | `%HERON_DATA%` could not be resolved. Set `HERON_DATA` or use a plain path. `Placeholders.py` |
+| `ERROR trying to find %HERON_DATA%...` / `path ... found in HERON_DATA environment variable does not seem to exist` | `%HERON_DATA%` could not be resolved. It points to HERON's workshop data, which is not part of a normal install. Replace the prefix with a plain path to the file. `Placeholders.py` |
 | `Variable "V" requested for "X" but not found in "<file>"! Found: [...]` | The CSV has no such column header. `Placeholders.py` |
 | `Module "..." for function "X" was not found!` | The `<Function>` Python file path is wrong. `Placeholders.py` |
 | `Levelized Cost metric was selected, but no <levelized_cost> node was found in component Cash Flows!` | Put `<levelized_cost/>` in one cash flow's `<reference_price>`. `Cases.py` |
@@ -56,7 +56,7 @@ and you diagnose an error that is not here, add a row with the cause and fix
 | `raven_framework not in PATH and not at ...` | RAVEN's executable could not be found. Activate the RAVEN environment or fix the plugin registration. `templates/bilevel_templates.py` |
 | `Template does not recognize optimization strategy ...` | `<algorithm>` must be `BayesianOpt` or `GradientDescent`. `templates/bilevel_templates.py` |
 | `Nothing that requires a sampler was found.` (debug mode) | The case has no ARMA, CSV, sampled capacity, or uncertain parameter. Debug mode needs at least one. `templates/debug_template.py` |
-| `ValueError` or `AttributeError` raised from `templates/` with no message about your input | Often an unsupported combination. Reduce the input to the smallest case that still fails and compare against a test input in `tests/integration_tests/workflows/`. |
+| `ValueError` or `AttributeError` raised from `templates/` with no message about your input | Often an unsupported combination. Reduce the input to the smallest case that still fails, and compare it against `../heron/assets/minimal_sweep.xml` or `minimal_opt.xml` to find the feature that triggers it. |
 
 ## RAVEN errors (`raven_framework outer.xml`)
 
@@ -66,7 +66,7 @@ and you diagnose an error that is not here, add a row with the cause and fix
 | `RAVENInterface WARNING: Could not find .../.ravenStatus, assuming failed RAVEN run.` | The inner run died. Open `generalOut` in that run's subfolder of `<Case name>_o/` for the real error (`SKILL.md`, "Inner runs"). RAVEN |
 | Outer run finishes but results are missing or the output database is empty (no specific message) | The inner runs died before writing results. Same as above. |
 | Python `ModuleNotFoundError` for `HERON`, `TEAL`, or `pyomo` | The environment is not the RAVEN one, or the plugin is not installed. |
-| Pickle or ROM load errors on an ARMA `.pk` | The model was trained with a different RAVEN version, or the file is corrupted. Retrain with the same RAVEN. |
+| Pickle or ROM load errors on an ARMA `.pk` | The model was trained with a different RAVEN version, or the file is corrupted. Retrain with the same RAVEN (heron-tsa skill). |
 
 ## Dispatch errors (inside the inner run or debug run)
 
@@ -79,9 +79,9 @@ and you diagnose an error that is not here, add a row with the cause and fix
 | `Window length of 1 detected, which is not supported.` | The number of time steps leaves a final window of one step with `rolling_window_length`. Pick a window length that does not leave a remainder of 1. `dispatch/pyomo_dispatch.py` |
 | `Exceeded validation attempt limit!` | A `<validator>` kept reporting violations for 100 re-solves of one window. The limits it imposes conflict with the rest of the dispatch; loosen the validator's settings (e.g. `<delta>`, `<tolerance>`). `dispatch/pyomo_dispatch.py` |
 | `Convergence not reached after 10 iterations.` | A storage `<strategy>` function is governing the dispatch and the iteration with the optimizer is not settling. Simplify the function or the coupling. `dispatch/pyomo_dispatch.py` |
-| `Requested number of steps (N) does not match "time" history provided (M)!` | `<time_discretization>` differs from the time series. Run `heron --inspect-data <file>` and use the `<time_discretization>` it prints for the `evalMode` in use. `DispatchManager.py` |
+| `Requested number of steps (N) does not match "time" history provided (M)!` | `<time_discretization>` differs from the time series. Run `heron inspect <file>` and use the `<time_discretization>` it prints for the `evalMode` in use. `DispatchManager.py` |
 | `Requested end time (T) is greater than time variable ...` / `Requested start time ... is less than ...` | Case longer than the history. `DispatchManager.py` |
-| `Expected ARMA variable "V" was not passed to DispatchManager!` | `variable` not in the model's signals (`heron --inspect-data <file>` lists them). `DispatchManager.py` |
+| `Expected ARMA variable "V" was not passed to DispatchManager!` | `variable` not in the model's signals (`heron inspect <file>` lists them). `DispatchManager.py` |
 | `Provided macro variable "Year" is length N, but expected project life is M!` | The history's number of years differs from `<ProjectTime>` (less one construction year). `DispatchManager.py` |
 | `An interpolated ARMA ROM was used, but there are less interpolated years ...` / `"X" interpolates N macro steps, but project life is M!` | Model covers fewer years than the project. Retrain or lower `<ProjectTime>`. `DispatchManager.py`, `Placeholders.py` |
 | `Synthetic histories are not of consistent shape!` (with `History Shapes` and `Index Map` printed) | Signals from different models have different lengths. Retrain them on the same time axis. `DispatchManager.py` |

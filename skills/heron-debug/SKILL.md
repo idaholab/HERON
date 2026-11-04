@@ -106,7 +106,8 @@ Check in this order, and stop at the first problem:
 4. **Units.** Check that capacities, prices, and time steps are consistent,
    and that `ProjectTime`, `lifetime`, and the discount rate are in years.
 5. **Data.** Compare the plotted signal against the training data. Look for
-   a flat or constant series.
+   a flat or constant series. To check the synthetic history model itself,
+   use the heron-tsa skill (`references/validation.md`).
 6. **Tag and mode.** `sweep_values` vs. `opt_bounds` against `<mode>`, and
    `debug_value` present.
 7. **Sample size.** Noisy or non-repeatable results: raise `<num_arma_samples>`

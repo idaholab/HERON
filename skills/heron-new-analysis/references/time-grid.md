@@ -10,9 +10,9 @@ number of steps ... does not match".
 The `heron` launcher activates the RAVEN environment itself:
 
 ```bash
-heron --inspect-data path/to/arma.pk
-heron --inspect-data path/to/prices.csv
-heron --inspect-data prices.csv --time-variable HOUR --year-variable YEAR   # if the CSV's columns are not named time/hour and year
+heron inspect path/to/arma.pk
+heron inspect path/to/prices.csv
+heron inspect prices.csv --time-variable HOUR --year-variable YEAR   # if the CSV's columns are not named time/hour and year
 ```
 
 It prints:
@@ -41,7 +41,7 @@ Use `clustered` unless the user needs spread or tail statistics. If `full`
 is chosen, set `evalMode="full"` on the `<ARMA>` node and use the `full`
 time discretization.
 
-Sampling a ROM takes a few seconds to a minute. `--inspect-data` reads
+Sampling a ROM takes a few seconds to a minute. `heron inspect` reads
 nothing but the file; it does not need a HERON input.
 
 ## 2. Fill in the nodes

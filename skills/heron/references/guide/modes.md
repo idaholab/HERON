@@ -76,8 +76,38 @@ uses `<mode>mpi<runQSUB/></mode>`, which submits to a PBS queue. Check the
 `<RunInfo>` in the generated `outer.xml` before running, especially on a
 workstation. `<runinfo>` inside `<parallel>` adds cluster settings
 (`<expectedTime>`, `<clusterParameters>`, `<memory>`, `<RemoteRunCommand>`)
-to that block. See `tests/integration_tests/cluster_check/` for an example
-input and the `outer.xml` it produces.
+to that block. For example, on a machine with no preset, this in `<Case>`:
+
+```xml
+<parallel>
+  <runinfo>
+    <expectedTime>72:0:0</expectedTime>
+    <clusterParameters>-P nst</clusterParameters>
+    <memory>4g</memory>
+  </runinfo>
+</parallel>
+```
+
+gives this `<RunInfo>` in `outer.xml`, for an opt case named `Opt_Runs` with
+two optimized capacities and `<num_arma_samples>3</num_arma_samples>`
+(`batchSize` is the default `<outer>`, 2 + 1; `NumMPI` the default `<inner>`):
+
+```xml
+<RunInfo>
+  <JobName>Opt_Runs_o</JobName>
+  <WorkingDir>Opt_Runs_o</WorkingDir>
+  <Sequence>optimize, plot</Sequence>
+  <batchSize>3</batchSize>
+  <expectedTime>72:0:0</expectedTime>
+  <clusterParameters>-P nst</clusterParameters>
+  <mode>mpi
+    <runQSUB />
+    <memory>4g</memory>
+  </mode>
+  <NumMPI>3</NumMPI>
+  <internalParallel>True</internalParallel>
+</RunInfo>
+```
 
 ## Debug
 

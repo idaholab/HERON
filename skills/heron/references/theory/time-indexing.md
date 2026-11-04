@@ -1,8 +1,7 @@
 # Time indexing
 
 How a realization's time axis is split into years, segments, clusters, and
-time steps, and how results are added back up. Source: `src/DispatchManager.py`;
-theory manual: `doc/theory_manual/TimeHistoryTraining/HERON_TimeIndexing.md`.
+time steps, and how results are added back up. Source: `src/DispatchManager.py`.
 What this means for which statistics to trust is in
 `references/guide/time-series.md`, "Clustering and higher moments".
 

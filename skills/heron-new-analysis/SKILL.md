@@ -105,12 +105,12 @@ decision record.
    synthetic history ROM (`.pk`) or a CSV. A case uses one or the other,
    not both (`../heron/references/guide/time-series.md`). If the user has
    only raw data and wants stochastic realizations, a ROM must be trained in
-   RAVEN first; point them to the training examples in that guide.
+   RAVEN first: pause here and use the heron-tsa skill, then return.
 2. Interrogate each file with HERON (the `heron` launcher activates the
    RAVEN environment itself):
 
    ```bash
-   heron --inspect-data path/to/arma.pk     # or a CSV
+   heron inspect path/to/arma.pk     # or a CSV
    ```
 
    It reports the signal names, time and year variable names, the years

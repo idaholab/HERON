@@ -17,44 +17,36 @@ data lines up with the analysis. Declaring the sources is covered in
 CSV sources is not yet supported". This is the one place this rule is
 described in full.
 
-## Training a synthetic history model
+## Getting a synthetic history model
 
-HERON does not train models; RAVEN does, ahead of time, and HERON loads the
-serialized model. Working examples are `tests/integration_tests/ARMA/train_*.xml`
-(RAVEN `ARMA`) and `tests/integration_tests/TSA/train_*_TSA.xml`, in a source
-checkout of HERON only. The pattern in those files:
-
-1. Load the training CSV into a `HistorySet`. The pivot parameter is the
-   time variable.
-2. Train a `ROM` of subType `ARMA` (the usual choice, with a `Fourier` series
-   for daily or yearly cycles and a `Segment grouping="interpolate"` with a
-   `macroParameter` of `Year` for multi-year histories).
-3. Serialize it to a `.pk` file with an `IOStep` to a `Files` output.
-4. Sample the ROM once and inspect the output before using it in HERON.
-
-Run it with `raven_framework train_x.xml`, then point HERON at the `.pk`:
+HERON does not train models. A RAVEN `SyntheticHistory` ROM is trained
+ahead of time, in a separate RAVEN run, and HERON loads the serialized
+`.pk` file through `<ARMA>`:
 
 ```xml
-<ARMA name="synth" variable="PRICE,LOAD">arma.pk</ARMA>
+<ARMA name="synth" variable="PRICE,LOAD">synth.pk</ARMA>
 ```
+
+Building, training, and checking that model is covered by the heron-tsa
+skill (`../heron-tsa/SKILL.md`).
 
 ### Names that must agree
 
 | In HERON | Must equal |
 |----------|------------|
 | `variable="PRICE,LOAD"` on the `<ARMA>` generator | Signal (target) names in the trained model |
-| `<time_variable>` in `<Case>` | The pivot parameter in the training data (default `time`; the training examples use `Time`) |
+| `<time_variable>` in `<Case>` | The pivot parameter in the training data (HERON's default is `time`) |
 | `<year_variable>` in `<Case>` | The macro parameter (default `Year`) |
 | `<ARMA variable="PRICE">synth</ARMA>` in a component | A `variable` listed on the generator named `synth` |
 
-Two generators cannot list the same variable name. The default `time` and
-`Year` differ in case from the training examples' `Time` and `Year`, so set
-`<time_variable>` explicitly when your training data uses `Time`.
+Two generators cannot list the same variable name. HERON's default `time`
+is lowercase; set `<time_variable>` explicitly when the training data uses
+`Time` or `HOUR`.
 
 ## How the data lines up with the analysis
 
 To see a file's signals, time axis, years, and clusters, and the matching
-`<time_discretization>`, run `heron --inspect-data <file>` (a `.pk` or CSV).
+`<time_discretization>`, run `heron inspect <file>` (a `.pk` or CSV).
 
 - **Time steps.** The model's time axis must match `<time_discretization>`
   exactly. At run time the dispatch checks that the requested start and end
@@ -131,8 +123,8 @@ See `references/spec/data-generators.md` for the required columns. The extras:
 
 ## Validate before using
 
-1. In the RAVEN training run, plot or print a sampled synthetic history and
-   compare its range and shape to the training data.
+1. Check the model's fit to its training data when it is trained
+   (heron-tsa skill, `references/validation.md`).
 2. Run HERON in debug mode (`references/guide/modes.md`). The parse prints "detected:
    interpolated / clustered" for each generator, and the dispatch plot shows
    the signal alongside the dispatch (the `GRO_debug_synthetics` signals).
@@ -145,7 +137,7 @@ See `references/spec/data-generators.md` for the required columns. The extras:
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | "Expected ARMA variable ... was not passed to DispatchManager" | `variable` is not a signal in the trained model | Compare with the model's targets |
-| "Requested number of steps ... does not match" | `<num_steps>` or `<end_time>` differs from the model's time axis | Make `<time_discretization>` match the output of `heron --inspect-data` |
+| "Requested number of steps ... does not match" | `<num_steps>` or `<end_time>` differs from the model's time axis | Make `<time_discretization>` match the output of `heron inspect` |
 | "Requested end time ... is greater than time variable ..." | Case runs longer than the history | Shorten `<end_time>` or retrain |
 | "interpolates N macro steps, but project life is M" | Model covers fewer years than `<ProjectTime>` | Retrain for more years or reduce `<ProjectTime>` |
-| Results do not change between realizations | Model is deterministic, or `<num_arma_samples>` is 1 | Check the model's noise terms (the sine test model is deterministic) |
+| Results do not change between realizations | Model is deterministic, or `<num_arma_samples>` is 1 | The ROM needs a stochastic algorithm (`arma`, `varma`, or `MarkovAR`) |

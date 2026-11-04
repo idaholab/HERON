@@ -1,8 +1,7 @@
 # Bilevel structure
 
 The problem HERON's standard workflow solves, and how the outer and inner
-RAVEN runs split it. Source: `templates/bilevel_templates.py`; theory
-manual: `doc/theory_manual/Workflows/HERON_Standard_Workflow.md`.
+RAVEN runs split it. Source: `templates/bilevel_templates.py`.
 
 ## The problem
 

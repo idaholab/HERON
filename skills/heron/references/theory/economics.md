@@ -2,9 +2,9 @@
 
 How cash flows become NPV, IRR, PI, and LC. HERON builds the yearly cash
 flows (`src/DispatchManager.py`); the TEAL plugin applies tax, inflation,
-depreciation, replacement, and discounting (`TEAL/src/main.py`,
-`CashFlows.py`, `Amortization.py`). The theory manual's derivation is in
-`doc/theory_manual/ComponentCharacterization/HERON_Cashflows.md`.
+depreciation, replacement, and discounting (`src/main.py`, `CashFlows.py`,
+`Amortization.py` in TEAL; see `references/source-map.md` for where TEAL is
+installed).
 
 ## One cash flow
 

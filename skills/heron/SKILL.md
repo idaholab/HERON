@@ -1,6 +1,6 @@
 ---
 name: heron
-description: Build, configure, and run HERON (Holistic Energy Resource Optimization Network) technoeconomic analyses. Use when the user is writing or editing a HERON XML input file; defining components, resources, or economics; setting up time series (synthetic history / ARMA) or other uncertainty; choosing between debug, sweep, and opt modes; or asking how to structure a HERON study. For failing or suspicious runs, use the heron-debug skill instead.
+description: Build, configure, and run HERON (Holistic Energy Resource Optimization Network) technoeconomic analyses. Use when the user is writing or editing a HERON XML input file; defining components, resources, or economics; setting up time series (synthetic history / ARMA) or other uncertainty; choosing between debug, sweep, and opt modes; or asking how to structure a HERON study. For failing or suspicious runs, use the heron-debug skill instead; to train a synthetic history model from data, use heron-tsa.
 ---
 
 # HERON
@@ -19,6 +19,8 @@ A HERON input is one XML file with root `<HERON>` and three required children:
 3. **`<DataGenerators>`**: where external data comes from. Synthetic
    history models (`<ARMA>`), static histories (`<CSV>`), Python functions
    (`<Function>`), and RAVEN ROMs (`<ROM>`). Required, but may be empty.
+   A synthetic history model is trained in RAVEN beforehand; use the
+   heron-tsa skill for that.
 
 Components refer to data generators by `name`, and components are connected
 to each other only through shared resource names. A name that does not match
@@ -90,7 +92,6 @@ option of one node.
 | `valued-params.md` | Any value slot (`fixed_value`, `sweep_values`, `opt_bounds`, `ARMA`, `CSV`, `Function`, `activity`, ...) |
 | `functions.md` | The Python functions behind `<Function>` values or a storage `<strategy>` |
 | `data-generators.md` | `<ARMA>`, `<CSV>`, `<Function>`, or `<ROM>` sources, and file paths |
-| `test-info.md` | A regression test input for HERON itself |
 
 **Theory** (`references/theory/`). Read only for "why" questions: why a
 dispatch or an NPV came out as it did, or what HERON actually computes.

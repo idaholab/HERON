@@ -68,9 +68,9 @@ Holds exactly one dispatcher:
     production runs.
 - `<custom>`: a user-supplied Python dispatcher, with `<location>` the path
   to the module. **Untested and probably broken:** it has no regression
-  test, and its only example (`tests/integration_tests/mechanics/custom_dispatcher/`)
-  does not match the signature the code calls (`dispatch(meta, state)` in
-  `src/dispatch/CustomDispatcher.py`). Do not recommend it. If a user needs
+  test, and its only example does not match the signature the code calls
+  (`dispatch(meta, state)` in `src/dispatch/CustomDispatcher.py`). Do not
+  recommend it. If a user needs
   it, read that source first and tell them it is unsupported.
 
 ## Sampling and run size

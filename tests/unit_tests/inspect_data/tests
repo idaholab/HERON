@@ -1,0 +1,6 @@
+[Tests]
+  [./inspect_data]
+    type = Unittest
+    input = 'test_inspect_data.py'
+  [../]
+[]

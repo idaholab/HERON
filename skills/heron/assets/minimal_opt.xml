@@ -1,0 +1,76 @@
+<HERON>
+  <!-- The minimal_sweep.xml case in opt mode. Differences from the sweep:
+       <mode>opt</mode>, <optimization_settings>, and opt_bounds instead of
+       sweep_values. Node details: references/spec/case.md. -->
+
+  <Case name="minimal_opt">
+    <mode>opt</mode>
+    <num_arma_samples>10</num_arma_samples>      <!-- too few and the optimizer chases noise -->
+    <!-- <debug/> -->
+    <time_discretization>
+      <time_variable>Time</time_variable>
+      <year_variable>Year</year_variable>
+      <end_time>23</end_time>
+      <num_steps>24</num_steps>
+    </time_discretization>
+    <economics>
+      <ProjectTime>20</ProjectTime>
+      <DiscountRate>0.08</DiscountRate>
+      <tax>0.21</tax>
+      <inflation>0.0</inflation>
+    </economics>
+    <dispatcher>
+      <pyomo/>
+    </dispatcher>
+    <optimization_settings>
+      <opt_metric>NPV</opt_metric>
+      <stats_metric>expectedValue</stats_metric>  <!-- direction defaults to max -->
+      <algorithm>
+        <BayesianOpt>
+          <seed>42</seed>
+        </BayesianOpt>
+      </algorithm>
+    </optimization_settings>
+  </Case>
+
+  <Components>
+    <Component name="gen">
+      <produces resource="electricity" dispatch="independent">
+        <capacity resource="electricity">
+          <opt_bounds debug_value="100">10, 500</opt_bounds>
+        </capacity>
+      </produces>
+      <economics>
+        <lifetime>30</lifetime>
+        <CashFlow name="capex" type="one-time" taxable="True" inflation="none">
+          <driver><variable>gen_capacity</variable></driver>
+          <reference_price><fixed_value>-1e6</fixed_value></reference_price>
+        </CashFlow>
+        <CashFlow name="VOM" type="repeating" taxable="True" inflation="none">
+          <driver><activity>electricity</activity></driver>
+          <reference_price><fixed_value>-5</fixed_value></reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+
+    <Component name="market">
+      <demands resource="electricity" dispatch="independent">
+        <capacity><fixed_value>-1000</fixed_value></capacity>
+      </demands>
+      <economics>
+        <lifetime>1</lifetime>
+        <CashFlow name="sales" type="repeating" taxable="True" inflation="none">
+          <driver>
+            <activity>electricity</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price><ARMA variable="PRICE">synth</ARMA></reference_price>
+        </CashFlow>
+      </economics>
+    </Component>
+  </Components>
+
+  <DataGenerators>
+    <ARMA name="synth" variable="PRICE">price_arma.pk</ARMA>
+  </DataGenerators>
+</HERON>

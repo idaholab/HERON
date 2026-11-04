@@ -11,6 +11,7 @@ the code, the code is right: check it and tell the user about the mismatch.
 | ValuedParam types and where they are allowed | `src/ValuedParams/`, `src/ValuedParamHandler.py` |
 | Transfer functions | `src/TransferFuncs/` |
 | Data generators, path resolution, ARMA/CSV checks | `src/Placeholders.py`, `src/input_loader.py` |
+| Time structure of a ROM or CSV (`heron --inspect-data`) | `src/inspect_data.py`, `src/_utils.py` (`get_synthhist_structure`, `sample_synthhist`, `get_csv_structure`) |
 | Which RAVEN workflow gets written and why | `templates/template_driver.py` |
 | What the generated workflows contain | `templates/*.py`, `templates/xml/` |
 | How dispatch is solved and failures are raised | `src/dispatch/pyomo_dispatch.py`, `PyomoModelHandler.py`, `PyomoRuleLibrary.py` |

@@ -55,6 +55,9 @@ looks right. Details are in `references/guide/modes.md`.
    `<num_arma_samples>` first so the optimizer is not chasing sampling noise,
    then confirm the optimum with a small sweep around it.
 
+To build a new study step by step with the user, use the heron-new-analysis
+skill.
+
 `heron input.xml` only writes the RAVEN workflow (`outer.xml`, usually
 `inner.xml`, and `heron.lib`); running it is a separate `raven_framework`
 step on `outer.xml`. If a step fails or the results look wrong, switch to

@@ -12,6 +12,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from HERON.src import input_loader
 from HERON.src import install_skills
+from HERON.src import inspect_data
 from HERON.src.base import Base
 from HERON.src.Moped import MOPED
 from HERON.src.Herd import HERD
@@ -154,39 +155,24 @@ class HERON(Base):
     herd.setInitialParams(case, components, sources)
     herd.run()
 
-def main():
+# subcommands; any other first argument is treated as "run" so "heron input.xml" keeps working
+SUBCOMMANDS = ('run', 'inspect', 'install-skills')
+
+def run_case(args):
   """
-    Runs HERON input from command line arguments
-    @ In, None
+    Runs a HERON input file (the "run" subcommand, and the default when no subcommand is given)
+    @ In, args, argparse.Namespace, parsed command line arguments
     @ Out, None
   """
-  parser = argparse.ArgumentParser(description='Holistic Energy Resource Optimization Network (HERON)')
-  parser.add_argument('xml_input_file', nargs='?', default="", help='HERON XML input file')
-  parser.add_argument('--definition', action="store_true", dest="definition", help='HERON input file definition compatible with the NEAMS Workbench')
-  parser.add_argument('--python_command_for_raven', dest='python_cmd_raven', help='Custom python command for running RAVEN inner')
-  parser.add_argument('--install-skills', dest='skills_dir', metavar='DIR',
-                      help='Install HERON agent skills into DIR (e.g. ~/.claude/skills)')
-  args = parser.parse_args()
-
-  sim = HERON()
-
   # User requested the input definition be printed
   if args.definition:
     from HERON.src import input_definition
     input_definition.print_input_definition()
     sys.exit(0)
-  # User requested the agent skills be installed
-  if args.skills_dir is not None:
-    try:
-      installed = install_skills.install_skills(args.skills_dir)
-    except FileNotFoundError as err:
-      sim.raiseAnError(FileNotFoundError, str(err))
-    for path in installed:
-      sim.raiseAMessage(f'Installed skill: {path}')
-    sys.exit(0)
   if args.xml_input_file == "":
-    parser.error("the following arguments are required: xml_input_file")
+    args.parser.error("the following arguments are required: xml_input_file")
 
+  sim = HERON()
   sim.read_input(args.xml_input_file) # TODO expand to use arguments?
   # print details
   sim.print_me()
@@ -202,6 +188,78 @@ def main():
     sim.run_moped_workflow()
   elif sim._case._workflow == 'DISPATCHES':
     sim.run_dispatches_workflow()
+
+def run_inspect(args):
+  """
+    Reports the time structure of a time series data source (the "inspect" subcommand)
+    @ In, args, argparse.Namespace, parsed command line arguments
+    @ Out, None
+  """
+  sim = HERON()
+  try:
+    info = inspect_data.inspect_data(args.data_file, time_var=args.time_var, year_var=args.year_var)
+  except (FileNotFoundError, KeyError, ValueError) as err:
+    sim.raiseAnError(type(err), str(err))
+  sim.raiseAMessage('\n' + inspect_data.format_report(info))
+
+def run_install_skills(args):
+  """
+    Installs the HERON agent skills into a directory (the "install-skills" subcommand)
+    @ In, args, argparse.Namespace, parsed command line arguments
+    @ Out, None
+  """
+  sim = HERON()
+  try:
+    installed = install_skills.install_skills(args.skills_dir)
+  except FileNotFoundError as err:
+    sim.raiseAnError(FileNotFoundError, str(err))
+  for path in installed:
+    sim.raiseAMessage(f'Installed skill: {path}')
+
+def build_parser():
+  """
+    Builds the command line parser, with one subparser per subcommand
+    @ In, None
+    @ Out, parser, argparse.ArgumentParser, command line parser
+  """
+  parser = argparse.ArgumentParser(prog='heron',
+                                   description='Holistic Energy Resource Optimization Network (HERON)',
+                                   epilog='"heron <input.xml>" is shorthand for "heron run <input.xml>".')
+  subparsers = parser.add_subparsers(dest='command', metavar='command')
+
+  run = subparsers.add_parser('run', help='Run a HERON input file (default)',
+                              description='Run a HERON XML input file, writing the RAVEN workflows it defines')
+  run.add_argument('xml_input_file', nargs='?', default="", help='HERON XML input file')
+  run.add_argument('--definition', action="store_true", dest="definition", help='HERON input file definition compatible with the NEAMS Workbench')
+  run.add_argument('--python_command_for_raven', dest='python_cmd_raven', help='Custom python command for running RAVEN inner')
+  run.set_defaults(func=run_case, parser=run)
+
+  inspect = subparsers.add_parser('inspect', help='Report the time structure of a time series ROM or CSV',
+                                  description='Report the time structure of a synthetic history ROM (.pk) or CSV, and the matching <time_discretization>')
+  inspect.add_argument('data_file', metavar='FILE', help='Serialized synthetic history ROM (.pk) or CSV file')
+  inspect.add_argument('--time-variable', dest='time_var', metavar='NAME', help='CSV only: name of the time column')
+  inspect.add_argument('--year-variable', dest='year_var', metavar='NAME', help='CSV only: name of the year column')
+  inspect.set_defaults(func=run_inspect)
+
+  skills = subparsers.add_parser('install-skills', help='Install the HERON agent skills into a directory',
+                                 description='Install the HERON agent skills into a directory')
+  skills.add_argument('skills_dir', metavar='DIR', help='Directory to install the skills into (e.g. ~/.claude/skills)')
+  skills.set_defaults(func=run_install_skills)
+  return parser
+
+def main(argv=None):
+  """
+    Runs HERON from command line arguments
+    @ In, argv, list(str), optional, command line arguments (defaults to sys.argv[1:])
+    @ Out, None
+  """
+  if argv is None:
+    argv = sys.argv[1:]
+  # no subcommand given (e.g. "heron input.xml", "heron --definition"): run, as HERON always has
+  if not argv or (argv[0] not in SUBCOMMANDS and argv[0] not in ('-h', '--help')):
+    argv = ['run'] + list(argv)
+  args = build_parser().parse_args(argv)
+  args.func(args)
 
 if __name__ == '__main__':
   main()

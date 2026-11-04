@@ -26,6 +26,21 @@ wanted to run the integration test \texttt{production\_flex}, I could do the fol
 Alternatively, you can use Python to run \texttt{HERON/src/main.py} with the HERON XML input as
 argument; however, this will bypass loading the \texttt{raven\_libraries} and other initialization.
 
+\subsection{Inspecting time series data}
+The time discretization in the \xmlNode{Case} node must match the time series used by the
+\xmlNode{DataGenerators} exactly. To see the structure of a serialized synthetic history ROM or a
+static history CSV before writing the HERON input, run:
+\begin{lstlisting}
+  /path/to/HERON/heron --inspect-data my_arma.pk
+\end{lstlisting}
+This reports the signal names, the time and year variable names, the years covered, and the time
+axis (number of steps, first and last values, and interval). For a clustered ROM, the time axis
+and number of clusters are reported for both the \texttt{clustered} and \texttt{full} values of the
+\xmlNode{ARMA} \xmlAttr{evalMode} attribute. A matching \xmlNode{time\_discretization} node is
+printed for each. For a CSV whose time and year columns are not named \texttt{time}/\texttt{hour} and
+\texttt{year}, give their names with \texttt{--time-variable} and \texttt{--year-variable}. No HERON
+input file is needed.
+
 \subsection{Parallel Notes}
 
 HERON uses RAVEN's parallel tools. Since running on different clusters

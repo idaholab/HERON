@@ -53,6 +53,9 @@ Two generators cannot list the same variable name. The default `time` and
 
 ## How the data lines up with the analysis
 
+To see a file's signals, time axis, years, and clusters, and the matching
+`<time_discretization>`, run `heron --inspect-data <file>` (a `.pk` or CSV).
+
 - **Time steps.** The model's time axis must match `<time_discretization>`
   exactly. At run time the dispatch checks that the requested start and end
   are inside the history and that the number of steps equals the history
@@ -142,7 +145,7 @@ See `references/spec/data-generators.md` for the required columns. The extras:
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | "Expected ARMA variable ... was not passed to DispatchManager" | `variable` is not a signal in the trained model | Compare with the model's targets |
-| "Requested number of steps ... does not match" | `<num_steps>` or `<end_time>` differs from the model's time axis | Make `<time_discretization>` match the training data |
+| "Requested number of steps ... does not match" | `<num_steps>` or `<end_time>` differs from the model's time axis | Make `<time_discretization>` match the output of `heron --inspect-data` |
 | "Requested end time ... is greater than time variable ..." | Case runs longer than the history | Shorten `<end_time>` or retrain |
 | "interpolates N macro steps, but project life is M" | Model covers fewer years than `<ProjectTime>` | Retrain for more years or reduce `<ProjectTime>` |
 | Results do not change between realizations | Model is deterministic, or `<num_arma_samples>` is 1 | Check the model's noise terms (the sine test model is deterministic) |

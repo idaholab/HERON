@@ -104,6 +104,17 @@ def get_project_lifetime(case, components):
   econ_settings.setParams(econ_params)
   return getProjectLength(econ_settings, econ_comps)
 
+def _ensure_raven_importable():
+  """
+    Adds RAVEN to the path if ravenframework cannot be imported, so serialized ROMs can be loaded
+    @ In, None
+    @ Out, None
+  """
+  try:
+    import ravenframework
+  except ModuleNotFoundError:
+    sys.path.append(path.expanduser(get_raven_loc()))
+
 @cache
 def get_synthhist_structure(fpath):
   """
@@ -113,12 +124,8 @@ def get_synthhist_structure(fpath):
   """
   # TODO could this be a function of the ROM itself?
   # TODO or could we interrogate the ROM directly instead of the XML?
-  try:
-    import ravenframework
-  except ModuleNotFoundError:
-    #If ravenframework not in path, need to add, otherwise loading rom will fail
-    raven_path = hutils.get_raven_loc()
-    sys.path.append(os.path.expanduser(raven_path))
+  #If ravenframework not in path, need to add, otherwise loading rom will fail
+  _ensure_raven_importable()
   rom = pickle.load(open(fpath, 'rb'))
 
   structure = {}
@@ -159,6 +166,28 @@ def get_synthhist_structure(fpath):
   # -> TODO
   structure['segments'] = {}
   return structure
+
+def sample_synthhist(fpath, eval_mode='clustered'):
+  """
+    Evaluates a serialized synthetic history ROM once, quietly, as HERON's dispatch would see it
+    @ In, fpath, str, full absolute path to serialized ROM
+    @ In, eval_mode, str, optional, ROM cluster evaluation mode ('clustered' or 'full')
+    @ Out, realization, dict, one sampled realization, {variable name: np.array}, including the
+      pivot (time) and macro (year) variables, '_ROM_Cluster' if clustered, and '_indexMap'
+  """
+  import io
+  import contextlib
+  _ensure_raven_importable()
+  from ravenframework.ROMExternal import ROMLoader
+  from ravenframework.utils import xmlUtils
+  runner = ROMLoader(fpath)
+  node = xmlUtils.newNode('ROM', attrib={'name': 'SyntheticHistory', 'subType': 'pickledRom'})
+  node.append(xmlUtils.newNode('clusterEvalMode', text=eval_mode))
+  # RAVEN prints a message per evaluated segment; keep those out of the caller's output
+  with contextlib.redirect_stdout(io.StringIO()):
+    runner.setAdditionalParams([node])
+    realization = runner.evaluate({'scaling': [1]})[0]
+  return realization
 
 def get_csv_structure(fpath, macro_var, micro_var):
   """

@@ -6,7 +6,9 @@
 SCRIPT_DIRNAME=`dirname $(readlink -f "$0")`
 HERON_DIR=`(cd $SCRIPT_DIRNAME/..; pwd)`
 cd $HERON_DIR
-RAVEN_DIR=`python -c 'from src._utils import get_raven_loc; print(get_raven_loc())'`
+# Run _utils.py as a script rather than importing the src package: the package __init__ imports TEAL,
+# which fails before the RAVEN conda environment is loaded (e.g. no numpy).
+RAVEN_DIR=`python src/_utils.py get_raven_loc`
 
 source $HERON_DIR/coverage_scripts/initialize_coverage.sh
 

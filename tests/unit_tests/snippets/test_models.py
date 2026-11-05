@@ -20,6 +20,9 @@ from HERON.templates.snippets import (RavenCode,
 sys.path.pop()
 
 import unittest
+import pytest
+
+pytestmark = pytest.mark.raven_free
 
 
 class TestModelBase:

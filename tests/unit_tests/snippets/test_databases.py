@@ -14,6 +14,9 @@ from HERON.templates.snippets import NetCDF, HDF5
 sys.path.pop()
 
 import unittest
+import pytest
+
+pytestmark = pytest.mark.raven_free
 
 
 class TestDatabasesBase:

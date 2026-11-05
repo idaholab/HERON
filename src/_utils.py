@@ -104,16 +104,137 @@ def get_project_lifetime(case, components):
   econ_settings.setParams(econ_params)
   return getProjectLength(econ_settings, econ_comps)
 
+class RavenNotFoundError(ModuleNotFoundError):
+  """
+    Raised when a feature that requires RAVEN (or a RAVEN plugin such as TEAL) is used but it cannot be
+    imported. Subclasses ModuleNotFoundError so existing "except ModuleNotFoundError" handlers still apply.
+  """
+
+_RAVEN_INSTALL_HELP = ('Install RAVEN (e.g. "pip install raven-framework") or register HERON as a plugin of a '
+                       'RAVEN source checkout ("python <raven>/scripts/install_plugins.py -s <path to HERON>").')
+
+def _is_missing(err, module):
+  """
+    Checks whether an import error means the given top-level module itself is missing, as opposed to
+    the module being present but failing on one of its own imports.
+    @ In, err, ModuleNotFoundError, error raised by the import
+    @ In, module, str, name of the top-level module that was imported
+    @ Out, missing, bool, True if the module itself could not be found
+  """
+  return err.name is not None and err.name.split('.')[0] == module
+
+def _add_to_path(entries):
+  """
+    Appends entries to sys.path, skipping any already present
+    @ In, entries, list(str), paths to add
+    @ Out, added, list(str), paths that were actually added
+  """
+  added = []
+  for entry in entries:
+    entry = path.abspath(path.expanduser(entry))
+    if entry not in sys.path:
+      sys.path.append(entry)
+      added.append(entry)
+  return added
+
+def ensure_raven_on_path(required=True):
+  """
+    Makes ravenframework importable, adding a RAVEN checkout (found via get_raven_loc) to sys.path if needed.
+    @ In, required, bool, optional, if True raise when RAVEN cannot be imported; else return False
+    @ Out, found, bool, True if ravenframework is importable
+  """
+  try:
+    import ravenframework
+    return True
+  except ModuleNotFoundError as e:
+    if not _is_missing(e, 'ravenframework'):
+      raise # RAVEN is present but broken (e.g. a missing library); don't hide that
+
+  # not importable as installed; look for a RAVEN checkout that HERON is registered with
+  try:
+    raven_loc = get_raven_loc()
+  except (IOError, OSError) as e:
+    if required:
+      raise RavenNotFoundError(f'RAVEN is required but could not be found. {_RAVEN_INSTALL_HELP}',
+                               name='ravenframework') from e
+    return False
+
+  added = _add_to_path([raven_loc, path.join(raven_loc, 'plugins'), path.join(raven_loc, 'scripts')])
+  importlib.invalidate_caches()
+
+  try:
+    import ravenframework
+    return True
+  except ModuleNotFoundError as e:
+    if not _is_missing(e, 'ravenframework'):
+      raise
+    # the configured location doesn't hold a usable RAVEN; undo our changes to sys.path
+    for entry in added:
+      sys.path.remove(entry)
+    if required:
+      raise RavenNotFoundError(f'RAVEN is required but could not be imported from "{raven_loc}". '
+                               f'{_RAVEN_INSTALL_HELP}', name='ravenframework') from e
+    return False
+
+def ensure_teal_on_path(required=True):
+  """
+    Makes the TEAL plugin importable, locating it through RAVEN's plugin registry if needed.
+    @ In, required, bool, optional, if True raise when TEAL cannot be imported; else return False
+    @ Out, found, bool, True if TEAL is importable
+  """
+  try:
+    import TEAL
+    return True
+  except ModuleNotFoundError as e:
+    if not _is_missing(e, 'TEAL'):
+      raise
+
+  teal_loc = None
+  if ensure_raven_on_path(required=False):
+    try:
+      teal_loc = get_cashflow_loc()
+    except (IOError, OSError, ModuleNotFoundError):
+      teal_loc = None # no plugin registry available
+
+  if teal_loc is None:
+    if required:
+      raise RavenNotFoundError(f'The TEAL plugin is required but could not be found. {_RAVEN_INSTALL_HELP}',
+                               name='TEAL')
+    return False
+
+  # TEAL is imported as a package, so its parent directory goes on the path
+  added = _add_to_path([path.join(teal_loc, '..')])
+  importlib.invalidate_caches()
+
+  try:
+    import TEAL
+    return True
+  except ModuleNotFoundError as e:
+    if not _is_missing(e, 'TEAL'):
+      raise
+    for entry in added:
+      sys.path.remove(entry)
+    if required:
+      raise RavenNotFoundError(f'The TEAL plugin is required but could not be imported from "{teal_loc}". '
+                               f'{_RAVEN_INSTALL_HELP}', name='TEAL') from e
+    return False
+
+@cache
+def raven_available():
+  """
+    Checks (once per process) whether RAVEN can be imported, setting up sys.path if needed
+    @ In, None
+    @ Out, available, bool, True if ravenframework is importable
+  """
+  return ensure_raven_on_path(required=False)
+
 def _ensure_raven_importable():
   """
     Adds RAVEN to the path if ravenframework cannot be imported, so serialized ROMs can be loaded
     @ In, None
     @ Out, None
   """
-  try:
-    import ravenframework
-  except ModuleNotFoundError:
-    sys.path.append(path.expanduser(get_raven_loc()))
+  ensure_raven_on_path(required=True)
 
 @cache
 def get_synthhist_structure(fpath):

@@ -15,6 +15,9 @@ from HERON.tests.unit_tests.snippets.mock_classes import MockSnippet
 sys.path.pop()
 
 import unittest
+import pytest
+
+pytestmark = pytest.mark.raven_free
 
 
 class TestOutStreamBase:

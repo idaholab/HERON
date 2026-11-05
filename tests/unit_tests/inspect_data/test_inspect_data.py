@@ -8,6 +8,8 @@ import sys
 import os
 import unittest
 
+import pytest
+
 # Load HERON tools
 HERON_LOC = os.path.abspath(os.path.join(os.path.dirname(__file__), *[os.pardir]*4))
 sys.path.append(HERON_LOC)
@@ -64,6 +66,7 @@ class TestInspectData(unittest.TestCase):
     self.assertEqual(info['features'], ['a', 'b', 'c', 'd'])
     self.assertEqual(info['targets'], ['price'])
 
+  @pytest.mark.raven_free
   def test_csv(self):
     """
       A multi-year CSV reports its signals, years, and time axis
@@ -80,6 +83,7 @@ class TestInspectData(unittest.TestCase):
     self.assertEqual(info['time']['num_steps'], 21)
     self.assertAlmostEqual(info['time']['last'], 2.0)
 
+  @pytest.mark.raven_free
   def test_report_time_discretization(self):
     """
       The report contains a <time_discretization> matching the data
@@ -92,6 +96,7 @@ class TestInspectData(unittest.TestCase):
     self.assertIn('<end_time>2</end_time>', report)
     self.assertIn('<num_steps>21</num_steps>', report)
 
+  @pytest.mark.raven_free
   def test_missing_file(self):
     """
       A missing file is a clear error

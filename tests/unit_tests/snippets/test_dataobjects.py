@@ -14,6 +14,9 @@ from HERON.templates.snippets import PointSet, HistorySet, DataSet
 sys.path.pop()
 
 import unittest
+import pytest
+
+pytestmark = pytest.mark.raven_free
 
 
 class TestDataObjectBase:

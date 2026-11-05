@@ -17,6 +17,10 @@ sys.path.append(HERON_LOC)
 from HERON.templates.decorators import listproperty
 sys.path.pop()
 
+import pytest
+
+pytestmark = pytest.mark.raven_free
+
 
 class MockListPropertyUser:
   """ A minimal class implementing an attribute as a listproperty """

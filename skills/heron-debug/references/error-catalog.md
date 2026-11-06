@@ -40,7 +40,8 @@ check that raises it.
 | `File not found for <DataGenerator><TYPE> named "X". Looked in: ... Given location: ...` | Path wrong. See path rules in `../heron/references/spec/data-generators.md`. `Placeholders.py` |
 | `ERROR trying to find %HERON_DATA%...` / `path ... found in HERON_DATA environment variable does not seem to exist` | `%HERON_DATA%` could not be resolved. It points to HERON's workshop data, which is not part of a normal install. Replace the prefix with a plain path to the file. `Placeholders.py` |
 | `Variable "V" requested for "X" but not found in "<file>"! Found: [...]` | The CSV has no such column header. `Placeholders.py` |
-| `Module "..." for function "X" was not found!` | The `<Function>` Python file path is wrong. `Placeholders.py` |
+| `Importing module "..." for function "X" failed with error: ...` | The `<Function>` Python file was found but raised an error while being imported (e.g. a syntax error, a failed import, or a data file it reads at import time). The original error and traceback are printed above it. `Placeholders.py` |
+| `Module "..." for function "X" could not be imported from "..."; it should be a Python (.py) file.` | The `<Function>` file is not a Python source file. `Placeholders.py` |
 | `Levelized Cost metric was selected, but no <levelized_cost> node was found in component Cash Flows!` | Put `<levelized_cost/>` in one cash flow's `<reference_price>`. `Cases.py` |
 | `Levelized Cost metric requires a nonlinear optimization in the inner step...` | Set a nonlinear `<solver>` such as `ipopt`. `Cases.py` |
 | `Multiple optimization algorithms found, only first algorithm provided...will be used` (warning) | Put one algorithm in `<optimization_settings>`. |

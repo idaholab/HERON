@@ -4,18 +4,69 @@
 """
   Base classes for other classes.
 """
-from ravenframework.BaseClasses import MessageUser
+from HERON.src.messages import Messenger
 
 
-class Base(MessageUser):
+class Base:
+  """
+    Base class for HERON objects. Sends messages through the message backend given as "messageHandler",
+    such as RAVEN's MessageHandler (see HERON.src.messages).
+  """
   def __init__(self, **kwargs):
     """
       Constructor.
       @ In, kwargs, dict, passthrough arguments
       @ Out, None
     """
-    super().__init__()
-    self.messageHandler = kwargs.get('messageHandler', None)
+    # super().__init__() is not called, so that subclasses with more than one base class (e.g. Component)
+    # call the other constructors themselves, as they did when Base derived from RAVEN's MessageUser.
+    self.messageHandler = kwargs.get('messageHandler', None) # message backend, see HERON.src.messages
+
+  @property
+  def message_handler(self):
+    """
+      Message methods (raiseAnError, raiseAWarning, raiseAMessage, raiseADebug) for this object.
+      @ In, None
+      @ Out, message_handler, Messenger, sends this object's messages to its message backend
+    """
+    return Messenger(self.messageHandler, self)
+
+  def raiseAnError(self, etype, *args, **kwargs):
+    """
+      Prints an error message and raises the error. Same as self.message_handler.raiseAnError.
+      @ In, etype, type, Exception class to raise (e.g. IOError)
+      @ In, args, tuple, message parts, joined with spaces as print() does
+      @ In, kwargs, dict, optional settings (verbosity, tag, color), see Messenger.raiseAnError
+      @ Out, None
+    """
+    self.message_handler.raiseAnError(etype, *args, **kwargs)
+
+  def raiseAWarning(self, *args, **kwargs):
+    """
+      Prints a warning. Same as self.message_handler.raiseAWarning.
+      @ In, args, tuple, message parts, joined with spaces as print() does
+      @ In, kwargs, dict, optional settings (verbosity, tag, color), see Messenger.raiseAWarning
+      @ Out, None
+    """
+    self.message_handler.raiseAWarning(*args, **kwargs)
+
+  def raiseAMessage(self, *args, **kwargs):
+    """
+      Prints a message. Same as self.message_handler.raiseAMessage.
+      @ In, args, tuple, message parts, joined with spaces as print() does
+      @ In, kwargs, dict, optional settings (verbosity, tag, color, forcePrint), see Messenger.raiseAMessage
+      @ Out, None
+    """
+    self.message_handler.raiseAMessage(*args, **kwargs)
+
+  def raiseADebug(self, *args, **kwargs):
+    """
+      Prints a debug message. Same as self.message_handler.raiseADebug.
+      @ In, args, tuple, message parts, joined with spaces as print() does
+      @ In, kwargs, dict, optional settings (verbosity, tag, color), see Messenger.raiseADebug
+      @ Out, None
+    """
+    self.message_handler.raiseADebug(*args, **kwargs)
 
   def __repr__(self):
     """

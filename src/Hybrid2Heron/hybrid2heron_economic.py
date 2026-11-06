@@ -27,20 +27,17 @@ import csv
 import argparse
 from xml.etree import ElementTree as ET
 
-#Note: xm only uses prettify which is in both xmlUtils and convert_utils
+# prettify writes the output XML file in RAVEN's preferred format
 try:
-  from ravenframework.utils import xmlUtils as xm
   import HERON.src
   HERON_src_path = HERON.src.__path__[0]
+  from HERON.src.xml_utils import prettify
 except ModuleNotFoundError:
-  # # Importing XML utility from RAVEN to make the output XML file looks pretty
   this_file = os.path.abspath(__file__)
   #Note, drop everything after last occurence of HERON, then add HERON/src
   HERON_src_path = "HERON".join(this_file.split("HERON")[:-1])+"HERON/src"
   sys.path.append(HERON_src_path)
-  from _utils import get_raven_loc
-  sys.path.append(get_raven_loc())
-  from scripts.conversionScripts import convert_utils as xm
+  from xml_utils import prettify
 
 #####
 # Section 1: HYBRID Information Extraction Function
@@ -392,4 +389,4 @@ for components in components_list:
 #####
 # Section 6: Print the modified HERON input new file in a pretty RAVEN-preferred format
 with open(output_file, "w", encoding="utf8") as out:
-  print((xm.prettify(HERON_inp_tree)), file=out)
+  print((prettify(HERON_inp_tree)), file=out)

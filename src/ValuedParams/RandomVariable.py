@@ -8,7 +8,8 @@
 """
 from .ValuedParam import ValuedParam
 from ravenframework.Distributions import returnInputParameter
-from ravenframework.utils import InputData, InputTypes, xmlUtils
+from ravenframework.utils import InputData, InputTypes
+from HERON.src.xml_utils import new_node
 
 # TODO: this is temporary until it becomes a part of the ValuedParam registry
 CF_TARGET_MAP = {
@@ -135,7 +136,7 @@ class RandomVariable(ValuedParam):
       @ In, rec_depth, int, how many levels deep are we in recursive calls
       @ Out, xml, XML node
     """
-    xml = xmlUtils.newNode(input_spec.name)
+    xml = new_node(input_spec.name)
     if input_spec.parameterValues:
       xml.attrib = input_spec.parameterValues
     if input_spec.value != '':

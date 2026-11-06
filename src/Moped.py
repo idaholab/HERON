@@ -13,6 +13,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from HERON.src import _utils as hutils
+from HERON.src.xml_utils import new_node
 from HERON.src.base import Base
 
 from TEAL.src import main as RunCashFlow
@@ -148,12 +149,11 @@ class MOPED(Base):
       raise IOError('The requested signal name is not available'
                     'from the synthetic history, check DataGenerators node in input')
     runner = ROMLoader(self._sources[0]._target_file)
-    from ravenframework.utils import xmlUtils
     inp = {'scaling': [1]}
     # TODO expand to change other pickledROM settings withing this method
     nodes = []
-    node = xmlUtils.newNode('ROM', attrib={'name': 'SyntheticHistory', 'subType': 'pickledRom'})
-    node.append(xmlUtils.newNode('clusterEvalMode', text=self._eval_mode))
+    node = new_node('ROM', attrib={'name': 'SyntheticHistory', 'subType': 'pickledRom'})
+    node.append(new_node('clusterEvalMode', text=self._eval_mode))
     nodes.append(node)
     runner.setAdditionalParams(nodes)
     synthetic_data = {}

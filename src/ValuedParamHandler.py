@@ -4,13 +4,13 @@
 """
   Defines the base class ValuedParam entity.
 """
+from HERON.src.base import Base
 from HERON.src.ValuedParams import Parametric
 from HERON.src.ValuedParams import factory as VPFactory
 
 from ravenframework.utils import InputData
-from ravenframework.BaseClasses import MessageUser
 
-class ValuedParamHandler(MessageUser):
+class ValuedParamHandler(Base):
   """
     This class enables the identification of runtime-evaluated variables
     with a variety of sources (fixed values, parametric values, data histories, function

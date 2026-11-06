@@ -17,7 +17,7 @@ from HERON.src.base import Base
 from HERON.src.Moped import MOPED
 from HERON.src.Herd import HERD
 from HERON.src.NetworkPlot import NetworkPlot
-from HERON.src.messages import HeronMessageHandler
+from HERON.src.messages import HeronMessageHandler, set_default_backend
 
 
 class HERON(Base):
@@ -35,6 +35,8 @@ class HERON(Base):
     self._input_name = None # name of the input XML file
 
     self.messageHandler = HeronMessageHandler(verbosity='all', caller_length=18, tag_length=7)
+    # objects not given a handler (e.g. ValuedParams, TransferFuncs) use this one too
+    set_default_backend(self.messageHandler)
 
   def read_input(self, name: str) -> None:
     """

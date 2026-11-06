@@ -6,11 +6,12 @@
   These are objects that need to return values, but come from
   a wide variety of different sources and may not be valued until run time.
 """
+from HERON.src.base import Base
+
 from ravenframework.utils import InputData
-from ravenframework.BaseClasses import MessageUser
 
 # class for potentially dynamically-evaluated quantities
-class ValuedParam(MessageUser):
+class ValuedParam(Base):
   """
     These are objects that need to return values, but come from
     a wide variety of different sources and may not be valued until run time.

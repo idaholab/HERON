@@ -3,7 +3,7 @@
 # ALL RIGHTS RESERVED
 
 from ravenframework.utils import InputData, InputTypes
-from ravenframework.EntityFactoryBase import EntityFactory
+from HERON.src.entity_factory import EntityFactory
 
 from .SyntheticHistory import SyntheticHistory
 from .StaticHistory import StaticHistory

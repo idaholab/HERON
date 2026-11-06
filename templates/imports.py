@@ -26,6 +26,5 @@ from HERON.src.Placeholders import Placeholder
 from HERON.src.ValuedParams import ValuedParam
 
 # import needed ravenframework modules
-from ravenframework.utils import xmlUtils
 from ravenframework.InputTemplates.TemplateBaseClass import Template
 from ravenframework.Distributions import returnInputParameter

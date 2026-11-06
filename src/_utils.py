@@ -300,10 +300,10 @@ def sample_synthhist(fpath, eval_mode='clustered'):
   import contextlib
   _ensure_raven_importable()
   from ravenframework.ROMExternal import ROMLoader
-  from ravenframework.utils import xmlUtils
+  from HERON.src.xml_utils import new_node
   runner = ROMLoader(fpath)
-  node = xmlUtils.newNode('ROM', attrib={'name': 'SyntheticHistory', 'subType': 'pickledRom'})
-  node.append(xmlUtils.newNode('clusterEvalMode', text=eval_mode))
+  node = new_node('ROM', attrib={'name': 'SyntheticHistory', 'subType': 'pickledRom'})
+  node.append(new_node('clusterEvalMode', text=eval_mode))
   # RAVEN prints a message per evaluated segment; keep those out of the caller's output
   with contextlib.redirect_stdout(io.StringIO()):
     runner.setAdditionalParams([node])

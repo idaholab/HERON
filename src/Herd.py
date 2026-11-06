@@ -14,7 +14,6 @@ import numpy as np
 from functools import partial
 import logging
 
-from ravenframework.utils import xmlUtils
 from ravenframework.ROMExternal import ROMLoader
 
 # NOTE: these paths will change for next DISPATCHES release
@@ -32,6 +31,7 @@ except ModuleNotFoundError:
 from TEAL.src import CashFlows
 from TEAL.src import main as RunCashFlow
 from HERON.src.Moped import MOPED
+from HERON.src.xml_utils import new_node
 
 DISPATCHES_MODEL_COMPONENT_META={
   "Nuclear Case": {
@@ -284,7 +284,6 @@ class HERD(MOPED):
       raise IOError('The requested signal name is not available'
                     'from the synthetic history, check DataGenerators node in input')
 
-    # Initializing ravenROMexternal object gives PATH access to xmlUtils
     target_file = getattr(source, "_target_file")
     runner = ROMLoader( binaryFileName=target_file)
 
@@ -343,8 +342,8 @@ class HERD(MOPED):
     """
     inp = {'scaling': [1]}
     nodes = []
-    node = xmlUtils.newNode('ROM', attrib={'name': 'SyntheticHistory', 'subType': 'pickledRom'})
-    node.append(xmlUtils.newNode('clusterEvalMode', text=self._eval_mode))
+    node = new_node('ROM', attrib={'name': 'SyntheticHistory', 'subType': 'pickledRom'})
+    node.append(new_node('clusterEvalMode', text=self._eval_mode))
     nodes.append(node)
     runner.setAdditionalParams(nodes)
 

@@ -4,13 +4,13 @@
 """
   Base classes for other classes.
 """
-from HERON.src.messages import Messenger
+from HERON.src.messages import Messenger, get_default_backend
 
 
 class Base:
   """
-    Base class for HERON objects. Sends messages through the message backend given as "messageHandler",
-    such as RAVEN's MessageHandler (see HERON.src.messages).
+    Base class for HERON objects. Sends messages through the message backend given as "messageHandler"
+    (see HERON.src.messages), or through the default backend if none was given.
   """
   def __init__(self, **kwargs):
     """
@@ -29,7 +29,9 @@ class Base:
       @ In, None
       @ Out, message_handler, Messenger, sends this object's messages to its message backend
     """
-    return Messenger(self.messageHandler, self)
+    # the default is looked up each time, not stored, so it is not pickled with this object
+    backend = self.messageHandler if self.messageHandler is not None else get_default_backend()
+    return Messenger(backend, self)
 
   def raiseAnError(self, etype, *args, **kwargs):
     """

@@ -23,7 +23,7 @@ source_path = os.path.relpath(os.path.join(build_path, '..', 'src'), start=build
 
 print("Populating HERON_user_manual.tex...")
 
-filenames = collect_tex.specs_to_load.keys()
+filenames = list(collect_tex.specs_to_load.keys()) + collect_tex.extra_sections
 
 string = ''
 input_template = '\\input{{{name}}}\n'

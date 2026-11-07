@@ -1,0 +1,29 @@
+The \xmlNode{uncertainty} node makes a value a random variable. It holds exactly one distribution
+node, chosen from the distributions listed below. HERON samples a new value from the distribution
+for each realization of the outer workflow, so its effect appears in the statistics HERON reports
+over those realizations. Using \xmlNode{uncertainty} in a cash flow forces HERON to use the bilevel
+(outer and inner) workflow.
+
+HERON currently samples \xmlNode{uncertainty} only for these \xmlNode{CashFlow} parameters:
+\xmlNode{driver}, \xmlNode{reference\_price}, \xmlNode{reference\_driver}, and
+\xmlNode{scaling\_factor\_x}. Other nodes accept \xmlNode{uncertainty} as input, but it is not
+sampled there and should not be used.
+
+For example, a reference price drawn from a normal distribution:
+\begin{lstlisting}[style=XML]
+  <reference_price>
+    <uncertainty>
+      <Normal name="price_dist">
+        <mean>10</mean>
+        <sigma>0.05</sigma>
+      </Normal>
+    </uncertainty>
+  </reference_price>
+\end{lstlisting}
+The \xmlAttr{name} of the distribution must be given but is replaced by HERON when it writes the
+RAVEN workflow.
+
+Every distribution accepts the optional \xmlNode{lowerBound} and \xmlNode{upperBound} subnodes,
+which truncate the distribution. Parameters marked ``Required'' must be given. Distributions not
+listed here are deprecated: HERON passes them to RAVEN without checking them and warns that they
+will be removed.

@@ -6,10 +6,31 @@
   These are objects that need to return values, but come from
   a wide variety of different sources.
 """
+import copy
+
 from .ValuedParam import ValuedParam
-from ravenframework.Distributions import returnInputParameter
+from . import distributions
 from ravenframework.utils import InputData, InputTypes
 from HERON.src.xml_utils import new_node
+
+# label of the user manual section that documents <uncertainty> and its distributions
+MANUAL_LABEL = 'sec:uncertainty'
+
+_DESCR = r"""indicates that this value is a random variable whose value is sampled from a
+    distribution which needs to be provided by the user. A subnode must be provided
+    which matches one of the supported distributions."""
+
+def _generate_latex_reference(recDepth=0, sectionLevel=1):
+  """
+    Generates the user manual entry for the <uncertainty> node as a reference to its own section.
+    Replaces InputData's generateLatex on the <uncertainty> spec, so the arguments match it.
+    @ In, recDepth, int, optional, recursion depth (indentation level) of this node
+    @ In, sectionLevel, int, optional, unused; kept to match InputData's generateLatex
+    @ Out, msg, str, LaTeX for this node
+  """
+  descr = f'{_DESCR} See Section~\\ref{{{MANUAL_LABEL}}} for the supported distributions.'
+  return (InputData.doDent(recDepth) + '\\item \\xmlNode{uncertainty}:\n' +
+          InputData.wrapText(descr, indent=InputData.doDent(recDepth, 1)) + '\n')
 
 # TODO: this is temporary until it becomes a part of the ValuedParam registry
 CF_TARGET_MAP = {
@@ -23,7 +44,8 @@ CF_TARGET_MAP = {
 class RandomVariable(ValuedParam):
   """
     Represents a ValuedParam that takes values directly from a sampled distribution. Users specify
-    a distribution from RAVEN and values are sampled using a RAVEN MonteCarlo sampler.
+    one of the distributions HERON supports (see distributions.py), and values are sampled using a
+    RAVEN MonteCarlo sampler.
   """
   # these types represent values that do not need to be evaluated at run time, as they are determined.
   @classmethod
@@ -33,16 +55,15 @@ class RandomVariable(ValuedParam):
       @ In, None
       @ Out, spec, InputData, value-based spec
     """
-    spec = InputData.parameterInputFactory('uncertainty', contentType=InputTypes.StringType,
-        descr=r"""indicates that this value is a random variable whose value is sampled from a
-              distribution which needs to be provided by the user. A subnode must be provided
-              which matches one of the RAVEN Distributions from `ravenframework/Distributions`.
-              """)
-    # grabbing DistributionsCollection which has all Distribution specs as subnodes
-    dist_collection = returnInputParameter()
-    # NOTE: any input errors (missing XML attribs or subnodes) will have been found when parsing XML
-    for sub in dist_collection.subs:
-      spec.addSub(sub)
+    spec = InputData.parameterInputFactory('uncertainty', contentType=InputTypes.StringType, descr=_DESCR)
+    for dist in distributions.SUPPORTED:
+      spec.addSub(distributions.make_spec(dist))
+    # Distributions HERON does not support are deprecated but still accepted. Non-strict mode keeps
+    # them as raw XML in "additionalInput" so they can be passed to RAVEN unchanged.
+    spec.setStrictMode(False)
+    # The supported distributions are documented once in their own manual section, so each place
+    # <uncertainty> is allowed refers there instead of repeating them.
+    spec.generateLatex = staticmethod(_generate_latex_reference)
     return spec
 
   def __init__(self):
@@ -68,17 +89,22 @@ class RandomVariable(ValuedParam):
     # aliases get used to convert variable names, notably for the cashflow's "capacity"
     if alias_dict is None:
       alias_dict = {}
-    # get_input_specs() will have already generated all RAVEN distribution templates, now find the one the user provided
-    sub_distributions = spec.subparts
-    # check that the user provided *something*
-    if len(sub_distributions) == 0:
+    # supported distributions were parsed into subparts; any others were kept as raw XML in additionalInput
+    if spec.subparts:
+      # use the first distribution (multiple distributions doesn't make sense)
+      # now convert the given XML Distribution subnode from the InputData specs back to XML
+      self._distribution = self.convert_spec_to_xml(spec.subparts[0])
+    elif spec.additionalInput:
+      unsupported = spec.additionalInput[0]
+      self.raiseAWarning(f'Distribution <{unsupported.tag}> in <uncertainty> for component "{comp_name}" is not '
+                         'supported by HERON and has been deprecated; it is passed to RAVEN without being checked. '
+                         f'Supported distributions: {", ".join(distributions.supported_names())}')
+      # copy so that changes to the distribution (e.g. renaming) do not alter the user's input
+      self._distribution = copy.deepcopy(unsupported)
+    else:
+      # check that the user provided *something*
       msg = 'RandomVariable ValuedParam was requested but no distribution found in HERON XML input.'
       self.raiseAnError(RuntimeError,msg)
-    else:
-      # seems something is there in a list, get the first instance (multiple distributions doesn't make sense)
-      sub_distribution = sub_distributions[0]
-    # now convert the given XML Distribution subnode from the RAVEN InputData/specs back to XML
-    self._distribution = self.convert_spec_to_xml(sub_distribution)
     return []
 
   def evaluate(self, inputs, target_var=None, aliases=None, custom_input=None):
@@ -143,7 +169,7 @@ class RandomVariable(ValuedParam):
       xml.text = str(input_spec.value)
     if input_spec.subparts:
       for sub in input_spec.subparts:
-        if 'ravenframework.utils.InputData' in str(type(sub)):
+        if isinstance(sub, InputData.ParameterInput):
           sub_node = self.convert_spec_to_xml(sub, rec_depth+1)
           xml.append(sub_node)
     return xml

@@ -5,11 +5,12 @@
   Defines the TransferFunc entity.
   These define the transfer functions for generating Components.
 """
+from HERON.src.base import Base
+
 from ravenframework.utils import InputData
-from ravenframework.BaseClasses import MessageUser
 
 # class for potentially dynamically-evaluated quantities
-class TransferFunc(MessageUser):
+class TransferFunc(Base):
   """
     These define the transfer functions for generating Components.
   """

@@ -17,6 +17,9 @@ sys.path.pop()
 
 import unittest
 import xml.etree.ElementTree as ET
+import pytest
+
+pytestmark = pytest.mark.raven_free
 
 
 class TestRunInfo(unittest.TestCase):

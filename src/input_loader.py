@@ -7,13 +7,11 @@
 import sys
 import itertools as it
 from collections import Counter
+import xml.etree.ElementTree as ET
 
 from . import Cases
 from . import Components
 from . import Placeholders
-
-from ravenframework.utils import xmlUtils
-
 
 
 def load(name):
@@ -22,8 +20,7 @@ def load(name):
     @ In, name, str, name of file to read from
     @ Out, xml, ET.element, input as xml
   """
-  xml, _ = xmlUtils.loadToTree(name)
-  return xml
+  return ET.parse(name).getroot()
 
 def parse(xml, loc, messageHandler):
   """

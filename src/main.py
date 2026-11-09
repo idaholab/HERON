@@ -14,11 +14,8 @@ from HERON.src import input_loader
 from HERON.src import install_skills
 from HERON.src import inspect_data
 from HERON.src.base import Base
-from HERON.src.Moped import MOPED
-from HERON.src.Herd import HERD
 from HERON.src.NetworkPlot import NetworkPlot
-
-from ravenframework.MessageHandler import MessageHandler
+from HERON.src.messages import HeronMessageHandler, set_default_backend
 
 
 class HERON(Base):
@@ -35,12 +32,9 @@ class HERON(Base):
     self._input_dir = None  # location of the input XML file
     self._input_name = None # name of the input XML file
 
-    messageHandler = MessageHandler()
-    messageHandler.initialize({'verbosity': 'all',
-                               'callerLength': 18,
-                               'tagLength': 7,
-                               'suppressErrs': False,})
-    self.messageHandler = messageHandler
+    self.messageHandler = HeronMessageHandler(verbosity='all', caller_length=18, tag_length=7)
+    # objects not given a handler (e.g. ValuedParams, TransferFuncs) use this one too
+    set_default_backend(self.messageHandler)
 
   def read_input(self, name: str) -> None:
     """
@@ -118,6 +112,7 @@ class HERON(Base):
       @ In, case, HERON case object with necessary run settings
       @ Out, None
     """
+    from HERON.src.Moped import MOPED
     if case is None:
       case = self._case
     if components is None:
@@ -136,6 +131,7 @@ class HERON(Base):
       @ In, None
       @ Out, None
     """
+    from HERON.src.Herd import HERD
     # checking to see if DISPATCHES is properly installed
     try:
       import dispatches.case_studies as tmp_lib

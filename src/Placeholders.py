@@ -9,11 +9,12 @@ import sys
 import abc
 import copy
 import functools
+import importlib.util
 
 import HERON.src._utils as hutils
 from HERON.src.base import Base
 
-from ravenframework.utils import InputData, InputTypes, utils
+from ravenframework.utils import InputData, InputTypes
 from ravenframework.ROMExternal import ROMLoader
 
 
@@ -304,15 +305,7 @@ class Function(Placeholder):
     self.__dict__ = d
     self._module = None
     self._module_methods = {}
-    target_dir = os.path.dirname(os.path.abspath(self._target_file))
-    if target_dir not in sys.path:
-      sys.path.append(target_dir)
-    load_string, _ = utils.identifyIfExternalModelExists(self, self._target_file, '')
-    module = utils.importFromPath(load_string, True)
-    if not module:
-      raise IOError(f'Module "{self._source}" for function "{self.name}" was not found!')
-    self._module = module
-    self._set_callables(module)
+    self._load_module()
 
   def read_input(self, xml):
     """
@@ -321,13 +314,47 @@ class Function(Placeholder):
       @ Out, None
     """
     Placeholder.read_input(self, xml)
-    # load module
-    load_string, _ = utils.identifyIfExternalModelExists(self, self._target_file, '')
-    module = utils.importFromPath(load_string, True)
-    if not module:
-      raise IOError(f'Module "{self._source}" for function "{self.name}" was not found!')
-    self._module = module
     # TODO do we need to set the var_names? self._var_names = _var_names
+    self._load_module()
+
+  def _load_module(self):
+    """
+      Imports the user's Python module from self._target_file and collects its callables. The module is
+      imported under its file name, with its directory added to sys.path and PYTHONPATH, as RAVEN's
+      utils.importFromPath did, so that it can import its neighbors and is importable in RAVEN's
+      subprocesses. If a module of that name is already imported, the file is run again into that same
+      module object, also as RAVEN did.
+      @ In, None
+      @ Out, None
+    """
+    path = os.path.abspath(self._target_file)
+    directory, file_name = os.path.split(path)
+    module_name = os.path.splitext(file_name)[0]
+    if directory not in sys.path:
+      sys.path.append(directory)
+    self.raiseAMessage(f'Importing module "{path}" for function "{self.name}"')
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None:
+      self.raiseAnError(ImportError, f'Module "{self._source}" for function "{self.name}" could not be '
+                        f'imported from "{path}"; it should be a Python (.py) file.')
+    module = sys.modules.get(module_name)
+    is_new = module is None
+    if is_new:
+      module = importlib.util.module_from_spec(spec)
+      sys.modules[module_name] = module
+    try:
+      spec.loader.exec_module(module)
+    except Exception as err:
+      if is_new:
+        sys.modules.pop(module_name, None)
+      # not re-raised as is: the original type (e.g. FileNotFoundError) could be caught by mistake while
+      # heron.lib is loaded; the original error is kept and shown as the cause
+      self.raiseAnError(ImportError, f'Importing module "{self._source}" for function "{self.name}" failed '
+                        f'with error: {type(err).__name__}: {err}')
+    python_path = os.environ.get('PYTHONPATH', '')
+    if directory not in python_path.split(os.pathsep):
+      os.environ['PYTHONPATH'] = python_path + os.pathsep + directory
+    self._module = module
     self._set_callables(module)
 
   def _set_callables(self, module):

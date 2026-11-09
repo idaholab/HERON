@@ -21,7 +21,7 @@ try:
 except ModuleNotFoundError:
   # Load RAVEN tools
   sys.path.append(hutils.get_raven_loc())
-from ravenframework.utils import InputData, xmlUtils,InputTypes
+from ravenframework.utils import InputData, InputTypes
 import ravenframework.MessageHandler
 
 results = {"pass":0, "fail":0}

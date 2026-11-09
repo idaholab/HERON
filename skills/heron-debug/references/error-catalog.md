@@ -40,7 +40,8 @@ check that raises it.
 | `File not found for <DataGenerator><TYPE> named "X". Looked in: ... Given location: ...` | Path wrong. See path rules in `../heron/references/spec/data-generators.md`. `Placeholders.py` |
 | `ERROR trying to find %HERON_DATA%...` / `path ... found in HERON_DATA environment variable does not seem to exist` | `%HERON_DATA%` could not be resolved. It points to HERON's workshop data, which is not part of a normal install. Replace the prefix with a plain path to the file. `Placeholders.py` |
 | `Variable "V" requested for "X" but not found in "<file>"! Found: [...]` | The CSV has no such column header. `Placeholders.py` |
-| `Module "..." for function "X" was not found!` | The `<Function>` Python file path is wrong. `Placeholders.py` |
+| `Importing module "..." for function "X" failed with error: ...` | The `<Function>` Python file was found but raised an error while being imported (e.g. a syntax error, a failed import, or a data file it reads at import time). The original error and traceback are printed above it. `Placeholders.py` |
+| `Module "..." for function "X" could not be imported from "..."; it should be a Python (.py) file.` | The `<Function>` file is not a Python source file. `Placeholders.py` |
 | `Levelized Cost metric was selected, but no <levelized_cost> node was found in component Cash Flows!` | Put `<levelized_cost/>` in one cash flow's `<reference_price>`. `Cases.py` |
 | `Levelized Cost metric requires a nonlinear optimization in the inner step...` | Set a nonlinear `<solver>` such as `ipopt`. `Cases.py` |
 | `Multiple optimization algorithms found, only first algorithm provided...will be used` (warning) | Put one algorithm in `<optimization_settings>`. |
@@ -65,7 +66,8 @@ check that raises it.
 | File not found for `inner.xml`, `heron.lib`, or `../write_inner.py` | Run `raven_framework` on the generated `outer.xml` from the directory `heron` wrote to. Do not move `outer.xml` away from `inner.xml` and `heron.lib`. Re-run `heron` to regenerate. |
 | `RAVENInterface WARNING: Could not find .../.ravenStatus, assuming failed RAVEN run.` | The inner run died. Open `generalOut` in that run's subfolder of `<Case name>_o/` for the real error (`SKILL.md`, "Inner runs"). RAVEN |
 | Outer run finishes but results are missing or the output database is empty (no specific message) | The inner runs died before writing results. Same as above. |
-| Python `ModuleNotFoundError` for `HERON`, `TEAL`, or `pyomo` | The environment is not the RAVEN one, or the plugin is not installed. |
+| Python `ModuleNotFoundError` for `HERON`, `TEAL`, `pyomo`, or `ravenframework` | The environment is not the RAVEN one, or the plugin is not installed. |
+| `RavenNotFoundError: RAVEN is required but could not be found.` (or `could not be imported from "<path>"`; also `The TEAL plugin is required...`) | The `HERON` package can be imported without RAVEN, but the code being used needs it, e.g. the workflow templates or loading a `.pk` ROM from Python. "could not be found": RAVEN is not installed and HERON is not registered with a RAVEN checkout. "could not be imported from": `.ravenconfig.xml` points to a RAVEN checkout that is missing or not built. Fix: activate the RAVEN environment, or register HERON (`python <raven>/scripts/install_plugins.py -s <path to HERON>`). The `heron` command itself still needs RAVEN at startup, so without it, it fails earlier with the `No module named 'ravenframework'` error above; the fix is the same. A `ModuleNotFoundError` from *inside* `ravenframework` (e.g. `No module named 'xarray'`) means RAVEN was found but its environment is incomplete. `_utils.py` |
 | Pickle or ROM load errors on an ARMA `.pk` | The model was trained with a different RAVEN version, or the file is corrupted. Retrain with the same RAVEN (heron-tsa skill). |
 
 ## Dispatch errors (inside the inner run or debug run)

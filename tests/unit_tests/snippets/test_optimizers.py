@@ -15,6 +15,10 @@ from HERON.tests.unit_tests.snippets.mock_classes import MockSnippet
 from HERON.tests.unit_tests.snippets.utils import is_subtree_matching
 sys.path.pop()
 
+import pytest
+
+pytestmark = pytest.mark.raven_free
+
 
 class TestOptimizerBase:
   """ Optimizer snippet class tests """

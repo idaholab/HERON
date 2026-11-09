@@ -111,6 +111,34 @@ through RAVEN's test harness:
 - If you cannot run the tests, say so explicitly in your report; do not
   claim a change is verified.
 
+### Unit tests without RAVEN
+
+HERON is being made gradually independent of RAVEN, and some unit tests
+already run without it. They run under pytest (configured in
+`tests/pytest.ini`, `tests/conftest.py`), with RAVEN, TEAL, and FARM imports
+blocked even where RAVEN is installed:
+
+```bash
+python -m pytest -c tests/pytest.ini --no-raven tests/unit_tests
+```
+
+This takes about a second, so it is a quick check while developing, and the
+Linux CI job runs it after `run_tests`. Always pass the test path: run from the
+HERON root without it, pytest recurses through the `build_cfg/HERON` symlink.
+
+A test is included only if both of these hold:
+1. Its file is listed under `raven_free_files` in `tests/pytest.ini`. List a
+   file only when all of its imports work without RAVEN.
+2. The test is marked `raven_free`: `pytestmark = pytest.mark.raven_free` for
+   a whole file, or `@pytest.mark.raven_free` on single test methods.
+
+When writing new unit tests, keep them RAVEN-free where possible: test HERON
+code directly, and don't import `ravenframework` in the test. If a test passes
+under `--no-raven`, mark it and list its file. The RAVEN harness ignores the
+marks, so marked tests still run there. Tests that need RAVEN stay unmarked.
+`tests/unit_tests/test_raven_optional.py` checks that HERON imports and fails
+cleanly without RAVEN. It runs only under pytest and has no `tests` spec entry.
+
 ## Project agent SKILLs
 
 HERON contains two agent SKILLs (in ./skills/) which are bundled with the pip package.

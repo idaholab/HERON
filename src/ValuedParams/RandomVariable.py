@@ -6,8 +6,6 @@
   These are objects that need to return values, but come from
   a wide variety of different sources.
 """
-import copy
-
 from .ValuedParam import ValuedParam
 from . import distributions
 from ravenframework.utils import InputData, InputTypes
@@ -58,9 +56,6 @@ class RandomVariable(ValuedParam):
     spec = InputData.parameterInputFactory('uncertainty', contentType=InputTypes.StringType, descr=_DESCR)
     for dist in distributions.SUPPORTED:
       spec.addSub(distributions.make_spec(dist))
-    # Distributions HERON does not support are deprecated but still accepted. Non-strict mode keeps
-    # them as raw XML in "additionalInput" so they can be passed to RAVEN unchanged.
-    spec.setStrictMode(False)
     # The supported distributions are documented once in their own manual section, so each place
     # <uncertainty> is allowed refers there instead of repeating them.
     spec.generateLatex = staticmethod(_generate_latex_reference)
@@ -89,22 +84,17 @@ class RandomVariable(ValuedParam):
     # aliases get used to convert variable names, notably for the cashflow's "capacity"
     if alias_dict is None:
       alias_dict = {}
-    # supported distributions were parsed into subparts; any others were kept as raw XML in additionalInput
-    if spec.subparts:
-      # use the first distribution (multiple distributions doesn't make sense)
-      # now convert the given XML Distribution subnode from the InputData specs back to XML
-      self._distribution = self.convert_spec_to_xml(spec.subparts[0])
-    elif spec.additionalInput:
-      unsupported = spec.additionalInput[0]
-      self.raiseAWarning(f'Distribution <{unsupported.tag}> in <uncertainty> for component "{comp_name}" is not '
-                         'supported by HERON and has been deprecated; it is passed to RAVEN without being checked. '
-                         f'Supported distributions: {", ".join(distributions.supported_names())}')
-      # copy so that changes to the distribution (e.g. renaming) do not alter the user's input
-      self._distribution = copy.deepcopy(unsupported)
-    else:
-      # check that the user provided *something*
+    # get_input_specs() will have already generated all supported distribution specs, now find the one the user provided
+    sub_distributions = spec.subparts
+    # check that the user provided *something*
+    if len(sub_distributions) == 0:
       msg = 'RandomVariable ValuedParam was requested but no distribution found in HERON XML input.'
       self.raiseAnError(RuntimeError,msg)
+    else:
+      # seems something is there in a list, get the first instance (multiple distributions doesn't make sense)
+      sub_distribution = sub_distributions[0]
+    # now convert the given XML Distribution subnode from the InputData specs back to XML
+    self._distribution = self.convert_spec_to_xml(sub_distribution)
     return []
 
   def evaluate(self, inputs, target_var=None, aliases=None, custom_input=None):

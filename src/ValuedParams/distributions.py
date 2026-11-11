@@ -5,37 +5,58 @@
   HERON chooses which distributions it supports rather than loading every RAVEN Distribution.
   Each declared distribution uses the same node name, attributes, and parameter nodes as the
   RAVEN Distribution of the same name, so the user's XML can be passed to RAVEN unchanged.
+  Only one-dimensional distributions are supported, since each <uncertainty> is a single value.
 """
 from dataclasses import dataclass
 
 from ravenframework.utils import InputData, InputTypes
 
 @dataclass(frozen=True)
+class Attr:
+  """
+    An attribute of a distribution node or one of its parameter nodes.
+  """
+  name: str        # XML attribute name
+  type: type       # InputTypes type of the value
+  required: bool   # True if the attribute must be given (enforced when parsing)
+  descr: str       # LaTeX description for the user manual
+
+@dataclass(frozen=True)
 class Param:
   """
     A parameter node of a distribution, e.g. <mean> for the Normal distribution.
   """
-  name: str            # XML node name
-  descr: str           # LaTeX description for the user manual
-  required: bool       # True if the distribution needs this parameter (enforced by RAVEN, noted in docs)
+  name: str                             # XML node name
+  descr: str                            # LaTeX description for the user manual
+  required: bool                        # True if the distribution needs this parameter (enforced by RAVEN, noted in docs)
+  content: type = InputTypes.FloatType  # InputTypes type of the node's text, or None for no type
+  attrs: tuple = ()                     # attributes (Attr) of this node
+  quantity: InputData.Quantity = InputData.Quantity.zero_to_infinity # occurrences allowed; only checked when ordered
+  default: object = 'no-default'        # default shown in the user manual, as in InputData
 
 @dataclass(frozen=True)
 class DistributionSpec:
   """
     A distribution HERON supports under <uncertainty>.
   """
-  name: str          # XML node name, matching the RAVEN Distribution
-  descr: str         # LaTeX description for the user manual
-  params: tuple = () # parameter nodes (Param), in addition to the bounds
+  name: str              # XML node name, matching the RAVEN Distribution
+  descr: str             # LaTeX description for the user manual
+  params: tuple = ()     # parameter nodes (Param), in addition to the bounds
+  ordered: bool = False  # True if the parameter nodes must appear in the declared order
+  bounds: bool = True    # True if the distribution accepts <lowerBound> and <upperBound>
+  verbosity: bool = True # True if the distribution accepts the "verbosity" attribute
 
-# attributes and bound nodes shared by every distribution
-_name_descr = r"""unique name for this distribution. HERON replaces it when writing the RAVEN workflow."""
-_verbosity_options = ('silent', 'quiet', 'all', 'debug')
-_verbosity_descr = r"""verbosity of messages from this distribution while RAVEN runs."""
-_lower_descr = r"""minimum allowed value. For distributions that are not otherwise bounded below, this truncates
-    the distribution and renormalizes its probability."""
-_upper_descr = r"""maximum allowed value. For distributions that are not otherwise bounded above, this truncates
-    the distribution and renormalizes its probability."""
+# attributes and bound nodes shared by distributions
+_name_attr = Attr('name', InputTypes.StringType, True,
+    r"""unique name for this distribution. HERON replaces it when writing the RAVEN workflow.""")
+_verbosity_attr = Attr('verbosity', InputTypes.makeEnumType('verbosity', 'verbosityType', ['silent', 'quiet', 'all', 'debug']),
+    False, r"""verbosity of messages from this distribution while RAVEN runs.""")
+_bound_params = (
+  Param('lowerBound', r"""minimum allowed value. For distributions that are not otherwise bounded below, this truncates
+    the distribution and renormalizes its probability.""", False),
+  Param('upperBound', r"""maximum allowed value. For distributions that are not otherwise bounded above, this truncates
+    the distribution and renormalizes its probability.""", False),
+)
 
 SUPPORTED = (
   DistributionSpec('Uniform',
@@ -92,7 +113,11 @@ SUPPORTED = (
         between \xmlNode{lowerBound} and \xmlNode{upperBound}, which are therefore given as exponents of
         \xmlNode{base}. For example, with \xmlNode{base} \texttt{decimal}, bounds of 1 and 3 give values
         from 10 to 1000. Both bounds are required.""",
-    (Param('base', r"""base of the logarithm: \texttt{natural} ($e$) or \texttt{decimal} (10).""", True),)),
+    # TODO <base> should only allow "natural" or "decimal". RAVEN's spec means to enforce that, but passes
+    # the enum type in the wrong argument, so any text parses and a bad value only fails once RAVEN reads
+    # the workflow. It is left untyped here to match RAVEN.
+    (Param('base', r"""base of the logarithm: \texttt{natural} ($e$) or \texttt{decimal} (10).""", True,
+           content=None),)),
   DistributionSpec('Logistic',
     r"""logistic distribution with probability density
         $f(x)=\frac{e^{-(x-\mu)/s}}{s\left(1+e^{-(x-\mu)/s}\right)^2}$.""",
@@ -102,15 +127,77 @@ SUPPORTED = (
     r"""Laplace distribution with probability density $f(x)=\frac{1}{2b}e^{-\frac{|x-\mu|}{b}}$.""",
     (Param('location', r"""location parameter $\mu$.""", True),
      Param('scale', r"""scale parameter $b$.""", True))),
+  DistributionSpec('Custom1D',
+    r"""distribution defined by a tabulated probability density or cumulative distribution function in a
+        CSV file.""",
+    (Param('workingDir', r"""directory containing \xmlNode{dataFilename}, relative to the working directory.""",
+           False, content=InputTypes.StringType),
+     Param('functionType', r"""kind of function tabulated in the file: \texttt{pdf} or \texttt{cdf}.""", True,
+           content=InputTypes.StringType),
+     Param('dataFilename', r"""name of the CSV file.""", True, content=InputTypes.StringType),
+     Param('functionID', r"""column of the file holding the function values.""", True,
+           content=InputTypes.StringType),
+     Param('variableID', r"""column of the file holding the variable values.""", True,
+           content=InputTypes.StringType))),
+  # discrete distributions
+  DistributionSpec('Poisson',
+    r"""Poisson distribution with probability mass function $f(k)=\frac{\mu^k e^{-\mu}}{k!}$ for
+        $k=0,1,2,\ldots$. Truncation is not supported.""",
+    (Param('mu', r"""mean $\mu$ of the distribution.""", True),)),
+  DistributionSpec('Binomial',
+    r"""binomial distribution with probability mass function $f(k)=\binom{n}{k}p^k(1-p)^{n-k}$ for
+        $k=0,1,\ldots,n$. Truncation is not supported.""",
+    (Param('n', r"""number of trials $n$.""", True, content=InputTypes.IntegerType),
+     Param('p', r"""probability of success $p$ in each trial.""", True))),
+  DistributionSpec('Bernoulli',
+    r"""Bernoulli distribution, which takes the value 1 with probability $p$ and 0 with probability $1-p$.
+        Truncation is not supported.""",
+    (Param('p', r"""probability $p$ of the value 1.""", True),)),
+  DistributionSpec('Geometric',
+    r"""geometric distribution of the number of independent trials, each with success probability $p$,
+        needed to obtain a success. Truncation is not supported.""",
+    (Param('p', r"""probability of success $p$ in each trial.""", True),)),
+  DistributionSpec('UniformDiscrete',
+    r"""discrete distribution in which each of $N$ values is equally likely. The values are either listed
+        in \xmlNode{values}, or spaced evenly from \xmlNode{lowerBound} to \xmlNode{upperBound} (both
+        required in that case) using either \xmlNode{nPoints} or \xmlNode{step}.""",
+    (Param('nPoints', r"""number of values from \xmlNode{lowerBound} to \xmlNode{upperBound}.""", False,
+           content=InputTypes.IntegerType),
+     Param('step', r"""spacing between values from \xmlNode{lowerBound} to \xmlNode{upperBound}. It must
+         evenly divide the range.""", False),
+     Param('values', r"""comma-separated list of the values. Cannot be combined with the bounds,
+         \xmlNode{nPoints}, or \xmlNode{step}.""", False, content=InputTypes.FloatListType),
+     # TODO <strategy> should only allow "withReplacement" or "withoutReplacement". RAVEN's spec means to
+     # enforce that, but passes the enum type in the wrong argument, so any text parses and a bad value
+     # only fails once RAVEN reads the workflow. It is left untyped here to match RAVEN.
+     Param('strategy', r"""sampling strategy: \texttt{withReplacement} or \texttt{withoutReplacement}. With
+         replacement, every sample is drawn from all $N$ values; without replacement, values already sampled
+         are excluded until all values have been drawn.""", True, content=None))),
+  DistributionSpec('Categorical',
+    r"""discrete distribution over a finite set of outcomes, each with its own probability. Outcomes may be
+        numbers or strings. The \xmlNode{state} nodes must come before \xmlNode{rtol}.""",
+    (Param('state', r"""probability of one outcome. Give one \xmlNode{state} node per outcome.""", True,
+           attrs=(Attr('outcome', InputTypes.FloatOrStringType, True, r"""value of this outcome."""),),
+           quantity=InputData.Quantity.one_to_infinity),
+     Param('rtol', r"""relative tolerance for identifying numeric outcomes as equal. Not used for string
+         outcomes.""", False, default=1e-6)),
+    ordered=True, bounds=False, verbosity=False),
+  DistributionSpec('MarkovCategorical',
+    r"""discrete distribution over a finite set of outcomes whose probabilities are the steady-state
+        probabilities of a Markov model with the given transition matrix. The \xmlNode{state} nodes must come
+        before \xmlNode{transition}, which must come before \xmlNode{workingDir}.""",
+    (Param('state', r"""one outcome of the distribution. Give one \xmlNode{state} node per outcome.""", True,
+           content=InputTypes.StringType,
+           attrs=(Attr('outcome', InputTypes.FloatType, True, r"""value of this outcome."""),
+                  Attr('index', InputTypes.IntegerType, True,
+                       r"""index of this outcome's state in the transition matrix, starting from 1.""")),
+           quantity=InputData.Quantity.one_to_infinity),
+     Param('transition', r"""transition matrix of the Markov model, as space-separated values in row order.
+         It must be square, with at least two rows.""", True, content=InputTypes.StringType,
+           quantity=InputData.Quantity.zero_to_one),
+     Param('workingDir', r"""working directory for the distribution.""", False, content=InputTypes.StringType)),
+    ordered=True, bounds=False, verbosity=False),
 )
-
-def supported_names():
-  """
-    Gets the names of the distributions HERON supports.
-    @ In, None
-    @ Out, names, list(str), distribution node names
-  """
-  return [dist.name for dist in SUPPORTED]
 
 def make_spec(dist):
   """
@@ -118,20 +205,22 @@ def make_spec(dist):
     @ In, dist, DistributionSpec, the distribution declaration
     @ Out, spec, InputData.ParameterInput, input specification for the distribution node
   """
-  spec = InputData.parameterInputFactory(dist.name, descr=dist.descr)
-  spec.addParam('name', param_type=InputTypes.StringType, required=True, descr=_name_descr)
-  verbosity = InputTypes.makeEnumType('verbosity', 'verbosityType', list(_verbosity_options))
-  spec.addParam('verbosity', param_type=verbosity, descr=_verbosity_descr)
-  spec.addSub(InputData.parameterInputFactory('lowerBound', contentType=InputTypes.FloatType, descr=_lower_descr))
-  spec.addSub(InputData.parameterInputFactory('upperBound', contentType=InputTypes.FloatType, descr=_upper_descr))
-  for param in dist.params:
-    # TODO LogUniform <base> should only allow "natural" or "decimal". RAVEN's spec means to enforce that,
-    # but passes the enum type in the wrong argument, so any text parses and a bad value only fails once
-    # RAVEN reads the workflow. It is left untyped here to match RAVEN.
-    if (dist.name, param.name) == ('LogUniform', 'base'):
-      content = None
-    else:
-      content = InputTypes.FloatType
+  spec = InputData.parameterInputFactory(dist.name, ordered=dist.ordered, descr=dist.descr)
+  _add_attrs(spec, (_name_attr, _verbosity_attr) if dist.verbosity else (_name_attr,))
+  params = (_bound_params if dist.bounds else ()) + dist.params
+  for param in params:
     descr = param.descr if not param.required else f'{param.descr} Required.'
-    spec.addSub(InputData.parameterInputFactory(param.name, contentType=content, descr=descr))
+    sub = InputData.parameterInputFactory(param.name, contentType=param.content, descr=descr, default=param.default)
+    _add_attrs(sub, param.attrs)
+    spec.addSub(sub, quantity=param.quantity)
   return spec
+
+def _add_attrs(spec, attrs):
+  """
+    Adds attribute declarations to a spec.
+    @ In, spec, InputData.ParameterInput, spec to add the attributes to
+    @ In, attrs, tuple(Attr), attributes to add
+    @ Out, None
+  """
+  for attr in attrs:
+    spec.addParam(attr.name, param_type=attr.type, required=attr.required, descr=attr.descr)

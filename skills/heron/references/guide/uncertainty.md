@@ -8,7 +8,7 @@ report or optimize. Settings are in `references/spec/case.md`.
 | Source | How to include it | Sampled |
 |--------|-------------------|---------|
 | Time series | `<ARMA>` generators (`references/guide/time-series.md`) | Once per realization (full multi-year history) |
-| Cash flow parameters | `<uncertainty>` with a RAVEN distribution in a `<driver>`, `<reference_price>`, `<reference_driver>`, or `<scaling_factor_x>` | Once per realization |
+| Cash flow parameters | `<uncertainty>` with a supported distribution (`references/spec/valued-params.md`) in a `<driver>`, `<reference_price>`, `<reference_driver>`, or `<scaling_factor_x>` | Once per realization |
 | Design variables | `sweep_values` / `opt_bounds` | Not random: set by the outer loop |
 
 A `<CSV>` history and `<fixed_value>`s are deterministic.

@@ -107,8 +107,9 @@ If the user is unsure of a price or quantity, ask whether it should be
 (random, drawn once per realization). Uncertain parameters:
 - are only allowed in cash flow `<driver>`, `<reference_price>`,
   `<reference_driver>`, and `<scaling_factor_x>`;
-- need a RAVEN distribution (ask for its shape and parameters: e.g.
-  triangular with min, mode, max);
+- need one of the supported distributions listed in
+  `../heron/references/spec/valued-params.md` (ask for its shape and
+  parameters: e.g. triangular with min, apex, max);
 - force the bilevel workflow even with a CSV history, and need enough
   realizations to matter (`../heron/references/guide/uncertainty.md`).
 

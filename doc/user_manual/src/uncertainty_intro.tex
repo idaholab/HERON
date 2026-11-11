@@ -23,7 +23,10 @@ For example, a reference price drawn from a normal distribution:
 The \xmlAttr{name} of the distribution must be given but is replaced by HERON when it writes the
 RAVEN workflow.
 
-Every distribution accepts the optional \xmlNode{lowerBound} and \xmlNode{upperBound} subnodes,
-which truncate the distribution. Parameters marked ``Required'' must be given. Distributions not
-listed here are deprecated: HERON passes them to RAVEN without checking them and warns that they
-will be removed.
+Most distributions accept the optional \xmlNode{lowerBound} and \xmlNode{upperBound} subnodes,
+which truncate the distribution. Parameters marked ``Required'' must be given.
+
+Only one-dimensional distributions are supported, since each \xmlNode{uncertainty} provides a single
+value. The multi-dimensional RAVEN distributions (\xmlNode{MultivariateNormal},
+\xmlNode{NDInverseWeight}, \xmlNode{NDCartesianSpline}, and \xmlNode{NDimensionalDistributions})
+were previously accepted but are no longer: HERON sampled only their first dimension, without warning.

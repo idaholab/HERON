@@ -24,7 +24,7 @@ that says where the value comes from.
 | `<ROM>` | A trained RAVEN ROM, evaluated with inputs you give (below). | |
 | `<variable>` | A named workflow variable, such as `<component>_capacity` or a `dispatch_vars` name. | `<variable>npp_capacity</variable>` |
 | `<activity>` | This component's dispatched activity of a resource. Cash flows only. | `<activity>electricity</activity>` |
-| `<uncertainty>` | A random variable sampled from a RAVEN distribution. Cash flows only (below). | (below) |
+| `<uncertainty>` | A random variable sampled from one of the supported distributions. Cash flows only (below). | (below) |
 
 Both `<sweep_values>` and `<opt_bounds>` accept a `debug_value` attribute,
 which is the single value used when `<Case>` has `<debug>` enabled.
@@ -80,9 +80,9 @@ the ROM was trained with.
 
 ### `<uncertainty>`
 
-Contains one RAVEN distribution node. The value is sampled once per inner
-realization. The parser accepts `<uncertainty>` in any value slot, but the
-workflow only samples it for CashFlow parameters (`driver`,
+Contains one distribution node, from the list below. The value is sampled
+once per inner realization. The parser accepts `<uncertainty>` in any value
+slot, but the workflow only samples it for CashFlow parameters (`driver`,
 `reference_price`, `reference_driver`, `scaling_factor_x`), so use it only
 there.
 
@@ -96,6 +96,37 @@ there.
   </uncertainty>
 </reference_price>
 ```
+
+Every distribution needs a `name` attribute (HERON replaces it). Most also
+accept optional `<lowerBound>`/`<upperBound>` to truncate, and a `verbosity`
+attribute; Categorical and MarkovCategorical accept neither.
+
+| Distribution | Parameters (required in bold) |
+|--------------|-------------------------------|
+| `<Uniform>` | **`lowerBound`**, **`upperBound`** |
+| `<Normal>` | **`mean`**, **`sigma`** |
+| `<LogNormal>` | **`mean`**, **`sigma`** (of the log), `low` (shift, default 0) |
+| `<Triangular>` | **`min`**, **`max`**, **`apex`** (no truncation) |
+| `<Beta>` | `low` (0), `high` (1), and either `alpha`+`beta` or `peakFactor` |
+| `<Gamma>` | **`alpha`**, `beta` (rate, default 1), `low` (default 0) |
+| `<Exponential>` | **`lambda`**, `low` (default 0) |
+| `<Weibull>` | **`k`**, **`lambda`**, `low` (default 0) |
+| `<LogUniform>` | **`lowerBound`**, **`upperBound`** (exponents), **`base`** (`natural` or `decimal`) |
+| `<Logistic>` | **`location`**, **`scale`** |
+| `<Laplace>` | **`location`**, **`scale`** |
+| `<Custom1D>` | **`functionType`** (`pdf`/`cdf`), **`dataFilename`**, **`functionID`**, **`variableID`**, `workingDir` |
+| `<Poisson>` | **`mu`** (no truncation) |
+| `<Binomial>` | **`n`** (integer), **`p`** (no truncation) |
+| `<Bernoulli>` | **`p`** (no truncation) |
+| `<Geometric>` | **`p`** (no truncation) |
+| `<UniformDiscrete>` | **`strategy`** (`withReplacement`/`withoutReplacement`), and either `values` or bounds with `nPoints` or `step` |
+| `<Categorical>` | one or more **`<state outcome="...">probability</state>`**, then `rtol` (order matters) |
+| `<MarkovCategorical>` | one or more **`<state outcome="..." index="..."/>`**, then **`transition`** (square matrix, row order), then `workingDir` (order matters) |
+
+Multi-dimensional distributions (`MultivariateNormal`, `NDInverseWeight`,
+`NDCartesianSpline`, `NDimensionalDistributions`) are not accepted: each
+`<uncertainty>` is a single value, and HERON used to sample only their first
+dimension.
 
 ### `<Function>`
 

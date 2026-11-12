@@ -3,4 +3,12 @@
     type = RavenPython
     input = 'testParametric.py'
   [../]
+  [./distributions]
+    type = Unittest
+    input = 'test_distributions.py'
+  [../]
+  [./random_variable]
+    type = Unittest
+    input = 'test_random_variable.py'
+  [../]
 []

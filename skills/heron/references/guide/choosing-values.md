@@ -21,7 +21,7 @@ to define its value source").
 | The output of a trained RAVEN ROM | `<ROM rom=".." variable="..">` | One `<input>` per ROM input. |
 | Another named workflow value, such as a capacity | `<variable>npp_capacity</variable>` | Capex drivers. |
 | This component's dispatched activity | `<activity>resource</activity>` | Cash flows only. |
-| A random parameter, drawn once per realization | `<uncertainty>` with a RAVEN distribution | Cash flow parameters only. |
+| A random parameter, drawn once per realization | `<uncertainty>` with a supported distribution | Cash flow parameters only. Distributions are listed in `references/spec/valued-params.md`. |
 
 ## Rules that catch people
 

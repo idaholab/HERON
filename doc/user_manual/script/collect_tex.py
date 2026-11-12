@@ -13,11 +13,16 @@ src_path = os.path.abspath(os.path.join(build_path, '..', 'src'))
 
 sys.path.append(heron_path)
 from HERON.src import Cases, Components, Placeholders
+from HERON.src.ValuedParams import distributions
+from HERON.src.ValuedParams.RandomVariable import MANUAL_LABEL as uncertainty_label
 
 specs_to_load = {'Cases': ['Case'],
                  'Components': ['Component'],
                  'Placeholders': ['ARMA', 'Function'],
 }
+
+# sections written by their own functions below, in the order they appear after specs_to_load
+extra_sections = ['Uncertainty']
 
 # Introductory sections from the .tex file #####
 
@@ -56,6 +61,25 @@ def create(module, contents):
   with open(os.path.join(build_path, out_name), 'w') as f:
     f.writelines(to_write)
 
+def create_uncertainty():
+  """
+    Creates the .tex file for the <uncertainty> section, which documents each supported distribution
+    once. Every node that accepts <uncertainty> refers to this section by its label.
+    @ In, None
+    @ Out, None
+  """
+  to_write = f'\\section{{Uncertainty}}\n\\label{{{uncertainty_label}}}\n'
+  to_write += read(os.path.join(src_path, 'uncertainty_intro.tex'))
+  to_write += '\n\\subsection{Supported Distributions}\n'
+  to_write += 'The \\xmlNode{uncertainty} node recognizes the following distributions:\n'
+  to_write += '\\begin{itemize}\n'
+  for dist in distributions.SUPPORTED:
+    to_write += distributions.make_spec(dist).generateLatex(recDepth=1) + '\n'
+  to_write += '\\end{itemize}\n'
+  with open(os.path.join(build_path, 'Uncertainty.tex'), 'w') as f:
+    f.writelines(to_write)
+
 ###create the tex files using the members in the list_of_files
 for module_name, objects_list in specs_to_load.items():
   create(module_name, objects_list)
+create_uncertainty()

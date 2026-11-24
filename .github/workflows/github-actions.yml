@@ -21,6 +21,37 @@ jobs:
       - run: WD=`(cd ../../.. && pwd)` && export RAVEN_LIBS_NAME="raven_libs_"`basename $WD` && ../raven/scripts/establish_conda_env.sh --install
       - run: cd ../raven && ./build_raven
       - run: ../raven/run_tests --library-report
+      # Extra information to debug failures that only happen on some machines (the solver and the machine
+      # decide which optimum of a dispatch problem is returned); this does not change any test.
+      - name: Environment report
+        if: always()
+        run: |
+          source ../raven/scripts/establish_conda_env.sh --load
+          echo "runner: ${RUNNER_NAME}  os: ${RUNNER_OS}  arch: ${RUNNER_ARCH}"
+          uname -a
+          echo "cpus: $(nproc 2>/dev/null)"
+          grep -m1 "model name" /proc/cpuinfo || true
+          grep -m1 "MemTotal" /proc/meminfo || true
+          echo "--- python"
+          python --version
+          which python
+          echo "--- RAVEN checkout"
+          (cd ../raven && git log -1 --format='%H %s' && git status --short | head -5)
+          echo "--- HERON checkout"
+          git log -1 --format='%H %s'
+          echo "--- solvers"
+          for s in cbc ipopt glpsol; do
+            echo "$s: $(command -v $s || echo not found)"
+          done
+          cbc -quit 2>&1 | head -3 || true
+          ipopt --version 2>&1 | head -2 || true
+          glpsol --version 2>&1 | head -1 || true
+          python -c "import pyomo.version as v; print('pyomo', v.version)"
+          python -c "import pyomo.environ as pyo; [print(n, pyo.SolverFactory(n).available(exception_flag=False), pyo.SolverFactory(n).version() if pyo.SolverFactory(n).available(exception_flag=False) else '') for n in ('cbc', 'glpk', 'ipopt')]" || true
+          echo "--- conda packages"
+          conda list 2>/dev/null | grep -iE "^(python|numpy|scipy|pyomo|coincbc|ipopt|glpk|dill|pandas|scikit-learn|networkx|libopenblas|openblas|mkl) " || true
+          echo "--- thread settings"
+          env | grep -iE "^(OMP|OPENBLAS|MKL|NUMEXPR|VECLIB)_" || echo "none set"
       # Unit tests that must pass without RAVEN. Uses the same conda environment as run_tests;
       # --no-raven blocks RAVEN/TEAL/FARM imports and runs only the files and tests marked raven_free (see tests/pytest.ini).
       - name: Test HERON without RAVEN
@@ -41,6 +72,23 @@ jobs:
         with:
           name: coverage_results
           path: tests/coverage_html_report
+      # The generated outputs (csv, xml, lib, logs) of the tests, so a failed comparison can be looked at
+      # (sweep.csv of a failed test, the dispatch debug files) without running the test again.
+      # The test outputs are only saved when a step failed, to keep the artifacts small.
+      - name: Archive test outputs
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test_outputs_linux
+          path: |
+            tests/**/*.csv
+            tests/**/*.xml
+            tests/**/*.lib
+            tests/**/*.log
+            !tests/**/gold/**
+            !tests/coverage_html_report/**
+          if-no-files-found: warn
+          retention-days: 14
   Test-HERON-Windows:
     runs-on: [self-hosted, windows]
     steps:
@@ -56,4 +104,23 @@ jobs:
       - run: $Env:RAVEN_LIBS_NAME =  "raven_libraries_"+(Get-Location).Path.Split("\")[-4]; bash ../raven/scripts/establish_conda_env.sh --install --conda-defs $HOME/Miniconda3/etc/profile.d/conda.sh
       - run: cd ../raven; bash ./build_raven
       - run: bash ../raven/run_tests --library-report
+      # Extra information to debug failures that only happen on some machines; this does not change any test.
+      - name: Environment report
+        if: always()
+        shell: bash
+        run: |
+          source ../raven/scripts/establish_conda_env.sh --load --conda-defs $HOME/Miniconda3/etc/profile.d/conda.sh
+          echo "runner: ${RUNNER_NAME}  os: ${RUNNER_OS}  arch: ${RUNNER_ARCH}"
+          echo "cpus: ${NUMBER_OF_PROCESSORS}  cpu: ${PROCESSOR_IDENTIFIER}"
+          python --version
+          which python
+          echo "--- HERON checkout"
+          git log -1 --format='%H %s'
+          echo "--- solvers"
+          for s in cbc ipopt glpsol; do
+            echo "$s: $(command -v $s || echo not found)"
+          done
+          python -c "import pyomo.version as v; print('pyomo', v.version)"
+          conda list 2>/dev/null | grep -iE "^(python|numpy|scipy|pyomo|coincbc|ipopt|glpk|dill|pandas|scikit-learn|networkx|libopenblas|openblas|mkl) " || true
+          env | grep -iE "^(OMP|OPENBLAS|MKL|NUMEXPR)_" || echo "no thread variables set"
       - run: bash ../raven/run_tests -j4 --plugins --re=HERON/tests

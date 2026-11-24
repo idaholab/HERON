@@ -58,6 +58,18 @@
       </stores>
       <economics>
         <lifetime>3</lifetime>
+        <!-- A small holding cost makes the optimum unique. Without it, cbc (on different machines) and glpk return
+             different storage and offload values for the 100 steam case, with the same NPV, so the dispatch is
+             not unique and the gold file only holds one of the equally good solutions. -->
+        <CashFlow name="storage_cost" type="repeating" taxable='True' inflation='none'>
+          <driver>
+            <activity tracking="level">steam</activity>
+            <multiplier>-1</multiplier>
+          </driver>
+          <reference_price>
+            <fixed_value>0.0001</fixed_value>
+          </reference_price>
+        </CashFlow>
       </economics>
     </Component>
 
